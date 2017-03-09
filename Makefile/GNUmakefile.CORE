@@ -1,0 +1,65 @@
+###################################################
+
+# default target list
+ROOTMAP=$(SHLIB:.so=.rootmap)
+GALLERY_FMWK_BASIC_ROOTLIBS = $(shell root-config --libs)
+GALLERY_FMWK_BASIC_ROOTINC  = $(shell root-config --cflags)
+
+all: pre_build main_build 
+
+pre_build:
+
+main_build: pre_build .depend $(DICT).cxx $(GALLERY_FMWK_LIBDIR)/$(SHLIB) $(GALLERY_FMWK_LIBDIR)/$(ROOTMAP) 
+
+
+# default rule for making .o files from .cxx files
+%.o: %.cxx
+	@echo '<< compiling' $< '>>'
+	@$(CXX) $(CXXFLAGS) $(GALLERY_FMWK_BASIC_ROOTINC) $(INCFLAGS) -c $<
+
+# root class dictionary
+$(DICT).cxx: $(HEADERS) LinkDef.h
+	@echo '<< generating dict >>'
+	@rootcling -f $(DICT).cxx -s $(GALLERY_FMWK_LIBDIR)/$(SHLIB) -rml $(SHLIB) -rmf $(GALLERY_FMWK_LIBDIR)/$(ROOTMAP) $(CINTFLAGS) -c $(INCFLAGS) $(HEADERS) LinkDef.h	
+
+# rule for making shareable library
+$(GALLERY_FMWK_LIBDIR)/$(SHLIB): $(OBJECTS) $(DICT).cxx $(DICT).o
+	@echo '<< generating $(SHLIB) >>'
+	@$(SOMAKER) -o $(GALLERY_FMWK_LIBDIR)/$(SHLIB) $(filter-out $(DICT).o, $(OBJECTS)) $(DICT).o $(SOFLAGS) $(LDFLAGS) $(GALLERY_FMWK_BASIC_ROOTLIBS) 
+
+# if ROOTMAP defined, define rule for making it
+$(GALLERY_FMWK_LIBDIR)/$(ROOTMAP): $(GALLERY_FMWK_LIBDIR)/$(SHLIB)
+
+
+# "make clean" target
+clean: pre_clean
+	@echo '<< cleaning all >>'
+	@rm -f .depend
+	@rm -f $(DICT).* *.o 
+	@rm -f lib/*.o lib/lib*.so lib/lib*.rootmap lib/lib*.pcm
+	@rm -f $(GALLERY_FMWK_LIBDIR)/$(SHLIB) $(GALLERY_FMWK_LIBDIR)/$(SHLIB:.so=.rootmap) $(GALLERY_FMWK_LIBDIR)/$(SHLIB:.so=_rdict.pcm)
+
+pre_clean: 
+
+###################################################
+libclean:
+	@echo '<< cleaning lib directory >>'
+	@rm -f $(GALLERY_FMWK_LIBDIR)/$(SHLIB) 
+	@rm -f lib/$(SHLIB) 
+
+###################################################
+clearCINT:
+	@echo '<< removing CINT >>'
+	@rm -f $(DICT).*
+
+
+###################################################
+# auto-generate dependencies using g++ -M
+.depend: $(SOURCES) $(HEADERS)
+	@#rm .depend
+	@echo '<< checking dependencies >>'
+	@$(CXX) -M $(CXXFLAGS) $(GALLERY_FMWK_BASIC_ROOTINC) $(INCFLAGS) $(SOURCES) > .depend
+
+-include .depend
+
+#ALWAYS:

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+out=""
+while test $# -gt 0; do
+  case "$1" in
+  -*=*) optarg=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
+  *)    optarg= ;;
+  esac
+
+  case $1 in
+      --includes)
+    out="-I${GALLERY_INC} -I${CANVAS_INC} -I${CETLIB_INC} -I${FHICLCPP_INC} -I${LARDATAOBJ_INC} -I${NUSIMDATA_INC} -I${LARCOREOBJ_INC}"
+    ;;
+      --libdir)
+    out="${GALLERY_LIB} ${CANVAS_LIB} ${CETLIB_LIB}"
+    ;;
+      --libs)
+    out="-L${CANVAS_LIB} -lcanvas_Utilities -lcanvas_Persistency_Common -lcanvas_Persistency_Provenance \
+         -L${CETLIB_LIB} -lcetlib \
+         -L${GALLERY_LIB} -lgallery \
+         -L${NUSIMDATA_LIB} -lnusimdata_SimulationBase \
+         -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
+         -L${LARDATAOBJ_LIB} -llardataobj_RecoBase"
+    ;;
+      --help)
+    ### Print a help message
+          echo "Usage: `basename $0` [options]"
+    echo ""
+    echo "  --includes ... print out includes"
+    echo "  --libs     ... print out libraries"
+    exit 0
+    ;;
+      *)
+    ### Give an error
+          echo "Unknown argument \"$1\"!" 1>&2
+    echo "${usage}" 1>&2
+    exit 1
+    ;;
+  esac
+  shift
+done
+echo $out
