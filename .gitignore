@@ -35,7 +35,7 @@
 !/UserDev/SelectionTool
 !/UserDev/CosmicTagTool
 !/UserDev/LArLiteApp
-!/UserDev/DisplayTool
+!/UserDev/EventDisplay
 !/UserDev/UBRawFileReader
 /UserDev/SelectionTool/OpT0Finder/OpTrackAlg/data/uboone_photon_library_v4.root
 /UserDev/SelectionTool/OpT0Finder/OpTrackAlg/data/*
