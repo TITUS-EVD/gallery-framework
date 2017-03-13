@@ -10,7 +10,7 @@ namespace evd {
 
 DrawWire::DrawWire() {
   _name = "DrawWire";
-  producer = "caldata";
+  _producer = "caldata";
 
 }
 
@@ -58,32 +58,33 @@ bool DrawWire::analyze(gallery::Event * ev) {
 
   // This is an event viewer.  In particular, this handles raw wire signal drawing.
   // So, obviously, first thing to do is to get the wires.
-  // auto WireDigitHandle = storage->get_data<larlite::event_wire>(producer);
-
-  // _planeData.clear();
-  // initDataHolder();
-
-std::cout << "This ran." << std::endl;
-  // for (auto const& wire : *WireDigitHandle) {
-  //   unsigned int ch = wire.Channel();
-  //   unsigned int detWire = geoService->ChannelToWire(ch);
-  //   unsigned int plane = geoService->ChannelToPlane(ch);
-  //   int offset = detWire * _y_dimensions[plane];
+  
+  art::InputTag wires_tag(_producer);
+  auto const & wires
+        = ev -> getValidHandle<std::vector <recob::Wire> >(wires_tag);
 
 
+  _planeData.clear();
+  initDataHolder();
 
-  //   for (auto & iROI : wire.SignalROI().get_ranges()) {
-  //     // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
-  //     const int FirstTick = iROI.begin_index();
-  //     size_t i = 0;
-  //     for (float ADC : iROI) {
-  //       _planeData.at(plane).at(offset + FirstTick + i) = ADC;
-  //       i ++;
-  //     }
+  for (auto const& wire : *wires) {
+    unsigned int ch = wire.Channel();
+    unsigned int detWire = geoService->ChannelToWire(ch);
+    unsigned int plane = geoService->ChannelToPlane(ch);
+    int offset = detWire * _y_dimensions[plane];
+
+    for (auto & iROI : wire.SignalROI().get_ranges()) {
+      // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
+      const int FirstTick = iROI.begin_index();
+      size_t i = 0;
+      for (float ADC : iROI) {
+        _planeData.at(plane).at(offset + FirstTick + i) = ADC;
+        i ++;
+      }
 
 
-  //   }
-  // }
+    }
+  }
 
   return true;
 }

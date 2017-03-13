@@ -26,7 +26,7 @@
 #include "canvas/Utilities/InputTag.h"
 #include "gallery/Event.h"
 
-#include "DataFormat/rawdigit.h"
+#include "lardataobj/RawData/RawDigit.h"
 
 
 struct _object;
@@ -44,7 +44,7 @@ namespace evd {
      \class DrawRawDigit
      User custom analysis class made by SHELL_USER_NAME
    */
-  class DrawRawDigit : public larlite::ana_base, public RawBase{
+  class DrawRawDigit : public galleryfmwk::ana_base, public RawBase{
   
   public:
 
@@ -62,7 +62,7 @@ namespace evd {
     /** IMPLEMENT in DrawRawDigit.cc! 
         Analyze a data event-by-event  
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawRawDigit.cc! 
         Finalize method to be called after all events processed.
@@ -70,7 +70,6 @@ namespace evd {
     virtual bool finalize();
 
     void SetCorrectData(bool _doit = true){_correct_data = _doit;}
-    void SetSaveData(bool _doit = true){_save_data = _doit;}
 
     void SetStepSizeByPlane(size_t stepSize, size_t plane);
 

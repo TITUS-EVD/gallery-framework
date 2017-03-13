@@ -8,7 +8,7 @@ namespace evd {
 
 DrawRawDigit::DrawRawDigit() {
   _name = "DrawRawDigit";
-  producer = "daq";
+  _producer = "daq";
 
   // Initialize whether or not to save the data:
   _save_data = true;
@@ -46,7 +46,7 @@ bool DrawRawDigit::initialize() {
 
 }
 
-bool DrawRawDigit::analyze(larlite::storage_manager* storage) {
+bool DrawRawDigit::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -84,28 +84,28 @@ bool DrawRawDigit::analyze(larlite::storage_manager* storage) {
 
   // This is an event viewer.  In particular, this handles raw wire signal drawing.
   // So, obviously, first thing to do is to get the wires.
-  auto RawDigitHandle = storage->get_data<larlite::event_rawdigit>(producer);
+
+  art::InputTag wires_tag(_producer);
+  auto const & raw_digits
+        = ev -> getValidHandle<std::vector <raw::RawDigit> >(wires_tag);
+
 
   // if the tick-length set is different from what is actually stored in the ADC vector -> fix.
-  if (RawDigitHandle->size() > 0) {
+  if (raw_digits->size() > 0) {
     for (size_t pl = 0; pl < geoService->Nplanes(); pl++) {
-      if (_y_dimensions[pl] != RawDigitHandle->at(0).ADCs().size()) {
-        _y_dimensions[pl] = RawDigitHandle->at(0).ADCs().size();
+      if (_y_dimensions[pl] != raw_digits->at(0).ADCs().size()) {
+        _y_dimensions[pl] = raw_digits->at(0).ADCs().size();
       }
     }
   }
   initDataHolder();
-
-  run = RawDigitHandle->run();
-  subrun = RawDigitHandle->subrun();
-  event = RawDigitHandle->event_id();
 
   float rmsMinBadWire = 1.5 * 1.5;
   float rmsMaxBadWire = 100 * 100;
 
   badWireMapByPlane.resize(geoService->Nplanes());
 
-  for (auto const& rawdigit : *RawDigitHandle) {
+  for (auto const& rawdigit : * raw_digits) {
     unsigned int ch = rawdigit.Channel();
     if (ch >= 8254) continue;
 
@@ -252,36 +252,6 @@ void DrawRawDigit::correctData() {
     }
   }
 
-  char nameFile[100];
-  // Initialize all of the variables and branches possible
-  if (_save_data) {
-
-    // Setup the file and the ttree
-    sprintf(nameFile, "RawDigitAna_%i_%i_%i.root", run, subrun, event);
-
-    _out = new TFile(nameFile, "RECREATE");
-    _out -> cd();
-    _tree = new TTree("waveformsub", "waveformsub");
-
-    // Save the run, subrun, and event number for redundancy
-    _tree -> Branch("run", &run);
-    _tree -> Branch("subrun", &subrun);
-    _tree -> Branch("event", &event);
-
-    // Save the stepSize too
-    _tree -> Branch("stepSize", &stepSize);
-
-    // Save the pedestals, rms, and corrected rms by plane
-    for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
-      _tree -> Branch(Form("pedestal_%u", p), &(pedestalByPlane.at(p)));
-      _tree -> Branch(Form("rms_%u", p),      &(rmsByPlane.at(p)));
-      if (_correct_data)
-        _tree -> Branch(Form("rmsCorrected_%u", p),  &(rmsByPlaneCorrected.at(p)));
-    }
-
-  }
-
-
 
   // Only perform the median subtraction if we're correcting the data:
 
@@ -388,12 +358,7 @@ void DrawRawDigit::correctData() {
         // Now that the tick loop is finished, the wave form is finalized
         //
 
-        // Copy the data to the tgraph so that it can be stored, and set up the branches
-        if (_save_data) {
-          char name[100];
-          sprintf(name, "subwaveform_%u_%u", plane, step);
-          _tree -> Branch(name, &(_subtractionWaveForm.at(plane).at(step)) );
-        }
+
       } // loop over steps
 
       // Divide the RMS by the number of ticks (which is actually 9595, not 9600)
@@ -414,52 +379,6 @@ void DrawRawDigit::correctData() {
 
   std::vector<std::vector<float> > correlationMatrix(totalWaveforms, std::vector<float>(totalWaveforms, 0.0));
 
-
-  if (_save_data) {
-    int count = 0;
-    // Loop over the waveforms and get the correlations:
-    for (size_t i = 0; i < _subtractionWaveForm.size(); i ++) {
-      for (size_t j = 0; j < _subtractionWaveForm.at(i).size(); j ++ )
-      {
-
-        // For each wave form, correlate it to all the other waveforms.
-        // Increment the count here, and don't correlate if the correlation
-        // has already been calculated
-        int count2 = 0;
-        for (size_t i2 = 0; i2 < _subtractionWaveForm.size(); i2 ++) {
-          for (size_t j2 = 0; j2 < _subtractionWaveForm.at(i2).size(); j2 ++ ) {
-            if (correlationMatrix[count][count2] == 0) {
-              // This entry unfilled.  See if the cross diagonal is filled:
-              if (correlationMatrix[count2][count] != 0) {
-                correlationMatrix[count][count2] = correlationMatrix[count2][count];
-                count2 ++;
-                continue;
-              }
-              else {
-                correlationMatrix[count][count2] = getCorrelation(_subtractionWaveForm[i][j], _subtractionWaveForm[i2][j2]);
-                correlationMatrix[count2][count] = correlationMatrix[count][count2];
-                count2 ++;
-                continue;
-              }
-            }
-            count2++;
-          } // j2
-        } // i2
-        // Increment the number of counts
-        count ++;
-      }
-    }
-
-    // Save the correlation matrix
-    _tree -> Branch("correlationMatrix", &(correlationMatrix));
-  }
-
-  if (_save_data) {
-    _tree -> Fill();
-    _tree -> Write();
-    _out -> Close();
-    std::cout << "Output successfully written to " << nameFile << std::endl;
-  }
 
   return;
 

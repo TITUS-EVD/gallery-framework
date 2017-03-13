@@ -386,15 +386,14 @@ class evd_manager_2D(evd_manager_base):
             self.processEvent(True)
 
         elif product == 'rawdigit':
-            if 'rawdigit' not in self._keyTable:
+            if 'raw::RawDigit' not in self._keyTable:
                 print "No raw digit data available to draw"
                 self._drawWires = False
                 return
-            print self._keyTable['rawdigit']
             self._drawWires = True
             self._wireDrawer = datatypes.rawDigit(self._geom)
-            self._wireDrawer.setProducer(self._keyTable['rawdigit'][0])
-            self._processer.add_process(self._wireDrawer._process)
+            self._wireDrawer.setProducer(self._keyTable['raw::RawDigit'][0])
+            self._processer.add_process("raw::RawDigit", self._wireDrawer._process)
             self.processEvent(True)
         else:
             self._processer.remove_process('recob::Wire')

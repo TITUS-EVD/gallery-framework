@@ -52,7 +52,7 @@ namespace evd {
     // This function sets the input target
     // for larlite, this can be used to set the producer
     // for lariat, this can be used to set the file
-    void setInput(std::string s){producer = s;}
+    void setInput(std::string s){_producer = s;}
 
     // This class has two outputs.
     // First, a user can get the plane data as a vector of float
@@ -94,7 +94,7 @@ namespace evd {
     const larutil::Geometry * geoService;
     const larutil::DetectorProperties * detProp;
 
-    std::string producer;
+    std::string _producer;
 
   };
 } // evd
