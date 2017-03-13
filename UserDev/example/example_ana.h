@@ -19,10 +19,12 @@
 
 #include "canvas/Utilities/InputTag.h"
 #include "gallery/Event.h"
+#include "canvas/Persistency/Common/FindMany.h"
 
 #include "Analysis/ana_base.h"
 
 #include "lardataobj/RecoBase/Track.h"
+#include "lardataobj/RecoBase/Hit.h"
 
 
 namespace galleryfmwk {

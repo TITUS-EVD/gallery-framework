@@ -46,6 +46,38 @@ bool example_ana::analyze(gallery::Event * ev) {
                   << ": " << tracks->size() << std::endl;
     }
 
+    // Get associations for tracks to hits:
+    art::InputTag assn_tag(_track_producer);
+
+    art::FindMany<recob::Hit> hits_for_tracks(tracks, *ev, assn_tag);
+
+
+
+    // Loop over the tracks, and find the number of hits per track:
+
+    int average_hits = 0;
+
+    size_t index = 0;
+    for (auto & track : * tracks) {
+        std::vector<recob::Hit const*> hits;
+
+        hits_for_tracks.get(index, hits);
+
+        average_hits += hits.size();
+
+        // Loop over individual hits, if needed:
+        // for (auto const& hit : hits) {
+        //     std::cout << "Hit start time: " << hit->StartTick << std::endl;
+        // }
+
+        index++;
+    }
+
+    if (_verbose)
+        std::cout << "Average number of associated hits per track for this event: "
+                  << average_hits / index << std::endl;
+
+
     return true;
 }
 
