@@ -278,8 +278,8 @@ class evd_manager_base(manager, QtCore.QObject):
         self.setEvent(self._data_manager.eventEntry())
         self.processEvent()
 
-        if self._view_manager != None:
-            self._view_manager.drawPlanes(self)
+        # if self._view_manager != None:
+            # self._view_manager.drawPlanes(self)
         self.drawFresh()
         self.eventChanged.emit()
 
@@ -343,8 +343,8 @@ class evd_manager_2D(evd_manager_base):
 
     def drawFresh(self):
         # # wires are special:
-        # if self._drawWires:
-        #   self._view_manager.drawPlanes(self)
+        if self._drawWires:
+          self._view_manager.drawPlanes(self)
         self.clearAll()
         # Draw objects in a specific order defined by drawableItems
         order = self._drawableItems.getListOfTitles()

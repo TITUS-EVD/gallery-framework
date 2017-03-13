@@ -55,6 +55,7 @@ bool DrawVertex3D::analyze(gallery::Event * ev) {
     Vertex3D temp;
 
     double xyz[3];
+    vtx.XYZ(xyz);
 
     temp._x = xyz[0];
     temp._y = xyz[1];
