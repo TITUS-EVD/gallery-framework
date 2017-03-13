@@ -3,7 +3,6 @@ from pyqtgraph.Qt import QtGui, QtCore
 from connectedObjects import connectedBox, connectedCircle, boxCollection
 from ROOT import evd, vector
 import pyqtgraph as pg
-import larlite as larlite
 
 
 class clusterParams(QtCore.QObject):  # recoBase):

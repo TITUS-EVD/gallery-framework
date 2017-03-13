@@ -16,16 +16,12 @@
 #define EVD_DRAWCLUSTER_H
 
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
-#include "LArUtil/GeometryHelper.h"
-#include "LArUtil/DetectorProperties.h"
-#include "DataFormat/cluster.h"
-#include "DataFormat/hit.h"
+#include "lardataobj/RecoBase/Cluster.h"
+#include "lardataobj/RecoBase/Hit.h"
+#include "canvas/Persistency/Common/FindMany.h"
 
 #include "DrawHit.h"
 
-#include "ClusterRecoUtil/Alg/DefaultParamsAlg.h"
-#include "ClusterRecoUtil/Base/CRUHelper.h"
 
 
 namespace evd {
@@ -38,13 +34,13 @@ class Cluster2D : public std::vector<evd::Hit2D> {
 
 public:
   Cluster2D() {_is_good = false;}
-  ::cluster::cluster_params _params;
-  ::cluster::cluster_params params() {return _params;}
+  // ::cluster::cluster_params _params;
+  // ::cluster::cluster_params params() {return _params;}
   bool _is_good;
   bool is_good() {return _is_good;}
 };
 
-class DrawCluster : public larlite::ana_base, public RecoBase<Cluster2D> {
+class DrawCluster : public galleryfmwk::ana_base, public RecoBase<Cluster2D> {
 
 public:
 
@@ -62,7 +58,7 @@ public:
   /** IMPLEMENT in DrawCluster.cc!
       Analyze a data event-by-event
   */
-  virtual bool analyze(larlite::storage_manager* storage);
+  virtual bool analyze(gallery::Event * event);
 
   /** IMPLEMENT in DrawCluster.cc!
       Finalize method to be called after all events processed.
@@ -71,7 +67,7 @@ public:
 
 protected:
 
-  ::cluster::CRUHelper _cru_helper;
+  // ::cluster::CRUHelper _cru_helper;
 
 };
 }

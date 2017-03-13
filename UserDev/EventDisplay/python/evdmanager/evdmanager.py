@@ -308,14 +308,14 @@ class evd_manager_2D(evd_manager_base):
             # it
             drawingClass = self._drawableItems.getDict()[name][0]()
             # Special case for clusters, connect it to the signal:
-            if name == 'Cluster':
-                self.clusterParamsChanged.connect(
-                    drawingClass.setParamsDrawing)
-                drawingClass.setParamsDrawing(self._drawParams)
-            if name == 'Match':
-                self.clusterParamsChanged.connect(
-                    drawingClass.setParamsDrawing)
-                drawingClass.setParamsDrawing(self._drawParams)
+            # if name == 'Cluster':
+            #     self.clusterParamsChanged.connect(
+            #         drawingClass.setParamsDrawing)
+            #     drawingClass.setParamsDrawing(self._drawParams)
+            # if name == 'Match':
+            #     self.clusterParamsChanged.connect(
+            #         drawingClass.setParamsDrawing)
+            #     drawingClass.setParamsDrawing(self._drawParams)
 
             drawingClass.setProducer(producer)
             self._processer.add_process(product, drawingClass._process)
@@ -431,11 +431,11 @@ class evd_manager_2D(evd_manager_base):
     #         # print "Emiting this message: {msg}".format(msg="")
     #         self.truthLabelChanged.emit("")
 
-    def toggleParams(self, paramsBool):
-        self._drawParams = paramsBool
-        self.clusterParamsChanged.emit(paramsBool)
-        if 'Cluster' in self._drawnClasses or 'Match' in self._drawnClasses:
-            self.drawFresh()
+    # def toggleParams(self, paramsBool):
+    #     self._drawParams = paramsBool
+    #     self.clusterParamsChanged.emit(paramsBool)
+    #     if 'Cluster' in self._drawnClasses or 'Match' in self._drawnClasses:
+    #         self.drawFresh()
 
     def getPlane(self, plane):
         if self._drawWires:
@@ -495,10 +495,10 @@ try:
                 # instantiate it
                 drawingClass=self._drawableItems.getDict()[name][0]()
                 # Special case for clusters, connect it to the signal:
-                if name is 'PFParticle':
-                    self.clusterParamsChanged.connect(
-                        drawingClass.setParamsDrawing)
-                    drawingClass.setParamsDrawing(self._drawParams)
+                # if name is 'PFParticle':
+                    # self.clusterParamsChanged.connect(
+                    #     drawingClass.setParamsDrawing)
+                    # drawingClass.setParamsDrawing(self._drawParams)
                 # if name == 'Match':
                 #     self.clusterParamsChanged.connect(
                 #         drawingClass.setParamsDrawing)
@@ -516,11 +516,11 @@ try:
                 self._drawnClasses[recoProduct].clearDrawnObjects(
                     self._view_manager)
 
-        def toggleParams(self, paramsBool):
-            self._drawParams=paramsBool
-            self.clusterParamsChanged.emit(paramsBool)
-            if 'PFParticle' in self._drawnClasses:
-                self.drawFresh()
+        # def toggleParams(self, paramsBool):
+        #     self._drawParams=paramsBool
+        #     self.clusterParamsChanged.emit(paramsBool)
+        #     if 'PFParticle' in self._drawnClasses:
+        #         self.drawFresh()
 
         def drawFresh(self):
             # # wires are special:

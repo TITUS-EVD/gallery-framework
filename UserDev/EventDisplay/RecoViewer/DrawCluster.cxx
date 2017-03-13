@@ -28,7 +28,7 @@ bool DrawCluster::initialize() {
   return true;
 }
 
-bool DrawCluster::analyze(larlite::storage_manager* storage) {
+bool DrawCluster::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -61,32 +61,34 @@ bool DrawCluster::analyze(larlite::storage_manager* storage) {
 
   }
 
-  auto ev_clus = storage->get_data<larlite::event_cluster>(_producer);
-  if (!ev_clus)
-    return false;
-  if (!ev_clus->size()) {
-    // print(larlite::msg::kWARNING, __FUNCTION__,
-    // Form("Skipping event %d since no cluster found...", ev_clus->event_id()));
+
+
+  // Get all of the clusters from the event:
+  art::InputTag clusters_tag(_producer);
+  auto const & clusters
+    = ev -> getValidHandle<std::vector <recob::Cluster> >(clusters_tag);
+
+  if (clusters->size() == 0) {
+    std::cout << "No clusters found." << std::endl;
     return false;
   }
+
+  // Get the associations from clusters (pmtrack)
+  // to hits (trajcluster)
+
+  art::InputTag assn_tag(_producer);
+
+  art::FindMany<recob::Hit> hits_for_cluster(clusters, *ev, assn_tag);
+
+
+
+
+
 
   for (unsigned int p = 0; p < geoService -> Nviews(); p ++)
-    _dataByPlane.at(p).reserve(ev_clus -> size());
+    _dataByPlane.at(p).reserve(clusters -> size());
 
 
-  ::larlite::event_hit* ev_hit = nullptr;
-  auto const& hit_index_v = storage->find_one_ass(ev_clus->id(), ev_hit, _producer);
-
-
-  if (!ev_hit) {
-    std::cout << "Did not find hit data product"
-              << "!" << std::endl;
-    return false;
-  }
-
-
-  if (!hit_index_v.size())
-    return false;
 
   // Loop over the clusters and fill the necessary vectors.
   // I don't know how clusters are stored so I'm taking a conservative
@@ -94,31 +96,35 @@ bool DrawCluster::analyze(larlite::storage_manager* storage) {
   std::vector<int> cluster_index;
   cluster_index.resize(geoService -> Nviews());
 
-  int view = ev_hit->at(hit_index_v.front()[0]).View();
+  int view;
 
-  cluster::DefaultParamsAlg params_alg ;
-  cluster::cluster_params params;
-  params_alg.SetVerbose(false);
-  params_alg.SetDebug(false);
-  params_alg.SetMinHits(10);
+  // cluster::DefaultParamsAlg params_alg ;
+  // cluster::cluster_params params;
+  // params_alg.SetVerbose(false);
+  // params_alg.SetDebug(false);
+  // params_alg.SetMinHits(10);
 
-  for (auto const& hit_indices : hit_index_v) {
-    view = ev_hit->at(hit_indices[0]).View();
+  size_t index = 0;
+  for (auto const& cluster : * clusters) {
+    view = cluster.View();
 
     // Make a new cluster in the data:
     _dataByPlane.at(view).push_back(Cluster2D());
     _dataByPlane.at(view).back()._is_good = true;
 
     // Fill the cluster params alg
-    _cru_helper.GenerateParams( hit_indices, ev_hit, params);
-    params_alg.FillParams(params);
+    // _cru_helper.GenerateParams( hit_indices, ev_hit, params);
+    // params_alg.FillParams(params);
 
     // Set the params:
-    _dataByPlane.at(view).back()._params = params;
+    // _dataByPlane.at(view).back()._params = params;
 
-    for (auto const& hit_index : hit_indices) {
+    std::vector<recob::Hit const*> hits;
+    hits_for_cluster.get(index, hits);
 
-      auto & hit = ev_hit->at(hit_index);
+
+    for (auto const& hit : hits) {
+
       // if (view == 0){
       //   std::cout << "Got a hit, seems to be view " << view
       //             << " and cluster " << cluster_index[view]
@@ -129,30 +135,31 @@ bool DrawCluster::analyze(larlite::storage_manager* storage) {
       // Hit(float w, float t, float c, float r) :
 
       _dataByPlane.at(view).back().emplace_back(
-        Hit2D(hit.WireID().Wire,
-              hit.PeakTime(),
-              hit.Integral(),
-              hit.RMS(),
-              hit.StartTick(),
-              hit.PeakTime(),
-              hit.EndTick(),
-              hit.PeakAmplitude()
+        Hit2D(hit->WireID().Wire,
+              hit->PeakTime(),
+              hit->Integral(),
+              hit->RMS(),
+              hit->StartTick(),
+              hit->PeakTime(),
+              hit->EndTick(),
+              hit->PeakAmplitude()
              ));
 
 
       // Determine if this hit should change the view range:
-      if (hit.WireID().Wire > _wireRange.at(view).second)
-        _wireRange.at(view).second = hit.WireID().Wire;
-      if (hit.WireID().Wire < _wireRange.at(view).first)
-        _wireRange.at(view).first = hit.WireID().Wire;
-      if (hit.PeakTime() > _timeRange.at(view).second)
-        _timeRange.at(view).second = hit.PeakTime();
-      if (hit.PeakTime() < _timeRange.at(view).first)
-        _timeRange.at(view).first = hit.PeakTime();
+      if (hit->WireID().Wire > _wireRange.at(view).second)
+        _wireRange.at(view).second = hit->WireID().Wire;
+      if (hit->WireID().Wire < _wireRange.at(view).first)
+        _wireRange.at(view).first = hit->WireID().Wire;
+      if (hit->PeakTime() > _timeRange.at(view).second)
+        _timeRange.at(view).second = hit->PeakTime();
+      if (hit->PeakTime() < _timeRange.at(view).first)
+        _timeRange.at(view).first = hit->PeakTime();
 
     }
 
     cluster_index[view] ++;
+    index ++;
 
   }
 

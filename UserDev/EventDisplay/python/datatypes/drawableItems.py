@@ -3,7 +3,7 @@ import hit
 import shower
 import track
 import wire
-# import cluster
+import cluster
 import endpoint2d
 import vertex
 # import mctrack
@@ -30,7 +30,7 @@ class drawableItems(object):
         # items are stored as pointers to the classes (not instances)
         self._drawableClasses = collections.OrderedDict()
         self._drawableClasses.update({'Hit': [hit.hit,"recob::Hit"]})
-        # self._drawableClasses.update({'Cluster': [cluster.cluster,"cluster"]})
+        self._drawableClasses.update({'Cluster': [cluster.cluster,"recob::Cluster"]})
         # self._drawableClasses.update({'Match': [match.match,"pfpart"]})
         self._drawableClasses.update({'Shower': [shower.shower,"recob::Shower"]})
         self._drawableClasses.update({'Track': [track.track,"recob::Track"]})
