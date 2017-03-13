@@ -2,7 +2,6 @@
 #define DRAWMCTRACK3D_CXX
 
 #include "DrawMCTrack3D.h"
-#include "LArUtil/DetectorProperties.h"
 
 namespace evd {
 
@@ -21,7 +20,7 @@ bool DrawMCTrack3D::initialize() {
   return true;
 }
 
-bool DrawMCTrack3D::analyze(larlite::storage_manager* storage) {
+bool DrawMCTrack3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -42,10 +41,12 @@ bool DrawMCTrack3D::analyze(larlite::storage_manager* storage) {
 
 
 
-
-
   // get a handle to the tracks
-  auto mctrackHandle = storage->get_data<larlite::event_mctrack>(_producer);
+  art::InputTag mctracks_tag(_producer);
+  auto const & mctrackHandle
+        = ev -> getValidHandle<std::vector <sim::MCTrack> >(mctracks_tag);
+
+
 
   // Clear out the data but reserve some space
   _data.clear();
@@ -79,7 +80,7 @@ bool DrawMCTrack3D::finalize() {
 
 DrawMCTrack3D::~DrawMCTrack3D() {}
 
-MCTrack3D DrawMCTrack3D::getMCTrack3d(larlite::mctrack mctrack) {
+MCTrack3D DrawMCTrack3D::getMCTrack3d(const sim::MCTrack & mctrack) {
   MCTrack3D result;
   for (size_t i = 0; i < mctrack.size(); i++) {
     // project a point into 2D:

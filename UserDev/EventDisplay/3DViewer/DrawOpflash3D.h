@@ -16,7 +16,7 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "DataFormat/opflash.h"
+#include "lardataobj/RecoBase/OpFlash.h"
 #include "TVector3.h"
 
 #include "RecoBase3D.h"
@@ -53,7 +53,7 @@ private:
 };
 
 
-class DrawOpflash3D : public larlite::ana_base, public RecoBase3D<Opflash3D> {
+class DrawOpflash3D : public galleryfmwk::ana_base, public RecoBase3D<Opflash3D> {
 
 public:
 
@@ -71,7 +71,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.

@@ -16,7 +16,7 @@ bool DrawSeed3D::initialize() {
   return true;
 }
 
-bool DrawSeed3D::analyze(larlite::storage_manager* storage) {
+bool DrawSeed3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -39,8 +39,10 @@ bool DrawSeed3D::analyze(larlite::storage_manager* storage) {
 
 
 
-  // get a handle to the tracks
-  auto seedHandle = storage->get_data<larlite::event_seed>(_producer);
+  // get a handle to the seeds
+  art::InputTag seed_tag(_producer);
+  auto const & seedHandle
+        = ev -> getValidHandle<std::vector <recob::Seed> >(seed_tag);
 
   // Clear out the data but reserve some space
   _data.clear();

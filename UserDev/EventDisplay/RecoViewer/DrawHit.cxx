@@ -42,9 +42,9 @@ bool DrawHit::analyze(gallery::Event* ev) {
 
   // get a handle to the hits
 
-  art::InputTag wires_tag(_producer);
+  art::InputTag hits_tag(_producer);
   auto const & hitHandle
-        = ev -> getValidHandle<std::vector <recob::Hit> >(wires_tag);
+        = ev -> getValidHandle<std::vector <recob::Hit> >(hits_tag);
 
 
   // Clear out the hit data but reserve some space for the hits

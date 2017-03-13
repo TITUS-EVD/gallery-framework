@@ -16,7 +16,7 @@ bool DrawOpflash3D::initialize() {
   return true;
 }
 
-bool DrawOpflash3D::analyze(larlite::storage_manager* storage) {
+bool DrawOpflash3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -38,9 +38,11 @@ bool DrawOpflash3D::analyze(larlite::storage_manager* storage) {
 
 
 
+  art::InputTag opflash_tag(_producer);
+  auto const & opflashHandle
+        = ev -> getValidHandle<std::vector <recob::OpFlash> >(opflash_tag);
 
-  // get a handle to the flashes
-  auto opflashHandle = storage->get_data<larlite::event_opflash>(_producer);
+
 
   _data.clear();
   _data.reserve(opflashHandle -> size());

@@ -8,7 +8,7 @@ except:
     print("ERROR: Must have opengl for this viewer")
     exit()
 
-from gui import larlitegui3D
+from gui import evdgui3D
 import argparse
 import sys
 import signal
@@ -16,7 +16,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 
 from ROOT import evd
 
-from evdmanager import geometry, larlite_manager_3D
+from evdmanager import geometry, evd_manager_3D
 
 # This is to allow key commands to work when focus is on a box
 
@@ -57,10 +57,10 @@ def main():
 
     # If a file was passed, give it to the manager:
 
-    manager = larlite_manager_3D(geom)
+    manager = evd_manager_3D(geom)
     manager.setInputFiles(args.file)
 
-    thisgui = larlitegui3D(geom, manager)
+    thisgui = evdgui3D(geom, manager)
     # manager.goToEvent(0)
 
     signal.signal(signal.SIGINT, sigintHandler)

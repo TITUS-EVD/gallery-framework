@@ -336,6 +336,7 @@ class gui(QtGui.QWidget):
 
   # this function helps pass the entry of the line edit item to the event control
   def goToEventWorker(self):
+    print "called goToEventWorker"
     try:
       event = int(self._larliteEventEntry.text())
     except:

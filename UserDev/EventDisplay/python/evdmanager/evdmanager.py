@@ -57,9 +57,9 @@ class processer(object):
         pass
 
     def process_event(self, gallery_event):
-        print "Running ... "
+        # print "Running ... "
         for key in self._ana_units:
-            print "Processing " + key
+            # print "Processing " + key
             self._ana_units[key].analyze(gallery_event)
 
     def add_process(self, data_product, ana_unit):
@@ -256,22 +256,33 @@ class evd_manager_base(manager, QtCore.QObject):
 
     def goToEvent(self, event, force=False):
         # Gallery events don't offer random access
+        
+
         # Loop through until the event is gotten:
         if event < self._n_entries:
             if event == self._event + 1:
                 self._data_manager.next()
+
             else:
                 if event > self._event:
-                    while event != self._event:
+                    while event != self._data_manager.eventEntry():
                         self._data_manager.next()
+                else:
+                    self._data_manager.toBegin()
+                    while event != self._data_manager.eventEntry():
+                        self._data_manager.next()
+        else:
+            print "Selected event is too high"
+            return
 
+        self.setEvent(self._data_manager.eventEntry())
         self.processEvent()
-        self.setEvent(event)
 
         if self._view_manager != None:
             self._view_manager.drawPlanes(self)
         self.drawFresh()
         self.eventChanged.emit()
+
 
 
 class evd_manager_2D(evd_manager_base):
@@ -505,7 +516,7 @@ try:
                 #     drawingClass.setParamsDrawing(self._drawParams)
 
                 drawingClass.setProducer(producer)
-                self._process.add_process(drawingClass._process)
+                self._processer.add_process(product, drawingClass._process)
                 self._drawnClasses.update({name: drawingClass})
                 # Need to process the event
                 self.processEvent(True)
@@ -533,11 +544,6 @@ try:
                 if item in self._drawnClasses:
                     self._drawnClasses[item].drawObjects(self._view_manager)
 
-        def goToEvent(self, event, force=False):
-            self.setEvent(event)
-            self.processEvent()
-            self.drawFresh()
-            self.eventChanged.emit()
 
 
 except:

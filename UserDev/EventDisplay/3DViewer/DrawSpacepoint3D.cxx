@@ -16,10 +16,13 @@ bool DrawSpacepoint3D::initialize() {
   return true;
 }
 
-bool DrawSpacepoint3D::analyze(larlite::storage_manager* storage) {
+bool DrawSpacepoint3D::analyze(gallery::Event * ev) {
+
 
   // get a handle to the tracks
-  auto spacepointHandle = storage->get_data<larlite::event_spacepoint>(_producer);
+  art::InputTag sps_tag(_producer);
+  auto const & spacepointHandle
+    = ev -> getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
 
   // Clear out the data but reserve some space
   _data.clear();
@@ -28,10 +31,10 @@ bool DrawSpacepoint3D::analyze(larlite::storage_manager* storage) {
 
   // Populate the shower vector:
   for (auto & spt : *spacepointHandle) {
-    _data.push_back(cluster3D::Point3D(spt.XYZ()[0],
-                                       spt.XYZ()[1],
-                                       spt.XYZ()[2]
-                                      ));
+    _data.push_back(larutil::Point3D(spt.XYZ()[0],
+                                     spt.XYZ()[1],
+                                     spt.XYZ()[2]
+                                    ));
   }
 
 

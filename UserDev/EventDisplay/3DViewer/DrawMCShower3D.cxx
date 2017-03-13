@@ -2,7 +2,6 @@
 #define DRAWMCSHOWER3D_CXX
 
 #include "DrawMCShower3D.h"
-#include "LArUtil/DetectorProperties.h"
 
 namespace evd {
 
@@ -21,7 +20,7 @@ bool DrawMCShower3D::initialize() {
   return true;
 }
 
-bool DrawMCShower3D::analyze(larlite::storage_manager* storage) {
+bool DrawMCShower3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -45,7 +44,12 @@ bool DrawMCShower3D::analyze(larlite::storage_manager* storage) {
 
 
   // get a handle to the tracks
-  auto mcshowerHandle = storage->get_data<larlite::event_mcshower>(_producer);
+
+
+  art::InputTag mcshowers_tag(_producer);
+  auto const & mcshowerHandle
+        = ev -> getValidHandle<std::vector <sim::MCShower> >(mcshowers_tag);
+
 
   // Clear out the data but reserve some space
   _data.clear();
@@ -81,7 +85,7 @@ bool DrawMCShower3D::finalize() {
 
 DrawMCShower3D::~DrawMCShower3D() {}
 
-MCShower3D DrawMCShower3D::getMCShower3D(larlite::mcshower mcshower) {
+MCShower3D DrawMCShower3D::getMCShower3D(const sim::MCShower &  mcshower) {
   MCShower3D result;
 
   result._start_point = mcshower.DetProfile().Position().Vect();

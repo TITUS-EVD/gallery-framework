@@ -16,12 +16,12 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "DataFormat/spacepoint.h"
-#include "DataFormat/pfpart.h"
-#include "DataFormat/seed.h"
-#include "Cluster3DRecoUtil/Base/Cluster3DParams.h"
-#include "Cluster3DRecoUtil/Base/CRU3DHelper.h"
-#include "Cluster3DRecoUtil/Alg/Default3DParamsAlg.h"
+#include "lardataobj/RecoBase/SpacePoint.h"
+#include "lardataobj/RecoBase/PFParticle.h"
+#include "lardataobj/RecoBase/Seed.h"
+
+#include "canvas/Persistency/Common/FindMany.h"
+
 #include "RecoBase3D.h"
 
 /**
@@ -41,18 +41,17 @@ friend class DrawPFParticle3D;
 
 public:
 
-    cluster3D::cluster3D_params params(){return _params;}
-    const std::vector<cluster3D::Point3D> points(){return _params.point_vector;}
-
+    // cluster3D::cluster3D_params params(){return _params;}
+    const std::vector<larutil::Point3D> points(){return _points;}
 
 private:
 
-    cluster3D::cluster3D_params _params;
+    std::vector<larutil::Point3D> _points;
 
 };
 
 
-class DrawPFParticle3D : public larlite::ana_base, public RecoBase3D<PFPart3D> {
+class DrawPFParticle3D : public galleryfmwk::ana_base, public RecoBase3D<PFPart3D> {
 
 public:
 
@@ -70,7 +69,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event* storage);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.
@@ -80,8 +79,8 @@ public:
 
 private:
 
-    cluster3D::CRU3DHelper _cru3d_helper;
-    cluster3D::Default3DParamsAlg _params_alg;
+    // cluster3D::CRU3DHelper _cru3d_helper;
+    // cluster3D::Default3DParamsAlg _params_alg;
 
 };
 

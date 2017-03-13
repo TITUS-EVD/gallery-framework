@@ -16,10 +16,14 @@ bool DrawSimChannel3D::initialize() {
   return true;
 }
 
-bool DrawSimChannel3D::analyze(larlite::storage_manager* storage) {
+bool DrawSimChannel3D::analyze(gallery::Event * ev) {
 
-  // get a handle to the tracks
-  auto simchHandle = storage->get_data<larlite::event_simch>(_producer);
+
+  // Handle to sim channels
+  art::InputTag simch_tag(_producer);
+  auto const & simchHandle
+        = ev -> getValidHandle<std::vector <sim::SimChannel> >(simch_tag);
+
 
   // Clear out the data but reserve some space
   _data.clear();

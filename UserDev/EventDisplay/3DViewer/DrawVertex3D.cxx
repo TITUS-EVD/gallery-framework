@@ -16,7 +16,7 @@ bool DrawVertex3D::initialize() {
   return true;
 }
 
-bool DrawVertex3D::analyze(larlite::storage_manager* storage) {
+bool DrawVertex3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -39,8 +39,11 @@ bool DrawVertex3D::analyze(larlite::storage_manager* storage) {
 
 
 
-  // get a handle to the tracks
-  auto vertexHandle = storage->get_data<larlite::event_vertex>(_producer);
+  // get a handle to the vertexes
+  art::InputTag vertex_tag(_producer);
+  auto const & vertexHandle
+        = ev -> getValidHandle<std::vector <recob::Vertex> >(vertex_tag);
+
 
   // Clear out the data but reserve some space
   _data.clear();
@@ -51,9 +54,11 @@ bool DrawVertex3D::analyze(larlite::storage_manager* storage) {
   for (auto & vtx : *vertexHandle) {
     Vertex3D temp;
 
-    temp._x = vtx.X();
-    temp._y = vtx.Y();
-    temp._z = vtx.Z();
+    double xyz[3];
+
+    temp._x = xyz[0];
+    temp._y = xyz[1];
+    temp._z = xyz[2];
 
     _data.push_back(temp);
   }

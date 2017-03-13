@@ -5,7 +5,7 @@ except:
 
 from gui3D import gui3D
 from pyqtgraph.Qt import QtGui, QtCore
-from evdmanager import larlite_manager_3D
+from evdmanager import evd_manager_3D
 
 
 class ComboBoxWithKeyConnect(QtGui.QComboBox):
@@ -84,22 +84,22 @@ class recoBox(QtGui.QWidget):
 # override the gui to give the lariat display special features:
 
 
-class larlitegui3D(gui3D):
+class evdgui3D(gui3D):
 
     """special larlite gui for 3D"""
 
     def __init__(self, geometry, manager=None):
-        super(larlitegui3D, self).__init__(geometry)
+        super(evdgui3D, self).__init__(geometry)
         if manager is None:
             manager = larlite_manager_3D(geometry)
-        super(larlitegui3D, self).initManager(manager)
+        super(evdgui3D, self).initManager(manager)
         self.initUI()
         self._event_manager.fileChanged.connect(self.drawableProductsChanged)
         self._event_manager.eventChanged.connect(self.update)
 
     # override the initUI function to change things:
     def initUI(self):
-        super(larlitegui3D, self).initUI()
+        super(evdgui3D, self).initUI()
         # Change the name of the labels for lariat:
         self.update()
 

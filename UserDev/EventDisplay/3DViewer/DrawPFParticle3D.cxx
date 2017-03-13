@@ -16,7 +16,7 @@ bool DrawPFParticle3D::initialize() {
   return true;
 }
 
-bool DrawPFParticle3D::analyze(larlite::storage_manager* storage) {
+bool DrawPFParticle3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -37,23 +37,18 @@ bool DrawPFParticle3D::analyze(larlite::storage_manager* storage) {
 
 
   // get a handle to the particles
-  auto pfpartHandle = storage->get_data<larlite::event_pfpart>(_producer);
+
+  art::InputTag pfpart_tag(_producer);
+  auto const & pfpartHandle
+        = ev -> getValidHandle<std::vector <recob::PFParticle> >(pfpart_tag);
+
+
 
   // Get the associated spacepoints for this particle:
-  larlite::event_spacepoint * ev_sps = nullptr;
-  auto const& sps_index_v
-    = storage->find_one_ass(pfpartHandle->id(), ev_sps, _producer);
+  art::InputTag assn_tag(_producer);
+  art::FindMany<recob::SpacePoint> sps_for_pfpart(pfpartHandle, *ev, assn_tag);
 
 
-  if (!ev_sps) {
-    std::cout << "Did not find spacepoint data product"
-              << "!" << std::endl;
-    return false;
-  }
-
-
-  if (!sps_index_v.size())
-    return false;
 
   // Clear out the data but reserve some space
   _data.clear();
@@ -61,27 +56,22 @@ bool DrawPFParticle3D::analyze(larlite::storage_manager* storage) {
 
 
   // Populate the particles:
-  for (auto & spt_v : sps_index_v) {
-    if (spt_v.size() == 0)
+  size_t index = 0;
+  for (auto & pfpart : * pfpartHandle) {
+
+    std::vector<recob::SpacePoint const*> sps_v;
+    sps_for_pfpart.get(index, sps_v);
+
+    if (sps_v.size() == 0)
       continue;
-    PFPart3D temp;
 
-    // use cru3d helper to generate poin3D:
-    _cru3d_helper.GeneratePoint3D(spt_v,ev_sps,temp._params.point_vector);
+    _data.push_back(PFPart3D());
+    for (auto sps : sps_v){
+      auto xyz = sps->XYZ();
+      _data.back()._points.push_back(larutil::Point3D(xyz[0],xyz[1],xyz[2]));
+    }
 
-    // // reserve space for all the spacepoints:
-    // temp.reserve(spt_v.size());
-    // for (auto & index : spt_v){
-    //   const double * xyz = ev_sps->at(index).XYZ();
-    //   temp.emplace_back(cluster3D::Point3D(xyz[0],xyz[1],xyz[2]));
-    // }
-
-    // Here is where the params are filled and stored:
-    _params_alg.FillParams(temp._params);
-    
-    // Save the output:
-    _data.emplace_back(temp);
-
+    index ++;
   }
 
 
