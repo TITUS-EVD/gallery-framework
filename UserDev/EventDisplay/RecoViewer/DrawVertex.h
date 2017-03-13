@@ -18,7 +18,8 @@
 #include "Analysis/ana_base.h"
 #include "RecoBase.h"
 #include "LArUtil/Geometry.h"
-#include "ClusterRecoUtil/Base/ClusterParams.h"
+
+#include "lardataobj/RecoBase/Vertex.h"
 
 
 namespace evd {
@@ -29,7 +30,7 @@ namespace evd {
    \class DrawVertex
    User custom analysis class made by SHELL_USER_NAME
  */
-class DrawVertex : public larlite::ana_base, public RecoBase<Vertex2D> {
+class DrawVertex : public galleryfmwk::ana_base, public RecoBase<Vertex2D> {
 
 public:
 
@@ -41,7 +42,7 @@ public:
 
   virtual bool initialize();
 
-  virtual bool analyze(larlite::storage_manager* storage);
+  virtual bool analyze(gallery::Event * event);
 
   virtual bool finalize();
 

@@ -2,7 +2,6 @@
 #define EVD_DRAWENDPOINT_CXX
 
 #include "DrawEndpoint.h"
-#include "DataFormat/endpoint2d.h"
 
 namespace evd {
 
@@ -26,7 +25,7 @@ bool DrawEndpoint::initialize() {
   return true;
 }
 
-bool DrawEndpoint::analyze(larlite::storage_manager* storage) {
+bool DrawEndpoint::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -50,26 +49,20 @@ bool DrawEndpoint::analyze(larlite::storage_manager* storage) {
   //
 
 
-  auto ev_end2d = storage->get_data<larlite::event_endpoint2d>(_producer);
+  art::InputTag end2d_tag(_producer);
+  auto const & end2dHandle
+        = ev -> getValidHandle<std::vector <recob::EndPoint2D> >(end2d_tag);
 
 
 
   // Clear out the data but reserve some space
   for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
     _dataByPlane.at(p).clear();
-    _dataByPlane.at(p).reserve(ev_end2d -> size());
+    _dataByPlane.at(p).reserve(end2dHandle -> size());
     _wireRange.at(p).first  = 99999;
     _timeRange.at(p).first  = 99999;
     _timeRange.at(p).second = -1.0;
     _wireRange.at(p).second = -1.0;
-  }
-
-  if (!ev_end2d)
-    return false;
-  if (!ev_end2d->size()) {
-    print(larlite::msg::kWARNING, __FUNCTION__,
-          Form("Skipping event %d since no endpoint2d found...", ev_end2d->event_id()));
-    return false;
   }
 
 
@@ -79,22 +72,22 @@ bool DrawEndpoint::analyze(larlite::storage_manager* storage) {
   // larutil::PxPoint point;
   // double * xyz = new double[3];
 
-  for (auto & endpoint2d : * ev_end2d) {
+  for (auto & endpoint2d : * end2dHandle) {
     // for (unsigned int p = 0; p < geoService -> Nviews(); p ++){
     int p = endpoint2d.View();
 
     // Add it to the data:
     _dataByPlane.at(p).emplace_back(
-      Endpoint2D(endpoint2d.Wire(),
+      Endpoint2D(endpoint2d.WireID().Wire,
                  endpoint2d.DriftTime(),
                  endpoint2d.Charge(),
                  endpoint2d.Strength() ));
 
     // Determine if this endpoint2d should change the view range:
-    if (endpoint2d.Wire() > _wireRange.at(p).second)
-      _wireRange.at(p).second = endpoint2d.Wire();
-    if (endpoint2d.Wire() < _wireRange.at(p).first)
-      _wireRange.at(p).first = endpoint2d.Wire();
+    if (endpoint2d.WireID().Wire > _wireRange.at(p).second)
+      _wireRange.at(p).second = endpoint2d.WireID().Wire;
+    if (endpoint2d.WireID().Wire < _wireRange.at(p).first)
+      _wireRange.at(p).first = endpoint2d.WireID().Wire;
     if (endpoint2d.DriftTime() > _timeRange.at(p).second)
       _timeRange.at(p).second = endpoint2d.DriftTime();
     if (endpoint2d.DriftTime() < _timeRange.at(p).first)

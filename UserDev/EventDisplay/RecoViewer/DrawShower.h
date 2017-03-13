@@ -16,11 +16,10 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
-#include "DataFormat/shower.h"
-#include "RecoBase.h"
-#include "DrawCluster.h"
 
+#include "RecoBase.h"
+
+#include "lardataobj/RecoBase/Shower.h"
 /**
    \class DrawShower
    User defined class DrawShower ... these comments are used to generate
@@ -34,7 +33,7 @@ class Shower2D  {
 
 public:
 
-    /// Default constructo
+    /// Default constructor
     Shower2D() {}
 
     /// Default destructor
@@ -61,12 +60,10 @@ public:
     bool _is_good;             ///< Whether or not the projection succeeded
     float _dedx;                ///< dedx in collection plane, for printout
 
-    // save 2D cluster for the hits associated
-    Cluster2D _hits;
 };
 
 
-class DrawShower : public larlite::ana_base, public RecoBase<Shower2D> {
+class DrawShower : public galleryfmwk::ana_base, public RecoBase<Shower2D> {
 
 public:
 
@@ -84,7 +81,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.
@@ -105,7 +102,7 @@ public:
 
 
 
-    Shower2D getShower2d(larlite::shower shower, unsigned int plane);
+    Shower2D getShower2d(recob::Shower shower, unsigned int plane);
 
 };
 

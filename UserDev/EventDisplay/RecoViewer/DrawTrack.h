@@ -16,8 +16,9 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
-#include "DataFormat/track.h"
+#include "lardataobj/RecoBase/Track.h"
+
+
 
 #include "RecoBase.h"
 /**
@@ -26,7 +27,6 @@
    doxygen documentation!
  */
 
-// typedef std::vector< std::pair<float,float> > evd::Track2D;
 
 namespace evd {
 
@@ -39,11 +39,11 @@ public:
   const std::vector<std::pair<float, float> > & direction() {return _track;}
 };
 
-Track2D getTrack2D(larlite::track track, unsigned int plane);
+Track2D getTrack2D(recob::Track track, unsigned int plane);
 
 // typedef std::vector<std::pair<float, float> > Track2D;
 
-class DrawTrack : public larlite::ana_base, public RecoBase<Track2D> {
+class DrawTrack : public galleryfmwk::ana_base, public RecoBase<Track2D> {
 
 public:
 
@@ -55,7 +55,7 @@ public:
 
   virtual bool initialize();
 
-  virtual bool analyze(larlite::storage_manager* storage);
+  virtual bool analyze(gallery::Event * event);
 
   virtual bool finalize();
 

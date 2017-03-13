@@ -318,7 +318,7 @@ class evd_manager_2D(evd_manager_base):
                 drawingClass.setParamsDrawing(self._drawParams)
 
             drawingClass.setProducer(producer)
-            self._processer.add_process(drawingClass._process)
+            self._processer.add_process(product, drawingClass._process)
             self._drawnClasses.update({name: drawingClass})
             # Need to process the event
             self.processEvent(True)

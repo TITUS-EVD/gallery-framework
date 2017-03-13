@@ -2,7 +2,6 @@
 #define EVD_DRAWHIT_CXX
 
 #include "DrawHit.h"
-#include "DataFormat/hit.h"
 
 namespace evd {
 
@@ -21,7 +20,7 @@ bool DrawHit::initialize() {
   return true;
 }
 
-bool DrawHit::analyze(larlite::storage_manager* storage) {
+bool DrawHit::analyze(gallery::Event* ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -42,7 +41,11 @@ bool DrawHit::analyze(larlite::storage_manager* storage) {
 
 
   // get a handle to the hits
-  auto hitHandle = storage->get_data<larlite::event_hit>(_producer);
+
+  art::InputTag wires_tag(_producer);
+  auto const & hitHandle
+        = ev -> getValidHandle<std::vector <recob::Hit> >(wires_tag);
+
 
   // Clear out the hit data but reserve some space for the hits
   for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {

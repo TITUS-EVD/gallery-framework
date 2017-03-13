@@ -18,6 +18,8 @@
 #include "Analysis/ana_base.h"
 #include "RecoBase.h"
 
+#include "lardataobj/RecoBase/EndPoint2D.h"
+
 namespace evd {
 
 class Endpoint2D {
@@ -48,7 +50,7 @@ private:
    \class DrawEndpoint
    User custom analysis class made by SHELL_USER_NAME
  */
-class DrawEndpoint : public larlite::ana_base, public RecoBase<Endpoint2D> {
+class DrawEndpoint : public galleryfmwk::ana_base, public RecoBase<Endpoint2D> {
 
 public:
 
@@ -66,7 +68,7 @@ public:
   /** IMPLEMENT in DrawEndpoint.cc!
       Analyze a data event-by-event
   */
-  virtual bool analyze(larlite::storage_manager* storage);
+  virtual bool analyze(gallery::Event * event);
 
   /** IMPLEMENT in DrawEndpoint.cc!
       Finalize method to be called after all events processed.

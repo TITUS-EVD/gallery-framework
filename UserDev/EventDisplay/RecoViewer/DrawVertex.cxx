@@ -2,7 +2,6 @@
 #define EVD_DRAWVERTEX_CXX
 
 #include "DrawVertex.h"
-#include "DataFormat/vertex.h"
 
 namespace evd {
 
@@ -27,12 +26,12 @@ bool DrawVertex::initialize() {
 
 }
 
-bool DrawVertex::analyze(larlite::storage_manager* storage) {
+bool DrawVertex::analyze(gallery::Event * ev) {
 
-  // get a handle to the vertexes
-  auto vertexHandle = storage->get_data<larlite::event_vertex>(_producer);
-  if (!vertexHandle)
-    return false;
+  art::InputTag vertex_tag(_producer);
+  auto const & vertexHandle
+        = ev -> getValidHandle<std::vector <recob::Vertex> >(vertex_tag);
+
 
 
   // Clear out the hit data but reserve some space for the hits

@@ -18,6 +18,9 @@
 #include "Analysis/ana_base.h"
 #include "RecoBase.h"
 
+#include "lardataobj/RecoBase/Hit.h"
+
+
 /**
    \class DrawHit
    User defined class DrawHit ... these comments are used to generate
@@ -60,7 +63,7 @@ public:
     float peak_amplitude()  {return _peak_amplitude;}
 };
 
-class DrawHit : public larlite::ana_base, public RecoBase<Hit2D> {
+class DrawHit : public galleryfmwk::ana_base, public RecoBase<Hit2D> {
 
 public:
 
@@ -78,7 +81,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event* event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.

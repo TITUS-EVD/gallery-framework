@@ -16,8 +16,7 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "DataFormat/spacepoint.h"
-#include "ClusterRecoUtil/Base/ClusterParams.h"
+#include "lardataobj/RecoBase/SpacePoint.h"
 
 #include "RecoBase.h"
 /**
@@ -31,7 +30,7 @@
 namespace evd {
 
 
-  class DrawSpacepoint : public larlite::ana_base, public RecoBase<larutil::Point2D> {
+  class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<larutil::Point2D> {
 
 public:
 
@@ -49,7 +48,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.

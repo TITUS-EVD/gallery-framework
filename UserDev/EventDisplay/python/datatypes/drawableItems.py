@@ -1,14 +1,14 @@
-# import hit
+import hit
 # import match
-# import shower
-# import track
-# import wire
+import shower
+import track
+import wire
 # import cluster
-# import endpoint2d
-# import vertex
+import endpoint2d
+import vertex
 # import mctrack
 # import mcshower
-# import spacepoint
+import spacepoint
 # import simch
 # import opflash
 # import seed
@@ -29,15 +29,15 @@ class drawableItems(object):
         super(drawableItems, self).__init__()
         # items are stored as pointers to the classes (not instances)
         self._drawableClasses = collections.OrderedDict()
-        # self._drawableClasses.update({'Hit': [hit.hit,"hit"]})
+        self._drawableClasses.update({'Hit': [hit.hit,"recob::Hit"]})
         # self._drawableClasses.update({'Cluster': [cluster.cluster,"cluster"]})
         # self._drawableClasses.update({'Match': [match.match,"pfpart"]})
-        # self._drawableClasses.update({'Shower': [shower.shower,"shower"]})
-        # self._drawableClasses.update({'Track': [track.track,"track"]})
+        self._drawableClasses.update({'Shower': [shower.shower,"recob::Shower"]})
+        self._drawableClasses.update({'Track': [track.track,"recob::Track"]})
         # # self._drawableClasses.update({'Neutrino': [neutrino.neutrino,"ass"]})
-        # self._drawableClasses.update({'Endpoint 2D': [endpoint2d.endpoint2d,"endpoint2d"]})
-        # self._drawableClasses.update({'Vertex': [vertex.vertex,"vertex"]})
-        # self._drawableClasses.update({'SPS': [spacepoint.spacepoint,"sps"]})
+        self._drawableClasses.update({'Endpoint 2D': [endpoint2d.endpoint2d,"recob::EndPoint2D"]})
+        self._drawableClasses.update({'Vertex': [vertex.vertex,"recob::Vertex"]})
+        self._drawableClasses.update({'SPS': [spacepoint.spacepoint,"recob::SpacePoint"]})
 
     def getListOfTitles(self):
         return self._drawableClasses.keys()

@@ -20,10 +20,13 @@ bool DrawSpacepoint::initialize() {
   return true;
 }
 
-bool DrawSpacepoint::analyze(larlite::storage_manager* storage) {
+bool DrawSpacepoint::analyze(gallery::Event * ev) {
+
 
   // get a handle to the tracks
-  auto spacepointHandle = storage->get_data<larlite::event_spacepoint>(_producer);
+  art::InputTag sps_tag(_producer);
+  auto const & spacepointHandle
+        = ev -> getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
 
   geoHelper = larutil::GeometryHelper::GetME();
 

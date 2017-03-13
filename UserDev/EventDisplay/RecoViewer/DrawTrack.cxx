@@ -2,13 +2,10 @@
 #define EVD_DRAWTRACK_CXX
 
 #include "DrawTrack.h"
-#include "DataFormat/track.h"
-#include "LArUtil/DetectorProperties.h"
-#include "LArUtil/GeometryHelper.h"
 
 namespace evd {
 
-Track2D getTrack2D(larlite::track track, unsigned int plane) {
+Track2D getTrack2D(recob::Track track, unsigned int plane) {
   Track2D result;
   auto geoHelper = larutil::GeometryHelper::GetME();
   for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
@@ -16,7 +13,6 @@ Track2D getTrack2D(larlite::track track, unsigned int plane) {
     try {
       auto point = geoHelper->Point_3Dto2D(track.LocationAtPoint(i), plane);
       result._track.push_back(std::make_pair(point.w, point.t));
-      // auto
     }
     catch (...) {
       continue;
@@ -44,7 +40,7 @@ bool DrawTrack::initialize() {
   return true;
 }
 
-bool DrawTrack::analyze(larlite::storage_manager* storage) {
+bool DrawTrack::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -65,12 +61,14 @@ bool DrawTrack::analyze(larlite::storage_manager* storage) {
 
 
 
-
-
   // get a handle to the tracks
-  auto trackHandle = storage->get_data<larlite::event_track>(_producer);
+  art::InputTag tracks_tag(_producer);
+  auto const & trackHandle
+        = ev -> getValidHandle<std::vector <recob::Track> >(tracks_tag);
 
-  // Clear out the hit data but reserve some space for the showers
+
+
+  // Clear out the data but reserve some space for the tracks
   for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(trackHandle -> size());
