@@ -2,8 +2,6 @@
 #define DRAWTRACK3D_CXX
 
 #include "DrawTrack3D.h"
-#include "DataFormat/track.h"
-#include "LArUtil/DetectorProperties.h"
 
 namespace evd {
 
@@ -22,7 +20,7 @@ bool DrawTrack3D::initialize() {
   return true;
 }
 
-bool DrawTrack3D::analyze(larlite::storage_manager* storage) {
+bool DrawTrack3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -44,9 +42,14 @@ bool DrawTrack3D::analyze(larlite::storage_manager* storage) {
 
 
 
+  // get a handle to the tracks
+  art::InputTag tracks_tag(_producer);
+  auto const & trackHandle
+        = ev -> getValidHandle<std::vector <recob::Track> >(tracks_tag);
+
 
   // get a handle to the tracks
-  auto trackHandle = storage->get_data<larlite::event_track>(_producer);
+  
 
   // Clear out the data but reserve some space 
   _data.clear();
@@ -81,7 +84,7 @@ bool DrawTrack3D::finalize() {
 
 DrawTrack3D::~DrawTrack3D() {}
 
-Track3D DrawTrack3D::getTrack3d(larlite::track track) {
+Track3D DrawTrack3D::getTrack3d(const recob::Track & track) {
   Track3D result;
   for (size_t i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:

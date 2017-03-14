@@ -2,8 +2,6 @@
 #define DRAWSHOWER3D_CXX
 
 #include "DrawShower3D.h"
-#include "DataFormat/shower.h"
-#include "LArUtil/DetectorProperties.h"
 
 namespace evd {
 
@@ -18,7 +16,7 @@ bool DrawShower3D::initialize() {
   return true;
 }
 
-bool DrawShower3D::analyze(larlite::storage_manager* storage) {
+bool DrawShower3D::analyze(gallery::Event * ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -41,8 +39,10 @@ bool DrawShower3D::analyze(larlite::storage_manager* storage) {
 
 
 
-  // get a handle to the tracks
-  auto showerHandle = storage->get_data<larlite::event_shower>(_producer);
+  // get a handle to the showers
+  art::InputTag shower_tag(_producer);
+  auto const & showerHandle
+        = ev -> getValidHandle<std::vector <recob::Shower > >(shower_tag);
 
   // Clear out the data but reserve some space
     _data.clear();
@@ -77,14 +77,14 @@ bool DrawShower3D::finalize() {
 
 DrawShower3D::~DrawShower3D() {}
 
-Shower3D DrawShower3D::getShower3d(larlite::shower shower) {
+Shower3D DrawShower3D::getShower3d(const recob::Shower & shower) {
   Shower3D result;
 
 
   result._start_point = shower.ShowerStart();
   result._direction = shower.Direction();
   result._length = shower.Length();
-  result._opening_angle = shower.OpeningAngle();
+  result._opening_angle = 0.2;
 
   return result;
 }

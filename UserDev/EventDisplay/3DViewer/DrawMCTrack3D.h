@@ -16,8 +16,8 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
-#include "DataFormat/mctrack.h"
+
+#include "lardataobj/MCBase/MCTrack.h"
 #include "DrawTrack3D.h"
 #include "RecoBase3D.h"
 /**
@@ -33,7 +33,7 @@ namespace evd {
 typedef Track3D MCTrack3D;
 
 
-class DrawMCTrack3D : public larlite::ana_base, public RecoBase3D<MCTrack3D> {
+class DrawMCTrack3D : public galleryfmwk::ana_base, public RecoBase3D<MCTrack3D> {
 
 public:
 
@@ -51,7 +51,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.
@@ -61,7 +61,7 @@ public:
 
 private:
 
-    MCTrack3D getMCTrack3d(larlite::mctrack track);
+    MCTrack3D getMCTrack3d(const sim::MCTrack & track);
 
 };
 

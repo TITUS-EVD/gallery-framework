@@ -16,7 +16,7 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "DataFormat/vertex.h"
+#include "lardataobj/RecoBase/Vertex.h"
 #include "RecoBase3D.h"
 /**
    \class DrawSeed3D
@@ -44,7 +44,7 @@ private:
 };
 
 
-class DrawVertex3D : public larlite::ana_base, public RecoBase3D<Vertex3D> {
+class DrawVertex3D : public galleryfmwk::ana_base, public RecoBase3D<Vertex3D> {
 
 public:
 
@@ -62,7 +62,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.

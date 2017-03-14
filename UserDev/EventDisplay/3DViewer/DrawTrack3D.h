@@ -16,7 +16,7 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "DataFormat/track.h"
+#include "lardataobj/RecoBase/Track.h"
 
 #include "RecoBase3D.h"
 /**
@@ -44,7 +44,7 @@ private:
 };
 
 
-class DrawTrack3D : public larlite::ana_base, public RecoBase3D<Track3D> {
+class DrawTrack3D : public galleryfmwk::ana_base, public RecoBase3D<Track3D> {
 
 public:
 
@@ -62,7 +62,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * ev);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.
@@ -72,7 +72,7 @@ public:
 
 private:
 
-    Track3D getTrack3d(larlite::track track);
+    Track3D getTrack3d(const recob::Track & track);
 
 };
 

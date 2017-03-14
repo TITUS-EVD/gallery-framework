@@ -16,8 +16,7 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
-#include "DataFormat/mcshower.h"
+#include "lardataobj/MCBase/MCShower.h"
 #include "DrawShower3D.h"
 #include "RecoBase3D.h"
 /**
@@ -38,7 +37,7 @@ public:
 };
 
 
-class DrawMCShower3D : public larlite::ana_base, public RecoBase3D<MCShower3D> {
+class DrawMCShower3D : public galleryfmwk::ana_base, public RecoBase3D<MCShower3D> {
 
 public:
 
@@ -56,7 +55,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.
@@ -66,7 +65,7 @@ public:
 
 private:
 
-    MCShower3D getMCShower3D(larlite::mcshower shower);
+    MCShower3D getMCShower3D(const sim::MCShower & shower);
 
 };
 

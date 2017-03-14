@@ -5,6 +5,6 @@ from .viewport import viewport
 try:
     import pyqtgraph.opengl as gl
     from .gui3D import gui3D
-    from .larlitegui3D import larlitegui3D
+    from .evdgui3D import evdgui3D
 except:
     pass

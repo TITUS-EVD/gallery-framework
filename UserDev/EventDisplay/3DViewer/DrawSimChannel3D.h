@@ -16,8 +16,8 @@
 
 #include <iostream>
 #include "Analysis/ana_base.h"
-#include "DataFormat/simch.h"
-#include "Cluster3DRecoUtil/Base/Cluster3DParams.h"
+#include "lardataobj/Simulation/SimChannel.h"
+
 
 #include "RecoBase3D.h"
 /**
@@ -30,9 +30,9 @@
 
 namespace evd {
 
-typedef cluster3D::Point3D SimChannel3D;
+typedef larutil::Point3D SimChannel3D;
 
-class DrawSimChannel3D : public larlite::ana_base, public RecoBase3D<SimChannel3D> {
+class DrawSimChannel3D : public galleryfmwk::ana_base, public RecoBase3D<SimChannel3D> {
 
 public:
 
@@ -50,7 +50,7 @@ public:
     /** IMPLEMENT in DrawCluster.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(larlite::storage_manager* storage);
+    virtual bool analyze(gallery::Event * event);
 
     /** IMPLEMENT in DrawCluster.cc!
         Finalize method to be called after all events processed.
