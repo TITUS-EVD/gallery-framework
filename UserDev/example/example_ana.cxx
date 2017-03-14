@@ -108,9 +108,12 @@ bool example_ana::analyze(gallery::Event * ev) {
 
 	art::FindMany<recob::Vertex> vertex_for_pfp(pfp, *ev, "pandoraNu");
 	art::FindMany<recob::Track> track_for_pfp(pfp, *ev, "pandoraNu");
+	art::FindMany<recob::Shower> shower_for_pfp(pfp, *ev, "pandoraNu");
 
 	//art::FindMany<recob::Track> track_for_pfp(cosmic_pfp, *ev, "pandoraCosmic");
 
+	std::vector < recob::TrackTrajectory > track_trajectory_list;
+	std::vector < Point_t> nue_vertex_list;
 
 	const int num_pfps = pfparticles.size();
 	const int num_cosmics = cosmicpfps.size();
@@ -177,6 +180,13 @@ bool example_ana::analyze(gallery::Event * ev) {
 						shwr_daughters++;
 						h_nue_like_shwr_daughters_xy->Fill(d_xyz[0], d_xyz[1]);
 						h_nue_like_shwr_daughters_yz->Fill(d_xyz[2], d_xyz[1]);
+
+						//Point_t nue_vtx (d_xyz[0], d_xyz[1], d_xyz[2]);
+
+						std::vector<recob::Shower const*> shower;
+						shower_for_pfp.get(i, shower);
+						//shower.at(0)->Vertex().X();
+
 					}
 					//trk daughters
 					if(daughter.PdgCode() == 13)
@@ -187,8 +197,9 @@ bool example_ana::analyze(gallery::Event * ev) {
 
 						std::vector<recob::Track const*> track;
 						track_for_pfp.get(i, track);
-
-						std::cout << track.at(0)->Vertex().X() << std::endl;
+						const recob::TrackTrajectory trj = track.at(0)->Trajectory();
+						track_trajectory_list.push_back(trj);
+						//std::cout << track.at(0)->Vertex().X() << std::endl;
 
 					}
 
