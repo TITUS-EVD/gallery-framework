@@ -9,11 +9,17 @@ def process_file(_file):
     # Create ana_processor instance
     my_proc = galleryfmwk.ana_processor()
 
-    # Set input root file
-    # for _f in f:
-    # my_proc.add_input_file(_f)
+    myfile = open(_file, 'r')
 
-    my_proc.add_input_file(_file)
+    # Set input root file
+    for _f in myfile:
+      #print _f
+      my_proc.add_input_file(_f[:-1])
+
+    print my_proc._input_files
+    exit()
+
+    #my_proc.add_input_file(_file)
 
     # Specify output root file name
     my_proc.set_ana_output_file(_file.replace('.root', '') + "_ana.root")

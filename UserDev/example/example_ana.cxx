@@ -3,10 +3,6 @@
 
 #include "example_ana.h"
 
-///compare vertex between shower and neutrino
-///compare minimum closest distance of approach for neutrino vertex
-///->this should be for cosmics not neutrino tracks
-
 namespace galleryfmwk {
 
 bool example_ana::inFV(double x_vtx, double y_vtx, double z_vtx, double fromWall)
@@ -79,6 +75,8 @@ bool example_ana::initialize() {
 	h_numu_like_trk_daughters_yz = new TH2D("h_numu_like_trk_daughters_yz", "h_numu_like_trk_daughters_yz", 50, 0, 1050, 60, -120, 120);
 	h_numu_like_vtx_xy = new TH2D("h_numu_like_vtx_xy", "h_numu_like_vtx_xy", 50, 0, 260, 60, -120, 120);
 	h_numu_like_vtx_yz = new TH2D("h_numu_like_vtx_yz", "h_numu_like_vtx_yz", 50, 0, 1050, 60, -120, 120);
+
+	h_nue_cosmic_closest = new TH1D("h_nue_cosmic_closest", "h_nue_cosmic_closest", 60, 0, 60);
 
 	return true;
 }
@@ -306,15 +304,19 @@ bool example_ana::analyze(gallery::Event * ev) {
 	}
 
 	//Geometry studies!
+	//std::vector < double > closest_points;
 	for(int nNue = 0; nNue < nue_vertex_list.size(); nNue++)
 	{
 		if(!cosmic_track_trajectory_list.empty())
 		{
 			geoalgo::Point_t nue_vertex = nue_vertex_list.at(nNue);
 			double closest_point = _geo_algo_instance.SqDist(nue_vertex, cosmic_track_trajectory_list);
-			std::cout << "Closest Point Between Nue-like vertex and Cosmic-like track: " << closest_point << std::endl;
+			//std::cout << "Closest Point Between Nue-like vertex and Cosmic-like track: " << closest_point << std::endl;
+			//closest_points.push_back(closest_point);
+			h_nue_cosmic_closest->Fill(closest_point);
 		}
 	}
+
 
 	// Get associations for tracks to hits:
 	art::InputTag assn_tag(_track_producer);
@@ -464,6 +466,13 @@ bool example_ana::finalize() {
 	h_numu_like_vtx_yz->GetXaxis()->SetTitle("z [cm]");
 	h_numu_like_vtx_yz->GetYaxis()->SetTitle("y [cm]");
 	c16->Print("numu-like_vtx_zy.pdf");
+
+	TCanvas * c17 = new TCanvas();
+	c17->cd();
+	h_nue_cosmic_closest->Draw();
+	h_nue_cosmic_closest->GetXaxis()->SetTitle("Distance [cm]");
+	h_nue_cosmic_closest->GetYaxis()->SetTitle("Events");
+	c17->Print("nue-like_cosmic_closest.pdf");
 
 	return true;
 }

@@ -119,6 +119,8 @@ TH2D * h_numu_like_trk_daughters_yz;
 TH2D * h_numu_like_vtx_xy;
 TH2D * h_numu_like_vtx_yz;
 
+TH1D * h_nue_cosmic_closest;
+
 };
 
 }
