@@ -37,7 +37,7 @@ void ana_processor::reset() {
     _fout = 0;
   }
 
-  if (_event && _event -> isValid()){
+  if (_event && _event -> isValid()) {
     _event->toBegin();
   }
 
@@ -53,6 +53,7 @@ void ana_processor::reset() {
 void ana_processor::add_input_file(std::string name) {
 
   _input_files.push_back(name);
+  std::cout << "Number of input files: " << _input_files.size() << std::endl;
 }
 
 bool ana_processor::initialize() {
@@ -174,6 +175,8 @@ bool ana_processor::process_event() {
 
 bool ana_processor::run(unsigned int nevents) {
 
+  int nfiles = _input_files.size();
+
   if (_verbosity_level == msg::kDEBUG)
     Message::send(msg::kDEBUG, __PRETTY_FUNCTION__, "called...");
 
@@ -188,16 +191,22 @@ bool ana_processor::run(unsigned int nevents) {
     return false;
   }
 
-  if (!nevents)
-    nevents = _event->numberOfEventsInFile();
-
   char _buf[200];
   sprintf(_buf, "Processing %d events from entry %d...", nevents, 0);
   Message::send(msg::kNORMAL, __FUNCTION__, _buf);
 
   int ten_percent_ctr = 0;
 
-  while (status) {
+  if (!nevents){
+    if (nfiles == 1){
+      nevents = _event -> numberOfEventsInFile();
+    }
+    else{
+      nevents = -1;
+    }
+  }
+
+  while (status && _event->fileEntry() < nfiles) {
 
     status = process_event();
 
@@ -214,6 +223,7 @@ bool ana_processor::run(unsigned int nevents) {
       Message::send(msg::kNORMAL, __FUNCTION__, Form("Processed %d/%d events! Aborting...", _nevents, nevents));
       break;
     }
+
 
     _event->next();
 
