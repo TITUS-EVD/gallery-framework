@@ -14,6 +14,7 @@ OBJECTS = $(SOURCES:.cxx=.o)
 INCFLAGS  = -I.                       #Include itself
 INCFLAGS += $(shell gallery-config --includes)
 INCFLAGS += $(shell gallery-fmwk-config --includes)
+INCFLAGS += -I$(GALLERY_FMWK_USERDEVDIR)/BasicTool
 
 # platform-specific options
 OSNAME          = $(shell uname -s)
@@ -26,6 +27,7 @@ include $(GALLERY_FMWK_BASEDIR)/Makefile/Makefile.${OSNAME}
 # call the common GNUmakefile
 LDFLAGS += $(shell gallery-config --libs)
 LDFLAGS += $(shell gallery-fmwk-config --libs)
+LDFLAGS += -L$(GALLERY_FMWK_LIBDIR) -lBasicTool_GeoAlgo
 
 
 include $(GALLERY_FMWK_BASEDIR)/Makefile/GNUmakefile.CORE

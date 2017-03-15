@@ -3,6 +3,9 @@
 
 #include "example_ana.h"
 
+///compare vertex between shower and neutrino
+///compare minimum closest distance of approach for neutrino vertex
+///->this should be for cosmics not neutrino tracks
 
 namespace galleryfmwk {
 
@@ -110,10 +113,11 @@ bool example_ana::analyze(gallery::Event * ev) {
 	art::FindMany<recob::Track> track_for_pfp(pfp, *ev, "pandoraNu");
 	art::FindMany<recob::Shower> shower_for_pfp(pfp, *ev, "pandoraNu");
 
-	//art::FindMany<recob::Track> track_for_pfp(cosmic_pfp, *ev, "pandoraCosmic");
+	art::FindMany<recob::Track> cosmic_track_for_pfp(cosmic_pfp, *ev, "pandoraCosmic");
 
-	std::vector < recob::TrackTrajectory > track_trajectory_list;
-	std::vector < Point_t> nue_vertex_list;
+	std::vector < geoalgo::Trajectory_t > track_trajectory_list;
+	std::vector < geoalgo::Trajectory_t > cosmic_track_trajectory_list;
+	std::vector < geoalgo::Point_t> nue_vertex_list;
 
 	const int num_pfps = pfparticles.size();
 	const int num_cosmics = cosmicpfps.size();
@@ -121,7 +125,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 	//const int num_showers = showers->size();
 
 	//pfp loop
-	for(size_t this_pfp = 0; this_pfp < num_pfps; this_pfp++)
+	for(std::size_t this_pfp = 0; this_pfp < num_pfps; this_pfp++)
 	{
 		//******************************
 		//check for reconstructed vertex
@@ -156,11 +160,14 @@ bool example_ana::analyze(gallery::Event * ev) {
 			if(pfparts.PdgCode() == 12)
 			{
 				num_nue++;
+				geoalgo::Point_t const nue_vtx (xyz[0], xyz[1], xyz[2]);
+				nue_vertex_list.push_back(nue_vtx);
+
 				h_nue_like_vtx_xy->Fill(xyz[0], xyz[1]);
 				h_nue_like_vtx_yz->Fill(xyz[2], xyz[1]);
 
 				auto const daughters = pfparts.Daughters();
-				for(size_t const i : daughters)
+				for(std::size_t const i : daughters)
 				{
 					auto const daughter = pfparticles.at(i);
 					std::vector<recob::Vertex const*> d_vertex;
@@ -181,8 +188,6 @@ bool example_ana::analyze(gallery::Event * ev) {
 						h_nue_like_shwr_daughters_xy->Fill(d_xyz[0], d_xyz[1]);
 						h_nue_like_shwr_daughters_yz->Fill(d_xyz[2], d_xyz[1]);
 
-						//Point_t nue_vtx (d_xyz[0], d_xyz[1], d_xyz[2]);
-
 						std::vector<recob::Shower const*> shower;
 						shower_for_pfp.get(i, shower);
 						//shower.at(0)->Vertex().X();
@@ -197,10 +202,18 @@ bool example_ana::analyze(gallery::Event * ev) {
 
 						std::vector<recob::Track const*> track;
 						track_for_pfp.get(i, track);
-						const recob::TrackTrajectory trj = track.at(0)->Trajectory();
+						std::vector<geoalgo::Point_t> track_path;
+						for(int pts = 0; pts < track.at(0)->NPoints(); pts++)
+						{
+							geoalgo::Point_t const track_point (
+							        track.at(0)->LocationAtPoint(pts).X(),
+							        track.at(0)->LocationAtPoint(pts).Y(),
+							        track.at(0)->LocationAtPoint(pts).Z());
+							track_path.push_back(track_point);
+						}
+						const geoalgo::Trajectory_t trj = track_path;
+						if(!track_path.empty()) {track_path.clear(); }
 						track_trajectory_list.push_back(trj);
-						//std::cout << track.at(0)->Vertex().X() << std::endl;
-
 					}
 
 				}
@@ -221,7 +234,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 				h_numu_like_vtx_yz->Fill(xyz[2], xyz[1]);
 
 				auto const daughters = pfparts.Daughters();
-				for(size_t const i : daughters)
+				for(std::size_t const i : daughters)
 				{
 					auto const daughter = pfparticles.at(i);
 					std::vector<recob::Vertex const*> d_vertex;
@@ -263,10 +276,44 @@ bool example_ana::analyze(gallery::Event * ev) {
 		}//end if nu-like
 	}//end loop pfps
 
-	for(size_t this_cosmic = 0; this_cosmic < num_cosmics; this_cosmic++)
+	//loop over pandora cosmics
+	for(std::size_t this_cosmic = 0; this_cosmic < num_cosmics; this_cosmic++)
 	{
 		auto const cosmic = cosmicpfps.at(this_cosmic);
-		//std::cout << cosmic.PdgCode() << std::endl;
+		if(cosmic.PdgCode() == 13)
+		{
+			std::vector<recob::Track const*> cosmic_track;
+			cosmic_track_for_pfp.get(this_cosmic, cosmic_track);
+			if(cosmic_track.size() == 0)
+			{
+				std::cout << "No track for pfp!" << std::endl;
+				continue;
+			}
+			std::vector<geoalgo::Point_t> cosmic_track_path;
+			for(int pts = 0; pts < cosmic_track.at(0)->NPoints(); pts++)
+			{
+				geoalgo::Point_t const cosmic_track_point (
+				        cosmic_track.at(0)->LocationAtPoint(pts).X(),
+				        cosmic_track.at(0)->LocationAtPoint(pts).Y(),
+				        cosmic_track.at(0)->LocationAtPoint(pts).Z());
+				cosmic_track_path.push_back(cosmic_track_point);
+			}
+			const geoalgo::Trajectory_t trj = cosmic_track_path;
+			if(!cosmic_track_path.empty()) {cosmic_track_path.clear(); }
+			cosmic_track_trajectory_list.push_back(trj);
+		}
+
+	}
+
+	//Geometry studies!
+	for(int nNue = 0; nNue < nue_vertex_list.size(); nNue++)
+	{
+		if(!cosmic_track_trajectory_list.empty())
+		{
+			geoalgo::Point_t nue_vertex = nue_vertex_list.at(nNue);
+			double closest_point = _geo_algo_instance.SqDist(nue_vertex, cosmic_track_trajectory_list);
+			std::cout << "Closest Point Between Nue-like vertex and Cosmic-like track: " << closest_point << std::endl;
+		}
 	}
 
 	// Get associations for tracks to hits:
@@ -278,7 +325,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 
 	int average_hits = 0;
 
-	size_t index = 0;
+	std::size_t index = 0;
 	for (auto & track : * tracks) {
 		std::vector<recob::Hit const*> hits;
 
@@ -294,9 +341,9 @@ bool example_ana::analyze(gallery::Event * ev) {
 		index++;
 	}
 
-	if (_verbose && index > 0)
-		std::cout << "Average number of associated hits per track for this event: "
-		          << average_hits / index << std::endl;
+	// if (_verbose && index > 0)
+	//      // std::cout << "Average number of associated hits per track for this event: "
+	//      //           << average_hits / index << std::endl;
 
 
 	return true;

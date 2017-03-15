@@ -32,6 +32,10 @@
 #include "lardataobj/RecoBase/Vertex.h"
 #include "lardataobj/RecoBase/Hit.h"
 
+#include "GeoAlgo/GeoAlgo.h"
+#include "GeoAlgo/GeoVector.h"
+#include "GeoAlgo/GeoTrajectory.h"
+
 namespace galleryfmwk {
 
 /**
@@ -39,6 +43,8 @@ namespace galleryfmwk {
    User custom analysis class made by SHELL_USER_NAME
  */
 class example_ana : galleryfmwk::ana_base {
+
+geoalgo::GeoAlgo const _geo_algo_instance;
 
 public:
 
