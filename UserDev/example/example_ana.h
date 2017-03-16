@@ -103,6 +103,7 @@ bool _verbose;
 TH1D * h_nue_fv_cuts;
 TH1D * h_numu_fv_cuts;
 TH2D * h_nue_like_daughters;
+TH1D * h_nue_like_trk_daughters;
 TH2D * h_numu_like_daughters;
 
 TH2D * h_nue_like_shwr_daughters_xy;
@@ -120,6 +121,14 @@ TH2D * h_numu_like_vtx_xy;
 TH2D * h_numu_like_vtx_yz;
 
 TH1D * h_nue_cosmic_closest;
+TH1D * h_nue_shwr_cosmic_closest;
+TH1D * h_nue_shwr_vtx_dist;
+
+TH1D * h_nue_shwr_E;
+TH2D * h_nue_shwr_cosmic_closest_vs_E;
+
+TH1D * h_cosmic_trk_length;
+TH1D * h_nue_trk_length;
 
 };
 

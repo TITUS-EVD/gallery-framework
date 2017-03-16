@@ -60,6 +60,7 @@ bool example_ana::initialize() {
 	h_numu_fv_cuts = new TH1D("h_numu_fv_cuts", "h_numu_fv_cuts", 50, 0, 50);
 
 	h_nue_like_daughters = new TH2D("h_nue_like_daughters", "h_nue-like_daughters", 6, 0, 6, 6, 0, 6);
+	h_nue_like_trk_daughters = new TH1D ("h_nue_like_trk_daughters", "h_nue-like_trk_daughters", 6, 0, 6);
 	h_numu_like_daughters = new TH2D("h_numu_like_daughters", "h_numu-like_daughters", 6, 0, 6, 6, 0, 6);
 
 	h_nue_like_shwr_daughters_xy = new TH2D("h_nue_like_shwr_daughters_xy", "h_nue_like_shwr_daughters_xy", 52, 0, 260, 60, -120, 120);
@@ -77,6 +78,14 @@ bool example_ana::initialize() {
 	h_numu_like_vtx_yz = new TH2D("h_numu_like_vtx_yz", "h_numu_like_vtx_yz", 50, 0, 1050, 60, -120, 120);
 
 	h_nue_cosmic_closest = new TH1D("h_nue_cosmic_closest", "h_nue_cosmic_closest", 60, 0, 60);
+	h_nue_shwr_cosmic_closest = new TH1D("h_nue_shwr_cosmic_closest", "h_nue_shwr_cosmic_closest", 60, 0, 60);
+	h_nue_shwr_vtx_dist = new TH1D("h_nue_shwr_vtx_dist", "h_nue_shwr_vtx_dist", 60, 0, 120);
+
+	h_nue_shwr_E = new TH1D("h_nue_shwr_E", "h_nue_shwr_E", 100, 0, 5000);
+	h_nue_shwr_cosmic_closest_vs_E = new TH2D("h_nue_shwr_cosmic_closest_vs_E", "h_nue_shwr_cosmic_closest_vs_E", 100, 0, 5000, 60, 0, 120);
+
+	h_cosmic_trk_length = new TH1D ("h_cosmic_trk_length", "h_cosmic_trk_length", 50, 0, 100);
+	h_nue_trk_length = new TH1D("h_nue_trk_length", "h_nue_trk_length", 50, 0, 100);
 
 	return true;
 }
@@ -112,10 +121,13 @@ bool example_ana::analyze(gallery::Event * ev) {
 	art::FindMany<recob::Shower> shower_for_pfp(pfp, *ev, "pandoraNu");
 
 	art::FindMany<recob::Track> cosmic_track_for_pfp(cosmic_pfp, *ev, "pandoraCosmic");
+	art::FindMany<recob::Shower> cosmic_shower_for_pfp(cosmic_pfp, *ev, "pandoraCosmic");
 
 	std::vector < geoalgo::Trajectory_t > track_trajectory_list;
 	std::vector < geoalgo::Trajectory_t > cosmic_track_trajectory_list;
 	std::vector < geoalgo::Point_t> nue_vertex_list;
+	std::vector < geoalgo::Point_t> shwr_vertex_list;
+	std::vector < double > shwr_energy_list;
 
 	const int num_pfps = pfparticles.size();
 	const int num_cosmics = cosmicpfps.size();
@@ -153,10 +165,12 @@ bool example_ana::analyze(gallery::Event * ev) {
 		int trk_daughters = 0;
 		if(pfparts.IsPrimary() == true)
 		{
+			//std::cout << "primary" << std::endl;
 			num_primary_pfp++;
 			//nues!
 			if(pfparts.PdgCode() == 12)
 			{
+				//std::cout << "nue" << std::endl;
 				num_nue++;
 				geoalgo::Point_t const nue_vtx (xyz[0], xyz[1], xyz[2]);
 				nue_vertex_list.push_back(nue_vtx);
@@ -168,6 +182,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 				for(std::size_t const i : daughters)
 				{
 					auto const daughter = pfparticles.at(i);
+					//let's get the vertex associations for the daughters
 					std::vector<recob::Vertex const*> d_vertex;
 					vertex_for_pfp.get(i, d_vertex);
 					if(d_vertex.size() == 0 )
@@ -182,24 +197,63 @@ bool example_ana::analyze(gallery::Event * ev) {
 					//shwr daughters
 					if(daughter.PdgCode() == 11)
 					{
+						//std::cout << "shwr" << std::endl;
 						shwr_daughters++;
 						h_nue_like_shwr_daughters_xy->Fill(d_xyz[0], d_xyz[1]);
 						h_nue_like_shwr_daughters_yz->Fill(d_xyz[2], d_xyz[1]);
 
+						//let's get the shower associations
 						std::vector<recob::Shower const*> shower;
 						shower_for_pfp.get(i, shower);
-						//shower.at(0)->Vertex().X();
+						if(shower.size() == 0)
+						{
+							std::cout << "No shower for this pfp shower!" << std::endl;
+							continue;
+						}
+
+						//let's check the distance between the shwr vtx and the nue vtx
+						const double dist_x = d_xyz[0] - xyz[0];
+						const double dist_y = d_xyz[1] - xyz[1];
+						const double dist_z = d_xyz[2] - xyz[2];
+						const double dist =
+						        sqrt((dist_x * dist_x)+
+						             (dist_y * dist_y)+
+						             (dist_z * dist_z));
+						h_nue_shwr_vtx_dist->Fill(dist);
+
+						//let's get the energy! Energy() - MeV?
+						double total_energy = 0;
+						const std::vector < double > plane_energy = shower.at(0)->Energy();
+						const int best_plane = shower.at(0)->best_plane();
+						total_energy = plane_energy.at(best_plane);
+						h_nue_shwr_E->Fill(total_energy);
+						shwr_energy_list.push_back(total_energy);
+
+						geoalgo::Point_t const shwr_vtx (d_xyz[0], d_xyz[1], d_xyz[2]);
+						shwr_vertex_list.push_back(shwr_vtx);
+
+						//let's look at the shower directions
+						const double dir_x = shower.at(0)->Direction().X();
+						const double dir_y = shower.at(0)->Direction().Y();
+						const double dir_z = shower.at(0)->Direction().Z();
+						std::cout << dir_x << ", " << dir_y << ", " << dir_z << std::endl;
 
 					}
 					//trk daughters
 					if(daughter.PdgCode() == 13)
 					{
+						//std::cout << "trk" << std::endl;
 						trk_daughters++;
 						h_nue_like_trk_daughters_xy->Fill(d_xyz[0], d_xyz[1]);
 						h_nue_like_trk_daughters_yz->Fill(d_xyz[2], d_xyz[1]);
 
 						std::vector<recob::Track const*> track;
 						track_for_pfp.get(i, track);
+						if(track.size() == 0)
+						{
+							std::cout << "No track for this pfp track!" << std::endl;
+							continue;
+						}
 						std::vector<geoalgo::Point_t> track_path;
 						for(int pts = 0; pts < track.at(0)->NPoints(); pts++)
 						{
@@ -212,9 +266,20 @@ bool example_ana::analyze(gallery::Event * ev) {
 						const geoalgo::Trajectory_t trj = track_path;
 						if(!track_path.empty()) {track_path.clear(); }
 						track_trajectory_list.push_back(trj);
-					}
 
-				}
+						//let's get the track length!
+						const double track_length = track.at(0)->Length();
+						h_nue_trk_length->Fill(track_length);
+
+						//let's look at the track directions
+						const double dir_x = track.at(0)->VertexDirection().X();
+						const double dir_y = track.at(0)->VertexDirection().Y();
+						const double dir_z = track.at(0)->VertexDirection().Z();
+						std::cout << dir_x << ", " << dir_y << ", " << dir_z << std::endl;
+
+					}//end nue track daughters
+				}//end nue daughters
+				h_nue_like_trk_daughters->Fill(trk_daughters);
 				h_nue_like_daughters->Fill(shwr_daughters, trk_daughters);
 				for(int fv_cut = 0; fv_cut < fv_cut_max; fv_cut++)
 				{
@@ -227,6 +292,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 			//numus!
 			if(pfparts.PdgCode() == 14)
 			{
+				//std::cout << "numus" << std::endl;
 				num_numu++;
 				h_numu_like_vtx_xy->Fill(xyz[0], xyz[1]);
 				h_numu_like_vtx_yz->Fill(xyz[2], xyz[1]);
@@ -274,12 +340,17 @@ bool example_ana::analyze(gallery::Event * ev) {
 		}//end if nu-like
 	}//end loop pfps
 
+	//**************************
 	//loop over pandora cosmics
+	//*************************
 	for(std::size_t this_cosmic = 0; this_cosmic < num_cosmics; this_cosmic++)
 	{
+		//std::cout << "cosmic!" << std::endl;
 		auto const cosmic = cosmicpfps.at(this_cosmic);
 		if(cosmic.PdgCode() == 13)
 		{
+			//std::cout << "track cosmic" << std::endl;
+			//let's get the cosmic to track associations
 			std::vector<recob::Track const*> cosmic_track;
 			cosmic_track_for_pfp.get(this_cosmic, cosmic_track);
 			if(cosmic_track.size() == 0)
@@ -299,54 +370,68 @@ bool example_ana::analyze(gallery::Event * ev) {
 			const geoalgo::Trajectory_t trj = cosmic_track_path;
 			if(!cosmic_track_path.empty()) {cosmic_track_path.clear(); }
 			cosmic_track_trajectory_list.push_back(trj);
-		}
 
-	}
+			//let's get the track length
+			const double cosmic_length = cosmic_track.at(0)->Length();
+			h_cosmic_trk_length->Fill(cosmic_length);
+
+			//let's get the track energy
+			const double cosmic_trk_energy = cosmic_track.at(0)->StartMomentum();
+
+			//let's get the cosmic shower energy
+			// double cosmic_shwr_energy;
+			// const std::vector < double > plane_energy = cosmic_shower.at(0)->Energy();
+			// for(auto planes : plane_energy)
+			// {
+			//      cosmic_shwr_energy += plane_energy.at(planes);
+			// }
+
+		} //end loop tracks
+		if(cosmic.PdgCode() == 11)
+		{
+			//std::cout << "cosmic shower" << std::endl;
+			//let's get the cosmic to shower associations
+			std::vector<recob::Shower const*> cosmic_shower;
+			cosmic_shower_for_pfp.get(this_cosmic, cosmic_shower);
+			if(cosmic_shower.size() == 0)
+			{
+				std::cout << "No shower for pfp!" << std::endl;
+				continue;
+			}
+		}        //end loop showers
+	}        //end loop cosmics
 
 	//Geometry studies!
-	//std::vector < double > closest_points;
+	std::cout << "geometry studies!" << std::endl;
+	std::vector < geoalgo::Point_t > cut_nue_vertex;
+	//closest point between nue vertex and cosmic track
 	for(int nNue = 0; nNue < nue_vertex_list.size(); nNue++)
 	{
 		if(!cosmic_track_trajectory_list.empty())
 		{
 			geoalgo::Point_t nue_vertex = nue_vertex_list.at(nNue);
 			double closest_point = _geo_algo_instance.SqDist(nue_vertex, cosmic_track_trajectory_list);
-			//std::cout << "Closest Point Between Nue-like vertex and Cosmic-like track: " << closest_point << std::endl;
-			//closest_points.push_back(closest_point);
 			h_nue_cosmic_closest->Fill(closest_point);
+			//let's see what happens if we remove nue vtx close to tagged cosmic
+			if(closest_point >= 5)
+			{
+				cut_nue_vertex.push_back(nue_vertex);
+			}
 		}
 	}
-
-
-	// Get associations for tracks to hits:
-	art::InputTag assn_tag(_track_producer);
-
-	art::FindMany<recob::Hit> hits_for_tracks(tracks, *ev, assn_tag);
-
-	// Loop over the tracks, and find the number of hits per track:
-
-	int average_hits = 0;
-
-	std::size_t index = 0;
-	for (auto & track : * tracks) {
-		std::vector<recob::Hit const*> hits;
-
-		hits_for_tracks.get(index, hits);
-
-		average_hits += hits.size();
-
-		// Loop over individual hits, if needed:
-		// for (auto const& hit : hits) {
-		//     std::cout << "Hit start time: " << hit->StartTick << std::endl;
-		// }
-
-		index++;
+	//closest point between nue shwr vertex and cosmic track
+	for (int nE = 0; nE < shwr_vertex_list.size(); nE++)
+	{
+		if(!cosmic_track_trajectory_list.empty())
+		{
+			geoalgo::Point_t shwr_vertex = shwr_vertex_list.at(nE);
+			double closest_point = _geo_algo_instance.SqDist(shwr_vertex, cosmic_track_trajectory_list);
+			h_nue_shwr_cosmic_closest->Fill(closest_point);
+			//h_nue_shwr_cosmic_closest_vs_E->Fill(shwr_energy_list.at(nE), closest_point);
+		}
 	}
-
-	// if (_verbose && index > 0)
-	//      // std::cout << "Average number of associated hits per track for this event: "
-	//      //           << average_hits / index << std::endl;
-
+	std::cout << "geometry done! " << std::endl;
+	//cut on sqdist to remove small distances - does this change vertex ave. position
 
 	return true;
 }
@@ -354,8 +439,6 @@ bool example_ana::analyze(gallery::Event * ev) {
 
 bool example_ana::finalize() {
 
-	// This function is called at the end of event loop.
-	// Do all variable finalization you wish to do here.
 	// If you need, you can store your ROOT class instance in the output
 	// file. You have an access to the output file through "_fout" pointer.
 	//
@@ -367,12 +450,24 @@ bool example_ana::finalize() {
 	std::cout << "Number of nue-like: " << num_nue << std::endl;
 	std:: cout << "Number of numu-like: " << num_numu << std::endl;
 
+	/*********************************
+	** Histogram Saving and Editing **
+	*///******************************
+	std::cout << "yoyoyo" << std::endl;
 	TCanvas * c1 = new TCanvas();
+	std::cout << "a " << std::endl;
 	c1->cd();
 	h_nue_like_daughters->Draw("colz");
 	h_nue_like_daughters->GetXaxis()->SetTitle("showers");
 	h_nue_like_daughters->GetYaxis()->SetTitle("tracks");
 	c1->Print("nue-like_daughters.pdf");
+	std::cout << "b " << std::endl;
+	TCanvas * c1b = new TCanvas();
+	c1b->cd();
+	h_nue_like_trk_daughters->Draw();
+	h_nue_like_trk_daughters->GetXaxis()->SetTitle("Tracks");
+	h_nue_like_trk_daughters->GetYaxis()->SetTitle("Events");
+	c1b->Print("nue-like_trk_daughters.pdf");
 	TCanvas * c2 = new TCanvas();
 	c2->cd();
 	h_numu_like_daughters->Draw("colz");
@@ -473,6 +568,42 @@ bool example_ana::finalize() {
 	h_nue_cosmic_closest->GetXaxis()->SetTitle("Distance [cm]");
 	h_nue_cosmic_closest->GetYaxis()->SetTitle("Events");
 	c17->Print("nue-like_cosmic_closest.pdf");
+	TCanvas * c17b = new TCanvas();
+	c17b->cd();
+	h_nue_shwr_cosmic_closest->Draw();
+	h_nue_shwr_cosmic_closest->GetXaxis()->SetTitle("Distance [cm]");
+	h_nue_shwr_cosmic_closest->GetYaxis()->SetTitle("Events");
+	c17b->Print("nue-like_shwr_cosmic_closest.pdf");
+
+	TCanvas * c18 = new TCanvas();
+	h_nue_shwr_vtx_dist->Draw();
+	h_nue_shwr_vtx_dist->GetXaxis()->SetTitle("Distance [cm]");
+	h_nue_shwr_vtx_dist->GetYaxis()->SetTitle("Events");
+	c18->Print("nue-like_shwr_vtx_distance");
+
+	TCanvas * c19 = new TCanvas();
+	h_nue_shwr_E->Draw();
+	h_nue_shwr_E->GetXaxis()->SetTitle("Total Shower Energy [MeV]");
+	h_nue_shwr_E->GetYaxis()->SetTitle("Events");
+	c19->Print("nue-like_shwr_E.pdf");
+	TCanvas * c19b = new TCanvas();
+	h_nue_shwr_cosmic_closest_vs_E->Draw();
+	h_nue_shwr_cosmic_closest_vs_E->GetXaxis()->SetTitle("Total Shower Energy [MeV]");
+	h_nue_shwr_cosmic_closest_vs_E->GetYaxis()->SetTitle("Distance [cm]");
+	c19b->Print("nue-like_shwr_vtx_distance_vs_E.pdf");
+
+	TCanvas *c20a = new TCanvas();
+	c20a->cd();
+	h_cosmic_trk_length->Draw();
+	h_cosmic_trk_length->GetXaxis()->SetTitle("Length [cm]");
+	h_cosmic_trk_length->GetYaxis()->SetTitle("Events");
+	c20a->Print("cosmic_trk_length");
+	TCanvas *c20b = new TCanvas();
+	c20b->cd();
+	h_nue_trk_length->Draw();
+	h_nue_trk_length->GetXaxis()->SetTitle("Length [cm]");
+	h_nue_trk_length->GetYaxis()->SetTitle("Events");
+	c20b->Print("nue-like_trk_length");
 
 	return true;
 }

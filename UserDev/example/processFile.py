@@ -16,8 +16,8 @@ def process_file(_file):
       #print _f
       my_proc.add_input_file(_f[:-1])
 
-    print my_proc._input_files
-    exit()
+    #print my_proc._input_files
+    #exit()
 
     #my_proc.add_input_file(_file)
 
