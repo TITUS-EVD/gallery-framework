@@ -19,6 +19,8 @@
 #include "TH1.h"
 #include "TH2.h"
 #include "TCanvas.h"
+#include "TSystem.h"
+#include "TROOT.h"
 
 #include "canvas/Utilities/InputTag.h"
 #include "gallery/Event.h"
@@ -129,6 +131,36 @@ TH2D * h_nue_shwr_cosmic_closest_vs_E;
 
 TH1D * h_cosmic_trk_length;
 TH1D * h_nue_trk_length;
+
+TH1D * h_nue_trk_closest;
+TH1D * h_nue_shwr_trk_closest;
+
+TCanvas * c1;
+TCanvas * c1b;
+TCanvas * c2;
+TCanvas * c3;
+TCanvas * c4;
+TCanvas * c5;
+TCanvas * c6;
+TCanvas * c7;
+TCanvas * c8;
+TCanvas * c9;
+TCanvas * c10;
+TCanvas * c11;
+TCanvas * c12;
+TCanvas * c13;
+TCanvas * c14;
+TCanvas * c15;
+TCanvas * c16;
+TCanvas * c17;
+TCanvas * c17b;
+TCanvas * c18;
+TCanvas * c19;
+TCanvas * c19b;
+TCanvas * c20a;
+TCanvas * c20b;
+TCanvas * c21a;
+TCanvas * c21b;
 
 };
 

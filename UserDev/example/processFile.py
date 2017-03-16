@@ -13,13 +13,16 @@ def process_file(_file):
 
     # Set input root file
     for _f in myfile:
-      #print _f
-      my_proc.add_input_file(_f[:-1])
+        # print _f
+        my_proc.add_input_file(_f[:-1])
 
-    #print my_proc._input_files
-    #exit()
+    # print my_proc._input_files
+    # exit()
 
-    #my_proc.add_input_file(_file)
+    # my_proc.add_input_file(_file)
+
+    # make root run in batch mode
+    ROOT.gROOT.SetBatch(1)
 
     # Specify output root file name
     my_proc.set_ana_output_file(_file.replace('.root', '') + "_ana.root")

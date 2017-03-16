@@ -39,6 +39,8 @@ bool example_ana::initialize() {
 	// here is a good place to create one on the heap (i.e. "new TH1D").
 	//
 
+	//gROOT->SetBatch();
+
 	x_boundary1 = 0;
 	x_boundary2 = 256.35;
 	y_boundary1 = -116.5;
@@ -81,11 +83,41 @@ bool example_ana::initialize() {
 	h_nue_shwr_cosmic_closest = new TH1D("h_nue_shwr_cosmic_closest", "h_nue_shwr_cosmic_closest", 60, 0, 60);
 	h_nue_shwr_vtx_dist = new TH1D("h_nue_shwr_vtx_dist", "h_nue_shwr_vtx_dist", 60, 0, 120);
 
-	h_nue_shwr_E = new TH1D("h_nue_shwr_E", "h_nue_shwr_E", 100, 0, 5000);
-	h_nue_shwr_cosmic_closest_vs_E = new TH2D("h_nue_shwr_cosmic_closest_vs_E", "h_nue_shwr_cosmic_closest_vs_E", 100, 0, 5000, 60, 0, 120);
+	h_nue_shwr_E = new TH1D("h_nue_shwr_E", "h_nue_shwr_E", 100, 0, 2);
+	h_nue_shwr_cosmic_closest_vs_E = new TH2D("h_nue_shwr_cosmic_closest_vs_E", "h_nue_shwr_cosmic_closest_vs_E", 100, 0, 2, 60, 0, 120);
 
 	h_cosmic_trk_length = new TH1D ("h_cosmic_trk_length", "h_cosmic_trk_length", 50, 0, 100);
 	h_nue_trk_length = new TH1D("h_nue_trk_length", "h_nue_trk_length", 50, 0, 100);
+
+	h_nue_trk_closest = new TH1D("h_nue_trk_closest", "h_nue_trk_closest", 60, 0, 60);
+	h_nue_shwr_trk_closest = new Th1D("h_nue_shwr_trk_closest", "h_nue_shwr_trk_closest", 60, 0, 60);
+
+	c1 = new TCanvas();
+	c1b = new TCanvas();
+	c2 = new TCanvas();
+	c3 = new TCanvas();
+	c4 = new TCanvas();
+	c5 = new TCanvas();
+	c6 = new TCanvas();
+	c7 = new TCanvas();
+	c8 = new TCanvas();
+	c9 = new TCanvas();
+	c10 = new TCanvas();
+	c11 = new TCanvas();
+	c12 = new TCanvas();
+	c13 = new TCanvas();
+	c14 = new TCanvas();
+	c15 = new TCanvas();
+	c16 = new TCanvas();
+	c17 = new TCanvas();
+	c17b = new TCanvas();
+	c18 = new TCanvas();
+	c19 = new TCanvas();
+	c19b = new TCanvas();
+	c20a = new TCanvas();
+	c20b = new TCanvas();
+	c21a = new TCanvas();
+	c21b = new TCanvas();
 
 	return true;
 }
@@ -131,8 +163,6 @@ bool example_ana::analyze(gallery::Event * ev) {
 
 	const int num_pfps = pfparticles.size();
 	const int num_cosmics = cosmicpfps.size();
-	//const int num_tracks = tracks->size();
-	//const int num_showers = showers->size();
 
 	//pfp loop
 	for(std::size_t this_pfp = 0; this_pfp < num_pfps; this_pfp++)
@@ -165,12 +195,10 @@ bool example_ana::analyze(gallery::Event * ev) {
 		int trk_daughters = 0;
 		if(pfparts.IsPrimary() == true)
 		{
-			//std::cout << "primary" << std::endl;
 			num_primary_pfp++;
 			//nues!
 			if(pfparts.PdgCode() == 12)
 			{
-				//std::cout << "nue" << std::endl;
 				num_nue++;
 				geoalgo::Point_t const nue_vtx (xyz[0], xyz[1], xyz[2]);
 				nue_vertex_list.push_back(nue_vtx);
@@ -197,7 +225,6 @@ bool example_ana::analyze(gallery::Event * ev) {
 					//shwr daughters
 					if(daughter.PdgCode() == 11)
 					{
-						//std::cout << "shwr" << std::endl;
 						shwr_daughters++;
 						h_nue_like_shwr_daughters_xy->Fill(d_xyz[0], d_xyz[1]);
 						h_nue_like_shwr_daughters_yz->Fill(d_xyz[2], d_xyz[1]);
@@ -221,7 +248,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 						             (dist_z * dist_z));
 						h_nue_shwr_vtx_dist->Fill(dist);
 
-						//let's get the energy! Energy() - MeV?
+						//let's get the energy! Energy() - GeV?
 						double total_energy = 0;
 						const std::vector < double > plane_energy = shower.at(0)->Energy();
 						const int best_plane = shower.at(0)->best_plane();
@@ -236,13 +263,12 @@ bool example_ana::analyze(gallery::Event * ev) {
 						const double dir_x = shower.at(0)->Direction().X();
 						const double dir_y = shower.at(0)->Direction().Y();
 						const double dir_z = shower.at(0)->Direction().Z();
-						std::cout << dir_x << ", " << dir_y << ", " << dir_z << std::endl;
+						//std::cout << dir_x << ", " << dir_y << ", " << dir_z << std::endl;
 
 					}
 					//trk daughters
 					if(daughter.PdgCode() == 13)
 					{
-						//std::cout << "trk" << std::endl;
 						trk_daughters++;
 						h_nue_like_trk_daughters_xy->Fill(d_xyz[0], d_xyz[1]);
 						h_nue_like_trk_daughters_yz->Fill(d_xyz[2], d_xyz[1]);
@@ -254,6 +280,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 							std::cout << "No track for this pfp track!" << std::endl;
 							continue;
 						}
+						//let's construct the path of the tracks
 						std::vector<geoalgo::Point_t> track_path;
 						for(int pts = 0; pts < track.at(0)->NPoints(); pts++)
 						{
@@ -275,7 +302,7 @@ bool example_ana::analyze(gallery::Event * ev) {
 						const double dir_x = track.at(0)->VertexDirection().X();
 						const double dir_y = track.at(0)->VertexDirection().Y();
 						const double dir_z = track.at(0)->VertexDirection().Z();
-						std::cout << dir_x << ", " << dir_y << ", " << dir_z << std::endl;
+						//std::cout << dir_x << ", " << dir_y << ", " << dir_z << std::endl;
 
 					}//end nue track daughters
 				}//end nue daughters
@@ -292,7 +319,6 @@ bool example_ana::analyze(gallery::Event * ev) {
 			//numus!
 			if(pfparts.PdgCode() == 14)
 			{
-				//std::cout << "numus" << std::endl;
 				num_numu++;
 				h_numu_like_vtx_xy->Fill(xyz[0], xyz[1]);
 				h_numu_like_vtx_yz->Fill(xyz[2], xyz[1]);
@@ -349,7 +375,6 @@ bool example_ana::analyze(gallery::Event * ev) {
 		auto const cosmic = cosmicpfps.at(this_cosmic);
 		if(cosmic.PdgCode() == 13)
 		{
-			//std::cout << "track cosmic" << std::endl;
 			//let's get the cosmic to track associations
 			std::vector<recob::Track const*> cosmic_track;
 			cosmic_track_for_pfp.get(this_cosmic, cosmic_track);
@@ -378,18 +403,9 @@ bool example_ana::analyze(gallery::Event * ev) {
 			//let's get the track energy
 			const double cosmic_trk_energy = cosmic_track.at(0)->StartMomentum();
 
-			//let's get the cosmic shower energy
-			// double cosmic_shwr_energy;
-			// const std::vector < double > plane_energy = cosmic_shower.at(0)->Energy();
-			// for(auto planes : plane_energy)
-			// {
-			//      cosmic_shwr_energy += plane_energy.at(planes);
-			// }
-
 		} //end loop tracks
 		if(cosmic.PdgCode() == 11)
 		{
-			//std::cout << "cosmic shower" << std::endl;
 			//let's get the cosmic to shower associations
 			std::vector<recob::Shower const*> cosmic_shower;
 			cosmic_shower_for_pfp.get(this_cosmic, cosmic_shower);
@@ -398,11 +414,16 @@ bool example_ana::analyze(gallery::Event * ev) {
 				std::cout << "No shower for pfp!" << std::endl;
 				continue;
 			}
+
+			//let's get the cosmic shower energy
+			double cosmic_shwr_energy;
+			const std::vector < double > plane_energy = cosmic_shower.at(0)->Energy();
+			const int bestplane = cosmic_shower.at(0)->best_plane();
+			const double total_energy = plane_energy.at(bestplane);
 		}        //end loop showers
 	}        //end loop cosmics
 
 	//Geometry studies!
-	std::cout << "geometry studies!" << std::endl;
 	std::vector < geoalgo::Point_t > cut_nue_vertex;
 	//closest point between nue vertex and cosmic track
 	for(int nNue = 0; nNue < nue_vertex_list.size(); nNue++)
@@ -412,11 +433,19 @@ bool example_ana::analyze(gallery::Event * ev) {
 			geoalgo::Point_t nue_vertex = nue_vertex_list.at(nNue);
 			double closest_point = _geo_algo_instance.SqDist(nue_vertex, cosmic_track_trajectory_list);
 			h_nue_cosmic_closest->Fill(closest_point);
+			//*****************************************************************
 			//let's see what happens if we remove nue vtx close to tagged cosmic
+			//*****************************************************************
 			if(closest_point >= 5)
 			{
 				cut_nue_vertex.push_back(nue_vertex);
 			}
+		}
+		if(!track_trajectory_list.empty())
+		{
+			geoalgo::Point_t nue_vtx = nue_vertex_list.at(nNue);
+			double closest_point = _geo_algo_instance.SqDist(nue_vertex, track_trajectory_list);
+			h_nue_trk_closest->Fill(closest_point);
 		}
 	}
 	//closest point between nue shwr vertex and cosmic track
@@ -427,15 +456,27 @@ bool example_ana::analyze(gallery::Event * ev) {
 			geoalgo::Point_t shwr_vertex = shwr_vertex_list.at(nE);
 			double closest_point = _geo_algo_instance.SqDist(shwr_vertex, cosmic_track_trajectory_list);
 			h_nue_shwr_cosmic_closest->Fill(closest_point);
-			//h_nue_shwr_cosmic_closest_vs_E->Fill(shwr_energy_list.at(nE), closest_point);
+			h_nue_shwr_cosmic_closest_vs_E->Fill(shwr_energy_list.at(nE), closest_point);
+		}
+		if(!track_trajectory_list.empty())
+		{
+			geoalgo::Point_t shwr_vtx = shwr_vertex_list.at(nE);
+			double closest_point = _geo_algo_instance.SqDist(shwr_vertex, track_trajectory_list);
+			h_nue_shwr_trk_closest->Fill(closest_point);
 		}
 	}
-	std::cout << "geometry done! " << std::endl;
 	//cut on sqdist to remove small distances - does this change vertex ave. position
 
 	return true;
 }
 
+/*
+
+   after cut -> tpc position
+   more stats
+   shower start point activity - any neutrino tracks nearby?
+
+ */
 
 bool example_ana::finalize() {
 
@@ -453,157 +494,144 @@ bool example_ana::finalize() {
 	/*********************************
 	** Histogram Saving and Editing **
 	*///******************************
-	std::cout << "yoyoyo" << std::endl;
-	TCanvas * c1 = new TCanvas();
-	std::cout << "a " << std::endl;
 	c1->cd();
 	h_nue_like_daughters->Draw("colz");
 	h_nue_like_daughters->GetXaxis()->SetTitle("showers");
 	h_nue_like_daughters->GetYaxis()->SetTitle("tracks");
 	c1->Print("nue-like_daughters.pdf");
-	std::cout << "b " << std::endl;
-	TCanvas * c1b = new TCanvas();
 	c1b->cd();
 	h_nue_like_trk_daughters->Draw();
 	h_nue_like_trk_daughters->GetXaxis()->SetTitle("Tracks");
 	h_nue_like_trk_daughters->GetYaxis()->SetTitle("Events");
 	c1b->Print("nue-like_trk_daughters.pdf");
-	TCanvas * c2 = new TCanvas();
 	c2->cd();
 	h_numu_like_daughters->Draw("colz");
 	h_numu_like_daughters->GetXaxis()->SetTitle("showers");
 	h_numu_like_daughters->GetYaxis()->SetTitle("tracks");
 	c2->Print("numu-like_daughters.pdf");
 
-	TCanvas * c3 = new TCanvas();
 	c3->cd();
 	h_nue_fv_cuts->Draw();
 	h_nue_fv_cuts->GetXaxis()->SetTitle("Fiducial Volume Cut [cm]");
 	h_nue_fv_cuts->GetYaxis()->SetTitle("Events in Volume");
 	c3->Print("nue-like_fiducial_volume.pdf");
-	TCanvas * c4 = new TCanvas();
 	c4->cd();
 	h_numu_fv_cuts->Draw();
 	h_numu_fv_cuts->GetXaxis()->SetTitle("Fiducial Volume Cut [cm]");
 	h_numu_fv_cuts->GetYaxis()->SetTitle("Events in Volume");
 	c4->Print("numu-like_fiducial_volume.pdf");
 
-	TCanvas * c5 = new TCanvas();
 	c5->cd();
 	h_nue_like_shwr_daughters_xy->Draw("colz");
 	h_nue_like_shwr_daughters_xy->GetXaxis()->SetTitle("x [cm]");
 	h_nue_like_shwr_daughters_xy->GetYaxis()->SetTitle("y [cm]");
 	c5->Print("nue-like_shwr_daughters_xy.pdf");
-	TCanvas * c6 = new TCanvas();
 	c6->cd();
 	h_nue_like_shwr_daughters_yz->Draw("colz");
 	h_nue_like_shwr_daughters_yz->GetXaxis()->SetTitle("z [cm]");
 	h_nue_like_shwr_daughters_yz->GetYaxis()->SetTitle("y [cm]");
 	c6->Print("nue-like_shwr_daughters_zy.pdf");
-	TCanvas * c7 = new TCanvas();
 	c7->cd();
 	h_nue_like_trk_daughters_xy->Draw("colz");
 	h_nue_like_trk_daughters_xy->GetXaxis()->SetTitle("x [cm]");
 	h_nue_like_trk_daughters_xy->GetYaxis()->SetTitle("y [cm]");
 	c7->Print("nue-like_trk_daughters_xy.pdf");
-	TCanvas * c8 = new TCanvas();
 	c8->cd();
 	h_nue_like_trk_daughters_yz->Draw("colz");
 	h_nue_like_trk_daughters_yz->GetXaxis()->SetTitle("z [cm]");
 	h_nue_like_trk_daughters_yz->GetYaxis()->SetTitle("y [cm]");
 	c8->Print("nue-like_trk_daughters_zy.pdf");
-	TCanvas * c9 = new TCanvas();
 	c9->cd();
 	h_nue_like_vtx_xy->Draw("colz");
 	h_nue_like_vtx_xy->GetXaxis()->SetTitle("x [cm]");
 	h_nue_like_vtx_xy->GetYaxis()->SetTitle("y [cm]");
 	c9->Print("nue-like_vtx_xy.pdf");
-	TCanvas * c10 = new TCanvas();
 	c10->cd();
 	h_nue_like_vtx_yz->Draw("colz");
 	h_nue_like_vtx_yz->GetXaxis()->SetTitle("z [cm]");
 	h_nue_like_vtx_yz->GetYaxis()->SetTitle("y [cm]");
 	c10->Print("nue-like_vtx_zy.pdf");
 
-	TCanvas * c11 = new TCanvas();
 	c11->cd();
 	h_numu_like_shwr_daughters_xy->Draw("colz");
 	h_numu_like_shwr_daughters_xy->GetXaxis()->SetTitle("x [cm]");
 	h_numu_like_shwr_daughters_xy->GetYaxis()->SetTitle("y [cm]");
 	c11->Print("numu-like_shwr_daughters_xy.pdf");
-	TCanvas * c12 = new TCanvas();
 	c12->cd();
 	h_numu_like_shwr_daughters_yz->Draw("colz");
 	h_numu_like_shwr_daughters_yz->GetXaxis()->SetTitle("z [cm]");
 	h_numu_like_shwr_daughters_yz->GetYaxis()->SetTitle("y [cm]");
 	c12->Print("numu-like_shwr_dauhters_zy.pdf");
-	TCanvas * c13 = new TCanvas();
 	c13->cd();
 	h_numu_like_trk_daughters_xy->Draw("colz");
 	h_numu_like_trk_daughters_xy->GetXaxis()->SetTitle("x [cm]");
 	h_numu_like_trk_daughters_xy->GetYaxis()->SetTitle("y [cm]");
 	c13->Print("numu-like_trk_daughters_xy.pdf");
-	TCanvas * c14 = new TCanvas();
 	c14->cd();
 	h_numu_like_trk_daughters_yz->Draw("colz");
 	h_numu_like_trk_daughters_yz->GetXaxis()->SetTitle("z [cm]");
 	h_numu_like_trk_daughters_yz->GetYaxis()->SetTitle("y [cm]");
 	c14->Print("numu-like_trk_daughters_zy.pdf");
-	TCanvas * c15 = new TCanvas();
 	c15->cd();
 	h_numu_like_vtx_xy->Draw("colz");
 	h_numu_like_vtx_xy->GetXaxis()->SetTitle("x [cm]");
 	h_numu_like_vtx_xy->GetYaxis()->SetTitle("y [cm]");
 	c15->Print("numu-like_vtx_xy.pdf");
-	TCanvas * c16 = new TCanvas();
 	c16->cd();
 	h_numu_like_vtx_yz->Draw("colz");
 	h_numu_like_vtx_yz->GetXaxis()->SetTitle("z [cm]");
 	h_numu_like_vtx_yz->GetYaxis()->SetTitle("y [cm]");
 	c16->Print("numu-like_vtx_zy.pdf");
 
-	TCanvas * c17 = new TCanvas();
 	c17->cd();
 	h_nue_cosmic_closest->Draw();
 	h_nue_cosmic_closest->GetXaxis()->SetTitle("Distance [cm]");
 	h_nue_cosmic_closest->GetYaxis()->SetTitle("Events");
 	c17->Print("nue-like_cosmic_closest.pdf");
-	TCanvas * c17b = new TCanvas();
 	c17b->cd();
 	h_nue_shwr_cosmic_closest->Draw();
 	h_nue_shwr_cosmic_closest->GetXaxis()->SetTitle("Distance [cm]");
 	h_nue_shwr_cosmic_closest->GetYaxis()->SetTitle("Events");
 	c17b->Print("nue-like_shwr_cosmic_closest.pdf");
 
-	TCanvas * c18 = new TCanvas();
+	c18->cd();
 	h_nue_shwr_vtx_dist->Draw();
 	h_nue_shwr_vtx_dist->GetXaxis()->SetTitle("Distance [cm]");
 	h_nue_shwr_vtx_dist->GetYaxis()->SetTitle("Events");
-	c18->Print("nue-like_shwr_vtx_distance");
+	c18->Print("nue-like_shwr_vtx_distance.pdf");
 
-	TCanvas * c19 = new TCanvas();
+	c19->cd();
 	h_nue_shwr_E->Draw();
-	h_nue_shwr_E->GetXaxis()->SetTitle("Total Shower Energy [MeV]");
+	h_nue_shwr_E->GetXaxis()->SetTitle("Total Shower Energy [GeV]");
 	h_nue_shwr_E->GetYaxis()->SetTitle("Events");
 	c19->Print("nue-like_shwr_E.pdf");
-	TCanvas * c19b = new TCanvas();
-	h_nue_shwr_cosmic_closest_vs_E->Draw();
-	h_nue_shwr_cosmic_closest_vs_E->GetXaxis()->SetTitle("Total Shower Energy [MeV]");
+	c19b->cd();
+	h_nue_shwr_cosmic_closest_vs_E->Draw("colz");
+	h_nue_shwr_cosmic_closest_vs_E->GetXaxis()->SetTitle("Total Shower Energy [GeV]");
 	h_nue_shwr_cosmic_closest_vs_E->GetYaxis()->SetTitle("Distance [cm]");
 	c19b->Print("nue-like_shwr_vtx_distance_vs_E.pdf");
 
-	TCanvas *c20a = new TCanvas();
 	c20a->cd();
 	h_cosmic_trk_length->Draw();
 	h_cosmic_trk_length->GetXaxis()->SetTitle("Length [cm]");
 	h_cosmic_trk_length->GetYaxis()->SetTitle("Events");
-	c20a->Print("cosmic_trk_length");
-	TCanvas *c20b = new TCanvas();
+	c20a->Print("cosmic_trk_length.pdf");
 	c20b->cd();
 	h_nue_trk_length->Draw();
 	h_nue_trk_length->GetXaxis()->SetTitle("Length [cm]");
 	h_nue_trk_length->GetYaxis()->SetTitle("Events");
-	c20b->Print("nue-like_trk_length");
+	c20b->Print("nue-like_trk_length.pdf");
+
+	c21a->cd();
+	h_nue_trk_closest->Draw();
+	h_nue_trk_closest->GetXaxis()->SetTitle("Distance to nearest track [cm]");
+	h_nue_trk_closest->GetYaxis()->SetTitle("Events");
+	c21a->Print("nue-like_trk_closest");
+	c21b->cd();
+	h_nue_shwr_trk_closest->Draw();
+	h_nue_shwr_trk_closest->GetXaxis()->SetTitle("Distance to nearest track [cm]");
+	h_nue_shwr_trk_closest->GetYaxis()->SetTitle("Events");
+	c21b->Print("nue-like_shwr_trk_closest");
 
 	return true;
 }
