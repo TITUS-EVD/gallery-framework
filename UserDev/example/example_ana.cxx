@@ -85,12 +85,18 @@ bool example_ana::initialize() {
 
 	h_nue_shwr_E = new TH1D("h_nue_shwr_E", "h_nue_shwr_E", 100, 0, 2);
 	h_nue_shwr_cosmic_closest_vs_E = new TH2D("h_nue_shwr_cosmic_closest_vs_E", "h_nue_shwr_cosmic_closest_vs_E", 100, 0, 2, 60, 0, 120);
+	h_nue_shwr_cosmic_closest_vs_y = new TH2D("h_nue_shwr_cosmic_closest_vs_y", "h_nue_shwr_cosmic_closest_vs_y", 60, 0, 120, 60, -120, 120);
 
 	h_cosmic_trk_length = new TH1D ("h_cosmic_trk_length", "h_cosmic_trk_length", 50, 0, 100);
 	h_nue_trk_length = new TH1D("h_nue_trk_length", "h_nue_trk_length", 50, 0, 100);
 
 	h_nue_trk_closest = new TH1D("h_nue_trk_closest", "h_nue_trk_closest", 60, 0, 60);
-	h_nue_shwr_trk_closest = new Th1D("h_nue_shwr_trk_closest", "h_nue_shwr_trk_closest", 60, 0, 60);
+	h_nue_shwr_trk_closest = new TH1D("h_nue_shwr_trk_closest", "h_nue_shwr_trk_closest", 60, 0, 60);
+
+	h_num_trks_nearby = new TH1D("h_num_trks_nearby", "h_num_trks", 10, 0, 10);
+
+	h_nue_shwr_cut_vtx_xy = new TH2D("h_nue_shwr_cut_vtx_xy", "h_nue_shwr_cut_vtx_xy", 50, 0, 260, 60, -120, 120);
+	h_nue_shwr_cut_vtx_zy = new TH2D("h_nue_shwr_cut_vtx_zy", "h_nue_shwr_cut_vtx_zy", 50, 0, 1050, 60, -120, 120);
 
 	c1 = new TCanvas();
 	c1b = new TCanvas();
@@ -114,10 +120,14 @@ bool example_ana::initialize() {
 	c18 = new TCanvas();
 	c19 = new TCanvas();
 	c19b = new TCanvas();
+	c19c = new TCanvas();
 	c20a = new TCanvas();
 	c20b = new TCanvas();
 	c21a = new TCanvas();
 	c21b = new TCanvas();
+	c22 = new TCanvas();
+	c23a = new TCanvas();
+	c23b = new TCanvas();
 
 	return true;
 }
@@ -423,9 +433,13 @@ bool example_ana::analyze(gallery::Event * ev) {
 		}        //end loop showers
 	}        //end loop cosmics
 
-	//Geometry studies!
+	//*********************************************************
+	//******************* Geometry studies! *******************
+	//*********************************************************
 	std::vector < geoalgo::Point_t > cut_nue_vertex;
-	//closest point between nue vertex and cosmic track
+	std::vector < geoalgo::Point_t > cut_nue_shwr_vertex;
+
+	//closest point between **nue vertex** and cosmic track
 	for(int nNue = 0; nNue < nue_vertex_list.size(); nNue++)
 	{
 		if(!cosmic_track_trajectory_list.empty())
@@ -441,14 +455,15 @@ bool example_ana::analyze(gallery::Event * ev) {
 				cut_nue_vertex.push_back(nue_vertex);
 			}
 		}
+		//closest point between **nue vertex** and nue track
 		if(!track_trajectory_list.empty())
 		{
-			geoalgo::Point_t nue_vtx = nue_vertex_list.at(nNue);
+			geoalgo::Point_t nue_vertex = nue_vertex_list.at(nNue);
 			double closest_point = _geo_algo_instance.SqDist(nue_vertex, track_trajectory_list);
 			h_nue_trk_closest->Fill(closest_point);
 		}
 	}
-	//closest point between nue shwr vertex and cosmic track
+	//closest point between **nue shwr vertex** and cosmic track
 	for (int nE = 0; nE < shwr_vertex_list.size(); nE++)
 	{
 		if(!cosmic_track_trajectory_list.empty())
@@ -457,26 +472,43 @@ bool example_ana::analyze(gallery::Event * ev) {
 			double closest_point = _geo_algo_instance.SqDist(shwr_vertex, cosmic_track_trajectory_list);
 			h_nue_shwr_cosmic_closest->Fill(closest_point);
 			h_nue_shwr_cosmic_closest_vs_E->Fill(shwr_energy_list.at(nE), closest_point);
+			h_nue_shwr_cosmic_closest_vs_y->Fill(closest_point, shwr_vertex[1]);
+			//*****************************************************************
+			//let's see what happens if we remove nue vtx close to tagged cosmic
+			//*****************************************************************
+			if(closest_point >= 5)
+			{
+				cut_nue_shwr_vertex.push_back(shwr_vertex);
+			}
 		}
+		//closest point between **nue shwr vertex** and nue track
 		if(!track_trajectory_list.empty())
 		{
-			geoalgo::Point_t shwr_vtx = shwr_vertex_list.at(nE);
+			geoalgo::Point_t shwr_vertex = shwr_vertex_list.at(nE);
 			double closest_point = _geo_algo_instance.SqDist(shwr_vertex, track_trajectory_list);
 			h_nue_shwr_trk_closest->Fill(closest_point);
-		}
-	}
+			int num_trks_nearby = 0;
+			for(auto this_track : track_trajectory_list)
+			{
+				double this_closest_point = _geo_algo_instance.SqDist(shwr_vertex, this_track);
+				if(this_closest_point <= 5) {num_trks_nearby++; }
+			}
+			h_num_trks_nearby->Fill(num_trks_nearby);
+		}//end if event has track
+	}//end loop nue shwr vtx
+
 	//cut on sqdist to remove small distances - does this change vertex ave. position
+	for(auto vtx : cut_nue_shwr_vertex)
+	{
+		h_nue_shwr_cut_vtx_xy->Fill(vtx[0], vtx[1]);
+		h_nue_shwr_cut_vtx_zy->Fill(vtx[2], vtx[1]);
+	}
 
 	return true;
 }
 
-/*
-
-   after cut -> tpc position
-   more stats
-   shower start point activity - any neutrino tracks nearby?
-
- */
+//for timing: marco does 3-5 us window, and total PE over all opdets >= 50 PE
+//be sure to use in time cosmics
 
 bool example_ana::finalize() {
 
@@ -610,6 +642,11 @@ bool example_ana::finalize() {
 	h_nue_shwr_cosmic_closest_vs_E->GetXaxis()->SetTitle("Total Shower Energy [GeV]");
 	h_nue_shwr_cosmic_closest_vs_E->GetYaxis()->SetTitle("Distance [cm]");
 	c19b->Print("nue-like_shwr_vtx_distance_vs_E.pdf");
+	c19c->cd();
+	h_nue_shwr_cosmic_closest_vs_y->Draw("colz");
+	h_nue_shwr_cosmic_closest_vs_y->GetXaxis()->SetTitle("Distance to nearest cosmic track [cm]");
+	h_nue_shwr_cosmic_closest_vs_y->GetYaxis()->SetTitle("y [cm]");
+	c19c->Print("nue-like_shwr_cosmic_closest_vs_y.pdf");
 
 	c20a->cd();
 	h_cosmic_trk_length->Draw();
@@ -626,12 +663,29 @@ bool example_ana::finalize() {
 	h_nue_trk_closest->Draw();
 	h_nue_trk_closest->GetXaxis()->SetTitle("Distance to nearest track [cm]");
 	h_nue_trk_closest->GetYaxis()->SetTitle("Events");
-	c21a->Print("nue-like_trk_closest");
+	c21a->Print("nue-like_trk_closest.pdf");
 	c21b->cd();
 	h_nue_shwr_trk_closest->Draw();
 	h_nue_shwr_trk_closest->GetXaxis()->SetTitle("Distance to nearest track [cm]");
 	h_nue_shwr_trk_closest->GetYaxis()->SetTitle("Events");
-	c21b->Print("nue-like_shwr_trk_closest");
+	c21b->Print("nue-like_shwr_trk_closest.pdf");
+
+	c22->cd();
+	h_num_trks_nearby->Draw();
+	h_num_trks_nearby->GetXaxis()->SetTitle("Number nearby tracks");
+	h_num_trks_nearby->GetYaxis()->SetTitle("Events");
+	c22->Print("nue-like_shwr_nearby_trks.pdf");
+
+	c23a->cd();
+	h_nue_shwr_cut_vtx_xy->Draw("colz");
+	h_nue_shwr_cut_vtx_xy->GetXaxis()->SetTitle("x [cm]");
+	h_nue_shwr_cut_vtx_xy->GetYaxis()->SetTitle("y [cm]");
+	c23a->Print("nue-like_shwr_cut_vtx_xy.pdf");
+	c23b->cd();
+	h_nue_shwr_cut_vtx_zy->Draw("colz");
+	h_nue_shwr_cut_vtx_zy->GetXaxis()->SetTitle("z [cm]");
+	h_nue_shwr_cut_vtx_zy->GetYaxis()->SetTitle("y [cm]");
+	c23b->Print("nue-like_shwr_cut_vtx_zy.pdf");
 
 	return true;
 }

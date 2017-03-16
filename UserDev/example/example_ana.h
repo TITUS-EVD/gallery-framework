@@ -128,12 +128,19 @@ TH1D * h_nue_shwr_vtx_dist;
 
 TH1D * h_nue_shwr_E;
 TH2D * h_nue_shwr_cosmic_closest_vs_E;
+TH2D * h_nue_shwr_cosmic_closest_vs_y;
 
 TH1D * h_cosmic_trk_length;
 TH1D * h_nue_trk_length;
 
 TH1D * h_nue_trk_closest;
 TH1D * h_nue_shwr_trk_closest;
+
+TH1D * h_num_trks_nearby;
+
+TH2D * h_nue_shwr_cut_vtx_xy;
+TH2D * h_nue_shwr_cut_vtx_zy;
+
 
 TCanvas * c1;
 TCanvas * c1b;
@@ -157,10 +164,14 @@ TCanvas * c17b;
 TCanvas * c18;
 TCanvas * c19;
 TCanvas * c19b;
+TCanvas * c19c;
 TCanvas * c20a;
 TCanvas * c20b;
 TCanvas * c21a;
 TCanvas * c21b;
+TCanvas * c22;
+TCanvas * c23a;
+TCanvas * c23b;
 
 };
 
