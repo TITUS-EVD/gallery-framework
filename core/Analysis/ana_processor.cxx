@@ -53,7 +53,6 @@ void ana_processor::reset() {
 void ana_processor::add_input_file(std::string name) {
 
   _input_files.push_back(name);
-  std::cout << "Number of input files: " << _input_files.size() << std::endl;
 }
 
 bool ana_processor::initialize() {
