@@ -10,6 +10,7 @@
 #pragma link off all functions;
 
 #pragma link C++ class galleryfmwk::example_ana+;
+#pragma link C++ class galleryfmwk::opFilter+;
 //ADD_NEW_CLASS ... do not change this line
 #endif
 

@@ -50,7 +50,8 @@ geoalgo::GeoAlgo const _geo_algo_instance;
 
 public:
 
-bool inFV(double x_vtx, double y_vtx, double z_vtx, double fromWall);
+bool inFV(double x_vtx, double y_vtx, double z_vtx,
+          double x1, double x2, double y1, double y2, double z1, double z2);
 
 /// Default constructor
 example_ana() {
@@ -79,16 +80,50 @@ void setShowerProducer(std::string s) {
 void setVerbose(bool b){
 	_verbose = b;
 }
+void setNearestCutDist(double cut){
+	_cut = cut;
+}
+void fiducial_volume_x_right(double right){
+	_right = right;
+}
+void fiducial_volume_x_left(double left){
+	_left = left;
+}
+void fiducial_volume_y_up(double up){
+	_up = up;
+}
+void fiducial_volume_y_down(double down){
+	_down = down;
+}
+void fiducial_volume_z_back(double back){
+	_back = back;
+}
+void fiducial_volume_z_front(double front){
+	_front = front;
+}
 
 protected:
 
+bool _verbose;
 std::string _track_producer;
 std::string _shower_producer;
 std::string _pfp_producer;
+double _cut;
+double _right;
+double _left;
+double _up;
+double _down;
+double _back;
+double _front;
+
+
 int num_cosmic;
 int num_primary_pfp;
 int num_nue;
 int num_numu;
+int num_nue_per_event;
+int cosmic_vertex_cut_pass;
+int cosmic_vertex_shower_cut_pass;
 
 double x_boundary1;
 double x_boundary2;
@@ -100,9 +135,8 @@ double fromWall;
 
 double fv_cut_max;
 
-bool _verbose;
-
 TH1D * h_nue_fv_cuts;
+TH1D * h_nue_fv_top_cuts;
 TH1D * h_numu_fv_cuts;
 TH2D * h_nue_like_daughters;
 TH1D * h_nue_like_trk_daughters;
@@ -114,6 +148,12 @@ TH2D * h_nue_like_trk_daughters_xy;
 TH2D * h_nue_like_trk_daughters_yz;
 TH2D * h_nue_like_vtx_xy;
 TH2D * h_nue_like_vtx_yz;
+
+TH2D * h_nue_like_shwr_lrgDist_vtx_xy;
+TH2D * h_nue_like_shwr_lrgDist_vtx_zy;
+TH1D * h_nue_like_shwr_lrgDist_dist_to_track;
+TH1D * h_nue_like_shwr_lrgDist_num_trks;
+TH1D * h_nue_like_shwr_lrgDist_dist_to_cosmic;
 
 TH2D * h_numu_like_shwr_daughters_xy;
 TH2D * h_numu_like_shwr_daughters_yz;
@@ -141,11 +181,14 @@ TH1D * h_num_trks_nearby;
 TH2D * h_nue_shwr_cut_vtx_xy;
 TH2D * h_nue_shwr_cut_vtx_zy;
 
+TH1D * h_num_nue_per_event;
+
 
 TCanvas * c1;
 TCanvas * c1b;
 TCanvas * c2;
 TCanvas * c3;
+TCanvas * c3b;
 TCanvas * c4;
 TCanvas * c5;
 TCanvas * c6;
@@ -172,6 +215,12 @@ TCanvas * c21b;
 TCanvas * c22;
 TCanvas * c23a;
 TCanvas * c23b;
+TCanvas * c24;
+TCanvas * c25a;
+TCanvas * c25b;
+TCanvas * c25c;
+TCanvas * c25d;
+TCanvas * c25e;
 
 };
 
