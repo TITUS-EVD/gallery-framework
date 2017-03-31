@@ -29,7 +29,16 @@ bool DrawShower::analyze(gallery::Event * ev) {
   // get a handle to the showers
   art::InputTag shower_tag(_producer);
   auto const & showerHandle
-        = ev -> getValidHandle<std::vector <recob::Shower> >(shower_tag);
+    = ev -> getValidHandle<std::vector <recob::Shower> >(shower_tag);
+
+
+  if (showerHandle -> size() == 0) {
+    std::cout << "No showers available to draw by producer "
+              << _producer
+              << std::endl;
+    return true;
+  }
+
 
 
   // Clear out the hit data but reserve some space for the showers
@@ -52,6 +61,7 @@ bool DrawShower::analyze(gallery::Event * ev) {
       // get the reconstructed shower for this plane
       auto shr2D = getShower2d(shower, view);
       _dataByPlane.at(view).push_back( shr2D );
+
     }
   }
 
@@ -85,6 +95,7 @@ Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane) {
   result._openingAngle = 0.2;
 
 
+
   auto secondPoint = shower.ShowerStart() + shower.Length() * shower.Direction();
 
 
@@ -94,11 +105,22 @@ Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane) {
   result._length = sqrt(pow(result.startPoint().w - result.endPoint().w, 2) +
                         pow(result.startPoint().t - result.endPoint().t, 2));
 
-  result._dedx = shower.dEdx()[plane];
+  if (shower.dEdx().size() > plane) {
+    result._dedx = shower.dEdx()[plane];
+  }
+  else {
+    result._dedx = 0.0;
+  }
 
-  result._energy = shower.Energy()[plane];
+  if (shower.Energy().size() > plane) {
+    result._energy = shower.Energy()[plane];
+  }
+  else {
+    result._energy = 0.0;
+  }
 
   result._is_good = true;
+
   return result;
 }
 
