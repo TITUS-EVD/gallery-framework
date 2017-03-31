@@ -167,15 +167,7 @@ class shower(recoBase):
                 # if view.plane() == 0:
                 #   print "dedx: ", shower.dedx()
 
-                # are there hits associated? if so draw
-                if (shower._hits.size() > 0):
-                    plane = view.plane()
-                    cluster = shower._hits
-                    self._clusters[plane].append( boxCollection() )
-                    self._clusters[plane][-1].setColor( color )
-                    self._clusters[plane][-1].setPlane( plane )
-                    self._clusters[plane][-1].drawHits( view, cluster )
-
+            
                 i_color += 1
 
 
