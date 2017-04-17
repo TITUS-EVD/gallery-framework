@@ -36,7 +36,7 @@ while test $# -gt 0; do
       --libs)
         if [ -z ${CETLIB_EXCEPT_LIB+x} ]; then
 
-          out="-L${CANVAS_LIB} -lcanvas_Utilities -lcanvas_Persistency_Common -lcanvas_Persistency_Provenance \
+          out="-L${CANVAS_LIB} -lcanvas_Persistency_Common -lcanvas_Persistency_Provenance \
                -L${CETLIB_LIB} -lcetlib \
                -L${CETLIB_EXCEPT_LIB} -lcetlib_except \
                -L${GALLERY_LIB} -lgallery \
@@ -45,7 +45,7 @@ while test $# -gt 0; do
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
                -L${MESSAGEFACILITY_LIB} -lMF_MessageService -lMF_FileFormat -lMF_MessageLogger -lMF_Utilities"
         else
-          out="-L${CANVAS_LIB} -lcanvas_Utilities -lcanvas_Persistency_Common -lcanvas_Persistency_Provenance \
+          out="-L${CANVAS_LIB} -lcanvas \
                -L${CETLIB_LIB} -lcetlib \
                -L${CETLIB_EXCEPT_LIB} -lcetlib_except \
                -L${GALLERY_LIB} -lgallery \
