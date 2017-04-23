@@ -92,6 +92,7 @@ MCTrack3D DrawMCTrack3D::getMCTrack3d(const sim::MCTrack & mctrack) {
     }
 
   }
+  result._origin = mctrack.Origin();
 
   return result;
 }

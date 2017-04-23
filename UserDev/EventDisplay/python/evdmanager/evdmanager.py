@@ -473,6 +473,8 @@ try:
 
         """This class handles file I/O and drawing for 3D viewer"""
 
+        _draw_cosmic = True
+
         def __init__(self, geom, file=None):
             super(evd_manager_3D, self).__init__(geom, file)
             self._drawableItems = datatypes.drawableItems3D()
@@ -483,7 +485,7 @@ try:
         # this function is meant for the first request to draw an object or
         # when the producer changes
         def redrawProduct(self, name, product, producer, view_manager):
-            # print "Received request to redraw ", product, " by ",producer
+            # print "Received request to redraw ", product, " by ",producer, " with name ", name
             # First, determine if there is a drawing process for this product:
             if producer is None:
                 if name in self._drawnClasses:
@@ -495,7 +497,10 @@ try:
                 self._drawnClasses[name].setProducer(producer)
                 self.processEvent(True)
                 self._drawnClasses[name].clearDrawnObjects(self._view_manager)
-                self._drawnClasses[name].drawObjects(self._view_manager)
+                if (name == "MCTrack"):
+                    self._drawnClasses[name].drawObjects(self._view_manager, self._draw_cosmic)
+                else:
+                    self._drawnClasses[name].drawObjects(self._view_manager)
                 return
 
 
@@ -520,7 +525,10 @@ try:
                 self._drawnClasses.update({name: drawingClass})
                 # Need to process the event
                 self.processEvent(True)
-                drawingClass.drawObjects(self._view_manager)
+                if (name == "MCTrack"):
+                    drawingClass.drawObjects(self._view_manager, self._draw_cosmic)
+                else:
+                    drawingClass.drawObjects(self._view_manager)
 
         def clearAll(self):
             for recoProduct in self._drawnClasses:

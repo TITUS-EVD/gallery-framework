@@ -77,7 +77,7 @@ try:
             self.init()
             self._mesh = gl.MeshData()
 
-        def drawObjects(self, view_manager):
+        def drawObjects(self, view_manager, draw_cosmic):
             geom = view_manager._geometry
             view = view_manager.getView()
 
@@ -103,9 +103,16 @@ try:
 
                 pts = np.vstack([x,y,z]).transpose()
                 pen = pg.mkPen((255,0,0), width=2)
+                origin = track.origin()
                 line = gl.GLLinePlotItem(pos=pts,color=(255,255,0,255))
-                view.addItem(line)
-                self._drawnObjects.append(line)
+                if (origin == 1): # neutrino origin
+                    line = gl.GLLinePlotItem(pos=pts,color=(0, 176, 139,255))
+                if (draw_cosmic and origin == 2):
+                    view.addItem(line)
+                    self._drawnObjects.append(line)
+                elif (origin != 2):
+                    view.addItem(line)
+                    self._drawnObjects.append(line)
 
     
     # # Just be stupid and try to draw something:
