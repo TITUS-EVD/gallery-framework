@@ -71,7 +71,8 @@ bool DrawHit::analyze(gallery::Event* ev) {
             hit.StartTick(),
             hit.PeakTime(),
             hit.EndTick(),
-            hit.PeakAmplitude()
+            hit.PeakAmplitude(),
+            view
            ));
     if (_dataByPlane.at(view).back()._charge > _maxCharge.at(view))
       _maxCharge.at(view) = _dataByPlane.at(view).back()._charge;

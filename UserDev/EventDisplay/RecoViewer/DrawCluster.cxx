@@ -142,7 +142,8 @@ bool DrawCluster::analyze(gallery::Event * ev) {
               hit->StartTick(),
               hit->PeakTime(),
               hit->EndTick(),
-              hit->PeakAmplitude()
+              hit->PeakAmplitude(),
+              view
              ));
 
 
