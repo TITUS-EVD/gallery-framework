@@ -41,6 +41,9 @@ void ana_processor::reset() {
     _event->toBegin();
   }
 
+  _last_run_id = -1;
+  _last_subrun_id = -1;
+
   _analyzers.clear();
   _ana_status.clear();
   _ana_index.clear();
@@ -139,6 +142,7 @@ bool ana_processor::process_event() {
         au->begin_subrun(_event);
       }
     }
+    _last_run_id = _event->eventAuxiliary().run();
   } else if (_event->eventAuxiliary().subRun() != _last_subrun_id) {
 
     for (size_t i = 0; i < _analyzers.size(); ++i) {
@@ -148,6 +152,8 @@ bool ana_processor::process_event() {
       else
         au->begin_subrun(_event);
     }
+    _last_subrun_id = _event->eventAuxiliary().subRun();
+
   }
 
   for (size_t i = 0; i < _analyzers.size(); ++i) {
