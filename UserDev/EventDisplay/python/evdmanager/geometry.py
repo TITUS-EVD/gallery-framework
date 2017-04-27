@@ -31,7 +31,7 @@ class geoBase(object):
         self._triggerOffset = 60
         self._readoutWindowSize = 2408
         self._planeOriginX = [-0.2, -0.6] 
-
+        self._readoutPadding = 0
 
     def halfwidth(self):
        return self._halfwidth
@@ -86,6 +86,9 @@ class geoBase(object):
 
     def readoutWindowSize(self):
         return self._readoutWindowSize
+
+    def readoutPadding(self):
+        return self._readoutPadding
 
     def triggerOffset(self):
         return self._triggerOffset
@@ -184,11 +187,11 @@ class microboonetruncated(microboone):
         super(microboonetruncated, self).__init__()
 
         # The truncated readouts change the trigger offset and 
-        self._tRange = 6400
-        self._triggerOffset = 800
+        self._tRange = 9600
+        self._triggerOffset = 3200
         self._planeOriginX = [0.0, -0.3, -0.6] 
-        self._readoutWindowSize = 6400
-
+        self._readoutWindowSize = 9600
+        self._readoutPadding = 2400
         self._offset = []
         for v in range(0, self._nViews):
             # Set up the correct drift time offset.
