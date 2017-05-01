@@ -202,7 +202,6 @@ class microboonetruncated(microboone):
         self._triggerOffset = 3200
         self._planeOriginX = [0.3, -0.3, -0.6] 
         self._planeOriginXTicks = [0.3/self.time2cm(), -0.3/self.time2cm(), -0.6/self.time2cm()] 
-        print self._planeOriginXTicks
         self._readoutWindowSize = 9600
         self._readoutPadding = 2400
         self._offset = []

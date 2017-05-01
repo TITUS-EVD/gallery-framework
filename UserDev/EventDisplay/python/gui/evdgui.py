@@ -148,9 +148,11 @@ class evdgui(gui):
         # Set the default to be no wires
         self._noneWireButton.toggle()
 
-        # self._paramsDrawBox = QtGui.QCheckBox("Draw Params.")
-        # self._paramsDrawBox.stateChanged.connect(self.paramsDrawBoxWorker)
-        # self._eastLayout.addWidget(self._paramsDrawBox)
+        # Microboone only:
+        if self._geometry.name() == "uboone":
+            self._noiseFilterBox = QtGui.QCheckBox("Noise Filter")
+            self._noiseFilterBox.stateChanged.connect(self.noiseFilterWorker)
+            self._eastLayout.addWidget(self._noiseFilterBox)
 
         # # Set a box for mcTruth Info
         # self._truthDrawBox = QtGui.QCheckBox("MC Truth")
@@ -208,13 +210,13 @@ class evdgui(gui):
 
         # self._view_manager.drawPlanes(self._event_manager)
 
-    # def paramsDrawBoxWorker(self):
-    #     if self._paramsDrawBox.isChecked():
-    #         self._event_manager.toggleParams(True)
-    #     else:
-    #         self._event_manager.toggleParams(False)
+    def noiseFilterWorker(self):
+        if self._noiseFilterBox.isChecked():
+            self._event_manager.toggleNoiseFilter(True)
+        else:
+            self._event_manager.toggleNoiseFilter(False)
 
-    #     self._view_manager.drawPlanes(self._event_manager)
+        self._view_manager.drawPlanes(self._event_manager)
 
     # def truthDrawBoxWorker(self):
     #     if self._truthDrawBox.isChecked():

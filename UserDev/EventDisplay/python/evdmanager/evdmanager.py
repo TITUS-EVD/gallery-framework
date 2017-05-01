@@ -85,7 +85,6 @@ class processer(object):
 class evd_manager_base(manager, QtCore.QObject):
     fileChanged = QtCore.pyqtSignal()
     eventChanged = QtCore.pyqtSignal()
-    # clusterParamsChanged = QtCore.pyqtSignal(bool)
 
     """docstring for lariat_manager"""
 
@@ -288,6 +287,8 @@ class evd_manager_base(manager, QtCore.QObject):
 class evd_manager_2D(evd_manager_base):
 
     # truthLabelChanged = QtCore.pyqtSignal(str)
+    filterNoise = False
+    
     '''
     Class to handle the 2D specific aspects of viewer
     '''
@@ -320,13 +321,16 @@ class evd_manager_2D(evd_manager_base):
             drawingClass = self._drawableItems.getDict()[name][0]()
             # Special case for clusters, connect it to the signal:
             # if name == 'Cluster':
-            #     self.clusterParamsChanged.connect(
+            #     self.noiseFilterChanged.connect(
             #         drawingClass.setParamsDrawing)
             #     drawingClass.setParamsDrawing(self._drawParams)
             # if name == 'Match':
-            #     self.clusterParamsChanged.connect(
+            #     self.noiseFilterChanged.connect(
             #         drawingClass.setParamsDrawing)
             #     drawingClass.setParamsDrawing(self._drawParams)
+            if name == "RawDigit":
+                self.noiseFilterChanged.connect(
+                    drawingClass.runNoiseFilter)
 
             drawingClass.setProducer(producer)
             self._processer.add_process(product, drawingClass._process)
@@ -405,48 +409,25 @@ class evd_manager_2D(evd_manager_base):
             self._wireDrawer = datatypes.rawDigit(self._geom)
             self._wireDrawer.setProducer(self._keyTable['raw::RawDigit'][0])
             self._processer.add_process("raw::RawDigit", self._wireDrawer._process)
+            self._wireDrawer.toggleNoiseFilter(self.filterNoise)
+
             self.processEvent(True)
         else:
-            self._processer.remove_process('recob::Wire')
+            if 'raw::RawDigit' in self._processer._ana_units.keys():
+                self._processer.remove_process('raw::RawDigit')
+            if 'recob::Wire' in self._processer._ana_units.keys():
+                self._processer.remove_process('recob::Wire')
             self._wireDrawer = None
             self._drawWires = False
 
 
-    # def toggleTruth(self, truthBool):
-    #     if truthBool == False:
-    #         self.clearTruth()
-    #         self._drawTruth = False
-    #         self._truthDrawer = None
-    #         return
-    #     if 'mctruth' not in self._keyTable:
-    #         print "No truth information to display"
-    #         self._drawTruth = False
-    #         return
-    #     self._drawTruth = True
-    #     self._truthDrawer = datatypes.mctruth()
-    #     self._truthDrawer.setProducer(self._keyTable['mctruth'][0])
-    #     self._process.add_process(self._truthDrawer._process)
-    #     self.processEvent(True)
-
-    # def clearTruth(self):
-    #     if self._truthDrawer is not None:
-    #         self._truthDrawer.clearDrawnObjects(self._view_manager)
-
-    # def drawTruth(self):
-    #     if self._drawTruth:
-    #         # print "Emiting this message:
-    #         # {msg}".format(msg=self._truthDrawer.getLabel())
-    #         self.truthLabelChanged.emit(self._truthDrawer.getLabel())
-    #         self._truthDrawer.drawObjects(self._view_manager)
-    #     else:
-    #         # print "Emiting this message: {msg}".format(msg="")
-    #         self.truthLabelChanged.emit("")
-
-    # def toggleParams(self, paramsBool):
-    #     self._drawParams = paramsBool
-    #     self.clusterParamsChanged.emit(paramsBool)
-    #     if 'Cluster' in self._drawnClasses or 'Match' in self._drawnClasses:
-    #         self.drawFresh()
+    def toggleNoiseFilter(self, filterBool):
+        self.filterNoise = filterBool
+        if 'raw::RawDigit' in self._processer._ana_units.keys():
+            self._wireDrawer.toggleNoiseFilter(self.filterNoise)
+            # Rerun the event just for the raw digits:
+            self.processEvent(force=True)
+            self.drawFresh()
 
     def getPlane(self, plane):
         if self._drawWires:
@@ -507,11 +488,11 @@ try:
                 drawingClass=self._drawableItems.getDict()[name][0]()
                 # Special case for clusters, connect it to the signal:
                 # if name is 'PFParticle':
-                    # self.clusterParamsChanged.connect(
+                    # self.noiseFilterChanged.connect(
                     #     drawingClass.setParamsDrawing)
                     # drawingClass.setParamsDrawing(self._drawParams)
                 # if name == 'Match':
-                #     self.clusterParamsChanged.connect(
+                #     self.noiseFilterChanged.connect(
                 #         drawingClass.setParamsDrawing)
                 #     drawingClass.setParamsDrawing(self._drawParams)
 
@@ -529,7 +510,7 @@ try:
 
         # def toggleParams(self, paramsBool):
         #     self._drawParams=paramsBool
-        #     self.clusterParamsChanged.emit(paramsBool)
+        #     self.noiseFilterChanged.emit(paramsBool)
         #     if 'PFParticle' in self._drawnClasses:
         #         self.drawFresh()
 
