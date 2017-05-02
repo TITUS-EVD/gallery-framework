@@ -34,6 +34,11 @@
 #pragma link C++ class evd::RecoBase<evd::Track2D>+;
 #pragma link C++ class evd::DrawTrack+;
 
+#pragma link C++ class evd::MCTrack2D+;
+#pragma link C++ class std::vector<::evd::MCTrack2D>+;
+#pragma link C++ class evd::RecoBase<evd::MCTrack2D>+;
+#pragma link C++ class evd::DrawMCTrack+;
+
 #pragma link C++ class evd::Endpoint2D+;
 #pragma link C++ class std::vector<::evd::Endpoint2D>+;
 #pragma link C++ class evd::RecoBase<::evd::Endpoint2D>+;
