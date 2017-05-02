@@ -221,10 +221,11 @@ class view_manager(QtCore.QObject):
   def drawHitsOnPlot(self,hits):
     if not self._wireDrawer.isVisible():
       return
+    offset = self._geometry.timeOffsetTicks(hits[0].plane())
     for i in xrange(len(hits)):
       hit = hits[i]
-      xPts = np.linspace(hit.start_time(), hit.end_time(), hit.end_time() - hit.start_time() + 1)
-      yPts = hit.peak_amplitude() * np.exp( - 0.5 * (xPts - hit.peak_time())**2 / hit.rms()**2  )
+      xPts = np.linspace(hit.start_time() + offset, hit.end_time() + offset, hit.end_time() - hit.start_time() + 1)
+      yPts = hit.peak_amplitude() * np.exp( - 0.5 * (xPts - (hit.peak_time() + offset))**2 / hit.rms()**2  )
       # self._plottedHits.append(self._wirePlot.plot(xPts,yPts))
       self._plottedHits.append(self._wirePlot.plot(xPts,yPts,pen=pg.mkPen((255,0,0,200),width=2)))
 

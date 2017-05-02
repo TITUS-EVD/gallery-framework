@@ -132,11 +132,11 @@ class boxCollection(QtCore.QObject):
         if self.sender() == None:
             self.highlightChange.emit()
 
-    def drawHits(self, view, cluster):
+    def drawHits(self, view, cluster, geom):
         for i in xrange(len(cluster)):
             hit = cluster[i]
             # Draws a rectangle at (x,y,xlength, ylength)
-            r = connectedBox(hit.wire(), hit.time(), 1, hit.rms())
+            r = connectedBox(hit.wire(), hit.time() + geom.timeOffsetTicks(view.plane()), 1, hit.rms())
             r.setPen(pg.mkPen(None))
             r.setBrush(pg.mkColor(self._color))
             self._listOfHits.append(r)

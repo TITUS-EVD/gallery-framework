@@ -31,7 +31,10 @@ class geoBase(object):
         self._triggerOffset = 60
         self._readoutWindowSize = 2408
         self._planeOriginX = [-0.2, -0.6] 
-
+        self._planeOriginXTicks = [-0.2/0.4, -0.6/0.4] 
+        self._readoutPadding = 0
+        self._timeOffsetTicks = 0
+        self._timeOffsetCm = 0
 
     def halfwidth(self):
        return self._halfwidth
@@ -87,11 +90,21 @@ class geoBase(object):
     def readoutWindowSize(self):
         return self._readoutWindowSize
 
+    def readoutPadding(self):
+        return self._readoutPadding
+
     def triggerOffset(self):
         return self._triggerOffset
     
     def planeOriginX(self, plane):
         return self._planeOriginX[plane]
+
+    def timeOffsetTicks(self, plane):
+        return self._timeOffsetTicks
+        # return self._timeOffsetTicks + self._planeOriginXTicks[plane]
+
+    def timeOffsetCm(self, plane):
+        return self._timeOffsetCm
 
 class geometry(geoBase):
 
@@ -139,6 +152,7 @@ class microboone(geometry):
         self._triggerOffset = 3200
         self._readoutWindowSize = 9600
         self._planeOriginX = [0.0, -0.3, -0.6] 
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
         # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
         #           * larutil.GeometryHelper.GetME().TimeToCm()
         # self._offset[:] = [x - remove for x in self._offset]
@@ -184,12 +198,15 @@ class microboonetruncated(microboone):
         super(microboonetruncated, self).__init__()
 
         # The truncated readouts change the trigger offset and 
-        self._tRange = 6400
-        self._triggerOffset = 800
-        self._planeOriginX = [0.0, -0.3, -0.6] 
-        self._readoutWindowSize = 6400
-
+        self._tRange = 9600
+        self._triggerOffset = 3200
+        self._planeOriginX = [0.3, -0.3, -0.6] 
+        self._planeOriginXTicks = [0.3/self.time2cm(), -0.3/self.time2cm(), -0.6/self.time2cm()] 
+        self._readoutWindowSize = 9600
+        self._readoutPadding = 2400
         self._offset = []
+        self._timeOffsetTicks = 2400
+        self._timeOffsetCm = 2400 * self._time2Cm
         for v in range(0, self._nViews):
             # Set up the correct drift time offset.
             # Offset is returned in terms of centimeters.

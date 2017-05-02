@@ -14,6 +14,12 @@ DrawWire::DrawWire() {
 
 }
 
+void DrawWire::setPadding(size_t padding, size_t plane) {
+  if (_padding_by_plane.size() > plane) {
+    _padding_by_plane[plane] = padding;
+  }
+}
+
 bool DrawWire::initialize() {
 
   //
@@ -24,6 +30,7 @@ bool DrawWire::initialize() {
   //
   //
 
+  _padding_by_plane.resize(geoService -> Nviews());
 
   for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
     setXDimension(geoService->Nwires(p), p);
@@ -58,10 +65,10 @@ bool DrawWire::analyze(gallery::Event * ev) {
 
   // This is an event viewer.  In particular, this handles raw wire signal drawing.
   // So, obviously, first thing to do is to get the wires.
-  
+
   art::InputTag wires_tag(_producer);
   auto const & wires
-        = ev -> getValidHandle<std::vector <recob::Wire> >(wires_tag);
+    = ev -> getValidHandle<std::vector <recob::Wire> >(wires_tag);
 
 
   _planeData.clear();
@@ -71,7 +78,7 @@ bool DrawWire::analyze(gallery::Event * ev) {
     unsigned int ch = wire.Channel();
     unsigned int detWire = geoService->ChannelToWire(ch);
     unsigned int plane = geoService->ChannelToPlane(ch);
-    int offset = detWire * _y_dimensions[plane];
+    int offset = detWire * _y_dimensions[plane] + _padding_by_plane[plane];
 
     for (auto & iROI : wire.SignalROI().get_ranges()) {
       // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
