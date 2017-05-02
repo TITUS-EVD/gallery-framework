@@ -49,7 +49,7 @@ class tickMC(QtGui.QWidget):
         self._label = QtGui.QLabel()
         self._name = name
         self._label.setText(self._name.capitalize() + ": ")
-        self._box = QtGui.QCheckBox("Remove cosmics")
+        self._box = QtGui.QCheckBox("Nu only")
         self._box.setChecked(False)
         self._box.stateChanged.connect(self.emitSignal)
         # This is the widget itself, so set it up
@@ -168,7 +168,7 @@ class evdgui3D(gui3D):
             self._eastLayout.addWidget(thisBox)
 
         # Add the checkbox that allows to show nu origin MCTrack only
-        thisTick = tickMC (self, "MCTrack options")
+        thisTick = tickMC (self, "MC Options")
         thisTick.stateChangedy[int].connect(self.tickMCHandler)
         self._eastLayout.addWidget(thisTick)
 

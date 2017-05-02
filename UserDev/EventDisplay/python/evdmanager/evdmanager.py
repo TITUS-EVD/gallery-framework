@@ -550,7 +550,10 @@ try:
             order=self._drawableItems.getListOfTitles()
             for item in order:
                 if item in self._drawnClasses:
-                    self._drawnClasses[item].drawObjects(self._view_manager)
+                    if (item == "MCTrack"):
+                        self._drawnClasses[item].drawObjects(self._view_manager, self._draw_cosmic)
+                    else:
+                        self._drawnClasses[item].drawObjects(self._view_manager)
 
 
 
