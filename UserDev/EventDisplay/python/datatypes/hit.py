@@ -18,6 +18,7 @@ class hit(recoBase):
     # this is the function that actually draws the hits.
     def drawObjects(self, view_manager):
 
+        geom = view_manager._geometry
         for view in view_manager.getViewPorts():
             thisPlane = view.plane()
             self._drawnObjects.append([])
@@ -28,7 +29,7 @@ class hit(recoBase):
                 hit = hits[i]
                 # Draws a rectangle at (x,y,xlength, ylength)
                 r = QtGui.QGraphicsRectItem(
-                    hit.wire(), hit.time(), 1, hit.rms())
+                    hit.wire(), hit.time() + geom.timeOffsetTicks(view.plane()), 1, hit.rms())
 
                 opacity = hit.charge() / self._process.maxCharge(thisPlane)
                 # opacity = exp( 1 + hit.charge() / self._process.maxCharge(thisPlane))/exp(2);

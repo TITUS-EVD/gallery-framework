@@ -69,9 +69,11 @@ namespace evd {
     virtual bool finalize();
 
 
+    void setPadding(size_t padding, size_t plane);
+
   private:
 
-
+    std::vector<size_t> _padding_by_plane;
 
 
   };
