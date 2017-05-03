@@ -58,11 +58,14 @@ public:
     */
     virtual bool finalize();
 
+    void SetViewCosmicOption(int toggleValue) { _draw_cosmic = toggleValue; }
+
 
 private:
 
     MCTrack3D getMCTrack3d(const sim::MCTrack & track);
 
+    bool _draw_cosmic;
 };
 
 } // evd

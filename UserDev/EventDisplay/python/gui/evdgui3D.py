@@ -40,7 +40,7 @@ class ComboBoxWithKeyConnect(QtGui.QComboBox):
 
 
 class tickMC(QtGui.QWidget):
-    stateChangedy = QtCore.pyqtSignal(int)
+    stateChanged = QtCore.pyqtSignal(int)
 
     """docstring for tickMC"""
 
@@ -59,7 +59,7 @@ class tickMC(QtGui.QWidget):
         self.setLayout(self._layout)
 
     def emitSignal(self, state):
-        self.stateChangedy.emit(state)
+        self.stateChanged.emit(state)
 
     def name(self):
         return self._name
@@ -169,7 +169,7 @@ class evdgui3D(gui3D):
 
         # Add the checkbox that allows to show nu origin MCTrack only
         thisTick = tickMC (self, "MC Options")
-        thisTick.stateChangedy[int].connect(self.tickMCHandler)
+        thisTick.stateChanged[int].connect(self.tickMCHandler)
         self._eastLayout.addWidget(thisTick)
 
         self._eastLayout.addStretch(2)
@@ -215,13 +215,9 @@ class evdgui3D(gui3D):
     def tickMCHandler(self, state):
         sender = self.sender()
         if state == 0:
-            self._event_manager._draw_cosmic = True
+            self._event_manager.toggleMCCosmic(True)
         elif state == 2:
-            self._event_manager._draw_cosmic = False
+            self._event_manager.toggleMCCosmic(False)
         else:
             print "Can't recognize checkbox state. state is ", state
 
-        self._event_manager.redrawProduct("MCTrack",
-                                          "sim::MCTrack",
-                                          "mcreco",
-                                          self._view_manager)

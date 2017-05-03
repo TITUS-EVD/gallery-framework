@@ -411,7 +411,6 @@ class evd_manager_2D(evd_manager_base):
             self._wireDrawer = None
             self._drawWires = False
 
-
     # def toggleTruth(self, truthBool):
     #     if truthBool == False:
     #         self.clearTruth()
@@ -473,7 +472,7 @@ try:
 
         """This class handles file I/O and drawing for 3D viewer"""
 
-        _draw_cosmic = True
+        showMCCosmic = True
 
         def __init__(self, geom, file=None):
             super(evd_manager_3D, self).__init__(geom, file)
@@ -486,22 +485,17 @@ try:
         # when the producer changes
         def redrawProduct(self, name, product, producer, view_manager):
             # print "Received request to redraw ", product, " by ",producer, " with name ", name
-            # First, determine if there is a drawing process for this product:
+            # First, determine if there is a drawing process for this product:           
             if producer is None:
                 if name in self._drawnClasses:
-                    self._drawnClasses[name].clearDrawnObjects(
-                        self._view_manager)
+                    self._drawnClasses[name].clearDrawnObjects(self._view_manager)
                     self._drawnClasses.pop(name)
                 return
             if name in self._drawnClasses:
                 self._drawnClasses[name].setProducer(producer)
                 self.processEvent(True)
                 self._drawnClasses[name].clearDrawnObjects(self._view_manager)
-                if (name == "MCTrack"):
-                    self._drawnClasses[name].drawObjects(self._view_manager, self._draw_cosmic)
-                else:
-                    self._drawnClasses[name].drawObjects(self._view_manager)
-                return
+                self._drawnClasses[name].drawObjects(self._view_manager)
 
 
 
@@ -523,12 +517,11 @@ try:
                 drawingClass.setProducer(producer)
                 self._processer.add_process(product, drawingClass._process)
                 self._drawnClasses.update({name: drawingClass})
+                if name == "MCTrack":
+                    self._drawnClasses[name].toggleMCCosmic(self.showMCCosmic)
                 # Need to process the event
                 self.processEvent(True)
-                if (name == "MCTrack"):
-                    drawingClass.drawObjects(self._view_manager, self._draw_cosmic)
-                else:
-                    drawingClass.drawObjects(self._view_manager)
+                drawingClass.drawObjects(self._view_manager)
 
         def clearAll(self):
             for recoProduct in self._drawnClasses:
@@ -550,12 +543,19 @@ try:
             order=self._drawableItems.getListOfTitles()
             for item in order:
                 if item in self._drawnClasses:
-                    if (item == "MCTrack"):
-                        self._drawnClasses[item].drawObjects(self._view_manager, self._draw_cosmic)
-                    else:
+                    self._drawnClasses[item].drawObjects(self._view_manager)
+
+        def toggleMCCosmic(self, toggleBool):
+            self.showMCCosmic = toggleBool
+            order=self._drawableItems.getListOfTitles()
+            for item in order:
+                if item == "MCTrack":
+                    if item in self._drawnClasses:
+                        self._drawnClasses[item].toggleMCCosmic(toggleBool)
+                        self._drawnClasses[item].clearDrawnObjects(self._view_manager)
+                        self.processEvent(True)
                         self._drawnClasses[item].drawObjects(self._view_manager)
-
-
+            #self.drawFresh()
 
 except:
     pass

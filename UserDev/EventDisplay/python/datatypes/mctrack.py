@@ -85,7 +85,10 @@ try:
             self.init()
             self._mesh = gl.MeshData()
 
-        def drawObjects(self, view_manager, draw_cosmic):
+        def toggleMCCosmic(self, toggleValue):
+            self._process.SetViewCosmicOption(toggleValue)
+
+        def drawObjects(self, view_manager):
             geom = view_manager._geometry
             view = view_manager.getView()
 
@@ -115,12 +118,8 @@ try:
                 line = gl.GLLinePlotItem(pos=pts,color=(255,255,0,255))
                 if (origin == 1): # neutrino origin
                     line = gl.GLLinePlotItem(pos=pts,color=(0, 176, 139,255))
-                if (draw_cosmic and origin == 2):
-                    view.addItem(line)
-                    self._drawnObjects.append(line)
-                elif (origin != 2):
-                    view.addItem(line)
-                    self._drawnObjects.append(line)
+                view.addItem(line)
+                self._drawnObjects.append(line)
 
     
     # # Just be stupid and try to draw something:
