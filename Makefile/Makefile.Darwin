@@ -1,10 +1,10 @@
 #COMPILER:
 CC              = gcc
-CXX             = $(LARLITE_CXX)
+CXX             = $(GALLERY_FMWK_CXX)
 #LINKER          = libtool
 #SOMAKER         = libtool 
-LINKER          = $(LARLITE_CXX)
-SOMAKER         = $(LARLITE_CXX)
+LINKER          = $(GALLERY_FMWK_CXX)
+SOMAKER         = $(GALLERY_FMWK_CXX)
 
 #######"-O" FLAG: (not always ideal with debugging info)
 CFLAGS          += -O3
