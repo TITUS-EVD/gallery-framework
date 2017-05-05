@@ -9,6 +9,8 @@ namespace evd {
 DrawMCTrack3D::DrawMCTrack3D() {
   _name = "DrawMCTrack3D";
   _fout = 0;
+
+  _draw_cosmic = true;
 }
 
 bool DrawMCTrack3D::initialize() {
@@ -40,7 +42,6 @@ bool DrawMCTrack3D::analyze(gallery::Event * ev) {
   //
 
 
-
   // get a handle to the tracks
   art::InputTag mctracks_tag(_producer);
   auto const & mctrackHandle
@@ -55,7 +56,11 @@ bool DrawMCTrack3D::analyze(gallery::Event * ev) {
 
   // Populate the track vector:
   for (auto & mctrack : *mctrackHandle) {
-    _data.push_back(getMCTrack3d(mctrack));
+    if (_draw_cosmic && mctrack.Origin() == 2) {
+      _data.push_back(getMCTrack3d(mctrack));
+    } else if (mctrack.Origin() != 2) {
+      _data.push_back(getMCTrack3d(mctrack));
+    }
   }
 
   return true;
@@ -92,6 +97,7 @@ MCTrack3D DrawMCTrack3D::getMCTrack3d(const sim::MCTrack & mctrack) {
     }
 
   }
+  result._origin = mctrack.Origin();
 
   return result;
 }

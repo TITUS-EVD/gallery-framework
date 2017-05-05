@@ -39,6 +39,33 @@ class ComboBoxWithKeyConnect(QtGui.QComboBox):
 # It also knows what to do when updating
 
 
+class tickMC(QtGui.QWidget):
+    stateChanged = QtCore.pyqtSignal(int)
+
+    """docstring for tickMC"""
+
+    def __init__(self, owner, name):
+        super(tickMC, self).__init__()
+        self._label = QtGui.QLabel()
+        self._name = name
+        self._label.setText(self._name.capitalize() + ": ")
+        self._box = QtGui.QCheckBox("Nu only")
+        self._box.setChecked(False)
+        self._box.stateChanged.connect(self.emitSignal)
+        # This is the widget itself, so set it up
+        self._layout = QtGui.QVBoxLayout()
+        self._layout.addWidget(self._label)
+        self._layout.addWidget(self._box)
+        self.setLayout(self._layout)
+
+    def emitSignal(self, state):
+        self.stateChanged.emit(state)
+
+    def name(self):
+        return self._name
+
+
+
 class recoBox(QtGui.QWidget):
     activated = QtCore.pyqtSignal(str)
 
@@ -139,6 +166,12 @@ class evdgui3D(gui3D):
             self._listOfRecoBoxes.append(thisBox)
             thisBox.activated[str].connect(self.recoBoxHandler)
             self._eastLayout.addWidget(thisBox)
+
+        # Add the checkbox that allows to show nu origin MCTrack only
+        thisTick = tickMC (self, "MC Options")
+        thisTick.stateChanged[int].connect(self.tickMCHandler)
+        self._eastLayout.addWidget(thisTick)
+
         self._eastLayout.addStretch(2)
 
         self._eastWidget.setLayout(self._eastLayout)
@@ -178,3 +211,13 @@ class evdgui3D(gui3D):
                                           sender.product(),
                                           text,
                                           self._view_manager)
+
+    def tickMCHandler(self, state):
+        sender = self.sender()
+        if state == 0:
+            self._event_manager.toggleMCCosmic(True)
+        elif state == 2:
+            self._event_manager.toggleMCCosmic(False)
+        else:
+            print "Can't recognize checkbox state. state is ", state
+

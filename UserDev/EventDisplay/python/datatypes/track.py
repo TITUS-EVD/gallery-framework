@@ -54,10 +54,10 @@ class track(recoBase):
                 # self._drawnObjects[view.plane()].append(thisPoly)
 
                 thisPoly = polyLine(points)
-                pen = pg.mkPen((0,0,0), width=2)
+                pen = pg.mkPen((130,0,0), width=2)
                 thisPoly.setPen(pen)
                 # polyLine.draw(view._view)
-
+            
                 view._view.addItem(thisPoly)
 
                 self._drawnObjects[view.plane()].append(thisPoly)
@@ -102,7 +102,7 @@ try:
 
                 pts = np.vstack([x,y,z]).transpose()
                 pen = pg.mkPen((255,0,0), width=2)
-                line = gl.GLLinePlotItem(pos=pts,color=(255,0,0,255))
+                line = gl.GLLinePlotItem(pos=pts,color=(255,0,0,255), width=4)
                 view.addItem(line)
                 self._drawnObjects.append(line)
 
