@@ -5,26 +5,22 @@
 
 namespace evd {
 
-Track2D getTrack2D(recob::Track track, unsigned int plane) {
+Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
   Track2D result;
   auto geoHelper = larutil::GeometryHelper::GetME();
+  result._track.reserve(track.NumberTrajectoryPoints());
   for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:
     try {
       auto point = geoHelper->Point_3Dto2D(track.LocationAtPoint(i), plane);
       result._track.push_back(std::make_pair(point.w, point.t));
-    }
-    catch (...) {
+    } catch (...) {
       continue;
     }
-
   }
 
   return result;
 }
-
-
-
 
 DrawTrack::DrawTrack() {
   _name = "DrawTrack";
@@ -34,13 +30,13 @@ DrawTrack::DrawTrack() {
 bool DrawTrack::initialize() {
 
   // Resize data holder
-  if (_dataByPlane.size() != geoService -> Nviews()) {
-    _dataByPlane.resize(geoService -> Nviews());
+  if (_dataByPlane.size() != geoService->Nviews()) {
+    _dataByPlane.resize(geoService->Nviews());
   }
   return true;
 }
 
-bool DrawTrack::analyze(gallery::Event * ev) {
+bool DrawTrack::analyze(gallery::Event *ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -59,33 +55,27 @@ bool DrawTrack::analyze(gallery::Event * ev) {
   //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
   //
 
-
-
   // get a handle to the tracks
   art::InputTag tracks_tag(_producer);
-  auto const & trackHandle
-        = ev -> getValidHandle<std::vector <recob::Track> >(tracks_tag);
-
-
+  auto const &trackHandle =
+      ev->getValidHandle<std::vector<recob::Track>>(tracks_tag);
 
   // Clear out the data but reserve some space for the tracks
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  for (unsigned int p = 0; p < geoService->Nviews(); p++) {
     _dataByPlane.at(p).clear();
-    _dataByPlane.at(p).reserve(trackHandle -> size());
-    _wireRange.at(p).first  = 99999;
-    _timeRange.at(p).first  = 99999;
+    _dataByPlane.at(p).reserve(trackHandle->size());
+    _wireRange.at(p).first = 99999;
+    _timeRange.at(p).first = 99999;
     _timeRange.at(p).second = -1.0;
     _wireRange.at(p).second = -1.0;
   }
 
-
   // Populate the track vector:
-  for (auto & track : *trackHandle) {
-    for (unsigned int view = 0; view < geoService -> Nviews(); view++) {
+  for (auto &track : *trackHandle) {
+    for (unsigned int view = 0; view < geoService->Nviews(); view++) {
       _dataByPlane.at(view).push_back(getTrack2D(track, view));
     }
   }
-
 
   return true;
 }
@@ -102,14 +92,13 @@ bool DrawTrack::finalize() {
   // if(_fout) { _fout->cd(); h1->Write(); }
   //
   // else
-  //   print(MSG::ERROR,__FUNCTION__,"Did not find an output file pointer!!! File not opened?");
+  //   print(MSG::ERROR,__FUNCTION__,"Did not find an output file pointer!!!
+  //   File not opened?");
   //
   return true;
 }
 
 DrawTrack::~DrawTrack() {}
-
-
 
 } // larlite
 
