@@ -259,8 +259,8 @@ public:
 
 private:
 
-  const std::vector<float> _lowRMS_cutoff = {0.4, 1.0, 1.0};
-  const std::vector<float> _highRMS_cutoff = {20.0, 20.0, 10.0};
+  const std::vector<float> _lowRMS_cutoff = {0.2, 0.5, 0.5};
+  const std::vector<float> _highRMS_cutoff = {50.0, 50.0, 30.0};
 
   // const std::vector<int> _correlated_noise_steps = {48,48,96}
 
