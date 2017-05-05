@@ -87,6 +87,7 @@ DrawMCTrack3D::~DrawMCTrack3D() {}
 
 MCTrack3D DrawMCTrack3D::getMCTrack3d(const sim::MCTrack & mctrack) {
   MCTrack3D result;
+  result._track.reserve(mctrack.size());
   for (size_t i = 0; i < mctrack.size(); i++) {
     // project a point into 2D:
     try {

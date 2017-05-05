@@ -25,7 +25,6 @@
    doxygen documentation!
  */
 
-// typedef std::vector< std::pair<float,float> > evd::Track2d;
 
 namespace evd {
 
@@ -37,8 +36,7 @@ public:
     // const std::vector<std::vector<float> > & direction() {return _track;}
     TVector3 start_point(){return _start_point;}
     TVector3 end_point(){return _end_point;}
-    int _origin; //mc origin type: 0=unknown, 1=beam neutrino, 2=cosmic, 3=supernova neutrino, 4=single particle
-    const int & origin() {return _origin;}
+
 
 private:
     TVector3 _start_point;

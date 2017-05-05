@@ -86,6 +86,7 @@ DrawTrack3D::~DrawTrack3D() {}
 
 Track3D DrawTrack3D::getTrack3d(const recob::Track & track) {
   Track3D result;
+  result._track.reserve(track.NumberTrajectoryPoints());
   for (size_t i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:
     try {

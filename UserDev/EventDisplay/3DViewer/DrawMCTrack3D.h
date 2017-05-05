@@ -30,7 +30,17 @@
 
 namespace evd {
 
-typedef Track3D MCTrack3D;
+class MCTrack3D : public Track3D {
+
+  friend class DrawMCTrack3D;
+
+  const int &origin() { return _origin; }
+
+protected:
+  int _origin; // mc origin type: 0=unknown, 1=beam neutrino, 2=cosmic,
+               // 3=supernova neutrino, 4=single particle
+
+};
 
 
 class DrawMCTrack3D : public galleryfmwk::ana_base, public RecoBase3D<MCTrack3D> {
