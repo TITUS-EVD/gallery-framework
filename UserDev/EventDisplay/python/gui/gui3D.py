@@ -3,7 +3,7 @@
 import sys, signal
 import argparse
 # import collections
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 import math
@@ -530,10 +530,14 @@ class gui3D(QtGui.QWidget):
     f = dialog.getSaveFileName(self,"Save File",name,
         "PNG (*.png);;JPG (*.jpg);;All Files (*)")
 
-    print f
+    # print f
     # print filt
     # Print
-    pixmapImage = QtGui.QPixmap.grabWidget(self)
-    pixmapImage.save(f,"PNG")
+    screen = self._view_manager.getView().grabFrameBuffer()
+    # print type(pixmapImage)
+    # print pixmapImage
+    # print f
+    # print type(f)
+    screen.save(f[0],"PNG")
 
 
