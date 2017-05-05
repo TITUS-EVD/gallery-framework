@@ -465,7 +465,7 @@ try:
         # this function is meant for the first request to draw an object or
         # when the producer changes
         def redrawProduct(self, name, product, producer, view_manager):
-            print "Received request to redraw ", product, " by ",producer, " with name ", name
+            # print "Received request to redraw ", product, " by ",producer, " with name ", name
             # First, determine if there is a drawing process for this product:           
             if producer is None:
                 if name in self._drawnClasses:
