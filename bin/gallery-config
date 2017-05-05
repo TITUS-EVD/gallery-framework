@@ -11,6 +11,7 @@ while test $# -gt 0; do
       --includes)
         if [ -z ${CETLIB_EXCEPT_INC+x} ]; then
           out="-I${GALLERY_INC} \
+               -I${BOOST_INC} \
                -I${CANVAS_INC} \
                -I${CETLIB_INC} \
                -I${FHICLCPP_INC} \
@@ -20,6 +21,7 @@ while test $# -gt 0; do
                -I${MESSAGEFACILITY_INC}"
         else
           out="-I${GALLERY_INC} \
+               -I${BOOST_INC} \
                -I${CANVAS_INC} \
                -I${CETLIB_INC} \
                -I${CETLIB_EXCEPT_INC} \
@@ -31,14 +33,13 @@ while test $# -gt 0; do
         fi
     ;;
       --libdir)
-    out="${GALLERY_LIB} ${CANVAS_LIB} ${CETLIB_LIB}"
+    out="${GALLERY_LIB} ${BOOST_LIB} ${CANVAS_LIB} ${CETLIB_LIB}"
     ;;
       --libs)
         if [ -z ${CETLIB_EXCEPT_LIB+x} ]; then
 
-          out="-L${CANVAS_LIB} -lcanvas_Persistency_Common -lcanvas_Persistency_Provenance \
+          out="-L${CANVAS_LIB} -lcanvas_Persistency_Common -lcanvas_Persistency_Provenance -lcanvas_Utilities \
                -L${CETLIB_LIB} -lcetlib \
-               -L${CETLIB_EXCEPT_LIB} -lcetlib_except \
                -L${GALLERY_LIB} -lgallery \
                -L${NUSIMDATA_LIB} -lnusimdata_SimulationBase \
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \

@@ -66,7 +66,7 @@ if [[ -z $USER_MODULE ]]; then
 fi
 
 # Check compiler availability for clang++ and g++
-GALLERY_FMWK_CXX=clang++
+GALLERY_FMWK_CXX=g++
 if [ `command -v $GALLERY_FMWK_CXX` ]; then
     export GALLERY_FMWK_CXX="$GALLERY_FMWK_CXX -std=c++11";
 else
