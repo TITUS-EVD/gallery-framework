@@ -44,14 +44,17 @@ class recoBox(QtGui.QWidget):
         self._name = name
         self._label.setText(self._name.capitalize() + ": ")
         self._box = ComboBoxWithKeyConnect()
+        self._box.setDuplicatesEnabled(False)
         self._box.activated[str].connect(self.emitSignal)
         self._product = product
+        self._producers = producers
+        self._stage = "all"
         if producers == None:
             self._box.addItem("--None--")
         else:
             self._box.addItem("--Select--")
             for producer in producers:
-                self._box.addItem(producer)
+                self._box.addItem(producer.producer())
 
         self._box.connectOwnerKPE(owner.keyPressEvent)
 
@@ -60,6 +63,22 @@ class recoBox(QtGui.QWidget):
         self._layout.addWidget(self._label)
         self._layout.addWidget(self._box)
         self.setLayout(self._layout)
+
+    def selectStage(self, stage):
+
+
+        # If no stage can draw this product, just return
+        if self._producers is None:
+            return
+        else:
+            self._box.clear()
+            self._box.addItem("--Select--")
+
+            for prod in self._producers:
+                if prod.stage() == stage or stage == 'all':
+                    self._box.addItem(prod.producer())
+
+        self._box.setDuplicatesEnabled(False)
 
     def keyPressEvent(self, e):
         self._box.keyPressEvent(e)
@@ -88,6 +107,7 @@ class evdgui(gui):
             manager = evd_manager(geometry)
         super(evdgui, self).initManager(manager)
         self.initUI()
+        self._stage = None
         self._event_manager.fileChanged.connect(self.drawableProductsChanged)
         self._event_manager.eventChanged.connect(self.update)
         # self._event_manager.truthLabelChanged.connect(self.updateMessageBar)
@@ -109,12 +129,27 @@ class evdgui(gui):
         label1.setFont(font)
         label2.setFont(font)
 
+
+
         self._eastWidget = QtGui.QWidget()
         # This is the total layout
         self._eastLayout = QtGui.QVBoxLayout()
         # add the information sections:
         self._eastLayout.addWidget(label1)
         self._eastLayout.addWidget(label2)
+        self._eastLayout.addStretch(1)
+
+        self._stageLabel = QtGui.QLabel("Stage:")
+        self._stageSelection = QtGui.QComboBox()
+        self._stageSelection.activated[str].connect(self.stageSelectHandler)
+        # Make sure "all" is default and on top:
+        self._stageSelection.addItem("all")
+        for stage in self._event_manager.getStages():
+            if stage != "all":
+                self._stageSelection.addItem(stage)
+
+        self._eastLayout.addWidget(self._stageLabel)
+        self._eastLayout.addWidget(self._stageSelection)
         self._eastLayout.addStretch(1)
 
         # The wires are a special case.
@@ -209,6 +244,14 @@ class evdgui(gui):
         #   self._event_manager.toggleWires(False)
 
         # self._view_manager.drawPlanes(self._event_manager)
+
+    def stageSelectHandler(self, _str):
+        self._stage = _str
+        if _str == "all":
+            self._stage = None
+        for box in self._listOfRecoBoxes:
+            box.selectStage(_str)
+        # print str
 
     def noiseFilterWorker(self):
         if self._noiseFilterBox.isChecked():

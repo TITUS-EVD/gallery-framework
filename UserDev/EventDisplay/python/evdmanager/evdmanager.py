@@ -10,26 +10,36 @@ import ROOT
 
 class product(object):
     def __init__(self, name, typeName):
-        self._name=name
+        self._name=name.rstrip(".")
         self._typeName=typeName
         self._isAssociation=False
         self._associatedProduct=None
         self._producer=None
         self._stage=None
+        self._stage=None
   
         self.parse()
   
+    def append_producer(self, s):
+        self._producer += s
+
     def producer(self):
         return self._producer
   
     def name(self):
         return self._name
   
+    def fullName(self):
+        return "{}::{}".format(self._producer, self._stage)
+
     def typeName(self):
         return self._typeName
   
     def isAssociation(self):
         return self._isAssociation
+
+    def stage(self):
+        return self._stage
   
     # def associationProduct(self):
         # pass
@@ -130,9 +140,16 @@ class evd_manager_base(manager, QtCore.QObject):
 
         # prepare a dictionary of data products
         lookUpTable = dict()
-        products = []
+        lookUpTable.update({"all" : dict()})
+
+        product_list = []
         # Loop over the keys (list of trees)
         for key in e.GetListOfBranches():
+
+            if "NuMu" in key.GetName():
+                print key.GetName()
+                print prod.fullName()
+
             if key.GetTypeName() == 'art::EventAuxiliary':
                 continue
             if "Assns" in key.GetTypeName():
@@ -144,14 +161,30 @@ class evd_manager_base(manager, QtCore.QObject):
 
 
 
+
+            # Add the product to the "all" list and 
+            # also to it's stage list:
+
             # gets three items in thisKeyList, which is a list
             # [dataProduct, producer, 'tree'] (don't care about 'tree')
             # check if the data product is in the dict:
-            if _product in lookUpTable:
+            if _product in lookUpTable['all']:
                 # extend the list:
-                lookUpTable[_product] += (prod._producer, )
+                lookUpTable['all'][_product] += (prod, )
             else:
-                lookUpTable.update({_product: (prod._producer,)})
+                lookUpTable['all'].update({_product: (prod,)})
+
+
+            if not (prod.stage() in lookUpTable):
+                lookUpTable.update({prod.stage() : dict()})
+            if _product in lookUpTable[prod.stage()]:
+                # extend the list:
+                lookUpTable[prod.stage()][_product] += (prod, )
+            else:
+                lookUpTable[prod.stage()].update({_product: (prod,)})
+      
+        print lookUpTable.keys()
+
 
         self._keyTable.update(lookUpTable)
         return 
@@ -188,7 +221,7 @@ class evd_manager_base(manager, QtCore.QObject):
 
             # Finally, ping the file to see what is available to draw
             self.pingFile(file)
-            if len(self._keyTable) > 0:
+            if len(self._keyTable['all']) > 0:
                 self._hasFile = True
                 _file_list.push_back(file)
 
@@ -203,10 +236,16 @@ class evd_manager_base(manager, QtCore.QObject):
         self.goToEvent(0)
         self.fileChanged.emit()
 
+    def getStages(self):
+        return self._keyTable.keys()
+
     # This function will return all producers for the given product
-    def getProducers(self, product):
+    def getProducers(self, product, stage = None):
         try:
-            return self._keyTable[product]
+            if stage is not None:
+                return self._keyTable[stage][product]
+            else:
+                return self._keyTable["all"][product]
         except:
             return None
 
@@ -299,7 +338,7 @@ class evd_manager_2D(evd_manager_base):
 
     # this function is meant for the first request to draw an object or
     # when the producer changes
-    def redrawProduct(self, name, product, producer, view_manager):
+    def redrawProduct(self, name, product, producer, view_manager, stage=None):
         # print "Received request to redraw ", product, " by ",producer
         # First, determine if there is a drawing process for this product:
         if producer is None:
@@ -385,29 +424,31 @@ class evd_manager_2D(evd_manager_base):
         return xRange, yRange
 
     # handle all the wire stuff:
-    def toggleWires(self, product):
+    def toggleWires(self, product, stage=None):
         # Now, either add the drawing process or remove it:
 
+        if stage is None:
+            stage = 'all'
 
         if product == 'wire':
-            if 'recob::Wire' not in self._keyTable:
+            if 'recob::Wire' not in self._keyTable[stage]:
                 print "No wire data available to draw"
                 self._drawWires = False
                 return
             self._drawWires = True
             self._wireDrawer = datatypes.recoWire(self._geom)
-            self._wireDrawer.setProducer(self._keyTable['recob::Wire'][0])
+            self._wireDrawer.setProducer(self._keyTable[stage]['recob::Wire'][0].fullName())
             self._processer.add_process("recob::Wire",self._wireDrawer._process)
             self.processEvent(True)
 
         elif product == 'rawdigit':
-            if 'raw::RawDigit' not in self._keyTable:
+            if 'raw::RawDigit' not in self._keyTable[stage]:
                 print "No raw digit data available to draw"
                 self._drawWires = False
                 return
             self._drawWires = True
             self._wireDrawer = datatypes.rawDigit(self._geom)
-            self._wireDrawer.setProducer(self._keyTable['raw::RawDigit'][0])
+            self._wireDrawer.setProducer(self._keyTable[stage]['raw::RawDigit'][0].fullName())
             self._processer.add_process("raw::RawDigit", self._wireDrawer._process)
             self._wireDrawer.toggleNoiseFilter(self.filterNoise)
 
@@ -464,9 +505,11 @@ try:
 
         # this function is meant for the first request to draw an object or
         # when the producer changes
-        def redrawProduct(self, name, product, producer, view_manager):
+        def redrawProduct(self, name, product, producer, view_manager, stage = None):
             # print "Received request to redraw ", product, " by ",producer, " with name ", name
-            # First, determine if there is a drawing process for this product:           
+            # First, determine if there is a drawing process for this product:  
+            if stage is None:
+                stage = 'all'         
             if producer is None:
                 if name in self._drawnClasses:
                     self._drawnClasses[name].clearDrawnObjects(self._view_manager)
