@@ -34,7 +34,7 @@ class MCTrack3D : public Track3D {
 
   friend class DrawMCTrack3D;
 
-  const int &origin() { return _origin; }
+  const int origin() { return _origin; }
 
 protected:
   int _origin; // mc origin type: 0=unknown, 1=beam neutrino, 2=cosmic,

@@ -3,24 +3,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 from ROOT import evd
 import pyqtgraph as pg
 
-
-class polyLine(QtGui.QGraphicsPathItem):
-
-    def __init__(self, points, pen=None):
-        super(polyLine, self).__init__()
-        self._points = points
-
-        # Initialize a path:
-        path = QtGui.QPainterPath()
-        if pen is None:
-            pen = QtGui.QPen(QtCore.Qt.black)
-        self.setPen(pen)
-
-        # Fill the path:
-        path.moveTo(points[0])
-        for i in xrange(len(points)-1):
-            path.lineTo(points[i+1])
-        self.setPath(path)
+from track import polyLine
 
 
 class mctrack(recoBase):
