@@ -12,8 +12,8 @@
 
     @{*/
 
-#ifndef GALLERY_FMWK_DRAWRAWWIRE_H
-#define GALLERY_FMWK_DRAWRAWWIRE_H
+#ifndef EVD_DRAWRAWWIRE_H
+#define EVD_DRAWRAWWIRE_H
 
 #include "Analysis/ana_base.h"
 #include "LArUtil/Geometry.h"

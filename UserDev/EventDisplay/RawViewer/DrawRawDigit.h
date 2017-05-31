@@ -12,8 +12,8 @@
 
     @{*/
 
-#ifndef LARLITE_DRAWRAWDIGIT_H
-#define LARLITE_DRAWRAWDIGIT_H
+#ifndef EVD_DRAWRAWDIGIT_H
+#define EVD_DRAWRAWDIGIT_H
 
 #include "Analysis/ana_base.h"
 #include "LArUtil/Geometry.h"

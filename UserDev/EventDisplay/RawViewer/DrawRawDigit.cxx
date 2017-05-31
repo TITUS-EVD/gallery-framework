@@ -1,5 +1,5 @@
-#ifndef LARLITE_DRAWRAWDIGIT_CXX
-#define LARLITE_DRAWRAWDIGIT_CXX
+#ifndef EVD_DRAWRAWDIGIT_CXX
+#define EVD_DRAWRAWDIGIT_CXX
 
 
 #include "DrawRawDigit.h"
