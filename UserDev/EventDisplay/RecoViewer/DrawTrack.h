@@ -30,7 +30,7 @@ namespace evd {
 class Track2D {
 public:
   friend class DrawTrack;
-  Track2D();
+  Track2D(){}
   Track2D(std::vector<std::pair<float, float>> _track){
     this->_track = _track;
   }
