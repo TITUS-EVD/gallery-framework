@@ -96,7 +96,7 @@ class shower(recoBase):
                 
                 shower = showers[i]
 
-                if i_color > len(self._showerColors):
+                if i_color >= len(self._showerColors):
                     i_color = 0
 
                 color = self._showerColors[i_color]
