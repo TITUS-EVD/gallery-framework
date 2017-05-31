@@ -5,7 +5,22 @@
 
 namespace evd {
 
+Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
+  Track2D result;
+  auto geoHelper = larutil::GeometryHelper::GetME();
+  result._track.reserve(track.NumberTrajectoryPoints());
+  for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
+    // project a point into 2D:
+    try {
+      auto point = geoHelper->Point_3Dto2D(track.LocationAtPoint(i), plane);
+      result._track.push_back(std::make_pair(point.w, point.t));
+    } catch (...) {
+      continue;
+    }
+  }
 
+  return result;
+}
 
 DrawTrack::DrawTrack() {
   _name = "DrawTrack";
