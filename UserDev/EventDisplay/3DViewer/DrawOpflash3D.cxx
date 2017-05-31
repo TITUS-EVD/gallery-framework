@@ -1,5 +1,5 @@
-#ifndef DRAWOPFLASH3D_CXX
-#define DRAWOPFLASH3D_CXX
+#ifndef EVD_DRAWOPFLASH3D_CXX
+#define EVD_DRAWOPFLASH3D_CXX
 
 #include "DrawOpflash3D.h"
 

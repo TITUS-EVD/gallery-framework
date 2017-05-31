@@ -1,5 +1,5 @@
-#ifndef DRAWMCSHOWER3D_CXX
-#define DRAWMCSHOWER3D_CXX
+#ifndef EVD_DRAWMCSHOWER3D_CXX
+#define EVD_DRAWMCSHOWER3D_CXX
 
 #include "DrawMCShower3D.h"
 

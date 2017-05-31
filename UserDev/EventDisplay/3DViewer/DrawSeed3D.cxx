@@ -1,5 +1,5 @@
-#ifndef DRAWSEED3D_CXX
-#define DRAWSEED3D_CXX
+#ifndef EVD_DRAWSEED3D_CXX
+#define EVD_DRAWSEED3D_CXX
 
 #include "DrawSeed3D.h"
 

@@ -11,8 +11,8 @@
 /** \addtogroup RecoViewer
 
     @{*/
-#ifndef EVD_LARLITE_DRAWMCTRACK_H
-#define EVD_LARLITE_DRAWMCTRACK_H
+#ifndef EVD_DRAWMCTRACK_H
+#define EVD_DRAWMCTRACK_H
 
 #include "Analysis/ana_base.h"
 #include "lardataobj/MCBase/MCStep.h"
