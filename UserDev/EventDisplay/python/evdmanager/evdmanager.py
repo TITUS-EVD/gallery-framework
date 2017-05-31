@@ -338,26 +338,27 @@ class evd_manager_2D(evd_manager_base):
 
     # this function is meant for the first request to draw an object or
     # when the producer changes
-    def redrawProduct(self, name, product, producer, view_manager, stage=None):
+    def redrawProduct(self, informal_type, product, view_manager):
         # print "Received request to redraw ", product, " by ",producer
         # First, determine if there is a drawing process for this product:
-        if producer is None:
-            if name in self._drawnClasses:
-                self._drawnClasses[name].clearDrawnObjects(self._view_manager)
-                self._drawnClasses.pop(name)
+        if product is None:
+            if informal_type in self._drawnClasses:
+                self._drawnClasses[informal_type].clearDrawnObjects(self._view_manager)
+                self._drawnClasses.pop(informal_type)
             return
-        if name in self._drawnClasses:
-            self._drawnClasses[name].setProducer(producer)
+        if informal_type in self._drawnClasses:
+            self._drawnClasses[informal_type].setProducer(product.fullName())
             self.processEvent(True)
-            self._drawnClasses[name].clearDrawnObjects(self._view_manager)
-            self._drawnClasses[name].drawObjects(self._view_manager)
+            self._drawnClasses[informal_type].clearDrawnObjects(self._view_manager)
+            self._drawnClasses[informal_type].drawObjects(self._view_manager)
             return
 
         # Now, draw the new product
-        if name in self._drawableItems.getListOfTitles():
+        if informal_type in self._drawableItems.getListOfTitles():
+            print "product " + str(informal_type) + " is drawable."
             # drawable items contains a reference to the class, so instantiate
             # it
-            drawingClass = self._drawableItems.getDict()[name][0]()
+            drawingClass = self._drawableItems.getDict()[informal_type][0]()
             # Special case for clusters, connect it to the signal:
             # if name == 'Cluster':
             #     self.noiseFilterChanged.connect(
@@ -367,13 +368,13 @@ class evd_manager_2D(evd_manager_base):
             #     self.noiseFilterChanged.connect(
             #         drawingClass.setParamsDrawing)
             #     drawingClass.setParamsDrawing(self._drawParams)
-            if name == "RawDigit":
+            if informal_type == "RawDigit":
                 self.noiseFilterChanged.connect(
                     drawingClass.runNoiseFilter)
 
-            drawingClass.setProducer(producer)
+            drawingClass.setProducer(product.fullName())
             self._processer.add_process(product, drawingClass._process)
-            self._drawnClasses.update({name: drawingClass})
+            self._drawnClasses.update({informal_type: drawingClass})
             # Need to process the event
             self.processEvent(True)
             drawingClass.drawObjects(self._view_manager)

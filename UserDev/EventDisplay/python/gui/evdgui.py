@@ -66,19 +66,26 @@ class recoBox(QtGui.QWidget):
 
     def selectStage(self, stage):
 
-
         # If no stage can draw this product, just return
         if self._producers is None:
             return
         else:
             self._box.clear()
-            self._box.addItem("--Select--")
 
+            prod_list = []
             for prod in self._producers:
                 if prod.stage() == stage or stage == 'all':
-                    self._box.addItem(prod.producer())
+                    prod_list.append(prod.producer())
+
+            if len(prod_list) > 0:
+                self._box.addItem("--Select--")
+                for _producer in prod_list:
+                    self._box.addItem(_producer)
+            else:
+                self._box.addItem("--None--")
 
         self._box.setDuplicatesEnabled(False)
+
 
     def keyPressEvent(self, e):
         self._box.keyPressEvent(e)
@@ -87,8 +94,16 @@ class recoBox(QtGui.QWidget):
     def emitSignal(self, text):
         self.activated.emit(text)
 
-    def product(self):
+    def productType(self):
         return self._product
+
+    def productObj(self, producer, stage):
+        if stage is None:
+            stage = "all"
+        for prod in self._producers:
+            if prod.producer() == producer:
+                if stage == "all" or prod.stage() == stage:
+                    return prod
 
     def name(self):
         return self._name
@@ -231,10 +246,10 @@ class evdgui(gui):
             self._event_manager.toggleWires(None)
             # print "None is selected"
         if sender == self._wireButton:
-            self._event_manager.toggleWires('wire')
+            self._event_manager.toggleWires('wire',stage = self._stage)
             # print "Wire is selected"
         if sender == self._rawDigitButton:
-            self._event_manager.toggleWires('rawdigit')
+            self._event_manager.toggleWires('rawdigit',stage = self._stage)
             # print "Raw digit is selected"
 
         self._view_manager.drawPlanes(self._event_manager)
@@ -274,12 +289,9 @@ class evdgui(gui):
         sender = self.sender()
         # print sender.product(), "was changed to" , text
         if text == "--Select--" or text == "--None--":
-            self._event_manager.redrawProduct(sender.name(),
-                                              sender.product(),
-                                              None,
-                                              self._view_manager)
+            self._event_manager.redrawProduct(sender.name(), None, self._view_manager)
             return
-        self._event_manager.redrawProduct(sender.name(),
-                                          sender.product(),
-                                          text,
-                                          self._view_manager)
+        else:
+            # Get the full product obj for this:
+            prod = sender.productObj(text, self._stage)
+            self._event_manager.redrawProduct(sender.name(), prod, self._view_manager)
