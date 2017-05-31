@@ -146,17 +146,22 @@ class evd_manager_base(manager, QtCore.QObject):
         # Loop over the keys (list of trees)
         for key in e.GetListOfBranches():
 
-            if "NuMu" in key.GetName():
-                print key.GetName()
-                print prod.fullName()
-
             if key.GetTypeName() == 'art::EventAuxiliary':
                 continue
-            if "Assns" in key.GetTypeName():
+
+            if "NuMu" in key.GetName() and "Assns" in key.GetTypeName():
+                if "PFParticle" in key.GetTypeName():
+                    continue
+            elif "Assns" in key.GetTypeName():
                 continue
 
             prod=product(key.GetName(), key.GetTypeName())
 
+
+            # if "NuMu" in key.GetName():
+            #     print "NuMu stage is " + str(prod.stage())
+            #     print "NuMu name is " +  str(prod.fullName())
+            #     print "NuMu type name is " + str(prod.typeName())
             _product = prod._typeName
 
 
@@ -183,7 +188,7 @@ class evd_manager_base(manager, QtCore.QObject):
             else:
                 lookUpTable[prod.stage()].update({_product: (prod,)})
       
-        print lookUpTable.keys()
+
 
 
         self._keyTable.update(lookUpTable)
@@ -355,7 +360,6 @@ class evd_manager_2D(evd_manager_base):
 
         # Now, draw the new product
         if informal_type in self._drawableItems.getListOfTitles():
-            print "product " + str(informal_type) + " is drawable."
             # drawable items contains a reference to the class, so instantiate
             # it
             drawingClass = self._drawableItems.getDict()[informal_type][0]()

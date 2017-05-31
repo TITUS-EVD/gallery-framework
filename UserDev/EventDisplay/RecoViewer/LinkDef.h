@@ -44,6 +44,11 @@
 #pragma link C++ class evd::RecoBase<::evd::Endpoint2D>+;
 #pragma link C++ class evd::DrawEndpoint+;
 
+#pragma link C++ class evd::NumuSelection2D+;
+#pragma link C++ class std::vector<::evd::NumuSelection2D>+;
+#pragma link C++ class evd::RecoBase<::evd::NumuSelection2D>+;
+#pragma link C++ class evd::DrawNumuSelection+;
+
 
 // Link the classes that are processors
 #pragma link C++ class evd::DrawVertex+;
