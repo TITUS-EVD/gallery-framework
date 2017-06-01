@@ -694,10 +694,11 @@ class gui(QtGui.QWidget):
     f = dialog.getSaveFileName(self,"Save File",name,
         "PNG (*.png);;JPG (*.jpg);;All Files (*)")
 
-    print(f)
-    # print filt
-    # Print
-    pixmapImage = QtGui.QPixmap.grabWidget(self)
-    pixmapImage.save(f,"PNG")
+    if pg.Qt.QT_LIB == pg.Qt.PYQT4:
+      pixmapImage = QtGui.QPixmap.grabWidget(self)
+      pixmapImage.save(f,"PNG")
+    else:
+      pixmapImage = super(gui, self).grab()
+      pixmapImage.save(f[0],"PNG")
 
 
