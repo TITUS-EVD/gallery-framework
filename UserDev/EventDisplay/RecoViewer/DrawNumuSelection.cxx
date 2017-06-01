@@ -17,7 +17,6 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(recob::Vertex vtx, std::ve
     result._vertex = point;
   } catch (...) {
   }
-
   // Tracks
   double max_length = -1;
   size_t muon_index = 0;
@@ -86,7 +85,7 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
 
   //std::cout << "Producer is " << _producer << std::endl;
 
-  /*
+  
   std::vector<recob::Vertex> vertices;
   std::vector<recob::Track> tracks;
  
@@ -99,7 +98,7 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
   if(assoc_handle->size() == 0) 
     return true; // no selected neutrino in this event
 
-  std::cout << "Ass has size " << assoc_handle->size() << std::endl;
+  //std::cout << "Ass has size " << assoc_handle->size() << std::endl;
 
   for (auto &ass : *assoc_handle) {
     art::Ptr<recob::Vertex> v = ass.first;
@@ -108,23 +107,8 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
     art::Ptr<recob::Track>  t = ass.second;
     tracks.emplace_back(*t);
   }
-  */
   
-  art::InputTag tag("pandoraNu::DataApr2016RecoStage2");
-  auto const &trackHandle = ev->getValidHandle<std::vector<recob::Track>>(tag);
-  art::FindMany<recob::Vertex> vtx_per_track(trackHandle,*ev,_producer);
-
-  std::vector<recob::Vertex const*> vertices;
-  std::vector<recob::Track> tracks;
-
-  for (size_t index = 0; index < vtx_per_track.size(); index++) {
-    vtx_per_track.get(index, vertices);
-    if (vertices.size() != 0)
-      tracks.push_back((*trackHandle)[index]);
-  }
-  
-
-
+ 
   // Clear out the data but reserve some space for the tracks
   for (unsigned int p = 0; p < geoService->Nviews(); p++) {
     _dataByPlane.at(p).clear();
@@ -134,11 +118,10 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
     _timeRange.at(p).second = -1.0;
     _wireRange.at(p).second = -1.0;
   }
-
-
+  
   for (auto const &vtx : vertices) {
     for (unsigned int view = 0; view < geoService->Nviews(); view++) {
-      _dataByPlane.at(view).push_back(this->getNumuSelection2D(*vtx, tracks, view));
+      _dataByPlane.at(view).push_back(this->getNumuSelection2D(vtx, tracks, view));
     }
   }  
 
