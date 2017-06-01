@@ -12,8 +12,8 @@
 
     @{*/
 
-#ifndef LARLITE_DRAWENDPOINT_H
-#define LARLITE_DRAWENDPOINT_H
+#ifndef EVD_DRAWENDPOINT_H
+#define EVD_DRAWENDPOINT_H
 
 #include "Analysis/ana_base.h"
 #include "RecoBase.h"

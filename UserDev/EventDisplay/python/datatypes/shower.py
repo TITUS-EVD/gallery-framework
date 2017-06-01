@@ -6,38 +6,38 @@ import math as mt
 from connectedObjects import boxCollection
 
 
-# add shower polygon Qt object
-class shower_polygon(QtGui.QGraphicsPolygonItem):
+# # add shower polygon Qt object
+# class shower_polygon(QtGui.QGraphicsPolygonItem):
 
-    # Provide some signals to communicate with cluster params
-    mouseEnter = QtCore.pyqtSignal(QtGui.QGraphicsSceneHoverEvent)
-    mouseExit = QtCore.pyqtSignal( QtGui.QGraphicsSceneHoverEvent)
-    highlightChange = QtCore.pyqtSignal()
+#     # Provide some signals to communicate with cluster params
+#     mouseEnter = QtCore.pyqtSignal(QtGui.QGraphicsSceneHoverEvent)
+#     mouseExit = QtCore.pyqtSignal( QtGui.QGraphicsSceneHoverEvent)
+#     highlightChange = QtCore.pyqtSignal()
 
-    def __init__(self, *args, **kwargs):
-        super(shower_polygon, self).__init__(*args)
-        self.setAcceptHoverEvents(True)
-        self._isHighlighted = False
-        self._ownerToolTip  = None
-        self._larliteshower = None
+#     def __init__(self, *args, **kwargs):
+#         super(shower_polygon, self).__init__(*args)
+#         self.setAcceptHoverEvents(True)
+#         self._isHighlighted = False
+#         self._ownerToolTip  = None
+#         self._larliteshower = None
 
-    def passlarliteshower(self, shower):
-        self._larliteshower = shower
+#     def passlarliteshower(self, shower):
+#         self._larliteshower = shower
 
-    def hoverEnterEvent(self, e):
-        self.setToolTip(self._ownerToolTip())
+#     def hoverEnterEvent(self, e):
+#         self.setToolTip(self._ownerToolTip())
 
-    def hoverLeaveEvent(self, e):
-        return
+#     def hoverLeaveEvent(self, e):
+#         return
 
-    def connectToolTip(self, ownerToolTip):
-        self._ownerToolTip = ownerToolTip
+#     def connectToolTip(self, ownerToolTip):
+#         self._ownerToolTip = ownerToolTip
 
-    def genToolTip(self):
-        tip = ''
-        if (self._larliteshower != None):
-            tip += 'Energy %i MeV'%(int(self._larliteshower.energy()))
-        return tip
+#     def genToolTip(self):
+#         tip = ''
+#         if (self._larliteshower != None):
+#             tip += 'Energy %i MeV'%(int(self._larliteshower.energy()))
+#         return tip
 
 # Shower drawing is currently "experimental"
 class shower(recoBase):
@@ -96,7 +96,7 @@ class shower(recoBase):
                 
                 shower = showers[i]
 
-                if i_color > len(self._showerColors):
+                if i_color >= len(self._showerColors):
                     i_color = 0
 
                 color = self._showerColors[i_color]
@@ -148,18 +148,16 @@ class shower(recoBase):
                 thisPolyF = QtGui.QPolygonF(points)
                 
                 self.shower_poly = QtGui.QGraphicsPolygonItem( thisPolyF )
-                self.shower_poly = shower_polygon( thisPolyF )
                 #thisPoly = QtGui.QGraphicsPolygonItem(thisPolyF)
 
                 self.shower_poly.setPen(pg.mkPen(None))
                 self.shower_poly.setBrush(pg.mkColor(color))
-                self.shower_poly.passlarliteshower(shower)
 
                 # hovering stuff
                 #self.shower_poly.connectOwnerHoverEnter(self.shower_poly.hoverEnter)
                 #self.shower_poly.connectOwnerHoverExit (self.shower_poly.hoverExit)
                 #self.shower_poly.connectToggleHighlight(self.shower_poly.toggleHighlight)
-                self.shower_poly.connectToolTip(self.shower_poly.genToolTip)
+                # self.shower_poly.connectToolTip(self.shower_poly.genToolTip)
 
                 view._view.addItem(self.shower_poly)
                 self._drawnObjects[view.plane()].append(self.shower_poly)

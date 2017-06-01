@@ -11,8 +11,8 @@
 /** \addtogroup RecoViewer
 
     @{*/
-#ifndef LARLITE_DRAWSIMCH_H
-#define LARLITE_DRAWSIMCH_H
+#ifndef EVD_DRAWSIMCH_H
+#define EVD_DRAWSIMCH_H
 
 #include <iostream>
 #include "Analysis/ana_base.h"

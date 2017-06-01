@@ -1,5 +1,5 @@
-#ifndef DRAWTRACK3D_CXX
-#define DRAWTRACK3D_CXX
+#ifndef EVD_DRAWTRACK3D_CXX
+#define EVD_DRAWTRACK3D_CXX
 
 #include "DrawTrack3D.h"
 

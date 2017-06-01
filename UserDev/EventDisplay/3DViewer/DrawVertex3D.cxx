@@ -1,5 +1,5 @@
-#ifndef DRAWVERTEX3D_CXX
-#define DRAWVERTEX3D_CXX
+#ifndef EVD_DRAWVERTEX3D_CXX
+#define EVD_DRAWVERTEX3D_CXX
 
 #include "DrawVertex3D.h"
 

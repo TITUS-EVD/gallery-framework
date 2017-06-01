@@ -1,6 +1,6 @@
 
-#ifndef GALLERY_FMWK_DRAWWIRE_CXX
-#define GALLERY_FMWK_DRAWWIRE_CXX
+#ifndef EVD_DRAWWIRE_CXX
+#define EVD_DRAWWIRE_CXX
 
 
 #include "DrawWire.h"

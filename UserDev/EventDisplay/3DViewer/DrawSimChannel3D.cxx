@@ -1,5 +1,5 @@
-#ifndef DRAWSIMCH_CXX
-#define DRAWSIMCH_CXX
+#ifndef EVD_DRAWSIMCH_CXX
+#define EVD_DRAWSIMCH_CXX
 
 #include "DrawSimChannel3D.h"
 

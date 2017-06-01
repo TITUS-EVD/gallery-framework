@@ -11,8 +11,8 @@
 /** \addtogroup RecoViewer
 
     @{*/
-#ifndef LARLITE_DRAWPFPARTICLE3D_H
-#define LARLITE_DRAWPFPARTICLE3D_H
+#ifndef EVD_DRAWPFPARTICLE3D_H
+#define EVD_DRAWPFPARTICLE3D_H
 
 #include <iostream>
 #include "Analysis/ana_base.h"

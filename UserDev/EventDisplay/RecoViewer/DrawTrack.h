@@ -11,14 +11,15 @@
 /** \addtogroup RecoViewer
 
     @{*/
-#ifndef EVD_LARLITE_DRAWTRACK_H
-#define EVD_LARLITE_DRAWTRACK_H
+#ifndef EVD_DRAWTRACK_H
+#define EVD_DRAWTRACK_H
 
 #include "Analysis/ana_base.h"
 #include "lardataobj/RecoBase/Track.h"
 #include <iostream>
 
 #include "RecoBase.h"
+
 /**
    \class DrawTrack
    User defined class DrawTrack ... these comments are used to generate
@@ -30,6 +31,12 @@ namespace evd {
 class Track2D {
 public:
   friend class DrawTrack;
+  friend class DrawNumuSelection;
+
+  Track2D(){}
+  Track2D(std::vector<std::pair<float, float>> _track){
+    this->_track = _track;
+  }
 
   const std::vector<std::pair<float, float>> &track() { return _track; }
   const std::vector<std::pair<float, float>> &direction() { return _track; }
