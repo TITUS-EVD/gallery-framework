@@ -17,6 +17,7 @@
 #include "Analysis/ana_base.h"
 #include "lardataobj/RecoBase/Track.h"
 #include "lardataobj/RecoBase/Vertex.h"
+#include "canvas/Persistency/Common/FindMany.h"
 #include <iostream>
 
 #include "RecoBase.h"
@@ -66,7 +67,7 @@ public:
   virtual bool finalize();
 
 private:
-  Track2D getTrack2D(recob::Track track, unsigned int plane);
+  NumuSelection2D getNumuSelection2D(recob::Vertex vtx, std::vector<recob::Track> tracks, unsigned int plane);
 };
 
 } // evd

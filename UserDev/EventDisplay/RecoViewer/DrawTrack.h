@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include "RecoBase.h"
+
 /**
    \class DrawTrack
    User defined class DrawTrack ... these comments are used to generate
@@ -30,6 +31,8 @@ namespace evd {
 class Track2D {
 public:
   friend class DrawTrack;
+  friend class DrawNumuSelection;
+
   Track2D(){}
   Track2D(std::vector<std::pair<float, float>> _track){
     this->_track = _track;
