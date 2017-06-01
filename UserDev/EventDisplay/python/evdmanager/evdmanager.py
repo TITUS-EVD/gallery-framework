@@ -477,7 +477,7 @@ try:
                 self.processEvent(True)
                 self._drawnClasses[name].clearDrawnObjects(self._view_manager)
                 self._drawnClasses[name].drawObjects(self._view_manager)
-
+                return
 
 
             # Now, draw the new product
