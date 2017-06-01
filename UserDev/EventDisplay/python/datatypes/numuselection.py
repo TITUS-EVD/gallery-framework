@@ -1,6 +1,6 @@
 from database import recoBase
 from ROOT import evd
-from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 
 from track import polyLine
@@ -31,33 +31,28 @@ class numuselection(recoBase):
 
                 vertex = numus[i].vertex()
                 # Draws a circle at (x,y,radius = 0.5cm)
-                radBigW = 0.5 / view_manager._geometry.wire2cm()
-                radBigT = (0.5) / view_manager._geometry.time2cm()
+                radBigW = 3 / view_manager._geometry.wire2cm()
+                radBigT = (3) / view_manager._geometry.time2cm()
 
                 offset = view_manager._geometry.offset(
                     thisPlane) / view_manager._geometry.time2cm()
 
-                sW = point.w / view_manager._geometry.wire2cm()
-                sT = point.t / view_manager._geometry.time2cm() + offset
+                sW = vertex.w / view_manager._geometry.wire2cm()
+                sT = vertex.t / view_manager._geometry.time2cm() + offset
 
                 r = QtGui.QGraphicsEllipseItem(
                     sW-radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
 
 
-                ####################################################
-                # TODO - make the vertex a different color
-                ####################################################
-
-
                 r.setPen(pg.mkPen(None))
-                r.setBrush(pg.mkColor(0,255,0))
+                r.setBrush(pg.mkColor(139,0,139))
                 self._drawnObjects[thisPlane].append(r)
                 view._view.addItem(r)
 
 
 
                 # Draw all the tracks:
-
+                tracks = numus[i].tracks()
                 for j in xrange(len(numus[i].tracks())):
                     track = tracks[j]
                     # construct a polygon for this track:
@@ -71,16 +66,12 @@ class numuselection(recoBase):
 
                     thisPoly = polyLine(points)
 
-                    ####################################################
-                    # TODO - color the tracks, make the muon special
-                    ####################################################
-
                     #Change the color here:
                     if j == numus[i].muon_index():
                         # Do something special with the muon
-                        pen = pg.mkPen((130,0,0), width=2)
+                        pen = pg.mkPen((238,130,238), width=2)
                     else:
-                        pen = pg.mkPen((130,0,0), width=2)
+                        pen = pg.mkPen((139,0,139), width=2)
 
                     thisPoly.setPen(pen)
                     # polyLine.draw(view._view)
