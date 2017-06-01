@@ -45,7 +45,7 @@ class numuselection(recoBase):
 
 
                 r.setPen(pg.mkPen(None))
-                r.setBrush(pg.mkColor(139,0,139))
+                r.setBrush(pg.mkColor(139,0,139, 128))
                 self._drawnObjects[thisPlane].append(r)
                 view._view.addItem(r)
 
