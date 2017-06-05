@@ -403,7 +403,7 @@ class evd_manager_2D(evd_manager_base):
 
     def getAutoRange(self, plane):
         # This gets the max bounds
-        xRangeMax, yRangeMax = super(larlite_manager, self).getAutoRange(plane)
+        xRangeMax, yRangeMax = super(evd_manager_2D, self).getAutoRange(plane)
         xRange = [999,-999]
         yRange = [99999,-99999]
         for process in self._drawnClasses:
