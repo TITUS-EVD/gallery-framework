@@ -31,7 +31,7 @@ class hit(recoBase):
                 r = QtGui.QGraphicsRectItem(
                     hit.wire(), hit.time() + geom.timeOffsetTicks(view.plane()), 1, hit.rms())
 
-                opacity = hit.charge() / self._process.maxCharge(thisPlane)
+                opacity = int(128 * hit.charge() / self._process.maxCharge(thisPlane)) + 127
                 # opacity = exp( 1 + hit.charge() / self._process.maxCharge(thisPlane))/exp(2);
                 # # New Way
                 # r.setPen(pg.mkPen(brush,width=2))
@@ -39,7 +39,7 @@ class hit(recoBase):
 
                 # Old Way:
                 r.setPen(pg.mkPen(None))
-                r.setBrush(pg.mkColor(opacity))
+                r.setBrush(pg.mkColor(0,0,0,opacity))
                 # r.setBrush((0,0,0,opacity))
                 self._drawnObjects[thisPlane].append(r)
                 view._view.addItem(r)
