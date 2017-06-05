@@ -84,7 +84,7 @@ class recoBox(QtGui.QWidget):
         else:
             self._box.addItem("--Select--")
             for producer in producers:
-                self._box.addItem(producer)
+                self._box.addItem(producer.producer())
 
         self._box.connectOwnerKPE(owner.keyPressEvent)
 
