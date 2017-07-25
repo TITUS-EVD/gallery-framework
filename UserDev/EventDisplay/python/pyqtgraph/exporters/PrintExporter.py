@@ -1,6 +1,6 @@
 from .Exporter import Exporter
 from ..parametertree import Parameter
-from ..Qt import QtGui, QtCore, QtSvg
+from ..Qt import QtGui, QtCore
 import re
 
 __all__ = ['PrintExporter']  

@@ -1,6 +1,6 @@
 from .Exporter import Exporter
 from ..parametertree import Parameter
-from ..Qt import QtGui, QtCore, QtSvg, USE_PYSIDE
+from ..Qt import QtGui, QtCore, USE_PYSIDE
 from .. import functions as fn
 import numpy as np
 
@@ -67,7 +67,7 @@ class ImageExporter(Exporter):
         w, h = self.params['width'], self.params['height']
         if w == 0 or h == 0:
             raise Exception("Cannot export image with size=0 (requested export size is %dx%d)" % (w,h))
-        bg = np.empty((self.params['width'], self.params['height'], 4), dtype=np.ubyte)
+        bg = np.empty((int(self.params['width']), int(self.params['height']), 4), dtype=np.ubyte)
         color = self.params['background']
         bg[:,:,0] = color.blue()
         bg[:,:,1] = color.green()

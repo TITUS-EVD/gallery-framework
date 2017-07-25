@@ -1,7 +1,7 @@
 from .Exporter import Exporter
 from ..python2_3 import asUnicode
 from ..parametertree import Parameter
-from ..Qt import QtGui, QtCore, QtSvg, USE_PYSIDE
+from ..Qt import QtGui, QtCore, USE_PYSIDE
 from .. import debug
 from .. import functions as fn
 import re
@@ -167,7 +167,7 @@ def _generateItemSvg(item, nodes=None, root=None):
 
         arr = QtCore.QByteArray()
         buf = QtCore.QBuffer(arr)
-        svg = QtSvg.QSvgGenerator()
+        svg .QSvgGenerator()
         svg.setOutputDevice(buf)
         dpi = QtGui.QDesktopWidget().physicalDpiX()
         svg.setResolution(dpi)
