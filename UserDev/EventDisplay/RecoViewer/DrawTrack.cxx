@@ -12,8 +12,10 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
   for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:
     try {
-      auto point = geoHelper->Point_3Dto2D(track.LocationAtPoint(i), plane);
-      result._track.push_back(std::make_pair(point.w, point.t));
+      if (track.HasValidPoint(i)) {
+        auto point = geoHelper->Point_3Dto2D(track.LocationAtPoint(i), plane);
+        result._track.push_back(std::make_pair(point.w, point.t));
+      }
     } catch (...) {
       continue;
     }

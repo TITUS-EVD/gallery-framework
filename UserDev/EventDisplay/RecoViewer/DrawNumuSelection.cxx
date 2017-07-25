@@ -5,7 +5,8 @@
 
 namespace evd {
 
-NumuSelection2D DrawNumuSelection::getNumuSelection2D(recob::Vertex vtx, std::vector<recob::Track> tracks, unsigned int plane) {
+NumuSelection2D DrawNumuSelection::getNumuSelection2D(
+    recob::Vertex vtx, std::vector<recob::Track> tracks, unsigned int plane) {
 
   NumuSelection2D result;
 
@@ -28,8 +29,11 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(recob::Vertex vtx, std::ve
     trk_out._track.reserve(trk.NumberTrajectoryPoints());
     for (unsigned int i = 0; i < trk.NumberTrajectoryPoints(); i++) {
       try {
-        auto point = geoHelper->Point_3Dto2D(trk.LocationAtPoint(i), plane);
-        trk_out._track.push_back(std::make_pair(point.w, point.t));
+        if (trk.HasValidPoint(i)) {
+
+          auto point = geoHelper->Point_3Dto2D(trk.LocationAtPoint(i), plane);
+          trk_out._track.push_back(std::make_pair(point.w, point.t));
+        }
       } catch (...) {
         continue;
       }
@@ -38,7 +42,7 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(recob::Vertex vtx, std::ve
 
     // the longest track is the muon
     double length = trk.Length();
-    if (length > max_length){
+    if (length > max_length) {
       muon_index = t;
       max_length = length;
     }
@@ -83,32 +87,30 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
   //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
   //
 
-  //std::cout << "Producer is " << _producer << std::endl;
+  // std::cout << "Producer is " << _producer << std::endl;
 
-  
   std::vector<recob::Vertex> vertices;
   std::vector<recob::Track> tracks;
- 
+
   vertices.clear();
   tracks.clear();
-  
 
-  auto const& assoc_handle = ev->getValidHandle< art::Assns<recob::Vertex,recob::Track> >(_producer);
+  auto const &assoc_handle =
+      ev->getValidHandle<art::Assns<recob::Vertex, recob::Track>>(_producer);
 
-  if(assoc_handle->size() == 0) 
+  if (assoc_handle->size() == 0)
     return true; // no selected neutrino in this event
 
-  //std::cout << "Ass has size " << assoc_handle->size() << std::endl;
+  // std::cout << "Ass has size " << assoc_handle->size() << std::endl;
 
   for (auto &ass : *assoc_handle) {
     art::Ptr<recob::Vertex> v = ass.first;
     vertices.emplace_back(*v);
 
-    art::Ptr<recob::Track>  t = ass.second;
+    art::Ptr<recob::Track> t = ass.second;
     tracks.emplace_back(*t);
   }
-  
- 
+
   // Clear out the data but reserve some space for the tracks
   for (unsigned int p = 0; p < geoService->Nviews(); p++) {
     _dataByPlane.at(p).clear();
@@ -118,12 +120,13 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
     _timeRange.at(p).second = -1.0;
     _wireRange.at(p).second = -1.0;
   }
-  
+
   for (auto const &vtx : vertices) {
     for (unsigned int view = 0; view < geoService->Nviews(); view++) {
-      _dataByPlane.at(view).push_back(this->getNumuSelection2D(vtx, tracks, view));
+      _dataByPlane.at(view).push_back(
+          this->getNumuSelection2D(vtx, tracks, view));
     }
-  }  
+  }
 
   return true;
 }
