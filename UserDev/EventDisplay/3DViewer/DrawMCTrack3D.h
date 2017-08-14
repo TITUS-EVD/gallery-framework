@@ -34,6 +34,7 @@ class MCTrack3D : public Track3D {
 
   friend class DrawMCTrack3D;
 
+public:
   const int origin() { return _origin; }
 
 protected:
