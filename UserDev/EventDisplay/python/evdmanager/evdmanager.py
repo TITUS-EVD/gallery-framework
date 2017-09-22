@@ -231,10 +231,16 @@ class evd_manager_base(manager, QtCore.QObject):
                 _file_list.push_back(file)
 
 
+        # Have to figure out number of events available
+        for _f in _file_list:
+            _rf = ROOT.TFile(_f)
+            _tree = _rf.Get("Events")
+            self._n_entries += _tree.GetEntries()
+
         # Create an instance of the data manager:
         if _file_list.size() > 0:
             self._data_manager = gallery.Event(_file_list)
-            self._n_entries += self._data_manager.numberOfEventsInFile()
+
 
         # Open the manager
         self._lastProcessed = -1
