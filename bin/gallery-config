@@ -44,7 +44,7 @@ while test $# -gt 0; do
                -L${NUSIMDATA_LIB} -lnusimdata_SimulationBase \
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
-               -L${MESSAGEFACILITY_LIB} -lMF_MessageService -lMF_FileFormat -lMF_MessageLogger -lMF_Utilities"
+               -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger -lMF_Utilities"
         else
           out="-L${CANVAS_LIB} -lcanvas \
                -L${CETLIB_LIB} -lcetlib \
@@ -53,7 +53,7 @@ while test $# -gt 0; do
                -L${NUSIMDATA_LIB} -lnusimdata_SimulationBase \
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
-               -L${MESSAGEFACILITY_LIB} -lMF_MessageService -lMF_FileFormat -lMF_MessageLogger -lMF_Utilities"  
+               -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger -lMF_Utilities"  
         fi
     ;;
       --help)
