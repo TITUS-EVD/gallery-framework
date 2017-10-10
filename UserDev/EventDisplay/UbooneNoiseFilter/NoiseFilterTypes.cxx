@@ -154,7 +154,8 @@ float getMean(const std::vector<float> & _input) {
 }
 
 
-detPropFetcher::detPropFetcher() {
+
+void detPropFetcher::init(){
   _wire_lengths.resize(3);
   _wire_lengths[0].resize(2400);
   _wire_lengths[1].resize(2400);

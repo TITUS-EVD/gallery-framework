@@ -1,7 +1,6 @@
 #ifndef EVD_DRAWRAWDIGIT_CXX
 #define EVD_DRAWRAWDIGIT_CXX
 
-
 #include "DrawRawDigit.h"
 
 namespace evd {
@@ -12,7 +11,6 @@ DrawRawDigit::DrawRawDigit() {
 
   // And whether or not to correct the data:
   _correct_data = false;
-
 
 }
 
@@ -26,20 +24,20 @@ bool DrawRawDigit::initialize() {
   //
   //
 
-
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  for (unsigned int p = 0; p < geoService->Nviews(); p++) {
     setXDimension(geoService->Nwires(p), p);
-    setYDimension(detProp -> ReadOutWindowSize(), p);
+    setYDimension(detProp->ReadOutWindowSize(), p);
   }
   initDataHolder();
 
-
+  if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
+    _noise_filter.init();
+  }
 
   return true;
-
 }
 
-bool DrawRawDigit::analyze(gallery::Event * ev) {
+bool DrawRawDigit::analyze(gallery::Event *ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -58,18 +56,16 @@ bool DrawRawDigit::analyze(gallery::Event * ev) {
   //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
   //
 
-
-
-  // This is an event viewer.  In particular, this handles raw wire signal drawing.
+  // This is an event viewer.  In particular, this handles raw wire signal
+  // drawing.
   // So, obviously, first thing to do is to get the wires.
 
-
   art::InputTag wires_tag(_producer);
-  auto const & raw_digits
-    = ev -> getValidHandle<std::vector <raw::RawDigit> >(wires_tag);
+  auto const &raw_digits =
+      ev->getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
 
-
-  // if the tick-length set is different from what is actually stored in the ADC vector -> fix.
+  // if the tick-length set is different from what is actually stored in the ADC
+  // vector -> fix.
   if (raw_digits->size() > 0) {
     for (size_t pl = 0; pl < geoService->Nplanes(); pl++) {
       if (_y_dimensions[pl] != raw_digits->at(0).ADCs().size()) {
@@ -79,44 +75,45 @@ bool DrawRawDigit::analyze(gallery::Event * ev) {
   }
 
   _planeData.clear();
-  _noise_filter.set_n_time_ticks(_y_dimensions[0]);
+
+
+  if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
+    _noise_filter.set_n_time_ticks(_y_dimensions[0]);
+  }
   initDataHolder();
 
+  std::cout << "raw_digit size: " << raw_digits->size() << std::endl;
 
-
-  for (auto const& rawdigit : * raw_digits) {
+  for (auto const &rawdigit : *raw_digits) {
     unsigned int ch = rawdigit.Channel();
-    if (ch >= 8254) continue;
+    if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE &&
+        ch >= 8254)
+      continue;
 
     unsigned int wire = geoService->ChannelToWire(ch);
     unsigned int plane = geoService->ChannelToPlane(ch);
 
-    if (wire > geoService -> Nwires(plane))
+    if (wire > geoService->Nwires(plane))
       continue;
-
-
 
     int offset = wire * _y_dimensions[plane];
 
-
-
     size_t i = 0;
-    for (auto & tick : rawdigit.ADCs() ) {
+    for (auto &tick : rawdigit.ADCs()) {
       _planeData.at(plane).at(offset + i) = tick;
-      i ++;
+      i++;
     }
   }
 
+  if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
 
-  _noise_filter.set_data(&_planeData);
-  if ( _correct_data &&
-       ev -> eventAuxiliary().isRealData() ) {
-    _noise_filter.clean_data();
+    _noise_filter.set_data(&_planeData);
+    if (_correct_data && ev->eventAuxiliary().isRealData()) {
+      _noise_filter.clean_data();
+    } else {
+      _noise_filter.pedestal_subtract_only();
+    }
   }
-  else {
-    _noise_filter.pedestal_subtract_only();
-  }
-
 
   return true;
 }
@@ -133,13 +130,11 @@ bool DrawRawDigit::finalize() {
   // if(_fout) { _fout->cd(); h1->Write(); }
   //
   // else
-  //   print(MSG::ERROR,__FUNCTION__,"Did not find an output file pointer!!! File not opened?");
+  //   print(MSG::ERROR,__FUNCTION__,"Did not find an output file pointer!!!
+  //   File not opened?");
   //
-
-
 
   return true;
 }
-
 }
 #endif

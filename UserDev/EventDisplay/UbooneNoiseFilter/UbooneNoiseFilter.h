@@ -78,10 +78,15 @@ class UbooneNoiseFilter {
 public:
 
   /// Default constructor
-  UbooneNoiseFilter();
+  UbooneNoiseFilter() {}
 
   /// Default destructor
   ~UbooneNoiseFilter() {}
+
+  /**
+   * @brief      Setup internal variables
+   */
+  void init();
 
   // Set the pointer to the data.  Only basic integrity checks are done,
   // but it's the calling class's responsibility to manage this memory.

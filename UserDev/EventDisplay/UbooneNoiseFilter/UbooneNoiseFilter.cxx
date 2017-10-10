@@ -6,7 +6,9 @@
 
 namespace ub_noise_filter {
 
-UbooneNoiseFilter::UbooneNoiseFilter() {
+void UbooneNoiseFilter::init(){
+
+  _detector_properties_interface.init();
 
   _pedestal_by_plane.resize(_detector_properties_interface.n_planes());
   _rms_by_plane.resize(_detector_properties_interface.n_planes());

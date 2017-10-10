@@ -129,6 +129,71 @@ class geometry(geoBase):
     def colorMap(self, plane):
         return self._defaultColorScheme[plane]
 
+class sbnd(geometry): 
+
+
+    def __init__(self):
+        # Try to get the values from the geometry file.  Configure for sbnd
+        # and then call the base class __init__
+        super(sbnd, self).__init__()
+        larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
+        self.configure()
+        # self._colorScheme =
+        # self._time2Cm = 0.05515
+        self._pedestals = [2048, 2048, 400]
+        self._levels = [[-100, 10], [-10, 100], [-10, 200]]
+        for i in xrange(len(self._pedestals)):
+            self._levels[i][0] += self._pedestals[i]
+            self._levels[i][1] += self._pedestals[i]
+
+        self._name = "sbnd"
+        # self._logo = self._path + "/logos/uboone_logo_bw_transparent.png"
+        self._logoRatio = 1.0
+        self._haslogo = False
+        self._logopos = [1250,10]
+        self._logoscale = 0.1
+        self._tRange = 3000
+        self._triggerOffset = 0
+        self._readoutWindowSize = 3000
+        self._planeOriginX = [0.0, -0.3, -0.6] 
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
+        #           * larutil.GeometryHelper.GetME().TimeToCm()
+        # self._offset[:] = [x - remove for x in self._offset]
+        self._defaultColorScheme = [(
+            {'ticks': [(1, (22, 30, 151, 255)),
+                       (0.791, (0, 181, 226, 255)),
+                       (0.645, (76, 140, 43, 255)),
+                       (0.47, (0, 206, 24, 255)),
+                       (0.33333, (254, 209, 65, 255)),
+                       (0, (255, 0, 0, 255))],
+             'mode': 'rgb'})]
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
+
+        self._offset = []
+        for v in range(0, self._nViews):
+            # Set up the correct drift time offset.
+            # Offset is returned in terms of centimeters.
+
+            self._offset.append(
+                self.triggerOffset()
+                * self.time2cm()
+                - self.planeOriginX(v) )
 
 class microboone(geometry):
 

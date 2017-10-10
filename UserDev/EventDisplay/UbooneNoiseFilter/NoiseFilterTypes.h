@@ -76,7 +76,9 @@ class detPropFetcher {
 
 public:
 
-  detPropFetcher();
+  detPropFetcher(){}
+
+  void init();
 
   unsigned int n_wires(unsigned int plane);
   unsigned int n_planes();

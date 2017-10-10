@@ -39,6 +39,9 @@ def main():
     geom.add_argument('-T', '-t', '--uboonetruncated',
                       action='store_true',
                       help="Run with the truncated microboone geometry")
+    geom.add_argument('-S', '-s', '--sbnd',
+                      action='store_true',
+                      help="Run with the SBND Geometry")
     geom.add_argument('-L', '-l', '--lariat',
                       action='store_true',
                       help="Run with the lariat geometry")
@@ -54,6 +57,8 @@ def main():
         geom = geometry.microboonetruncated()
     elif args.lariat:
         geom = geometry.lariat()
+    elif args.sbnd:
+        geom = geometry.sbnd()
     else:
         geom = geometry.argoneut()
 
