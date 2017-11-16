@@ -73,6 +73,7 @@ public:
     virtual bool finalize();
 
     void SetCorrectData(bool _doit = true) {_correct_data = _doit;}
+    void setPadding(size_t padding, size_t plane);
 
 
 private:
@@ -81,6 +82,7 @@ private:
     bool _correct_data;
 
     ub_noise_filter::UbooneNoiseFilter _noise_filter;
+    std::vector<size_t> _padding_by_plane;
 
 };
 }

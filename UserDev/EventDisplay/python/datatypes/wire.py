@@ -24,6 +24,7 @@ class recoWire(wire):
         self._process.setInput(self._producerName)
         for plane in xrange(geom.nViews()):
             self._process.setYDimension(geom.readoutWindowSize(),plane)
+            print geom.readoutPadding()
             if geom.readoutPadding() != 0:
                 self._process.setPadding(geom.readoutPadding(), plane)
 
@@ -42,9 +43,14 @@ class rawDigit(wire):
             self._process.setPedestal(geom._pedestals[i], i)
         self._process.initialize()
         if "boone" in geom.name():
-            self._process.SetCorrectData(True)
+            self._process.SetCorrectData(False)
         else:
             self._process.SetCorrectData(False)
+        for plane in xrange(geom.nViews()):
+            self._process.setYDimension(geom.readoutWindowSize(),plane)
+            if geom.readoutPadding() != 0:
+                self._process.setPadding(geom.readoutPadding(), plane)
+
 
     def setProducer(self, producer):
         self._producerName = producer
