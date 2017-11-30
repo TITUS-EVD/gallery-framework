@@ -425,7 +425,6 @@ unsigned int detPropFetcher::n_planes() {
 }
 
 double detPropFetcher::wire_length(unsigned int plane, unsigned int wire) {
-
   return _wire_lengths[plane][wire];
 }
 

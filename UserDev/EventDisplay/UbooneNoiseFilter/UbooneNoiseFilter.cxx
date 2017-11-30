@@ -136,7 +136,6 @@ void UbooneNoiseFilter::clean_data() {
   // This function cleans the data up.
   //
   // First, do pedestal subtraction and determine if the wire is chirping:
-
   for (unsigned int plane = 0; plane < _detector_properties_interface.n_planes(); plane ++) {
 
     // Loop over the wires within the plane
@@ -180,7 +179,6 @@ void UbooneNoiseFilter::clean_data() {
     }
   }
 
-
   // Pass the chirping info and the wire status info to the correlated
   // noise filter
   _corr_filter.set_wire_status_pointer(&(_wire_status_by_plane) );
@@ -190,7 +188,6 @@ void UbooneNoiseFilter::clean_data() {
   for (unsigned int plane = 0; plane < _detector_properties_interface.n_planes(); plane ++) {
 
     float * _wire_block = &(_data_by_plane->at(plane).front());
-
     _corr_filter.build_noise_waveforms(_wire_block,
                                        plane,
                                        _n_time_ticks_data);

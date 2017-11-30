@@ -192,7 +192,6 @@ void CorrelatedNoiseFilter::build_harmonic_noise_waveform(
 
   // Loop over the ticks, and then the wires, and get the most probable
   // value for the harmonic noise
-
   for (int tick = 0; tick < _n_time_ticks_data; tick ++) {
 
     std::vector<float> values;

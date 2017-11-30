@@ -35,7 +35,7 @@ class CorrelatedNoiseFilter {
 public:
 
   /// Default constructor
-  CorrelatedNoiseFilter() {}
+  CorrelatedNoiseFilter() {_detector_properties_interface.init();}
 
   /// Default destructor
   ~CorrelatedNoiseFilter() {}
