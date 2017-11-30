@@ -90,11 +90,10 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   // temporarily store the data in it's native format, then copy
   // the data over to the final output.
 
-
   std::vector<std::vector<float>> _temp_data_holder(geoService->Nviews());
 
   for (size_t i_plane = 0; i_plane < geoService->Nviews(); i_plane++) {
-    _temp_data_holder.at(i_plane).resize(_n_ticks*_x_dimensions[i_plane]);
+    _temp_data_holder.at(i_plane).resize(_n_ticks * _x_dimensions[i_plane]);
   }
 
   for (auto const &rawdigit : *raw_digits) {
@@ -117,6 +116,7 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
     }
   }
 
+
   if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
     _noise_filter.set_data(&_temp_data_holder);
     if (_correct_data && ev->eventAuxiliary().isRealData()) {
@@ -126,14 +126,31 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
     }
   }
 
+  // In some cases, raw digits are truncated and the padding is needed.
+  // In other cases, raw digits are not truncated and no padding is needed,
+  // even in a truncate file.  What a mess.
+  // Hack: wipe out the padding if it's clearly not needed:
+
+  std::vector<int> _temp_padding_by_plane(_padding_by_plane.size(), 0);
+
+  for (size_t i_plane = 0; i_plane < geoService->Nviews(); i_plane++) {
+    if (_n_ticks + _padding_by_plane[i_plane] > _y_dimensions[i_plane]) {
+      _temp_padding_by_plane[i_plane] = 0;
+    }
+    else{
+      _temp_padding_by_plane[i_plane] = _padding_by_plane[i_plane];
+    }
+  }
+
   // Now, copy the data from the temp storage to the output storage:
+
   for (size_t i_plane = 0; i_plane < geoService->Nviews(); i_plane++) {
     int _n_wires = _temp_data_holder.at(i_plane).size() / _n_ticks;
 
     for (size_t i_wire = 0; i_wire < _n_wires; i_wire++) {
       int offset_raw = i_wire * _n_ticks;
       int offset_final =
-          i_wire * _y_dimensions[i_plane] + _padding_by_plane[i_plane];
+          i_wire * _y_dimensions[i_plane] + _temp_padding_by_plane[i_plane];
       for (size_t i_tick = 0; i_tick < _n_ticks; i_tick++) {
         _planeData.at(i_plane).at(offset_final + i_tick) =
             _temp_data_holder.at(i_plane).at(offset_raw + i_tick);
