@@ -41,7 +41,7 @@ namespace larutil {
   protected:
 
     virtual void ClearData();
-    virtual bool ReadTree();
+    virtual bool ReadTree(int i_tpc=0, int i_cryostat=0);
     
   public:
 

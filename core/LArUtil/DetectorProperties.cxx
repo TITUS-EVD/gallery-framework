@@ -35,7 +35,7 @@ namespace larutil {
 
   }
 
-  bool DetectorProperties::ReadTree()
+  bool DetectorProperties::ReadTree(int i_tpc, int i_cryostat)
   {
 
     ClearData();

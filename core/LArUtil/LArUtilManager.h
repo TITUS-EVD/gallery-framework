@@ -45,6 +45,12 @@ namespace larutil {
 
     /// Method to reconfigure utiities for the provided detector type
     static bool Reconfigure(galleryfmwk::geo::DetId_t type);
+
+    /// Method to return number of TPCs in the currently configured geometry
+    static bool Ntpcs(galleryfmwk::geo::DetId_t type);
+
+    /// Method to return number of Cryostats in the currently configured geometry
+    static bool Ncryostats(galleryfmwk::geo::DetId_t type);
     
   };
 }

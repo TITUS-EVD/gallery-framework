@@ -30,7 +30,7 @@ class Geometry : public LArUtilBase {
 private:
 
     /// Singleton constructor
-    Geometry(bool default_load = true);
+    Geometry(bool default_load = true, int i_tpc=0, int i_cryostat=0);
 
     /// Default destructor
     virtual ~Geometry() {};
@@ -40,9 +40,9 @@ private:
 public:
 
     /// Singleton getter
-    static const Geometry* GetME(bool default_load = true)
+    static const Geometry* GetME(bool default_load = true, int i_tpc=0, int i_cryostat=0)
     {
-        if (!_me) _me = new Geometry(default_load);
+        if (!_me) _me = new Geometry(default_load, i_tpc, i_cryostat);
         return _me;
     }
 
@@ -254,11 +254,11 @@ public:
 
     void PlaneOriginVtx(UChar_t plane, Double_t *vtx) const;
 
-    virtual bool LoadData(bool force_reload = false);
+    virtual bool LoadData(bool force_reload = false, int tpc=0, int cryostat=0);
 
 protected:
 
-    virtual bool ReadTree();
+    virtual bool ReadTree(int tpc=0, int cryostat=0);
 
     virtual void ClearData();
 

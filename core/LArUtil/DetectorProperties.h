@@ -39,7 +39,7 @@ namespace larutil {
   public:
 
     /// Singleton getter
-    static const DetectorProperties* GetME(bool default_load=true)
+    static const DetectorProperties* GetME(bool default_load=true, int tpc=0, int cryostat=0)
     {
       if(!_me) _me = new DetectorProperties(default_load);
       return _me;
@@ -84,7 +84,7 @@ namespace larutil {
 
   protected:
 
-    virtual bool ReadTree();
+    virtual bool ReadTree(int tpc=0, int cryostat=0);
     virtual void ClearData();
 
     Double_t fSamplingRate;      ///< in ns

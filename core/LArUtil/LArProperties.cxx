@@ -69,7 +69,7 @@ void LArProperties::ClearData()
     fReflectiveSurfaceDiffuseFractions.clear();
 }
 
-bool LArProperties::ReadTree()
+bool LArProperties::ReadTree(int i_tpc, int i_cryostat)
 {
     ClearData();
 

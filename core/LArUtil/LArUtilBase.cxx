@@ -16,7 +16,7 @@ LArUtilBase::LArUtilBase()
 }
 
 //-----------------------------------------------------
-bool LArUtilBase::LoadData(bool force_reload)
+bool LArUtilBase::LoadData(bool force_reload, int i_tpc, int i_cryostat)
 //-----------------------------------------------------
 {
   if (!force_reload && _loaded) return true;
@@ -37,7 +37,7 @@ bool LArUtilBase::LoadData(bool force_reload)
     galleryfmwk::Message::send(galleryfmwk::msg::kNORMAL, __FUNCTION__,
           Form("Loading data for %s...\n     file=%s ", _name.c_str(), _file_name.c_str()));
     ClearData();
-    status = ReadTree();
+    status = ReadTree(i_tpc, i_cryostat);
     if (!status)
       throw LArUtilException("Failed to load !");
   }

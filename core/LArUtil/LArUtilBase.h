@@ -53,11 +53,11 @@ namespace larutil {
     { _tree_name = treename; }
 
     /// Method to load data TTree
-    virtual bool LoadData(bool force_reload=false);
+    virtual bool LoadData(bool force_reload=false, int i_tpc=0, int i_cryostat=0);
 
   protected:
 
-    virtual bool ReadTree()=0;
+    virtual bool ReadTree(int tpc = 0, int cryostat = 0)=0;
 
     virtual void ClearData()=0;
 
