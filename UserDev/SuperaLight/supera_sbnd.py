@@ -1,33 +1,30 @@
-import ROOT
+import sys
+import os
+import glob
+import uuid
+import argparse
+
 from ROOT import gallery, galleryfmwk, larutil
 from ROOT import larcv
 from ROOT import supera
 
-import sys
-import os
-import glob
 
-def process_file(_file):
+def process_files(file_list):
 
 
     # Create ana_processor instance
     my_proc = galleryfmwk.ana_processor()
 
     # Set input root file
-    # for _f in f:
-        # my_proc.add_input_file(_f)
+    for _f in file_list:
+        my_proc.add_input_file(_f)
 
-    my_proc.add_input_file(_file)
-
-    out_dir = '/data/sbnd/dl_larcv/'
-    out_name = os.path.basename(_file).rstrip('.root') + '_larcv.root'
+    out_dir = './'
+    out_name = 'sbnd_supera_larcv_{0}.root'.format(uuid.uuid4())
 
     io = larcv.IOManager(larcv.IOManager.kWRITE)
     io.set_out_file(out_dir + out_name)
 
-    # Specify output root file name
-    # my_proc.set_ana_output_file(_file.replace('.root', '') + "_larcv.root")
-    # my_proc.set_output_file("")
 
     supera_light = supera.supera_light()
     supera_light.set_io_manager(io)
@@ -45,13 +42,21 @@ def process_file(_file):
 
 def main():
 
+
+
+    parser = argparse.ArgumentParser(description='Gallery based larsoft to larcv converter.')
+    # geom = parser.add_mutually_exclusive_group()
+    # geom.add_argument('--sbnd',
+    #                   action='store_true',
+    #                   help="Run with the SBND Geometry")
+    parser.add_argument('--files', nargs='+', help="Optional input file to use")
+
+    args = parser.parse_args()
+
     larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
 
-#    if len(sys.argv) < 2:
-#        print "Error: must include an input file."
-#        exit()
 
-#    _file = sys.argv[-1]
+   _file = sys.argv[-1]
 #    process_file(_file)
 
     for _file in glob.glob('/data/sbnd/dl_larsoft/*.root'):
