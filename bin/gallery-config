@@ -29,6 +29,7 @@ while test $# -gt 0; do
                -I${LARDATAOBJ_INC} \
                -I${NUSIMDATA_INC} \
                -I${LARCOREOBJ_INC} \
+               -I${CANVAS_ROOT_IO_INC} \
                -I${MESSAGEFACILITY_INC}"
         fi
     ;;
@@ -53,7 +54,8 @@ while test $# -gt 0; do
                -L${NUSIMDATA_LIB} -lnusimdata_SimulationBase \
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
-               -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger -lMF_Utilities"  
+               -L${CANVAS_ROOT_IO_INC} -lcanvas_root_io \
+               -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger -lMF_Utilities"
         fi
     ;;
       --help)
