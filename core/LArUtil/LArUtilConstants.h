@@ -17,7 +17,8 @@ const std::string kUTIL_DATA_FILENAME[galleryfmwk::geo::kDetIdMax] =
   "",                        // LBNE 34kt
   "",                        // CSU 40 L
   "",                        // LArIAT
-  ""                         // ICARUS T600
+  "",                        // ICARUS T600
+  "larutil_sbnd.root"        // SBND
 };
 
 const std::string kTREENAME_GEOMETRY = "scanner/Geometry";

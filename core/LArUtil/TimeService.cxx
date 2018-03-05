@@ -42,7 +42,7 @@ namespace larutil {
     */
   }
 
-  bool TimeService::ReadTree()
+  bool TimeService::ReadTree(int tpc, int cryostat)
   {
 
     ClearData();

@@ -80,7 +80,7 @@ public:
      * @details Returns a pointer to the sole instance of this class
      * @return Pointer to GeometryHelper
      */
-    static const GeometryHelper* GetME() {
+    static const GeometryHelper* GetME(int i_tpc = 0, int i_cryostat = 0) {
         if (!_me) {
             _me = new GeometryHelper;
             _me -> Reconfigure();

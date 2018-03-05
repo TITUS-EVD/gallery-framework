@@ -5,36 +5,35 @@
 #include "InvalidWireError.h"
 namespace larutil {
 
-Geometry* Geometry::_me = 0;
+Geometry *Geometry::_me = 0;
 
-void Geometry::CryostatBoundaries(Double_t* boundaries) const
-{
-  if ( fCryostatBoundaries.size() != 6 )
+void Geometry::CryostatBoundaries(Double_t *boundaries) const {
+  if (fCryostatBoundaries.size() != 6)
     throw LArUtilException("CryostatBoundaries not loaded (length != 6)... ");
 
-  //if( fCryostatBoundaries.size() != sizeof(boundaries)/8 )
-  // throw LArUtilException("Input argument for CryostatBoundaries must be length 6 double array!");
+  // if( fCryostatBoundaries.size() != sizeof(boundaries)/8 )
+  // throw LArUtilException("Input argument for CryostatBoundaries must be
+  // length 6 double array!");
 
   for (size_t i = 0; i < fCryostatBoundaries.size(); ++i)
     boundaries[i] = fCryostatBoundaries[i];
 }
 
-Geometry::Geometry(bool default_load) : LArUtilBase()
-{
+Geometry::Geometry(bool default_load, int i_tpc, int i_cryostat)
+    : LArUtilBase() {
   if (default_load) {
-    _file_name = Form("%s/LArUtil/dat/%s",
-                      getenv("GALLERY_FMWK_COREDIR"),
+    _file_name = Form("%s/LArUtil/dat/%s", getenv("GALLERY_FMWK_COREDIR"),
                       kUTIL_DATA_FILENAME[LArUtilConfig::Detector()].c_str());
     _tree_name = kTREENAME_GEOMETRY;
-    LoadData();
+    LoadData(default_load, i_tpc, i_cryostat);
   }
 }
 
-bool Geometry::LoadData(bool force_reload)
-{
+bool Geometry::LoadData(bool force_reload, int i_tpc, int i_cryostat) {
   bool status = LArUtilBase::LoadData(force_reload);
 
-  if (!status) return status;
+  if (!status)
+    return status;
 
   fOrthVectorsY.resize(this->Nplanes());
   fOrthVectorsZ.resize(this->Nplanes());
@@ -48,19 +47,23 @@ bool Geometry::LoadData(bool force_reload)
     Double_t WireCentre1[3] = {0.};
     Double_t WireCentre2[3] = {0.};
 
-    Double_t  th = this->WireAngleToVertical(view);
+    Double_t th = this->WireAngleToVertical(view);
     Double_t sth = TMath::Sin(th);
     Double_t cth = TMath::Cos(th);
 
     for (size_t coord = 0; coord < 3; ++coord) {
-      WireCentre1[coord] = (fWireEndVtx.at(plane).at(0).at(coord) + fWireStartVtx.at(plane).at(0).at(coord)) / 2.;
-      WireCentre2[coord] = (fWireEndVtx.at(plane).at(1).at(coord) + fWireStartVtx.at(plane).at(1).at(coord)) / 2.;
+      WireCentre1[coord] = (fWireEndVtx.at(plane).at(0).at(coord) +
+                            fWireStartVtx.at(plane).at(0).at(coord)) /
+                           2.;
+      WireCentre2[coord] = (fWireEndVtx.at(plane).at(1).at(coord) +
+                            fWireStartVtx.at(plane).at(1).at(coord)) /
+                           2.;
     }
 
-    Double_t OrthY =  cth;
+    Double_t OrthY = cth;
     Double_t OrthZ = -sth;
-    if (((WireCentre2[1] - WireCentre1[1])*OrthY
-         + (WireCentre2[2] - WireCentre1[2])*OrthZ) < 0) {
+    if (((WireCentre2[1] - WireCentre1[1]) * OrthY +
+         (WireCentre2[2] - WireCentre1[2]) * OrthZ) < 0) {
       OrthZ *= -1;
       OrthY *= -1;
     }
@@ -68,16 +71,14 @@ bool Geometry::LoadData(bool force_reload)
     fOrthVectorsY[plane] = OrthY / ThisWirePitch;
     fOrthVectorsZ[plane] = OrthZ / ThisWirePitch;
 
-    fFirstWireProj[plane]  = WireCentre1[1] * OrthY + WireCentre1[2] * OrthZ;
+    fFirstWireProj[plane] = WireCentre1[1] * OrthY + WireCentre1[2] * OrthZ;
     fFirstWireProj[plane] /= ThisWirePitch;
     fFirstWireProj[plane] -= 0.5;
-
   }
   return status;
 }
 
-void Geometry::ClearData()
-{
+void Geometry::ClearData() {
   fDetLength = galleryfmwk::data::kINVALID_DOUBLE;
   fDetHalfWidth = galleryfmwk::data::kINVALID_DOUBLE;
   fDetHalfHeight = galleryfmwk::data::kINVALID_DOUBLE;
@@ -94,8 +95,8 @@ void Geometry::ClearData()
   fSignalType.clear();
   fViewType.clear();
   fPlanePitch.clear();
-  //fFirstWireStartVtx.clear();
-  //fFirstWireEndVtx.clear();
+  // fFirstWireStartVtx.clear();
+  // fFirstWireEndVtx.clear();
   fWireStartVtx.clear();
   fWireEndVtx.clear();
   fWirePitch.clear();
@@ -106,52 +107,78 @@ void Geometry::ClearData()
   fPlaneOriginVtx.clear();
 }
 
-bool Geometry::ReadTree()
-{
+bool Geometry::ReadTree(int i_tpc, int i_cryostat) {
   ClearData();
 
   TChain *ch = new TChain(_tree_name.c_str());
   ch->AddFile(_file_name.c_str());
 
   std::string error_msg("");
-  if (!(ch->GetBranch("fDetLength")))      error_msg += "      fDetLength\n";
-  if (!(ch->GetBranch("fDetHalfWidth")))   error_msg += "      fDetHalfWidth\n";
-  if (!(ch->GetBranch("fDetHalfHeight")))  error_msg += "      fDetHalfHeight\n";
+  if (!(ch->GetBranch("fDetLength")))
+    error_msg += "      fDetLength\n";
+  if (!(ch->GetBranch("fDetHalfWidth")))
+    error_msg += "      fDetHalfWidth\n";
+  if (!(ch->GetBranch("fDetHalfHeight")))
+    error_msg += "      fDetHalfHeight\n";
 
-  if (!(ch->GetBranch("fCryoLength")))     error_msg += "      fCryoLength\n";
-  if (!(ch->GetBranch("fCryoHalfWidth")))  error_msg += "      fCryoHalfWidth\n";
-  if (!(ch->GetBranch("fCryoHalfHeight"))) error_msg += "      fCryoHalfHeight\n";
+  if (!(ch->GetBranch("fCryoLength")))
+    error_msg += "      fCryoLength\n";
+  if (!(ch->GetBranch("fCryoHalfWidth")))
+    error_msg += "      fCryoHalfWidth\n";
+  if (!(ch->GetBranch("fCryoHalfHeight")))
+    error_msg += "      fCryoHalfHeight\n";
 
-  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT) {
-    if (!(ch->GetBranch("fCryostatBoundaries"))) error_msg += "       fCryostatBoundaries\n";
+
+  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT &&
+      LArUtilConfig::Detector() != galleryfmwk::geo::kSBND) {
+    if (!(ch->GetBranch("fCryostatBoundaries")))
+      error_msg += "       fCryostatBoundaries\n";
   }
-  if (!(ch->GetBranch("fChannelToPlaneMap")))     error_msg += "      fChannelToPlaneMap\n";
-  if (!(ch->GetBranch("fChannelToWireMap")))      error_msg += "      fChannelToWireMap\n";
-  if (!(ch->GetBranch("fPlaneWireToChannelMap"))) error_msg += "      fPlaneWireToChannelMap\n";
+  if (!(ch->GetBranch("fChannelToPlaneMap")))
+    error_msg += "      fChannelToPlaneMap\n";
+  if (!(ch->GetBranch("fChannelToWireMap")))
+    error_msg += "      fChannelToWireMap\n";
+  if (!(ch->GetBranch("fPlaneWireToChannelMap")))
+    error_msg += "      fPlaneWireToChannelMap\n";
 
-  if (!(ch->GetBranch("fSignalType"))) error_msg += "      fSignalType\n";
-  if (!(ch->GetBranch("fViewType")))   error_msg += "      fViewType\n";
-  if (!(ch->GetBranch("fPlanePitch"))) error_msg += "      fPlanePitch\n";
+  if (!(ch->GetBranch("fSignalType")))
+    error_msg += "      fSignalType\n";
+  if (!(ch->GetBranch("fViewType")))
+    error_msg += "      fViewType\n";
+  if (!(ch->GetBranch("fPlanePitch")))
+    error_msg += "      fPlanePitch\n";
 
-  //if(!(ch->GetBranch("fFirstWireStartVtx"))) error_msg += "      fFirstWireStartVtx\n";
-  //if(!(ch->GetBranch("fFirstWireEndVtx")))   error_msg += "      fFirstWireEndVtx\n";
+  // if(!(ch->GetBranch("fFirstWireStartVtx"))) error_msg += "
+  // fFirstWireStartVtx\n";
+  // if(!(ch->GetBranch("fFirstWireEndVtx")))   error_msg += "
+  // fFirstWireEndVtx\n";
 
-  if (!(ch->GetBranch("fWireStartVtx"))) error_msg += "      fWireStartVtx\n";
-  if (!(ch->GetBranch("fWireEndVtx")))   error_msg += "      fWireEndVtx\n";
+  if (!(ch->GetBranch("fWireStartVtx")))
+    error_msg += "      fWireStartVtx\n";
+  if (!(ch->GetBranch("fWireEndVtx")))
+    error_msg += "      fWireEndVtx\n";
 
-  if (!(ch->GetBranch("fWirePitch")))       error_msg += "      fWirePitch\n";
-  if (!(ch->GetBranch("fWireAngle")))       error_msg += "      fWireAngle\n";
-  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT) {
-    if (!(ch->GetBranch("fOpChannelVtx")))    error_msg += "      fOpChannelVtx\n";
-    if (!(ch->GetBranch("fOpChannel2OpDet"))) error_msg += "      fOpChannel2OpDet\n";
-    if (!(ch->GetBranch("fOpDetVtx")))     error_msg += "      fOpDetVtx\n";
+  if (!(ch->GetBranch("fWirePitch")))
+    error_msg += "      fWirePitch\n";
+  if (!(ch->GetBranch("fWireAngle")))
+    error_msg += "      fWireAngle\n";
+  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT &&
+      LArUtilConfig::Detector() != galleryfmwk::geo::kSBND) {
+    if (!(ch->GetBranch("fOpChannelVtx")))
+      error_msg += "      fOpChannelVtx\n";
+    if (!(ch->GetBranch("fOpChannel2OpDet")))
+      error_msg += "      fOpChannel2OpDet\n";
+    if (!(ch->GetBranch("fOpDetVtx")))
+      error_msg += "      fOpDetVtx\n";
   }
 
-  if (!(ch->GetBranch("fPlaneOriginVtx"))) error_msg += "      fPlaneOriginVtx\n";
+  if (!(ch->GetBranch("fPlaneOriginVtx")))
+    error_msg += "      fPlaneOriginVtx\n";
 
   if (!error_msg.empty()) {
 
-    throw LArUtilException(Form("Missing following TBranches...\n%s", error_msg.c_str()));
+    throw LArUtilException(
+        Form("Missing following TBranches...\n%s", error_msg.c_str()));
 
     return false;
   }
@@ -160,26 +187,26 @@ bool Geometry::ReadTree()
   std::vector<Double_t> *pCryostatBoundaries = nullptr;
 
   // Vectors with length = # channels
-  std::vector<UChar_t>                *pChannelToPlaneMap = nullptr;
-  std::vector<UShort_t>               *pChannelToWireMap = nullptr;
+  std::vector<UChar_t> *pChannelToPlaneMap = nullptr;
+  std::vector<UShort_t> *pChannelToWireMap = nullptr;
 
   // Vectors with length = # planes
-  std::vector<std::vector<UShort_t> >   *pPlaneWireToChannelMap = nullptr;
+  std::vector<std::vector<UShort_t>> *pPlaneWireToChannelMap = nullptr;
   std::vector<galleryfmwk::geo::SigType_t> *pSignalType = nullptr;
-  std::vector<galleryfmwk::geo::View_t>    *pViewType = nullptr;
-  std::vector<Double_t>                 *pPlanePitch = nullptr;
-  //std::vector<std::vector<Double_t> >   *pFirstWireStartVtx = nullptr;
-  //std::vector<std::vector<Double_t> >   *pFirstWireEndVtx = nullptr;
-  std::vector<std::vector<std::vector<Double_t> > >  *pWireStartVtx = nullptr;
-  std::vector<std::vector<std::vector<Double_t> > >  *pWireEndVtx = nullptr;
-  std::vector<std::vector<Double_t> >  *pPlaneOriginVtx = nullptr;
+  std::vector<galleryfmwk::geo::View_t> *pViewType = nullptr;
+  std::vector<Double_t> *pPlanePitch = nullptr;
+  // std::vector<std::vector<Double_t> >   *pFirstWireStartVtx = nullptr;
+  // std::vector<std::vector<Double_t> >   *pFirstWireEndVtx = nullptr;
+  std::vector<std::vector<std::vector<Double_t>>> *pWireStartVtx = nullptr;
+  std::vector<std::vector<std::vector<Double_t>>> *pWireEndVtx = nullptr;
+  std::vector<std::vector<Double_t>> *pPlaneOriginVtx = nullptr;
 
   // Vectors with length = view
   std::vector<Double_t> *pWirePitch = nullptr;
   std::vector<Double_t> *pWireAngle = nullptr;
 
-  std::vector<std::vector<Float_t> > *pOpChannelVtx = nullptr;
-  std::vector<std::vector<Float_t> > *pOpDetVtx = nullptr;
+  std::vector<std::vector<Float_t>> *pOpChannelVtx = nullptr;
+  std::vector<std::vector<Float_t>> *pOpDetVtx = nullptr;
   std::vector<unsigned int> *pOpChannel2OpDet = nullptr;
   ch->SetBranchAddress("fDetLength", &fDetLength);
   ch->SetBranchAddress("fDetHalfWidth", &fDetHalfWidth);
@@ -189,11 +216,12 @@ bool Geometry::ReadTree()
   ch->SetBranchAddress("fCryoHalfWidth", &fCryoHalfWidth);
   ch->SetBranchAddress("fCryoHalfHeight", &fCryoHalfHeight);
 
-  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT) {
+  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT &&
+      LArUtilConfig::Detector() != galleryfmwk::geo::kSBND) {
     ch->SetBranchAddress("fCryostatBoundaries", &pCryostatBoundaries);
   }
 
-  ch->SetBranchAddress("fChannelToWireMap",  &pChannelToWireMap);
+  ch->SetBranchAddress("fChannelToWireMap", &pChannelToWireMap);
   ch->SetBranchAddress("fChannelToPlaneMap", &pChannelToPlaneMap);
   ch->SetBranchAddress("fPlaneWireToChannelMap", &pPlaneWireToChannelMap);
 
@@ -201,8 +229,8 @@ bool Geometry::ReadTree()
   ch->SetBranchAddress("fViewType", &pViewType);
   ch->SetBranchAddress("fPlanePitch", &pPlanePitch);
 
-  //ch->SetBranchAddress("fFirstWireStartVtx",&pFirstWireStartVtx);
-  //ch->SetBranchAddress("fFirstWireEndVtx",&pFirstWireEndVtx);
+  // ch->SetBranchAddress("fFirstWireStartVtx",&pFirstWireStartVtx);
+  // ch->SetBranchAddress("fFirstWireEndVtx",&pFirstWireEndVtx);
   ch->SetBranchAddress("fWireStartVtx", &pWireStartVtx);
   ch->SetBranchAddress("fWireEndVtx", &pWireEndVtx);
   ch->SetBranchAddress("fPlaneOriginVtx", &pPlaneOriginVtx);
@@ -210,15 +238,16 @@ bool Geometry::ReadTree()
   ch->SetBranchAddress("fWirePitch", &pWirePitch);
   ch->SetBranchAddress("fWireAngle", &pWireAngle);
 
-  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT) {
+  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT &&
+      LArUtilConfig::Detector() != galleryfmwk::geo::kSBND) {
     ch->SetBranchAddress("fOpChannelVtx", &pOpChannelVtx);
     ch->SetBranchAddress("fOpDetVtx", &pOpDetVtx);
     ch->SetBranchAddress("fOpChannel2OpDet", &pOpChannel2OpDet);
   }
   ch->GetEntry(0);
 
-
-  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT) {
+  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT &&
+      LArUtilConfig::Detector() != galleryfmwk::geo::kSBND) {
     fCryostatBoundaries.resize(pCryostatBoundaries->size());
 
     for (size_t i = 0; i < pCryostatBoundaries->size(); ++i)
@@ -240,8 +269,8 @@ bool Geometry::ReadTree()
   fSignalType.reserve(n_planes);
   fViewType.reserve(n_planes);
   fPlanePitch.reserve(n_planes);
-  //fFirstWireStartVtx.reserve(n_planes);
-  //fFirstWireEndVtx.reserve(n_planes);
+  // fFirstWireStartVtx.reserve(n_planes);
+  // fFirstWireEndVtx.reserve(n_planes);
   fWireStartVtx.reserve(n_planes);
   fWireEndVtx.reserve(n_planes);
   fPlaneOriginVtx.reserve(n_planes);
@@ -250,14 +279,13 @@ bool Geometry::ReadTree()
     fSignalType.push_back(pSignalType->at(i));
     fViewType.push_back(pViewType->at(i));
     fPlanePitch.push_back(pPlanePitch->at(i));
-    //fFirstWireStartVtx.push_back(pFirstWireStartVtx->at(i));
-    //fFirstWireEndVtx.push_back(pFirstWireEndVtx->at(i));
+    // fFirstWireStartVtx.push_back(pFirstWireStartVtx->at(i));
+    // fFirstWireEndVtx.push_back(pFirstWireEndVtx->at(i));
     fWireStartVtx.push_back(pWireStartVtx->at(i));
     fWireEndVtx.push_back(pWireEndVtx->at(i));
 
     fPlaneOriginVtx.push_back(pPlaneOriginVtx->at(i));
   }
-
 
   // Copy view-wise variables
   size_t n_views = pWirePitch->size();
@@ -268,8 +296,9 @@ bool Geometry::ReadTree()
     fWireAngle.push_back(pWireAngle->at(i));
   }
 
-  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT) {
-    // Copy op-channel-wise variables
+  if (LArUtilConfig::Detector() != galleryfmwk::geo::kArgoNeuT &&
+      LArUtilConfig::Detector() !=
+          galleryfmwk::geo::kSBND) { // Copy op-channel-wise variables
     size_t n_opchannel = pOpChannelVtx->size();
     fOpChannelVtx.reserve(n_opchannel);
     for (size_t i = 0; i < n_opchannel; ++i)
@@ -284,15 +313,12 @@ bool Geometry::ReadTree()
     fOpChannel2OpDet.reserve(n_opmap);
     for (size_t i = 0; i < n_opmap; ++i)
       fOpChannel2OpDet.push_back(pOpChannel2OpDet->at(i));
-
   }
   delete ch;
   return true;
 }
 
-
-UInt_t Geometry::Nwires(UInt_t p) const
-{
+UInt_t Geometry::Nwires(UInt_t p) const {
   if (Nplanes() <= p) {
     throw LArUtilException(Form("Invalid plane ID :%d", p));
     return galleryfmwk::data::kINVALID_UINT;
@@ -301,8 +327,7 @@ UInt_t Geometry::Nwires(UInt_t p) const
   return fPlaneWireToChannelMap.at(p).size();
 }
 
-UChar_t  Geometry::ChannelToPlane(const UInt_t ch) const
-{
+UChar_t Geometry::ChannelToPlane(const UInt_t ch) const {
   if (ch >= fChannelToPlaneMap.size()) {
     throw LArUtilException(Form("Invalid channel number: %d", ch));
     return galleryfmwk::data::kINVALID_CHAR;
@@ -310,8 +335,7 @@ UChar_t  Geometry::ChannelToPlane(const UInt_t ch) const
   return fChannelToPlaneMap.at(ch);
 }
 
-UInt_t   Geometry::ChannelToWire(const UInt_t ch)const
-{
+UInt_t Geometry::ChannelToWire(const UInt_t ch) const {
   if (ch >= fChannelToWireMap.size()) {
     throw LArUtilException(Form("Invalid channel number: %d", ch));
     return galleryfmwk::data::kINVALID_CHAR;
@@ -319,15 +343,13 @@ UInt_t   Geometry::ChannelToWire(const UInt_t ch)const
   return fChannelToWireMap.at(ch);
 }
 
-
-galleryfmwk::geo::WireID Geometry::ChannelToWireID(const UInt_t ch)const
-{
+galleryfmwk::geo::WireID Geometry::ChannelToWireID(const UInt_t ch) const {
   if (ch >= fChannelToWireMap.size()) {
     throw LArUtilException(Form("Invalid channel number: %d", ch));
     return galleryfmwk::geo::WireID();
   }
 
-  UInt_t wire  = fChannelToWireMap.at(ch);
+  UInt_t wire = fChannelToWireMap.at(ch);
   UInt_t plane = ChannelToPlane(ch);
 
   galleryfmwk::geo::WireID wireID(0, 0, plane, wire);
@@ -335,8 +357,7 @@ galleryfmwk::geo::WireID Geometry::ChannelToWireID(const UInt_t ch)const
   return wireID;
 }
 
-galleryfmwk::geo::SigType_t Geometry::SignalType(const UInt_t ch) const
-{
+galleryfmwk::geo::SigType_t Geometry::SignalType(const UInt_t ch) const {
   if (ch >= fChannelToPlaneMap.size()) {
     throw LArUtilException(Form("Invalid Channel number :%d", ch));
     return galleryfmwk::geo::kMysteryType;
@@ -345,8 +366,8 @@ galleryfmwk::geo::SigType_t Geometry::SignalType(const UInt_t ch) const
   return fSignalType.at(fChannelToPlaneMap.at(ch));
 }
 
-galleryfmwk::geo::SigType_t Geometry::PlaneToSignalType(const UChar_t plane) const
-{
+galleryfmwk::geo::SigType_t
+Geometry::PlaneToSignalType(const UChar_t plane) const {
   if (plane >= fSignalType.size()) {
     throw LArUtilException(Form("Invalid Plane number: %d", plane));
     return galleryfmwk::geo::kMysteryType;
@@ -355,8 +376,7 @@ galleryfmwk::geo::SigType_t Geometry::PlaneToSignalType(const UChar_t plane) con
   return fSignalType.at(plane);
 }
 
-galleryfmwk::geo::View_t Geometry::View(const UInt_t ch) const
-{
+galleryfmwk::geo::View_t Geometry::View(const UInt_t ch) const {
   if (ch >= fChannelToPlaneMap.size()) {
     throw LArUtilException(Form("Invalid Channel number :%d", ch));
     return galleryfmwk::geo::kUnknown;
@@ -365,8 +385,7 @@ galleryfmwk::geo::View_t Geometry::View(const UInt_t ch) const
   return fViewType.at(fChannelToPlaneMap.at(ch));
 }
 
-galleryfmwk::geo::View_t Geometry::PlaneToView(const UChar_t plane) const
-{
+galleryfmwk::geo::View_t Geometry::PlaneToView(const UChar_t plane) const {
   if (plane >= fViewType.size()) {
     throw LArUtilException(Form("Invalid Plane number: %d", plane));
     return galleryfmwk::geo::kUnknown;
@@ -375,70 +394,66 @@ galleryfmwk::geo::View_t Geometry::PlaneToView(const UChar_t plane) const
   return fViewType.at(plane);
 }
 
-std::set<galleryfmwk::geo::View_t> const Geometry::Views() const
-{
+std::set<galleryfmwk::geo::View_t> const Geometry::Views() const {
   std::set<galleryfmwk::geo::View_t> views;
-  for (auto const v : fViewType) views.insert(v);
+  for (auto const v : fViewType)
+    views.insert(v);
   return views;
 }
 
 UInt_t Geometry::PlaneWireToChannel(const UInt_t plane,
-                                    const UInt_t wire) const
-{
+                                    const UInt_t wire) const {
 
   if (plane >= Nplanes() || fPlaneWireToChannelMap.at(plane).size() <= wire) {
-    throw LArUtilException(Form("Invalid (plane, wire) = (%d, %d)", plane, wire));
+    throw LArUtilException(
+        Form("Invalid (plane, wire) = (%d, %d)", plane, wire));
     return galleryfmwk::data::kINVALID_UINT;
   }
   return fPlaneWireToChannelMap.at(plane).at(wire);
 }
 
 UInt_t Geometry::NearestChannel(const Double_t worldLoc[3],
-                                const UInt_t PlaneNo) const
-{
+                                const UInt_t PlaneNo) const {
   return PlaneWireToChannel(PlaneNo, NearestWire(worldLoc, PlaneNo));
 }
 
 UInt_t Geometry::NearestChannel(const std::vector<Double_t> &worldLoc,
-                                const UInt_t PlaneNo) const
-{
+                                const UInt_t PlaneNo) const {
   return PlaneWireToChannel(PlaneNo, NearestWire(worldLoc, PlaneNo));
 }
 
 UInt_t Geometry::NearestChannel(const TVector3 &worldLoc,
-                                const UInt_t PlaneNo) const
-{
+                                const UInt_t PlaneNo) const {
   return PlaneWireToChannel(PlaneNo, NearestWire(worldLoc, PlaneNo));
 }
 
 UInt_t Geometry::NearestWire(const Double_t worldLoc[3],
-                             const UInt_t PlaneNo) const
-{
+                             const UInt_t PlaneNo) const {
   TVector3 loc(worldLoc);
   return NearestWire(loc, PlaneNo);
 }
 
 UInt_t Geometry::NearestWire(const std::vector<Double_t> &worldLoc,
-                             const UInt_t PlaneNo) const
-{
+                             const UInt_t PlaneNo) const {
   TVector3 loc(&worldLoc[0]);
   return NearestWire(loc, PlaneNo);
 }
 
 UInt_t Geometry::NearestWire(const TVector3 &worldLoc,
-                             const UInt_t PlaneNo) const
-{
-  int NearestWireNumber = int(nearbyint(worldLoc[1] * fOrthVectorsY.at(PlaneNo)
-                                        + worldLoc[2] * fOrthVectorsZ.at(PlaneNo)
-                                        - fFirstWireProj.at(PlaneNo)));
+                             const UInt_t PlaneNo) const {
+  int NearestWireNumber = int(nearbyint(
+      worldLoc[1] * fOrthVectorsY.at(PlaneNo) +
+      worldLoc[2] * fOrthVectorsZ.at(PlaneNo) - fFirstWireProj.at(PlaneNo)));
 
-  unsigned int wireNumber = (unsigned int) NearestWireNumber;
+  unsigned int wireNumber = (unsigned int)NearestWireNumber;
 
   if (NearestWireNumber < 0 ||
-      NearestWireNumber >= (int)(this->Nwires(PlaneNo)) ) {
+      NearestWireNumber >= (int)(this->Nwires(PlaneNo))) {
 
-    if (NearestWireNumber < 0) wireNumber = 0;
-    else wireNumber = this->Nwires(PlaneNo) - 1;
+    if (NearestWireNumber < 0)
+      wireNumber = 0;
+    else
+      wireNumber = this->Nwires(PlaneNo) - 1;
 
     larutil::InvalidWireError err(Form("Can't find nearest wire for (%g,%g,%g)",
                                        worldLoc[0], worldLoc[1], worldLoc[2]));
@@ -448,7 +463,8 @@ UInt_t Geometry::NearestWire(const TVector3 &worldLoc,
   }
   /*
   std::cout<<"NearestWireID"<<std::endl;
-  std::cout<<Form("(%g,%g,%g) position ... using (%g,%g,%g) ... Wire %d Plane %d",
+  std::cout<<Form("(%g,%g,%g) position ... using (%g,%g,%g) ... Wire %d Plane
+  %d",
                   worldLoc[0],worldLoc[1],worldLoc[2],
                   fOrthVectorsY[PlaneNo],
                   fOrthVectorsZ[PlaneNo],
@@ -461,33 +477,30 @@ UInt_t Geometry::NearestWire(const TVector3 &worldLoc,
 
 /// exact wire coordinate (fractional wire) to input world coordinates
 Double_t Geometry::WireCoordinate(const Double_t worldLoc[3],
-                                  const UInt_t   PlaneNo) const
-{
+                                  const UInt_t PlaneNo) const {
   TVector3 loc(worldLoc);
   return WireCoordinate(loc, PlaneNo);
 }
 
 /// exact wire coordinate (fractional wire) to input world coordinate
 Double_t Geometry::WireCoordinate(const std::vector<Double_t> &worldLoc,
-                                  const UInt_t  PlaneNo) const
-{
+                                  const UInt_t PlaneNo) const {
   TVector3 loc(&worldLoc[0]);
   return WireCoordinate(loc, PlaneNo);
 }
 
 /// exact wire coordinate (fractional wire) to input world coordinates
-Double_t Geometry::WireCoordinate(const TVector3& worldLoc,
-                                  const UInt_t PlaneNo) const
-{
+Double_t Geometry::WireCoordinate(const TVector3 &worldLoc,
+                                  const UInt_t PlaneNo) const {
 
-  Double_t NearestWireNumber = worldLoc[1] * fOrthVectorsY.at(PlaneNo)
-                               + worldLoc[2] * fOrthVectorsZ.at(PlaneNo)
-                               - fFirstWireProj.at(PlaneNo);
-
+  Double_t NearestWireNumber = worldLoc[1] * fOrthVectorsY.at(PlaneNo) +
+                               worldLoc[2] * fOrthVectorsZ.at(PlaneNo) -
+                               fFirstWireProj.at(PlaneNo);
 
   /*
   std::cout<<"NearestWireID"<<std::endl;
-  std::cout<<Form("(%g,%g,%g) position ... using (%g,%g,%g) ... Wire %d Plane %d",
+  std::cout<<Form("(%g,%g,%g) position ... using (%g,%g,%g) ... Wire %d Plane
+  %d",
                   worldLoc[0],worldLoc[1],worldLoc[2],
                   fOrthVectorsY[PlaneNo],
                   fOrthVectorsZ[PlaneNo],
@@ -498,39 +511,39 @@ Double_t Geometry::WireCoordinate(const TVector3& worldLoc,
   return NearestWireNumber;
 }
 
-
 // distance between planes p1 < p2
-Double_t Geometry::PlanePitch(const UChar_t p1, const UChar_t p2) const
-{
-  if ( p1 == p2 ) return 0;
-  else if ( (p1 == 0 && p2 == 1) || (p1 == 1 && p2 == 0) ) return fPlanePitch.at(0);
-  else if ( (p1 == 1 && p2 == 2) || (p1 == 2 && p2 == 1) ) return fPlanePitch.at(1);
-  else if ( (p1 == 0 && p2 == 2) || (p1 == 2 && p2 == 0) ) return fPlanePitch.at(2);
+Double_t Geometry::PlanePitch(const UChar_t p1, const UChar_t p2) const {
+  if (p1 == p2)
+    return 0;
+  else if ((p1 == 0 && p2 == 1) || (p1 == 1 && p2 == 0))
+    return fPlanePitch.at(0);
+  else if ((p1 == 1 && p2 == 2) || (p1 == 2 && p2 == 1))
+    return fPlanePitch.at(1);
+  else if ((p1 == 0 && p2 == 2) || (p1 == 2 && p2 == 0))
+    return fPlanePitch.at(2);
   else {
     throw LArUtilException("Plane number > 2 not supported!");
     return galleryfmwk::data::kINVALID_DOUBLE;
   }
 }
 
-Double_t Geometry::WirePitch(const UInt_t  w1,
-                             const UInt_t  w2,
-                             const UChar_t plane) const
-{
-  if ( w1 > w2 && w1 >= fPlaneWireToChannelMap.at(plane).size() ) {
+Double_t Geometry::WirePitch(const UInt_t w1, const UInt_t w2,
+                             const UChar_t plane) const {
+  if (w1 > w2 && w1 >= fPlaneWireToChannelMap.at(plane).size()) {
     throw LArUtilException(Form("Invalid wire number: %d", w1));
     return galleryfmwk::data::kINVALID_DOUBLE;
   }
-  if ( w2 > w1 && w2 >= fPlaneWireToChannelMap.at(plane).size() ) {
+  if (w2 > w1 && w2 >= fPlaneWireToChannelMap.at(plane).size()) {
     throw LArUtilException(Form("Invalid wire number: %d", w2));
     return galleryfmwk::data::kINVALID_DOUBLE;
   }
 
-  return ( w1 < w2 ? (w2 - w1) * (fWirePitch.at(fViewType.at(plane))) : (w1 - w2) * (fWirePitch.at(fViewType.at(plane))));
+  return (w1 < w2 ? (w2 - w1) * (fWirePitch.at(fViewType.at(plane)))
+                  : (w1 - w2) * (fWirePitch.at(fViewType.at(plane))));
 }
 
 /// assumes all planes in a view have the same pitch
-Double_t   Geometry::WirePitch(const galleryfmwk::geo::View_t view) const
-{
+Double_t Geometry::WirePitch(const galleryfmwk::geo::View_t view) const {
   if ((size_t)view > Nviews()) {
     throw LArUtilException(Form("Invalid view: %d", view));
     return galleryfmwk::data::kINVALID_DOUBLE;
@@ -539,8 +552,7 @@ Double_t   Geometry::WirePitch(const galleryfmwk::geo::View_t view) const
   return fWirePitch.at((size_t)view);
 }
 
-Double_t   Geometry::WireAngleToVertical(galleryfmwk::geo::View_t view) const
-{
+Double_t Geometry::WireAngleToVertical(galleryfmwk::geo::View_t view) const {
   if ((size_t)view > Nviews()) {
     throw LArUtilException(Form("Invalid view: %d", view));
     return galleryfmwk::data::kINVALID_DOUBLE;
@@ -549,13 +561,10 @@ Double_t   Geometry::WireAngleToVertical(galleryfmwk::geo::View_t view) const
   return fWireAngle.at((size_t)view);
 }
 
+void Geometry::WireEndPoints(const UChar_t plane, const UInt_t wire,
+                             Double_t *xyzStart, Double_t *xyzEnd) const {
 
-void Geometry::WireEndPoints(const UChar_t plane,
-                             const UInt_t wire,
-                             Double_t *xyzStart, Double_t *xyzEnd) const
-{
-
-  if (plane >= fWireStartVtx.size())  {
+  if (plane >= fWireStartVtx.size()) {
     throw LArUtilException(Form("Plane %d invalid!", plane));
     return;
   }
@@ -567,26 +576,24 @@ void Geometry::WireEndPoints(const UChar_t plane,
   xyzStart[0] = fWireStartVtx.at(plane).at(wire).at(0);
   xyzStart[1] = fWireStartVtx.at(plane).at(wire).at(1);
   xyzStart[2] = fWireStartVtx.at(plane).at(wire).at(2);
-  xyzEnd[0]   = fWireEndVtx.at(plane).at(wire).at(0);
-  xyzEnd[1]   = fWireEndVtx.at(plane).at(wire).at(1);
-  xyzEnd[2]   = fWireEndVtx.at(plane).at(wire).at(2);
-
+  xyzEnd[0] = fWireEndVtx.at(plane).at(wire).at(0);
+  xyzEnd[1] = fWireEndVtx.at(plane).at(wire).at(1);
+  xyzEnd[2] = fWireEndVtx.at(plane).at(wire).at(2);
 }
 
-bool Geometry::ChannelsIntersect(const UInt_t c1,
-                                 const UInt_t c2,
-                                 Double_t &y, Double_t &z) const
-{
+bool Geometry::ChannelsIntersect(const UInt_t c1, const UInt_t c2, Double_t &y,
+                                 Double_t &z) const {
   if (c1 == c2) {
     throw LArUtilException("Same channel does not intersect!");
     return false;
   }
 
-  if ( c1 >= fChannelToPlaneMap.size() || c2 >= fChannelToPlaneMap.size() ) {
+  if (c1 >= fChannelToPlaneMap.size() || c2 >= fChannelToPlaneMap.size()) {
     throw LArUtilException(Form("Invalid channels : %d and %d", c1, c2));
     return false;
   }
-  if ( fViewType.at(fChannelToPlaneMap.at(c1)) == fViewType.at(fChannelToPlaneMap.at(c2)) ) {
+  if (fViewType.at(fChannelToPlaneMap.at(c1)) ==
+      fViewType.at(fChannelToPlaneMap.at(c2))) {
     return false;
   }
 
@@ -609,59 +616,58 @@ bool Geometry::ChannelsIntersect(const UInt_t c1,
 
   // if endpoint of one input wire is within range of other input wire in
   // BOTH y AND z, wires overlap
-  bool overlapY = (ValueInRange(start1[1], start2[1], end2[1]) || ValueInRange(end1[1], start2[1], end2[1]));
-  bool overlapZ = (ValueInRange(start1[2], start2[2], end2[2]) || ValueInRange(end1[2], start2[2], end2[2]));
+  bool overlapY = (ValueInRange(start1[1], start2[1], end2[1]) ||
+                   ValueInRange(end1[1], start2[1], end2[1]));
+  bool overlapZ = (ValueInRange(start1[2], start2[2], end2[2]) ||
+                   ValueInRange(end1[2], start2[2], end2[2]));
 
-  bool overlapY_rev = (ValueInRange(start2[1], start1[1], end1[1]) || ValueInRange(end2[1], start1[1], end1[1]));
-  bool overlapZ_rev = (ValueInRange(start2[2], start1[2], end1[2]) || ValueInRange(end2[2], start1[2], end1[2]));
+  bool overlapY_rev = (ValueInRange(start2[1], start1[1], end1[1]) ||
+                       ValueInRange(end2[1], start1[1], end1[1]));
+  bool overlapZ_rev = (ValueInRange(start2[2], start1[2], end1[2]) ||
+                       ValueInRange(end2[2], start1[2], end1[2]));
 
   // override y overlap checks if a vertical plane exists:
-  if ( fWireAngle.at(v1) == TMath::Pi() / 2 || fWireAngle.at(v2) == TMath::Pi() / 2 ) {
-    overlapY     = true;
+  if (fWireAngle.at(v1) == TMath::Pi() / 2 ||
+      fWireAngle.at(v2) == TMath::Pi() / 2) {
+    overlapY = true;
     overlapY_rev = true;
   }
 
-  //catch to get vertical wires, where the standard overlap might not work, Andrzej
-  if (std::abs(start2[2] - end2[2]) < 0.01) overlapZ = overlapZ_rev;
-
+  // catch to get vertical wires, where the standard overlap might not work,
+  // Andrzej
+  if (std::abs(start2[2] - end2[2]) < 0.01)
+    overlapZ = overlapZ_rev;
 
   if (overlapY && overlapZ) {
-    IntersectionPoint(w1, w2, p1, p2,
-                      start1, end1,
-                      start2, end2,
-                      y, z);
+    IntersectionPoint(w1, w2, p1, p2, start1, end1, start2, end2, y, z);
     return true;
   }
 
   else if (overlapY_rev && overlapZ_rev) {
-    this->IntersectionPoint(w2, w1, p2, p1,
-                            start2, end2,
-                            start1, end1,
-                            y, z);
+    this->IntersectionPoint(w2, w1, p2, p1, start2, end2, start1, end1, y, z);
     return true;
   }
 
   return false;
-
 }
 
-void Geometry::IntersectionPoint(const UInt_t  wire1,  const UInt_t  wire2,
+void Geometry::IntersectionPoint(const UInt_t wire1, const UInt_t wire2,
                                  const UChar_t plane1, const UChar_t plane2,
                                  Double_t start_w1[3], Double_t end_w1[3],
                                  Double_t start_w2[3], Double_t end_w2[3],
-                                 Double_t &y, Double_t &z) const
-{
+                                 Double_t &y, Double_t &z) const {
 
   galleryfmwk::geo::View_t v1 = fViewType.at(plane1);
   galleryfmwk::geo::View_t v2 = fViewType.at(plane2);
-  //angle of wire1 wrt z-axis in Y-Z plane...in radians
+  // angle of wire1 wrt z-axis in Y-Z plane...in radians
   Double_t angle1 = fWireAngle.at(v1);
-  //angle of wire2 wrt z-axis in Y-Z plane...in radians
+  // angle of wire2 wrt z-axis in Y-Z plane...in radians
   Double_t angle2 = fWireAngle.at(v2);
 
-  if (angle1 == angle2) return; //comparing two wires in the same plane...pointless.
+  if (angle1 == angle2)
+    return; // comparing two wires in the same plane...pointless.
 
-  //coordinates of "upper" endpoints...(z1,y1) = (a,b) and (z2,y2) = (c,d)
+  // coordinates of "upper" endpoints...(z1,y1) = (a,b) and (z2,y2) = (c,d)
   double a = 0.;
   double b = 0.;
   double c = 0.;
@@ -670,7 +676,8 @@ void Geometry::IntersectionPoint(const UInt_t  wire1,  const UInt_t  wire2,
   double anglex = 0.;
 
   // below is a special case of calculation when one of the planes is vertical.
-  angle1 < angle2 ? angle = angle1 : angle = angle2;//get angle closest to the z-axis
+  angle1 < angle2 ? angle = angle1
+                  : angle = angle2; // get angle closest to the z-axis
 
   // special case, one plane is vertical
   if (angle1 == TMath::Pi() / 2 || angle2 == TMath::Pi() / 2) {
@@ -681,131 +688,127 @@ void Geometry::IntersectionPoint(const UInt_t  wire1,  const UInt_t  wire2,
       b = end_w1[1];
       c = end_w2[2];
       d = end_w2[1];
-      // the if below can in principle be replaced by the sign of anglex (inverted)
-      // in the formula for y below. But until the geometry is fully symmetric in y I'm
+      // the if below can in principle be replaced by the sign of anglex
+      // (inverted)
+      // in the formula for y below. But until the geometry is fully symmetric
+      // in y I'm
       // leaving it like this. Andrzej
-      if ((anglex) > 0 ) b = start_w1[1];
+      if ((anglex) > 0)
+        b = start_w1[1];
 
-    }
-    else if (angle2 == TMath::Pi() / 2) {
+    } else if (angle2 == TMath::Pi() / 2) {
       anglex = (angle1 - TMath::Pi() / 2);
       a = end_w2[2];
       b = end_w2[1];
       c = end_w1[2];
       d = end_w1[1];
-      // the if below can in principle be replaced by the sign of anglex (inverted)
-      // in the formula for y below. But until the geometry is fully symmetric in y I'm
+      // the if below can in principle be replaced by the sign of anglex
+      // (inverted)
+      // in the formula for y below. But until the geometry is fully symmetric
+      // in y I'm
       // leaving it like this. Andrzej
-      if ((anglex) > 0 ) b = start_w2[1];
+      if ((anglex) > 0)
+        b = start_w2[1];
     }
 
     y = b + ((c - a) - (b - d) * tan(anglex)) / tan(anglex);
-    z = a;   // z is defined by the wire in the vertical plane
+    z = a; // z is defined by the wire in the vertical plane
 
     return;
   }
 
   // end of vertical case
-  z = 0; y = 0;
+  z = 0;
+  y = 0;
 
   if (angle1 < (TMath::Pi() / 2.0)) {
     c = end_w1[2];
     d = end_w1[1];
     a = start_w2[2];
     b = start_w2[1];
-  }
-  else {
+  } else {
     c = end_w2[2];
     d = end_w2[1];
     a = start_w1[2];
     b = start_w1[1];
   }
 
-  //Intersection point of two wires in the yz plane is completely
-  //determined by wire endpoints and angle of inclination.
-  z = 0.5 * ( c + a + (b - d) / TMath::Tan(angle) );
-  y = 0.5 * ( b + d + (a - c) * TMath::Tan(angle) );
+  // Intersection point of two wires in the yz plane is completely
+  // determined by wire endpoints and angle of inclination.
+  z = 0.5 * (c + a + (b - d) / TMath::Tan(angle));
+  y = 0.5 * (b + d + (a - c) * TMath::Tan(angle));
 
   return;
-
 }
 
-// Added shorthand function where start and endpoints are looked up automatically
+// Added shorthand function where start and endpoints are looked up
+// automatically
 //  - whether to use this or the full function depends on optimization of your
 //    particular algorithm.  Ben J, Oct 2011
 //--------------------------------------------------------------------
-void Geometry::IntersectionPoint(const UInt_t  wire1,  const UInt_t  wire2,
+void Geometry::IntersectionPoint(const UInt_t wire1, const UInt_t wire2,
                                  const UChar_t plane1, const UChar_t plane2,
                                  Double_t &y, Double_t &z) const
 
 {
   double WireStart1[3] = {0.};
   double WireStart2[3] = {0.};
-  double WireEnd1[3]   = {0.};
-  double WireEnd2[3]   = {0.};
+  double WireEnd1[3] = {0.};
+  double WireEnd2[3] = {0.};
 
   this->WireEndPoints(plane1, wire1, WireStart1, WireEnd1);
   this->WireEndPoints(plane2, wire2, WireStart2, WireEnd2);
-  this->IntersectionPoint(wire1, wire2, plane1, plane2,
-                          WireStart1, WireEnd1,
+  this->IntersectionPoint(wire1, wire2, plane1, plane2, WireStart1, WireEnd1,
                           WireStart2, WireEnd2, y, z);
 }
 
-UInt_t Geometry::GetClosestOpDet(const Double_t *xyz) const
-{
-  Double_t dist2      = 0;
-  Double_t min_dist2  = galleryfmwk::data::kINVALID_DOUBLE;
-  UInt_t   closest_ch = galleryfmwk::data::kINVALID_UINT;
+UInt_t Geometry::GetClosestOpDet(const Double_t *xyz) const {
+  Double_t dist2 = 0;
+  Double_t min_dist2 = galleryfmwk::data::kINVALID_DOUBLE;
+  UInt_t closest_ch = galleryfmwk::data::kINVALID_UINT;
   for (size_t ch = 0; ch < fOpDetVtx.size(); ++ch) {
 
-    dist2 =
-      pow(xyz[0] - fOpDetVtx.at(ch).at(0), 2) +
-      pow(xyz[1] - fOpDetVtx.at(ch).at(1), 2) +
-      pow(xyz[2] - fOpDetVtx.at(ch).at(2), 2);
+    dist2 = pow(xyz[0] - fOpDetVtx.at(ch).at(0), 2) +
+            pow(xyz[1] - fOpDetVtx.at(ch).at(1), 2) +
+            pow(xyz[2] - fOpDetVtx.at(ch).at(2), 2);
 
-    if ( dist2 < min_dist2 ) {
+    if (dist2 < min_dist2) {
 
       min_dist2 = dist2;
       closest_ch = ch;
-
     }
   }
 
   return closest_ch;
 }
 
-UInt_t Geometry::GetClosestOpDet(const Double_t *xyz, Double_t &dist) const
-{
-  Double_t min_dist2  = galleryfmwk::data::kINVALID_DOUBLE;
-  UInt_t   closest_ch = galleryfmwk::data::kINVALID_UINT;
+UInt_t Geometry::GetClosestOpDet(const Double_t *xyz, Double_t &dist) const {
+  Double_t min_dist2 = galleryfmwk::data::kINVALID_DOUBLE;
+  UInt_t closest_ch = galleryfmwk::data::kINVALID_UINT;
   for (size_t ch = 0; ch < fOpDetVtx.size(); ++ch) {
 
-    dist =
-      pow(xyz[0] - fOpDetVtx.at(ch).at(0), 2) +
-      pow(xyz[1] - fOpDetVtx.at(ch).at(1), 2) +
-      pow(xyz[2] - fOpDetVtx.at(ch).at(2), 2);
+    dist = pow(xyz[0] - fOpDetVtx.at(ch).at(0), 2) +
+           pow(xyz[1] - fOpDetVtx.at(ch).at(1), 2) +
+           pow(xyz[2] - fOpDetVtx.at(ch).at(2), 2);
 
-    if ( dist < min_dist2 ) {
+    if (dist < min_dist2) {
 
       min_dist2 = dist;
       closest_ch = ch;
-
     }
   }
   dist = sqrt(dist);
   return closest_ch;
 }
 
-UInt_t Geometry::OpDetFromOpChannel(UInt_t ch) const
-{
+UInt_t Geometry::OpDetFromOpChannel(UInt_t ch) const {
   if (ch >= fOpChannel2OpDet.size())
     throw LArUtilException(Form("Invalid OpChannel: %d", ch));
   return fOpChannel2OpDet[ch];
 }
 
-void Geometry::GetOpChannelPosition(const UInt_t i, Double_t *xyz) const
-{
-  if ( i >= fOpChannelVtx.size() ) {
+void Geometry::GetOpChannelPosition(const UInt_t i, Double_t *xyz) const {
+  if (i >= fOpChannelVtx.size()) {
     throw LArUtilException(Form("Invalid PMT channel number: %d", i));
     xyz[0] = galleryfmwk::data::kINVALID_DOUBLE;
     xyz[0] = galleryfmwk::data::kINVALID_DOUBLE;
@@ -819,9 +822,8 @@ void Geometry::GetOpChannelPosition(const UInt_t i, Double_t *xyz) const
   return;
 }
 
-void Geometry::GetOpDetPosition(const UInt_t i, Double_t *xyz) const
-{
-  if ( i >= fOpDetVtx.size() ) {
+void Geometry::GetOpDetPosition(const UInt_t i, Double_t *xyz) const {
+  if (i >= fOpDetVtx.size()) {
     throw LArUtilException(Form("Invalid PMT channel number: %d", i));
     xyz[0] = galleryfmwk::data::kINVALID_DOUBLE;
     xyz[0] = galleryfmwk::data::kINVALID_DOUBLE;
@@ -835,25 +837,22 @@ void Geometry::GetOpDetPosition(const UInt_t i, Double_t *xyz) const
   return;
 }
 
-const std::vector<Double_t>& Geometry::PlaneOriginVtx(UChar_t plane)
-{
+const std::vector<Double_t> &Geometry::PlaneOriginVtx(UChar_t plane) {
   if (plane >= fPlaneOriginVtx.size()) {
     throw LArUtilException(Form("Invalid plane number: %d", plane));
-    fPlaneOriginVtx.push_back(std::vector<Double_t>(3, galleryfmwk::data::kINVALID_DOUBLE));
+    fPlaneOriginVtx.push_back(
+        std::vector<Double_t>(3, galleryfmwk::data::kINVALID_DOUBLE));
     return fPlaneOriginVtx.at(this->Nplanes());
   }
 
   return fPlaneOriginVtx.at(plane);
 }
 
-void Geometry::PlaneOriginVtx(UChar_t plane, Double_t *vtx) const
-{
+void Geometry::PlaneOriginVtx(UChar_t plane, Double_t *vtx) const {
   vtx[0] = fPlaneOriginVtx.at(plane)[0];
   vtx[1] = fPlaneOriginVtx.at(plane)[1];
   vtx[2] = fPlaneOriginVtx.at(plane)[2];
 }
-
 }
-
 
 #endif
