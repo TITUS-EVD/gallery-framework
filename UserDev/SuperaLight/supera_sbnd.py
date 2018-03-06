@@ -55,13 +55,11 @@ def main():
 
     larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
 
-
-   _file = sys.argv[-1]
-#    process_file(_file)
-
-    for _file in glob.glob('/data/sbnd/dl_larsoft/*.root'):
-        print _file
-        process_file(_file)
+    file_list = args.files
+    process_files(file_list)
+    # for _file in glob.glob('/data/sbnd/dl_larsoft/*.root'):
+    #     print _file
+    #     process_file(_file)
 
 
 if __name__ == '__main__':
