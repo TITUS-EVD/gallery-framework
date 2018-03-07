@@ -7,7 +7,7 @@ import argparse
 from ROOT import gallery, galleryfmwk, larutil
 from ROOT import larcv
 from ROOT import supera
-
+from ROOT import TFile
 
 def process_files(file_list):
 
@@ -39,6 +39,13 @@ def process_files(file_list):
     my_proc.add_process(supera_light)
 
     my_proc.run()
+
+    # Open the output file and find out how many events were processed:
+    f = TFile.Open(out_name)
+    tree = f.GetListOfKeys()[0].GetName()
+    print "Number of entries processed: {0}".format(f.Get(tree).GetEntries())
+    print "Output file name: {0}".format(out_name)
+
 
 def main():
 
