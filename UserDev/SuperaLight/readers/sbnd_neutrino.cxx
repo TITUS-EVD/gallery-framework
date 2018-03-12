@@ -65,10 +65,10 @@ void SBNDNeutrino::slice(gallery::Event* ev, larcv::IOManager* io) {
     i++;
   }
 
-  std::cout << "Neutrino Vertex is at ("
-            << neutrino.Vx() << ", "
-            << neutrino.Vy() << ", "
-            << neutrino.Vz() << ")\n";
+  // std::cout << "Neutrino Vertex is at ("
+  //           << neutrino.Vx() << ", "
+  //           << neutrino.Vy() << ", "
+  //           << neutrino.Vz() << ")\n";
 
   // larcv::ClusterVoxel3D clusters3d;
   event_cluster3d->resize(1);
@@ -91,7 +91,11 @@ void SBNDNeutrino::slice(gallery::Event* ev, larcv::IOManager* io) {
     auto & voxel_set =
       _clusters_by_projection.at(projection_id).writeable_voxel_set(0);
     for (int i = -2; i < 3; i ++ ){
+      if (tick + i < 0) continue;
+      if (tick + i > n_ticks) continue;
       for (int j = -2; j < 3; j ++ ){
+        if (wire + j < 0) continue;
+        if (wire + j > larutil::Geometry::GetME()->Nwires(projection_id) ) continue;
         auto index = plane_meta.at(projection_id).index(tick + i, wire + j);
         voxel_set.add( larcv::Voxel(index,1.0));
       }
