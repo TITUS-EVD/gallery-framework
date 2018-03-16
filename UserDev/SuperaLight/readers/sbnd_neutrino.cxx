@@ -82,7 +82,13 @@ void SBNDNeutrino::slice(gallery::Event* ev, larcv::IOManager* io) {
     int tick = (n_ticks +
                 neutrino.Vx() / larutil::GeometryHelper::GetME()->TimeToCm()) /
                (1.0 * compression);
-    int wire = larutil::Geometry::GetME()->NearestWire(neutrino.Position().Vect(), projection_id);
+    int wire;
+    try{
+      wire = larutil::Geometry::GetME()->NearestWire(neutrino.Position().Vect(), projection_id);
+    }
+    catch(...){
+      continue;
+    }
     // std::cout << "Nearest wire is " << wire << std::endl;
     // std::cout << "X position is " << neutrino.Vx() << std::endl;
     // std::cout << " Tick is " << tick << std::endl;
