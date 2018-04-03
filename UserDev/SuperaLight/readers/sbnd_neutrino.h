@@ -58,6 +58,7 @@ public:
 
 
 protected:
+    void neutrino_slice(gallery::Event* ev, larcv::IOManager* io);
 
 
 

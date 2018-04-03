@@ -43,17 +43,55 @@ void SBNDNeutrino::slice(gallery::Event* ev, larcv::IOManager* io) {
 
   gallery::Handle<std::vector<simb::MCTruth> > mctruth;
   if (!ev->getByLabel(neutrino_tag, mctruth)) {
+    // cosmic_slice(ev, io);
     return;
   }
+  else{
+    neutrino_slice(ev, io);
+  }
+  return;
 
+}
+
+
+void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
+
+  std::string neutrino_producer = "generator";
+  art::InputTag neutrino_tag(neutrino_producer);
+
+  gallery::Handle<std::vector<simb::MCTruth> > mctruth;
+
+  auto truth = mctruth->at(0);
   auto neutrino = mctruth->at(0).GetNeutrino().Nu();
 
   // get the sparse3d objects:
   auto event_cluster3d =
-      (larcv::EventClusterVoxel3D*)io->get_data("cluster3d", "sbndvertex");
+      (larcv::EventClusterVoxel3D*)io->get_data("cluster3d", "sbndneutino");
 
   auto event_cluster2d =
-      (larcv::EventClusterPixel2D*)io->get_data("cluster2d", "sbndvertex");
+      (larcv::EventClusterPixel2D*)io->get_data("cluster2d", "sbndneutino");
+
+  auto event_particle  =
+      (larcv::EventParticle*) io->get_data("particle", "sbndneutino");
+
+  // Start by extracting the particle information:
+  larcv::Particle neut_info;
+  neut_info.id(0);
+
+  // Info from MCNeutrino:
+  neut_info.nu_interaction_type(truth.GetNeutrino().InteractionType());
+  neut_info.nu_current_type(truth.GetNeutrino().CCNC());
+  neut_info.track_id(neutrino.TrackId());
+  neut_info.pdg_code(neutrino.PdgCode());
+  neut_info.creation_process(neutrino.Process());
+  neut_info.position(neutrino.Vx(),
+                     neutrino.Vy(),
+                     neutrino.Vz(),
+                     neutrino.T());
+  neut_info.momentum(neutrino.Px(),
+                     neutrino.Py(),
+                     neutrino.Pz());
+  neut_info.energy_init(neutrino.E());
 
   std::vector<larcv::ClusterPixel2D> _clusters_by_projection;
   _clusters_by_projection.resize(3);
@@ -115,6 +153,11 @@ void SBNDNeutrino::slice(gallery::Event* ev, larcv::IOManager* io) {
 
   return;
 }
+
+// void SBNDNeutrino::cosmic_slice(gallery::Event* ev, larcv::IOManager* io){
+
+// }
+
 }
 
 #endif
