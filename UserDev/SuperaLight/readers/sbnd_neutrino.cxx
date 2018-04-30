@@ -95,6 +95,8 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
                      neutrino.Pz());
   neut_info.energy_init(neutrino.E());
 
+  event_particle->emplace_back(std::move(neut_info));
+
   std::vector<larcv::ClusterPixel2D> _clusters_by_projection;
   _clusters_by_projection.resize(3);
 
