@@ -71,8 +71,8 @@ protected:
     int projection_id(int channel);
     int column(int channel);
     int row(int tick, int channel);
-    int wire_position(float x, float y, float z, int projection_id);
-    int tick_position(float x, float time_offset);
+    float wire_position(float x, float y, float z, int projection_id);
+    float tick_position(float x, float time_offset, int projection_id);
 
     int n_ticks = 2560;
     int n_cathode_ticks = 000;

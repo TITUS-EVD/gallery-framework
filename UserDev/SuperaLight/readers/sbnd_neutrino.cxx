@@ -14,7 +14,6 @@
 #include "larcv/core/DataFormat/EventVoxel3D.h"
 
 #include "LArUtil/Geometry.h"
-#include "LArUtil/GeometryHelper.h"
 
 namespace supera {
 
@@ -56,10 +55,13 @@ void SBNDNeutrino::slice(gallery::Event* ev, larcv::IOManager* io) {
 
 void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
 
+
   std::string neutrino_producer = "generator";
   art::InputTag neutrino_tag(neutrino_producer);
 
   gallery::Handle<std::vector<simb::MCTruth> > mctruth;
+
+  ev->getByLabel(neutrino_tag, mctruth);
 
   auto truth = mctruth->at(0);
   auto neutrino = mctruth->at(0).GetNeutrino().Nu();
@@ -113,39 +115,48 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
   event_cluster3d->meta(voxel_meta);
 
   // Add voxels in 3D for the neutrino location:
-  event_cluster3d->writeable_voxel_set(0).add(larcv::Voxel(
-      voxel_meta.id(neutrino.Vx(), neutrino.Vy(), neutrino.Vz()), 1));
+  int buffer_3d = 1;
+
+  for(int i_x = -buffer_3d; i_x < buffer_3d+1; i_x ++){
+    for(int i_y = -buffer_3d; i_y < buffer_3d+1; i_y ++){
+      for(int i_z = -buffer_3d; i_z < buffer_3d+1; i_z ++){
+        size_t this_id
+          = voxel_meta.id(neutrino.Vx() + voxel_meta.size_voxel_x()*i_x,
+                          neutrino.Vy() + voxel_meta.size_voxel_y()*i_y,
+                          neutrino.Vz() + voxel_meta.size_voxel_z()*i_z);
+        event_cluster3d->writeable_voxel_set(0).add(larcv::Voxel(this_id, 1));
+      }
+    }
+  }
+
 
   for (int projection_id = 0; projection_id < 3; projection_id++) {
-    int tick = (n_ticks +
-                neutrino.Vx() / larutil::GeometryHelper::GetME()->TimeToCm()) /
-               (1.0 * compression);
-    int wire;
-    try{
-      wire = larutil::Geometry::GetME()->NearestWire(neutrino.Position().Vect(), projection_id);
-    }
-    catch(...){
-      continue;
-    }
+
+    float tick = tick_position(neutrino.Vx(), 0, projection_id);
+
+    float wire = wire_position(neutrino.Vx(), neutrino.Vy(), neutrino.Vz(), projection_id);
+
+
     // std::cout << "Nearest wire is " << wire << std::endl;
     // std::cout << "X position is " << neutrino.Vx() << std::endl;
     // std::cout << " Tick is " << tick << std::endl;
 
+    int buffer = 1;
     // Create a 5x5 of neutrino vertex pixels around the vertex:
     auto & voxel_set =
       _clusters_by_projection.at(projection_id).writeable_voxel_set(0);
-    for (int i = -2; i < 3; i ++ ){
+    for (int i = -buffer; i < buffer+1; i ++ ){
       if (tick + i < 0) continue;
-      if (tick + i >= n_ticks) continue;
-      for (int j = -2; j < 3; j ++ ){
+      if (tick + i >= _max_tick) continue;
+      for (int j = -buffer; j < buffer+1; j ++ ){
         if (wire + j < 0) continue;
         if (wire + j >= larutil::Geometry::GetME()->Nwires(projection_id) ) continue;
         auto index = plane_meta.at(projection_id).index(tick + i, wire + j);
         voxel_set.add( larcv::Voxel(index,1.0));
       }
     }
-
   }
+
 
   for (auto& cluster_pix_2d : _clusters_by_projection) {
     event_cluster2d->emplace(std::move(cluster_pix_2d));

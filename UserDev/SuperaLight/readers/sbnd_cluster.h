@@ -55,8 +55,6 @@ public:
      */
     void initialize();
 
-
-
 protected:
 
     /*
@@ -64,8 +62,6 @@ protected:
     the larcv world
     */
     void build_particle_map(gallery::Event* ev, larcv::IOManager* io);
-
-
 
     std::vector< std::vector< int> > _particle_to_trackID;
     std::map< int, int > _trackID_to_particle;

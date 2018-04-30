@@ -71,8 +71,8 @@ void SBNDCluster::build_particle_map(gallery::Event* ev, larcv::IOManager* io) {
   // Get the EventParticle from larcv:
   auto event_part = (larcv::EventParticle*)io->get_data("particle", "sbndseg");
 
-  std::cout << "Number of mctracks : " << mctracks->size() << std::endl;
-  std::cout << "Number of mcshowers: " << mcshowers->size() << std::endl;
+  // std::cout << "Number of mctracks : " << mctracks->size() << std::endl;
+  // std::cout << "Number of mcshowers: " << mcshowers->size() << std::endl;
 
   unsigned int id = 0;
 
@@ -189,7 +189,6 @@ void SBNDCluster::slice(gallery::Event* ev, larcv::IOManager* io) {
   event_cluster3d->resize(n_particles + 1);
   event_cluster3d->meta(voxel_meta);
 
-
   for (auto& ch : *simch) {
     int this_column = column(ch.Channel());
     int this_projection_id = projection_id(ch.Channel());
@@ -210,6 +209,7 @@ void SBNDCluster::slice(gallery::Event* ev, larcv::IOManager* io) {
         // Add this ide to the proper particle in 3D:
         int this_particle = ide.trackID;
         int larcv_particle_id;
+
         if (_trackID_to_particle.find(this_particle) !=
             _trackID_to_particle.end()) {
           larcv_particle_id = _trackID_to_particle[this_particle];
@@ -224,6 +224,15 @@ void SBNDCluster::slice(gallery::Event* ev, larcv::IOManager* io) {
 
         int tick = row(tdc, ch.Channel());
 
+        // if (fabs(ide.x - 182.073) < 0.01) {
+        //   std::cout << "(plane " << projection_id(ch.Channel()) << ") "
+        //             << "X: " << ide.x
+        //             << "\t" << tdc / compression
+        //             << "\t" << tick / compression
+        //             << "\t" << tick_position(ide.x, 0, this_projection_id)
+        //             << "\t" << tick/compression - tick_position(ide.x, 0, this_projection_id)
+        //             << std::endl;
+        // }
 
         if (tdc < 3000 && tdc > 0){
           _clusters_by_projection.at(this_projection_id)

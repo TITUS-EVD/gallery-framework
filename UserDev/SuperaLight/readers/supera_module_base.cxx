@@ -4,6 +4,7 @@
 #include "supera_module_base.h"
 
 #include "LArUtil/Geometry.h"
+#include "LArUtil/GeometryHelper.h"
 
 namespace supera {
 SuperaModuleBase::SuperaModuleBase() {}
@@ -58,6 +59,71 @@ int SuperaModuleBase::row(int tick, int channel) {
     return tick;
   }
 }
+
+float SuperaModuleBase::wire_position(float x, float y, float z, int projection_id){
+    double vtx[3];
+    vtx[0] = x;
+    vtx[1] = y;
+    vtx[2] = z;
+    try{
+      return larutil::Geometry::GetME()->WireCoordinate(vtx, projection_id);
+    }
+    catch(...){
+      return -999.;
+    }
+}
+float SuperaModuleBase::tick_position(float x, float time_offset, int projection_id){
+    // Convert an x coordinate to a tick position
+
+    // First, convert the tick into the plane with the drift velocity:
+    // (Add an offset for the distance between planes)
+    float tick = x / larutil::GeometryHelper::GetME()->TimeToCm();
+
+    if (x > 0){
+      tick -= 7;
+      if (projection_id == 0){
+        tick -= 0.48;
+      }
+      if (projection_id == 1){
+        tick -= -3.035;
+      }
+      if (projection_id == 2){
+        tick -= 3.646;
+      }
+    }
+    else{
+      if (projection_id == 0){
+        tick += -3.035;
+      }
+      if (projection_id == 1){
+        tick += 0.48;
+      }
+      if (projection_id == 2){
+        tick += 3.646;
+      }
+    }
+
+
+
+    // if there is a time offset, add it:
+    if(time_offset != 0){
+      tick += time_offset;
+    }
+
+
+    // if (x < 0){
+
+    // }
+
+    // Accomodate the central x=0 position:
+    tick += n_ticks;
+
+    // Apply compression:
+    tick /= compression;
+
+    return tick;
+}
+
 
 }
 #endif
