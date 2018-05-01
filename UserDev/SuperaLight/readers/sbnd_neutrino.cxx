@@ -99,7 +99,11 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
 
   for (size_t i = 0; i < truth.NParticles(); i ++){
     larcv::Particle particle;
-    auto larsoft_particle = truth.GetParticle(i);
+    auto & larsoft_particle = truth.GetParticle(i);
+    if (larsoft_particle.StatusCode() != 1){
+      std::cout << "Status code " << larsoft_particle.StatusCode() << std::endl;
+      continue;
+    }
 
     particle.id(i+1);
     particle.track_id(larsoft_particle.TrackId());
