@@ -68,7 +68,7 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
 
   // get the sparse3d objects:
   auto event_cluster3d =
-      (larcv::EventClusterVoxel3D*)io->get_data("cluster3d", "sbndneutino");
+      (larcv::EventClusterVoxel3D*)io->get_data("cluster3d", "sbndneutrino");
 
   auto event_cluster2d =
       (larcv::EventClusterPixel2D*)io->get_data("cluster2d", "sbndneutrino");
@@ -96,6 +96,30 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
   neut_info.energy_init(neutrino.E());
 
   event_particle->emplace_back(std::move(neut_info));
+
+  for (size_t i = 0; i < truth.NParticles(); i ++){
+    larcv::Particle particle;
+    auto larsoft_particle = truth.GetParticle(i);
+
+    particle.id(i+1);
+    particle.track_id(larsoft_particle.TrackId());
+    particle.pdg_code(larsoft_particle.PdgCode());
+    particle.parent_track_id(larsoft_particle.Mother());
+    particle.creation_process(larsoft_particle.Process());
+
+    particle.position(larsoft_particle.Vx(),
+                       larsoft_particle.Vy(),
+                       larsoft_particle.Vz(),
+                       larsoft_particle.T());
+
+    particle.momentum(larsoft_particle.Px(),
+                       larsoft_particle.Py(),
+                       larsoft_particle.Pz());
+
+    particle.energy_init(larsoft_particle.E());
+    event_particle->emplace_back(std::move(particle));
+  }
+
 
   std::vector<larcv::ClusterPixel2D> _clusters_by_projection;
   _clusters_by_projection.resize(3);
