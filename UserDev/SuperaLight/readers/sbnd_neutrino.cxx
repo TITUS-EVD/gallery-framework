@@ -71,10 +71,10 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
       (larcv::EventClusterVoxel3D*)io->get_data("cluster3d", "sbndneutino");
 
   auto event_cluster2d =
-      (larcv::EventClusterPixel2D*)io->get_data("cluster2d", "sbndneutino");
+      (larcv::EventClusterPixel2D*)io->get_data("cluster2d", "sbndneutrino");
 
   auto event_particle  =
-      (larcv::EventParticle*) io->get_data("particle", "sbndneutino");
+      (larcv::EventParticle*) io->get_data("particle", "sbndneutrino");
 
   // Start by extracting the particle information:
   larcv::Particle neut_info;
