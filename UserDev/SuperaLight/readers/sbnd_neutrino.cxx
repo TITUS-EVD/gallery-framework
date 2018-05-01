@@ -101,7 +101,6 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv::IOManager* io){
     larcv::Particle particle;
     auto & larsoft_particle = truth.GetParticle(i);
     if (larsoft_particle.StatusCode() != 1){
-      std::cout << "Status code " << larsoft_particle.StatusCode() << std::endl;
       continue;
     }
 
