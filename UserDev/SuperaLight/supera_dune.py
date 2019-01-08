@@ -20,16 +20,19 @@ def process_files(file_list):
         my_proc.add_input_file(_f)
 
     out_dir = './'
-    out_name = os.path.basename(_f).rstrip('.root') + '_larcv.root'
+    # out_name = 'dune_supera_larcv_{0}.root'.format(uuid.uuid4())
+    out_name = 'dune_supera_larcv_dev.root'
 
     io = larcv.IOManager(larcv.IOManager.kWRITE)
     io.set_out_file(out_dir + out_name)
 
 
-    supera_light = supera.pd_supera_light()
+    supera_light = supera.supera_light()
     supera_light.set_io_manager(io)
 
-    supera_light.add_supera_module(supera.ProtoDuneWire())
+    # supera_light.add_supera_module(supera.DUNEWire())
+    supera_light.add_supera_module(supera.DUNECluster())
+    supera_light.add_supera_module(supera.DUNENeutrino())
 
     # supera_light.initialize()
 
@@ -51,18 +54,18 @@ def main():
 
     parser = argparse.ArgumentParser(description='Gallery based larsoft to larcv converter.')
     # geom = parser.add_mutually_exclusive_group()
-    # geom.add_argument('--sbnd',
+    # geom.add_argument('--DUNE',
     #                   action='store_true',
-    #                   help="Run with the SBND Geometry")
+    #                   help="Run with the DUNE Geometry")
     parser.add_argument('--files', nargs='+', help="Optional input file to use")
 
     args = parser.parse_args()
 
-    # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
+    larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
 
     file_list = args.files
     process_files(file_list)
-    # for _file in glob.glob('/data/sbnd/dl_larsoft/*.root'):
+    # for _file in glob.glob('/data/DUNE/dl_larsoft/*.root'):
     #     print _file
     #     process_file(_file)
 

@@ -11,8 +11,8 @@
 /** \addtogroup ModularAlgo
 
     @{*/
-#ifndef GALLERY_FMWK_SUPERA_SBND_NEUTRINO_H
-#define GALLERY_FMWK_SUPERA_SBND_NEUTRINO_H
+#ifndef GALLERY_FMWK_SUPERA_DUNE_NEUTRINO_H
+#define GALLERY_FMWK_SUPERA_DUNE_NEUTRINO_H
 
 #include "supera_module_base.h"
 
@@ -27,15 +27,15 @@
  */
 namespace supera {
 
-class SBNDNeutrino : SuperaModuleBase {
+class DUNENeutrino : SuperaModuleBase {
 
 public:
 
     /// Default constructor
-    SBNDNeutrino(){_name = "SBNDNeutrino";_verbose=false;}
+    DUNENeutrino(){_name = "DUNENeutrino";_verbose=false;}
 
     /// Default destructor
-    ~SBNDNeutrino() {}
+    ~DUNENeutrino() {}
 
     /**
      * @brief get the name of this module, used in helping organize order of modules and insertion/removal
@@ -63,8 +63,6 @@ protected:
 
 
     std::string _name;
-    std::vector<larcv::ImageMeta> plane_meta;
-    larcv::Voxel3DMeta voxel_meta;
 
     bool _verbose;
 

@@ -28,7 +28,7 @@ include $(GALLERY_FMWK_BASEDIR)/Makefile/Makefile.${OSNAME}
 # call the common GNUmakefile
 LDFLAGS += $(shell gallery-config --libs)
 LDFLAGS += $(shell gallery-fmwk-config --libs)
-LDFLAGS += -L$(LARCV_LIBDR) -llarcv
+LDFLAGS += -L$(LARCV_LIBDIR) -llarcv
 
 include $(GALLERY_FMWK_BASEDIR)/Makefile/GNUmakefile.CORE
 

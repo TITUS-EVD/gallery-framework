@@ -31,7 +31,6 @@
 #pragma link C++ enum galleryfmwk::data::DataType_t+;
 
 #pragma link C++ class galleryfmwk::Message+;
-#pragma link C++ class galleryfmwk::larlite_base+;
 
 #pragma link C++ function const std::string& GetProductName(const galleryfmwk::data::DataType_t)+;
 

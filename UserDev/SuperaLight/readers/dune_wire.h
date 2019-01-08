@@ -11,13 +11,12 @@
 /** \addtogroup ModularAlgo
 
     @{*/
-#ifndef GALLERY_FMWK_SUPERA_SBND_CLUSTER_H
-#define GALLERY_FMWK_SUPERA_SBND_CLUSTER_H
+#ifndef GALLERY_FMWK_SUPERA_DUNE_WIRE_H
+#define GALLERY_FMWK_SUPERA_DUNE_WIRE_H
 
 #include "supera_module_base.h"
 
-#include "larcv/core/DataFormat/ImageMeta.h"
-#include "larcv/core/DataFormat/Voxel3DMeta.h"
+#include "larcv/core/DataFormat/Image2D.h"
 
 
 /**
@@ -27,15 +26,15 @@
  */
 namespace supera {
 
-class SBNDCluster : SuperaModuleBase {
+class DUNEWire : SuperaModuleBase {
 
 public:
 
     /// Default constructor
-    SBNDCluster(){_name = "SBNDCluster";_verbose=false;}
+    DUNEWire(){_name = "DUNEWire";_verbose=false;}
 
     /// Default destructor
-    ~SBNDCluster() {}
+    ~DUNEWire() {}
 
     /**
      * @brief get the name of this module, used in helping organize order of modules and insertion/removal
@@ -55,21 +54,16 @@ public:
      */
     void initialize();
 
+
+
 protected:
 
-    /*
-    Builds the map of particles from geant trackIDs to a list of particles in
-    the larcv world
-    */
-    void build_particle_map(gallery::Event* ev, larcv::IOManager* io);
 
-    std::vector< std::vector< int> > _particle_to_trackID;
-    std::map< int, int > _trackID_to_particle;
+
 
 
     std::string _name;
     std::vector<larcv::ImageMeta> plane_meta;
-    larcv::Voxel3DMeta voxel_meta;
 
     bool _verbose;
 

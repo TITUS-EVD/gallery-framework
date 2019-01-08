@@ -10,7 +10,6 @@
 #pragma link off all functions;
 
 #pragma link C++ class supera::supera_light+;
-#pragma link C++ class supera::SBNDRawDigit+;
 //ADD_NEW_CLASS ... do not change this line
 #endif
 

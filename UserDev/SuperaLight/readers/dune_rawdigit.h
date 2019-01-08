@@ -11,8 +11,8 @@
 /** \addtogroup ModularAlgo
 
     @{*/
-#ifndef GALLERY_FMWK_SUPERA_SBND_WIRE_H
-#define GALLERY_FMWK_SUPERA_SBND_WIRE_H
+#ifndef GALLERY_FMWK_SUPERA_DUNE_RAWDIGIT_H
+#define GALLERY_FMWK_SUPERA_DUNE_RAWDIGIT_H
 
 #include "supera_module_base.h"
 
@@ -26,15 +26,15 @@
  */
 namespace supera {
 
-class SBNDWire : SuperaModuleBase {
+class DUNERawDigit : SuperaModuleBase {
 
 public:
 
     /// Default constructor
-    SBNDWire(){_name = "SBNDWire";_verbose=false;}
+    DUNERawDigit(){_name = "DUNERawDigit";_verbose=false;}
 
     /// Default destructor
-    ~SBNDWire() {}
+    ~DUNERawDigit() {}
 
     /**
      * @brief get the name of this module, used in helping organize order of modules and insertion/removal
@@ -59,7 +59,7 @@ public:
 protected:
 
 
-
+    float _threshold = 5;
 
 
     std::string _name;
