@@ -16,8 +16,6 @@
 
 #include "supera_module_base.h"
 
-#include "larcv/core/DataFormat/Image2D.h"
-
 
 /**
    \class ShowerRecoModuleBase
@@ -63,7 +61,6 @@ protected:
 
 
     std::string _name;
-    std::vector<larcv::ImageMeta> plane_meta;
 
     bool _verbose;
 

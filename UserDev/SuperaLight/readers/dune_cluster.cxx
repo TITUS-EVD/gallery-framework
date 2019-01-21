@@ -19,36 +19,7 @@
 namespace supera {
 
 void DUNECluster::initialize() {
-  // plane_meta.clear();
-  // // parameters for ImageMeta are (xmin, ymin, xmax, ymax, nx, ny, units)
-  // // Well encode tick in y and wire in x.  Units will be centimeters
-  // // y (drift direction) goes from -200 to 200 for n_ticks * 2 + spacing
-  // // x (wire direction) goes from 0
-  // _max_tick = 2*n_ticks + n_cathode_ticks;
-  // // plane_meta.push_back(larcv::ImageMeta(-200.0, 0,
-  // //                                        200.0, 1986,
-  // //                                       _max_tick / compression,
-  // //                                       1986,
-  // //                                       0, larcv::kUnitCM));
-  // // plane_meta.push_back(larcv::ImageMeta(-200.0, 0,
-  // //                                        200.0, 1986,
-  // //                                       _max_tick / compression,
-  // //                                       1986,
-  // //                                       1, larcv::kUnitCM));
-  // // plane_meta.push_back(larcv::ImageMeta(-200.0, 0,
-  // //                                        200.0, 1986,
-  // //                                       _max_tick / compression,
-  // //                                       1666,
-  // //                                       2, larcv::kUnitCM));
-  // plane_meta.push_back(larcv::ImageMeta(
-  //     0, 0, 1986, _max_tick, _max_tick / compression, 1986, 0, larcv::kUnitCM));
-  // plane_meta.push_back(larcv::ImageMeta(
-  //     0, 0, 1986, _max_tick, _max_tick / compression, 1986, 1, larcv::kUnitCM));
-  // plane_meta.push_back(larcv::ImageMeta(
-  //     0, 0, 1666, _max_tick, _max_tick / compression, 1666, 2, larcv::kUnitCM));
 
-
-  voxel_meta.set(-1000, -1000, 0, 1000, 1000, 1000, 1000/0.1, 1000/0.1, 1000/0.1);
 }
 
 void DUNECluster::build_particle_map(gallery::Event* ev, larcv::IOManager* io) {
@@ -153,7 +124,7 @@ void DUNECluster::slice(gallery::Event* ev, larcv::IOManager* io) {
   //  First, build the particle mapping from geant track ID to
   //  larcv particle
 
-  // build_particle_map(ev, io);
+  build_particle_map(ev, io);
 
 
   // Get the simch data:
@@ -173,8 +144,8 @@ void DUNECluster::slice(gallery::Event* ev, larcv::IOManager* io) {
   // Now, loop over the sim channels, and add the depositions to the
   // correct voxels
 
-  int n_particles = 1;
-  // int n_particles = _particle_to_trackID.size();
+  // int n_particles = 1;
+  int n_particles = _particle_to_trackID.size();
 
   // std::vector<larcv::ClusterPixel2D> _clusters_by_projection;
   // _clusters_by_projection.resize(3);
@@ -188,7 +159,11 @@ void DUNECluster::slice(gallery::Event* ev, larcv::IOManager* io) {
 
   // larcv::ClusterVoxel3D clusters3d;
   event_cluster3d->resize(n_particles + 1);
-  event_cluster3d->meta(voxel_meta);
+  event_cluster3d->meta(_voxel_meta);
+
+  float _min_x(9999), _max_x(-9999);
+  float _min_y(9999), _max_y(-9999);
+  float _min_z(9999), _max_z(-9999);
 
   for (auto& ch : *simch) {
     // int this_column = column(ch.Channel());
@@ -197,6 +172,7 @@ void DUNECluster::slice(gallery::Event* ev, larcv::IOManager* io) {
     for (auto& TDCIDE : ch.TDCIDEMap()) {
       auto& tdc = TDCIDE.first;
       auto& ides = TDCIDE.second;
+
 
       for (auto& ide : ides) {
 
@@ -211,19 +187,29 @@ void DUNECluster::slice(gallery::Event* ev, larcv::IOManager* io) {
         int this_particle = ide.trackID;
         int larcv_particle_id;
 
-        // if (_trackID_to_particle.find(this_particle) !=
-        //     _trackID_to_particle.end()) {
-        //   larcv_particle_id = _trackID_to_particle[this_particle];
-        // } else{
-        //   larcv_particle_id = n_particles;
-        // }
-        larcv_particle_id = 0;
+        if (_trackID_to_particle.find(this_particle) !=
+            _trackID_to_particle.end()) {
+          larcv_particle_id = _trackID_to_particle[this_particle];
+        } else{
+          larcv_particle_id = n_particles;
+        }
+        // larcv_particle_id = 0;
         // if (tdc > 0 && tdc <= 3000){
           event_cluster3d->writeable_voxel_set(larcv_particle_id)
-              .add(larcv::Voxel(voxel_meta.id(ide.x, ide.y, ide.z), ide.energy));
+              .add(larcv::Voxel(_voxel_meta.id(ide.x, ide.y, ide.z), ide.energy));
         // }
 
+        if (ide.x > _max_x) _max_x = ide.x;
+        if (ide.y > _max_y) _max_y = ide.y;
+        if (ide.z > _max_z) _max_z = ide.z;
 
+        if (ide.x < _min_x) _min_x = ide.x;
+        if (ide.y < _min_y) _min_y = ide.y;
+        if (ide.z < _min_z) _min_z = ide.z;
+
+
+
+        // std::cout << "tdc: " << tdc;
         // int tick = row(tdc, ch.Channel());
 
         // if (fabs(ide.x - 182.073) < 0.01) {
@@ -247,9 +233,15 @@ void DUNECluster::slice(gallery::Event* ev, larcv::IOManager* io) {
       //
     }
   }
+
+  std::cout << "IDE Ranges: \n"
+            << "\tx: (" <<_min_x << ", " << _max_x << ")\n"
+            << "\ty: (" <<_min_y << ", " << _max_y << ")\n"
+            << "\tz: (" <<_min_z << ", " << _max_z << ")\n";
+
   // for (auto& cluster_pix_2d : _clusters_by_projection) {
   //   event_cluster2d->emplace(std::move(cluster_pix_2d));
-  // }
+    // }
   // event_cluster3d->set(clusters3d, voxel_meta);
   //   std::cout << ch.TDCIDEMap().size() << std::endl;
 

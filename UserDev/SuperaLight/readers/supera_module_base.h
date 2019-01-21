@@ -24,6 +24,9 @@
 
 #include "larcv/core/DataFormat/IOManager.h"
 
+#include "larcv/core/DataFormat/ImageMeta.h"
+#include "larcv/core/DataFormat/Voxel3DMeta.h"
+
 /**
    \class ShowerRecoModuleBase
    User defined class ShowerRecoModuleBase ... these comments are used to generate
@@ -66,17 +69,26 @@ public:
 
 
 
+
+
 protected:
 
+    std::vector<larcv::ImageMeta> _image_meta_2d;
+    larcv::Voxel3DMeta  _voxel_meta;
+
+
+    // Function to map a channel to projection ID:
     int projection_id(int channel);
-    int column(int channel);
+
+    // Function to map an IDE to a projection ID:
+
+    int column(int tick, int channel);
     int row(int tick, int channel);
     float wire_position(float x, float y, float z, int projection_id);
     float tick_position(float x, float time_offset, int projection_id);
 
-    int n_ticks = 2560;
-    int n_cathode_ticks = 000;
-    int compression = 4;
+    int n_ticks = 4492;
+    int compression = 1;
 
     int _max_tick;
 

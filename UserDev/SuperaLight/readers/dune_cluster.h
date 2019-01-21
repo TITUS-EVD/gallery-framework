@@ -16,8 +16,7 @@
 
 #include "supera_module_base.h"
 
-#include "larcv/core/DataFormat/ImageMeta.h"
-#include "larcv/core/DataFormat/Voxel3DMeta.h"
+
 
 
 /**
@@ -68,8 +67,6 @@ protected:
 
 
     std::string _name;
-    // std::vector<larcv::ImageMeta> plane_meta;
-    larcv::Voxel3DMeta voxel_meta;
 
     bool _verbose;
 

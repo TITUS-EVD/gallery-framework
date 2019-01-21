@@ -30,16 +30,16 @@ def process_files(file_list):
     supera_light = supera.supera_light()
     supera_light.set_io_manager(io)
 
-    # supera_light.add_supera_module(supera.DUNEWire())
-    supera_light.add_supera_module(supera.DUNECluster())
     supera_light.add_supera_module(supera.DUNENeutrino())
+    supera_light.add_supera_module(supera.DUNECluster())
+    supera_light.add_supera_module(supera.DUNERawDigit())
 
     # supera_light.initialize()
 
     # Attach an analysis unit ... here we use a base class which do
     my_proc.add_process(supera_light)
 
-    my_proc.run()
+    my_proc.run(10)
 
     # Open the output file and find out how many events were processed:
     f = TFile.Open(out_name)

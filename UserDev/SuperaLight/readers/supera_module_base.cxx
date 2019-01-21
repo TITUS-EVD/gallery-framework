@@ -7,7 +7,38 @@
 #include "LArUtil/GeometryHelper.h"
 
 namespace supera {
-SuperaModuleBase::SuperaModuleBase() {}
+SuperaModuleBase::SuperaModuleBase() {
+  
+  //  In this function, the image meta is created for each plane and for 3D.
+  // Dune has many TPCs and read out planes, but this assumes disambiguation
+  // to map channel to a plane.  The tick and channel combination 
+  // determine the row and column in a 2D projection.
+
+
+  _voxel_meta = larcv::Voxel3DMeta();
+  
+  float voxel_3d_size = 1.0;
+  _voxel_meta.set(-1000, -1000, 0, 1000, 1000, 2000, 2000/voxel_3d_size, 2000/voxel_3d_size, 2000/voxel_3d_size);
+
+  _image_meta_2d.clear();
+
+  // parameters for ImageMeta are (xmin, ymin, xmax, ymax, nx, ny, units)
+  // We'll encode tick in y and wire in x.  Units will be centimeters
+  // y (drift direction) goes from -200 to 200 for n_ticks * 2 + spacing
+  // x (wire direction) goes from 0
+  _max_tick = 4*n_ticks;
+
+  // int _readout_length = 4492;
+  // int _n_channels = 30720;
+
+  _image_meta_2d.push_back(larcv::ImageMeta(
+      0, 0, 30720, _max_tick, _max_tick / compression, 30720, 0, larcv::kUnitCM));
+  _image_meta_2d.push_back(larcv::ImageMeta(
+      0, 0, 30720, _max_tick, _max_tick / compression, 30720, 1, larcv::kUnitCM));
+  _image_meta_2d.push_back(larcv::ImageMeta(
+      0, 0, 30720, _max_tick, _max_tick / compression, 30720, 2, larcv::kUnitCM));
+
+}
 
 int SuperaModuleBase::projection_id(int channel) {
   // Pretty hacky code here ...
@@ -30,7 +61,7 @@ int SuperaModuleBase::projection_id(int channel) {
     return 2;
 }
 
-int SuperaModuleBase::column(int channel) {
+int SuperaModuleBase::column(int tick, int channel) {
   // Pretty hacky code here ...
 
   // In SBND, channels go 0 to 1985 (plane 0), 1986 to 3971, 3972 to 5637
