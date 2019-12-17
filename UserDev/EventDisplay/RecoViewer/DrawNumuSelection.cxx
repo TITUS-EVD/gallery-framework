@@ -30,8 +30,9 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(
     for (unsigned int i = 0; i < trk.NumberTrajectoryPoints(); i++) {
       try {
         if (trk.HasValidPoint(i)) {
-
-          auto point = geoHelper->Point_3Dto2D(trk.LocationAtPoint(i), plane);
+          auto loc = trk.LocationAtPoint(i);
+          TVector3 xyz(loc.X(),loc.Y(),loc.Z());
+          auto point = geoHelper->Point_3Dto2D(xyz, plane);
           trk_out._track.push_back(std::make_pair(point.w, point.t));
         }
       } catch (...) {

@@ -15,7 +15,7 @@ main_build: pre_build .depend $(DICT).cxx $(GALLERY_FMWK_LIBDIR)/$(SHLIB) $(GALL
 # default rule for making .o files from .cxx files
 %.o: %.cxx
 	@echo '<< compiling' $< '>>'
-	@$(CXX) $(CXXFLAGS) $(GALLERY_FMWK_BASIC_ROOTINC) $(INCFLAGS) -c $<
+	@$(CXX) $(CXXFLAGS) $(GALLERY_FMWK_BASIC_ROOTINC) $(INCFLAGS) -I$(CANVAS_ROOT_IO_INC) -c $<
 
 # root class dictionary
 $(DICT).cxx: $(HEADERS) LinkDef.h
@@ -58,7 +58,7 @@ clearCINT:
 .depend: $(SOURCES) $(HEADERS)
 	@#rm .depend
 	@echo '<< checking dependencies >>'
-	@$(CXX) -M $(CXXFLAGS) $(GALLERY_FMWK_BASIC_ROOTINC) $(INCFLAGS) $(SOURCES) > .depend
+	@$(CXX) -M $(CXXFLAGS) $(GALLERY_FMWK_BASIC_ROOTINC) $(INCFLAGS) -I$(CANVAS_ROOT_IO_INC) $(SOURCES) > .depend
 
 -include .depend
 

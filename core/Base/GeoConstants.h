@@ -32,6 +32,7 @@ namespace galleryfmwk{
       kCSU40L,     ///< CSU 40 L id
       kLArIAT,     ///< LArIAT id
       kICARUS,     ///< ICARUS T600 id
+      kSBND,       ///< SBND id
       kDetIdMax 
     };
     

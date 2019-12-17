@@ -9,6 +9,8 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
+#pragma link C++ class galleryfmwk::ana_base+;
+
 #pragma link C++ namespace evd+;
 #pragma link C++ class evd::RawBase+;
 #pragma link C++ class evd::DrawWire+;

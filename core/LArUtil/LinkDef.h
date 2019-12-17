@@ -10,6 +10,8 @@
 #pragma link off all functions;
 
 #pragma link C++ namespace larutil;
+#pragma link C++ namespace galleryfmwk;
+#pragma link C++ namespace galleryfmwk::geo;
 
 #pragma link C++ class std::vector<std::vector<Float_t> >+;
 #pragma link C++ class std::vector<std::vector<std::vector<Double_t > > >+;

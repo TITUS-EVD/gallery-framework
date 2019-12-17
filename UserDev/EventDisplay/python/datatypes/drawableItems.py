@@ -13,7 +13,7 @@ import simch
 import opflash
 import seed
 import pfpart
-import neutrino
+# import neutrino
 import numuselection
 
 # This is the class that maintains the list of drawable items.

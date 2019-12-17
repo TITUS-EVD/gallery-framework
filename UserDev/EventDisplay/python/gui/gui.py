@@ -652,7 +652,7 @@ class gui(QtGui.QWidget):
     self._view_manager.drawPlanes(self._event_manager)
 
 
-    self.setGeometry(0, 0, 2400, 1600)
+    self.setGeometry(0, 0, 2400/2, 1600/2)
     self.setWindowTitle('Event Display')    
     self.setFocus()
     self.show()

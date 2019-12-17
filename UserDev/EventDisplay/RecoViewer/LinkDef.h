@@ -9,6 +9,8 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
+#pragma link C++ class galleryfmwk::ana_base+;
+
 // #pragma link C++ class evd::RecoBase+;
 // Link all the classes that are "interactive" - for use in evd
 #pragma link C++ class evd::Shower2D+;

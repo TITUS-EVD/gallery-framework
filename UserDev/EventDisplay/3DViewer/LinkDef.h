@@ -9,6 +9,7 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
+#pragma link C++ class galleryfmwk::ana_base+;
 
 #pragma link C++ class evd::Track3D+;
 #pragma link C++ class std::vector<evd::Track3D>+;
