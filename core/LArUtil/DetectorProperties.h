@@ -15,6 +15,7 @@
 #define GALLERY_FMWK_DETECTORPROPERTIES_H
 
 #include "LArUtilBase.h"
+// #include "LArUtilServicesHandler.h"
 
 namespace larutil {
   /**
@@ -71,6 +72,9 @@ namespace larutil {
     Double_t GetXTicksCoefficient() const {
       return fXTicksCoefficient;
     }
+
+    /// Prints some of the stored information
+    void DumpInfo();
     
     // Following functions are intentionally commented out by Kazu for LArLite
     // as they do not make any sense to him (he thinks they are wrong).
@@ -85,6 +89,7 @@ namespace larutil {
   protected:
 
     virtual bool ReadTree();
+    // virtual bool ReadFromServices();
     virtual void ClearData();
 
     Double_t fSamplingRate;      ///< in ns

@@ -30,6 +30,10 @@ bool LArUtilManager::ReconfigureUtilities()
                          kUTIL_DATA_FILENAME[LArUtilConfig::Detector()].c_str()));
   geom->SetTreeName(kTREENAME_GEOMETRY);
   status = status && geom->LoadData(true);
+  // geom->SetFileName(Form("%s/LArUtil/dat/%s",
+  //                        getenv("GALLERY_FMWK_COREDIR"),
+  //                        kUTIL_FCL_FILENAME[LArUtilConfig::Detector()].c_str()));
+  // status = status && geom->LoadDataFromServices(true);
 
   // LArProperties
   galleryfmwk::Message::send(galleryfmwk::msg::kNORMAL, __FUNCTION__, "Reconfiguring LArProperties");
@@ -48,6 +52,10 @@ bool LArUtilManager::ReconfigureUtilities()
                          kUTIL_DATA_FILENAME[LArUtilConfig::Detector()].c_str()));
   detp->SetTreeName(kTREENAME_DETECTORPROPERTIES);
   status = status && detp->LoadData(true);
+  // detp->SetFileName(Form("%s/LArUtil/dat/%s",
+  //                        getenv("GALLERY_FMWK_COREDIR"),
+  //                        kUTIL_FCL_FILENAME[LArUtilConfig::Detector()].c_str()));
+  // status = status && detp->LoadDataFromServices(true);
 
   if (status) {
 

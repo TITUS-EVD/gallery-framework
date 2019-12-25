@@ -63,6 +63,7 @@ namespace larutil {
   protected:
 
     virtual bool ReadTree();
+    virtual bool ReadFromServices();
 
     virtual void ClearData();
 

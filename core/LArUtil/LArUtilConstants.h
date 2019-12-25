@@ -17,7 +17,23 @@ const std::string kUTIL_DATA_FILENAME[galleryfmwk::geo::kDetIdMax] =
   "",                        // LBNE 34kt
   "",                        // CSU 40 L
   "",                        // LArIAT
-  ""                         // ICARUS T600
+  "",                        // ICARUS T600
+  "larutil_sbnd.root"        // SBND
+};
+
+/// Geometry default data file
+const std::string kUTIL_FCL_FILENAME[galleryfmwk::geo::kDetIdMax] =
+{ "",                        // Bo
+  "",                        // ArgoNeuT
+  "",                        // MicroBoone
+  "",                        // LBNE 10kt
+  "",                        // JPARC 250 L
+  "",                        // 35t prototype
+  "",                        // LBNE 34kt
+  "",                        // CSU 40 L
+  "",                        // LArIAT
+  "",                        // ICARUS T600
+  "services_sbnd.fcl"        // SBND
 };
 
 const std::string kTREENAME_GEOMETRY = "scanner/Geometry";

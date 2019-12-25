@@ -15,10 +15,14 @@ while test $# -gt 0; do
                -I${CANVAS_INC} \
                -I${CANVAS_ROOT_IO_INC} \
                -I${CETLIB_INC} \
+               -I${CLHEP_INC} \
+               -I${HEP_CONCURRENCY_INC} \
                -I${FHICLCPP_INC} \
                -I${LARDATAOBJ_INC} \
                -I${NUSIMDATA_INC} \
                -I${LARCOREOBJ_INC} \
+               -I${LARDATAALG_INC} \
+               -I${LARCOREALG_INC} \
                -I${MESSAGEFACILITY_INC}"
         else
           out="-I${GALLERY_INC} \
@@ -27,15 +31,19 @@ while test $# -gt 0; do
                -I${CANVAS_ROOT_IO_INC} \
                -I${CETLIB_INC} \
                -I${CETLIB_EXCEPT_INC} \
+               -I${CLHEP_INC} \
+               -I${HEP_CONCURRENCY_INC} \
                -I${FHICLCPP_INC} \
                -I${LARDATAOBJ_INC} \
                -I${NUSIMDATA_INC} \
                -I${LARCOREOBJ_INC} \
+               -I${LARDATAALG_INC} \
+               -I${LARCOREALG_INC} \
                -I${MESSAGEFACILITY_INC}"
         fi
     ;;
       --libdir)
-    out="${GALLERY_LIB} ${BOOST_LIB} ${CANVAS_LIB} ${CANVAS_ROOT_IO_LIB} ${CETLIB_LIB}"
+    out="${GALLERY_LIB} ${BOOST_LIB} ${CANVAS_LIB} ${CANVAS_ROOT_IO_LIB} ${CETLIB_LIB} ${CLHEP_LIB_DIR} ${HEP_CONCURRENCY_LIB}"
     ;;
       --libs)
         if [ -z ${CETLIB_EXCEPT_LIB+x} ]; then
@@ -43,19 +51,27 @@ while test $# -gt 0; do
           out="-L${CANVAS_LIB} -lcanvas_Persistency_Common -lcanvas_Persistency_Provenance -lcanvas_Utilities \
                -L${CANVAS_ROOT_IO_LIB} -lcanvas_root_io
                -L${CETLIB_LIB} -lcetlib \
+               -L${CLHEP_LIB_DIR}  -lCLHEP \
+               -L${HEP_CONCURRENCY_LIB}  -lhep_concurrency \
                -L${GALLERY_LIB} -lgallery \
                -L${NUSIMDATA_LIB} -lnusimdata_SimulationBase \
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
+               -L${LARDATAALG_LIB} -llardataalg_DetectorInfo \
+               -L${LARCOREALG_LIB} -llarcorealg_Geometry \
                -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger"
         else
           out="-L${CANVAS_LIB} -lcanvas \
                -L${CETLIB_LIB} -lcetlib \
                -L${CETLIB_EXCEPT_LIB} -lcetlib_except \
+               -L${CLHEP_LIB_DIR}  -lCLHEP \
+               -L${HEP_CONCURRENCY_LIB}  -lhep_concurrency \
                -L${GALLERY_LIB} -lgallery \
                -L${NUSIMDATA_LIB} -lnusimdata_SimulationBase \
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
+               -L${LARDATAALG_LIB} -llardataalg_DetectorInfo \
+               -L${LARCOREALG_LIB} -llarcorealg_Geometry \
                -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger"  
         fi
     ;;

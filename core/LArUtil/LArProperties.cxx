@@ -16,6 +16,7 @@ LArProperties::LArProperties(bool default_load) : LArUtilBase()
                           kUTIL_DATA_FILENAME[LArUtilConfig::Detector()].c_str());
         _tree_name = kTREENAME_LARPROPERTIES;
         LoadData();
+        DumpInfo();
     }
 }
 
@@ -67,6 +68,24 @@ void LArProperties::ClearData()
     fReflectiveSurfaceEnergies.clear();
     fReflectiveSurfaceReflectances.clear();
     fReflectiveSurfaceDiffuseFractions.clear();
+}
+
+// bool LArProperties::ReadFromServices()
+// {
+//     ClearData();
+//     return true;
+// }
+
+void LArProperties::DumpInfo()
+{
+  std::cout << std::endl;
+  std::cout << "Dumping LArProperties info:" << std::endl;
+  std::cout << "\tfEfield[0]: " << fEfield[0] << std::endl;
+  std::cout << "\tfTemperature: " << fTemperature << std::endl;
+  std::cout << "\tfElectronlifetime: " << fElectronlifetime << std::endl;
+  std::cout << "\tfRadiationLength: " << fRadiationLength << std::endl;
+  std::cout << "\tfArgon39DecayRate: " << fArgon39DecayRate << std::endl;
+  std::cout << std::endl;
 }
 
 bool LArProperties::ReadTree()

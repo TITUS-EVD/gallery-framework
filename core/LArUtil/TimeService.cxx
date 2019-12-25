@@ -42,6 +42,12 @@ namespace larutil {
     */
   }
 
+  bool TimeService::ReadFromServices()
+  {
+      ClearData();
+      return true;
+  }
+
   bool TimeService::ReadTree()
   {
 

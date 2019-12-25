@@ -16,6 +16,7 @@
 
 #include "LArUtilBase.h"
 #include "Base/GeoTypes.h"
+// #include "LArUtilServicesHandler.h"
 
 #include <TMath.h>
 #include <TVector3.h>
@@ -93,6 +94,9 @@ public:
     UInt_t   PlaneWireToChannel(const UInt_t plane,
                                 const UInt_t wire) const;
 
+    /// Convert channel to tpc
+    UChar_t   ChannelToTPC(const UInt_t ch)const;
+
     /// convert channel to plane
     UChar_t  ChannelToPlane(const UInt_t ch) const;
 
@@ -135,6 +139,10 @@ public:
     Double_t WireCoordinate(const TVector3& worldLoc,
                             const UInt_t PlaneNo) const;
 
+    /// number of TPCs
+    Double_t   NTPC() const
+    { return fNTPC; }
+
     /// half width of the TPC
     Double_t   DetHalfWidth() const
     { return fDetHalfWidth; }
@@ -163,6 +171,8 @@ public:
     void     CryostatBoundaries(Double_t* boundaries) const;
 
 private:
+
+    Int_t    fNTPC; // number of TPCs (default is 1)
 
     Double_t fDetLength;
     Double_t fDetHalfWidth;
@@ -256,18 +266,25 @@ public:
 
     virtual bool LoadData(bool force_reload = false);
 
+    /// Prints some of the stored information
+    void DumpInfo();
+
 protected:
 
     virtual bool ReadTree();
+    // virtual bool ReadFromServices();
 
     virtual void ClearData();
 
 private:
 
     // Vectors with length = # channels
-    std::vector<UChar_t>                fChannelToPlaneMap;
-    std::vector<UShort_t>               fChannelToWireMap;
-    std::vector<std::vector<UShort_t> > fPlaneWireToChannelMap;
+
+    std::vector<UChar_t>                             fChannelToPlaneMap;
+    std::vector<UShort_t>                            fChannelToWireMap;
+    std::vector<UShort_t>                            fChannelToTPCMap; // only used in case of multiple TPCs
+    std::vector<std::vector<UShort_t> >              fPlaneWireToChannelMap;
+    std::vector<std::vector<std::vector<UShort_t>> > fTPCPlaneWireToChannelMap; // only used in case of multiple TPCs
 
     // Vectors with length = # planes
     std::vector<galleryfmwk::geo::SigType_t> fSignalType;

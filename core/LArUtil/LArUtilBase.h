@@ -55,9 +55,14 @@ namespace larutil {
     /// Method to load data TTree
     virtual bool LoadData(bool force_reload=false);
 
+    /// Method to load data from services
+    // virtual bool LoadDataFromServices(bool force_reload=false);
+
   protected:
 
     virtual bool ReadTree()=0;
+
+    // virtual bool ReadFromServices()=0;
 
     virtual void ClearData()=0;
 
@@ -65,6 +70,7 @@ namespace larutil {
 
     std::string _file_name;
     std::string _tree_name;
+    std::string _fcl_name;
     bool _loaded;
   };
 }

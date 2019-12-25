@@ -15,7 +15,16 @@ namespace larutil {
 			kUTIL_DATA_FILENAME[LArUtilConfig::Detector()].c_str());
       _tree_name = kTREENAME_DETECTORPROPERTIES;
       LoadData();
-    }
+      DumpInfo();
+    } 
+    // if(default_load) {
+    //   std::cout << "************************** DetectorProperties" << std::endl;
+    //   _file_name = Form("%s/LArUtil/dat/%s",
+    //   getenv("GALLERY_FMWK_COREDIR"),
+    //   kUTIL_FCL_FILENAME[LArUtilConfig::Detector()].c_str());
+    //   _fcl_name = kTREENAME_DETECTORPROPERTIES;
+    //   LoadDataFromServices();
+    // }
   }
 
   void DetectorProperties::ClearData()
@@ -34,6 +43,30 @@ namespace larutil {
     fXTicksOffsets.clear();    
 
   }
+
+  // bool DetectorProperties::ReadFromServices()
+  // {
+
+  //   ClearData();
+
+  //   auto detp = LArUtilServicesHandler::GeDetProperties(_file_name);
+
+  //   std::cout << "detp->SamplingRate() " << detp->SamplingRate() << std::endl;
+  //   fSamplingRate = detp->SamplingRate();
+  //   fTriggerOffset = detp->TriggerOffset();
+  //   fElectronsToADC = detp->ElectronsToADC();
+  //   fNumberTimeSamples = detp->NumberTimeSamples();
+  //   fReadOutWindowSize = detp->ReadOutWindowSize();
+  //   fTimeOffsetU = detp->TimeOffsetU();
+  //   fTimeOffsetV = detp->TimeOffsetV();
+  //   fTimeOffsetZ = detp->TimeOffsetZ();
+    
+  //   // Double_t fXTicksCoefficient; ///< Parameters for x<-->ticks
+  //   // bool     fXTicksParamsLoaded;///<  calculations
+  //   // std::vector<Double_t> fXTicksOffsets;
+   
+  //   return true;
+  // }
 
   bool DetectorProperties::ReadTree()
   {
@@ -80,6 +113,24 @@ namespace larutil {
 
     delete ch;
     return true;
+  }
+
+  void DetectorProperties::DumpInfo()
+  {
+    std::cout << std::endl;
+    std::cout << "Dumping DetectorProperties info:" << std::endl;
+    std::cout << "\tfSamplingRate: " << fSamplingRate << std::endl;
+    std::cout << "\tfTriggerOffset: " << fTriggerOffset << std::endl;
+    std::cout << "\tfElectronsToADC: " << fElectronsToADC << std::endl;
+    std::cout << "\tfNumberTimeSamples: " << fNumberTimeSamples << std::endl;
+    std::cout << "\tfReadOutWindowSize: " << fReadOutWindowSize << std::endl;
+    std::cout << "\tfTimeOffsetU: " << fTimeOffsetU << std::endl;
+    std::cout << "\tfTimeOffsetV: " << fTimeOffsetV << std::endl;
+    std::cout << "\tfTimeOffsetZ: " << fTimeOffsetZ << std::endl;
+    std::cout << "\tfXTicksCoefficient: " << fXTicksCoefficient << std::endl;
+    std::cout << "\tfXTicksOffsets[0]: " << fXTicksOffsets[0] << std::endl;
+    std::cout << std::endl;  
+
   }
 
 }

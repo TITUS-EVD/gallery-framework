@@ -12,6 +12,9 @@ OBJECTS = $(SOURCES:.cxx=.o)
 
 # include options for this package
 INCFLAGS = -I.                       #Include itself
+INCFLAGS += $(shell gallery-config --includes)
+INCFLAGS += $(shell gallery-fmwk-config --includes)
+INCFLAGS += $(shell python-config --includes)
 INCFLAGS += -I$(GALLERY_FMWK_COREDIR)
 
 # platform-specific options
@@ -25,7 +28,9 @@ include $(GALLERY_FMWK_BASEDIR)/Makefile/Makefile.${OSNAME}
 CXXFLAGS +=  `root-config --cflags`
 
 # set linker flags
+LDFLAGS += $(shell gallery-config --libs)
 LDFLAGS += -L$(GALLERY_FMWK_LIBDIR) -lgallery_framework_Base
+# call the common GNUmakefile
 
 # call the common GNUmakefile
 include $(GALLERY_FMWK_BASEDIR)/Makefile/GNUmakefile.CORE

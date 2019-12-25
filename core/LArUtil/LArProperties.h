@@ -42,6 +42,7 @@ namespace larutil {
 
     virtual void ClearData();
     virtual bool ReadTree();
+    // virtual bool ReadFromServices();
     
   public:
 
@@ -116,6 +117,9 @@ namespace larutil {
     
     std::map<std::string, std::map<Double_t, Double_t> >  SurfaceReflectances() const;
     std::map<std::string, std::map<Double_t, Double_t> >  SurfaceReflectanceDiffuseFractions() const;
+
+    /// Prints some of the stored information
+    void DumpInfo();
 
   private:
     

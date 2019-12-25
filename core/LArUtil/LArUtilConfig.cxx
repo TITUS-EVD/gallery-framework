@@ -26,6 +26,8 @@ namespace larutil {
     case galleryfmwk::geo::kLArIAT:
     case galleryfmwk::geo::kICARUS:
     case galleryfmwk::geo::kSBND:
+      _detector = type;
+      break;
     case galleryfmwk::geo::kDetIdMax:
       galleryfmwk::Message::send(galleryfmwk::msg::kERROR,__FUNCTION__,
 			      Form("Detector type: %d not supported!",type));
