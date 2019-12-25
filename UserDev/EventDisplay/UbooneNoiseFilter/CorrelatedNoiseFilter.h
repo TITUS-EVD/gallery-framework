@@ -36,6 +36,7 @@ public:
 
   /// Default constructor
   CorrelatedNoiseFilter() {_detector_properties_interface.init();}
+                          // _correlatedNoiseWaveforms.resize(1, std::vector<std::vector<float>>(1, std::vector<float>(1,0)));}
 
   /// Default destructor
   ~CorrelatedNoiseFilter() {}

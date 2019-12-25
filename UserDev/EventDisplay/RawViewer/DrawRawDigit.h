@@ -32,14 +32,14 @@
 
 
 
-struct _object;
-typedef _object PyObject;
+// struct _object;
+// typedef _object PyObject;
 
 
-#ifndef __CINT__
-#include "Python.h"
-#include "numpy/arrayobject.h"
-#endif
+// #ifndef __CINT__
+// #include "Python.h"
+// #include "numpy/arrayobject.h"
+// #endif
 
 
 namespace evd {

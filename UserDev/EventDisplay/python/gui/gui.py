@@ -276,7 +276,7 @@ class gui(QtGui.QWidget):
     # set the text boxes correctly:
     self._larliteEventEntry.setText(str(self._event_manager.internalEvent()))
 
-    eventLabel = "Ev: " + str(self._event_manager.event())
+    eventLabel = "Event: " + str(self._event_manager.event())
     self._eventLabel.setText(eventLabel)
     runLabel = "Run: " + str(self._event_manager.run())
     self._runLabel.setText(runLabel)
@@ -292,11 +292,11 @@ class gui(QtGui.QWidget):
     # This is a box to allow users to enter an event (larlite numbering)
     self._goToLabel = QtGui.QLabel("Go to: ")
     self._larliteEventEntry = QtGui.QLineEdit()
-    self._larliteEventEntry.setToolTip("Enter an event to skip to that event (larlite numbering")
+    self._larliteEventEntry.setToolTip("Enter an event to skip to that event.")
     self._larliteEventEntry.returnPressed.connect(self.goToEventWorker)
     # These labels display current events
     self._runLabel = QtGui.QLabel("Run: 0")
-    self._eventLabel = QtGui.QLabel("Ev.: 0")
+    self._eventLabel = QtGui.QLabel("Event: 0")
     self._subrunLabel = QtGui.QLabel("Subrun: 0")
 
     # Jump to the next event

@@ -120,6 +120,7 @@ class geometry(geoBase):
         self._wire2Cm = larutil.GeometryHelper.GetME().WireToCm()
         self._aspectRatio = self._wire2Cm / self._time2Cm
         self._nViews = larutil.Geometry.GetME().Nviews()
+        self._nTPCs = int(larutil.Geometry.GetME().NTPC())
         # self._tRange = larutil.DetectorProperties.GetME().ReadOutWindowSize()
         self._wRange = []
         self._offset = []
@@ -140,8 +141,8 @@ class sbnd(geometry):
         self.configure()
         # self._colorScheme =
         # self._time2Cm = 0.05515
-        self._pedestals = [2048, 2048, 400]
-        self._levels = [[-100, 10], [-10, 100], [-10, 200]]
+        self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
+        self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
         for i in xrange(len(self._pedestals)):
             self._levels[i][0] += self._pedestals[i]
             self._levels[i][1] += self._pedestals[i]
@@ -155,8 +156,8 @@ class sbnd(geometry):
         self._tRange = 3000
         self._triggerOffset = 0
         self._readoutWindowSize = 3000
-        self._planeOriginX = [0.0, -0.3, -0.6] 
-        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6] 
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
         # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
         #           * larutil.GeometryHelper.GetME().TimeToCm()
         # self._offset[:] = [x - remove for x in self._offset]
@@ -168,6 +169,30 @@ class sbnd(geometry):
                        (0.33333, (254, 209, 65, 255)),
                        (0, (255, 0, 0, 255))],
              'mode': 'rgb'})]
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
+        self._defaultColorScheme.append(
+            {'ticks': [(1, (22, 30, 151, 255)),
+                       (0.791, (0, 181, 226, 255)),
+                       (0.645, (76, 140, 43, 255)),
+                       (0.47, (0, 206, 24, 255)),
+                       (0.33333, (254, 209, 65, 255)),
+                       (0, (255, 0, 0, 255))],
+             'mode': 'rgb'})
         self._defaultColorScheme.append(
             {'ticks': [(0, (22, 30, 151, 255)),
                        (0.33333, (0, 181, 226, 255)),

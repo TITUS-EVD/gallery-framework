@@ -62,7 +62,16 @@ bool DrawHit::analyze(gallery::Event* ev) {
 
 
   for (auto & hit : *hitHandle) {
+
     unsigned int view = hit.View();
+    int plane = geoService->ChannelToPlane(hit.Channel());
+    int tpc = geoService->ChannelToTPC(hit.Channel());
+
+    // If a second TPC is present, its planes 0, 1 and 2 are 
+    // stored consecutively to those of the first TPC. 
+    // So we have planes 0, 1, 2, 3, 4, 5.
+    view = plane + tpc * (geoService->Nplanes() / geoService->NTPC()); 
+
     _dataByPlane.at(view).emplace_back(
       Hit2D(hit.WireID().Wire,
             hit.PeakTime(),

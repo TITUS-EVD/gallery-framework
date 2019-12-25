@@ -104,6 +104,12 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
 
     unsigned int wire = geoService->ChannelToWire(ch);
     unsigned int plane = geoService->ChannelToPlane(ch);
+    unsigned int tpc = geoService->ChannelToTPC(ch);
+
+    // If a second TPC is present, its planes 0, 1 and 2 are 
+    // stored consecutively to those of the first TPC. 
+    // So we have planes 0, 1, 2, 3, 4, 5.
+    plane += tpc * (geoService->Nplanes() / geoService->NTPC());
 
     if (wire > geoService->Nwires(plane)) continue;
 

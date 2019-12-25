@@ -156,20 +156,26 @@ float getMean(const std::vector<float> & _input) {
 
 
 void detPropFetcher::init(){
-  _wire_lengths.resize(3);
-  _wire_lengths[0].resize(2400);
-  _wire_lengths[1].resize(2400);
-  _wire_lengths[2].resize(3456);
-
-  _wire_scales.resize(3);
-  _wire_scales[0].resize(2400);
-  _wire_scales[1].resize(2400);
-  _wire_scales[2].resize(3456);
 
   auto geom = larutil::Geometry::GetME();
 
+  int n_wires_0 = geom->Nwires(0);
+  int n_wires_1 = geom->Nwires(1);
+  int n_wires_2 = geom->Nwires(2);
 
-  for (int wire = 0; wire < 2400; wire ++) {
+  _wire_lengths.resize(3);
+  _wire_lengths[0].resize(n_wires_0);
+  _wire_lengths[1].resize(n_wires_1);
+  _wire_lengths[2].resize(n_wires_2);
+
+  _wire_scales.resize(3);
+  _wire_scales[0].resize(n_wires_0);
+  _wire_scales[1].resize(n_wires_1);
+  _wire_scales[2].resize(n_wires_2);
+
+
+
+  for (int wire = 0; wire < n_wires_0; wire ++) {
     double xyzStart[3];
     double xyzEnd[3];
 
@@ -200,7 +206,7 @@ void detPropFetcher::init(){
 
   }
 
-  for (int wire = 0; wire < 3456; wire ++) {
+  for (int wire = 0; wire < n_wires_2; wire ++) {
     double xyzStart[3];
     double xyzEnd[3];
 

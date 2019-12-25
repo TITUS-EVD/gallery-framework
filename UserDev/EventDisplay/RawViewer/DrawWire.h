@@ -28,14 +28,14 @@
 #include "TTree.h"
 #include "TGraph.h"
 
-struct _object;
-typedef _object PyObject;
+// struct _object;
+// typedef _object PyObject;
 
-#ifndef __CINT__
-#include "Python.h"
-#include "numpy/arrayobject.h"
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#endif
+// #ifndef __CINT__
+// #include "Python.h"
+// #include "numpy/arrayobject.h"
+// // #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+// #endif
 
 
 namespace evd {

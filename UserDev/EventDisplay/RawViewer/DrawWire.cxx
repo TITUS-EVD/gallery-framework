@@ -70,6 +70,7 @@ bool DrawWire::analyze(gallery::Event * ev) {
   auto const & wires
     = ev -> getValidHandle<std::vector <recob::Wire> >(wires_tag);
 
+  std::cout << "got Wire data using producer  " << _producer << std::endl;
 
   _planeData.clear();
   initDataHolder();
@@ -78,11 +79,21 @@ bool DrawWire::analyze(gallery::Event * ev) {
     unsigned int ch = wire.Channel();
     unsigned int detWire = geoService->ChannelToWire(ch);
     unsigned int plane = geoService->ChannelToPlane(ch);
+    unsigned int tpc = geoService->ChannelToTPC(ch);
+
+    // If a second TPC is present, its planes 0, 1 and 2 are 
+    // stored consecutively to those of the first TPC. 
+    // So we have planes 0, 1, 2, 3, 4, 5.
+    plane += tpc * (geoService->Nplanes() / geoService->NTPC());
+    
     int offset = detWire * _y_dimensions[plane] + _padding_by_plane[plane];
 
     for (auto & iROI : wire.SignalROI().get_ranges()) {
       // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
       const int FirstTick = iROI.begin_index();
+      if (plane == 2) {
+        std::cout << "\t first tick = " << FirstTick  << std::endl;
+      }
       size_t i = 0;
       for (float ADC : iROI) {
         _planeData.at(plane).at(offset + FirstTick + i) = ADC;

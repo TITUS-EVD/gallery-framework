@@ -108,6 +108,14 @@ bool DrawCluster::analyze(gallery::Event * ev) {
   for (auto const& cluster : * clusters) {
     view = cluster.View();
 
+    int tpc = cluster.Plane().TPC;
+    int plane = cluster.Plane().Plane;
+    
+    // If a second TPC is present, its planes 0, 1 and 2 are 
+    // stored consecutively to those of the first TPC. 
+    // So we have planes 0, 1, 2, 3, 4, 5.
+    view = plane + tpc * (geoService->Nplanes() / geoService->NTPC()); 
+
     // Make a new cluster in the data:
     _dataByPlane.at(view).push_back(Cluster2D());
     _dataByPlane.at(view).back()._is_good = true;
