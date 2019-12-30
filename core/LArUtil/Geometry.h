@@ -72,6 +72,15 @@ public:
     /// Number of wires in plane "p" of TPC "tpc" of cryostat "cstat".
     UInt_t Nwires(UInt_t p) const;
 
+    /// OpDet d X vtx in the detector
+    Double_t OpDetX(UInt_t d) const;
+
+    /// OpDet d Y vtx in the detector
+    Double_t OpDetY(UInt_t d) const;
+
+    /// OpDet d Z vtx in the detector
+    Double_t OpDetZ(UInt_t d) const;
+
     /// convert channel number to list of possible WireIDs
     galleryfmwk::geo::WireID ChannelToWireID(const UInt_t channel) const;
 
@@ -254,6 +263,9 @@ public:
     /// Return optical detector id from optical channel
     UInt_t OpDetFromOpChannel(UInt_t ch) const;
 
+    /// Return optical detector name from optical channel (SBND only)
+    std::string OpDetNameFromOpChannel(UInt_t ch) const;
+
     /// Return optical channel vertex
     void GetOpChannelPosition(const UInt_t i, Double_t *xyz) const;
 
@@ -305,6 +317,7 @@ private:
     std::vector<std::vector<Float_t> > fOpChannelVtx;
     std::vector<std::vector<Float_t> > fOpDetVtx;
     std::vector<unsigned int> fOpChannel2OpDet;
+    std::vector<std::string> fOpChannel2Name;
 
     //--- Variables to be computd based on TTree data ---//
     std::vector<Double_t> fOrthVectorsY;

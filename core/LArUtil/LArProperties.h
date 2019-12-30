@@ -153,7 +153,7 @@ namespace larutil {
     std::vector<Double_t> fRayleighSpectrum;
     std::vector<Double_t> fRayleighEnergies;
     
-    bool fScintByParticleType;
+    Bool_t fScintByParticleType;
     
     Double_t fProtonScintYield;
     Double_t fProtonScintYieldRatio;
@@ -175,7 +175,7 @@ namespace larutil {
     Double_t fScintYieldRatio;
     Double_t fScintBirksConstant;
     
-    bool fEnableCerenkovLight;
+    Bool_t fEnableCerenkovLight;
     
     std::vector<std::string>            fReflectiveSurfaceNames;
     std::vector<Double_t>               fReflectiveSurfaceEnergies;

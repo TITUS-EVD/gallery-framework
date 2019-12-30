@@ -15,6 +15,7 @@ import seed
 import pfpart
 # import neutrino
 import numuselection
+import opflash
 
 # This is the class that maintains the list of drawable items.
 # If your class isn't here, it can't be drawn
@@ -41,6 +42,7 @@ class drawableItems(object):
         self._drawableClasses.update({'Vertex': [vertex.vertex,"recob::Vertex"]})
         self._drawableClasses.update({'SPS': [spacepoint.spacepoint,"recob::SpacePoint"]})
         self._drawableClasses.update({'Numu Selection': [numuselection.numuselection, "recob::Trackrecob::Vertexvoidart::Assn"]})
+        self._drawableClasses.update({'OpFlash': [opflash.opflash, "recob::OpFlash"]})
 
     def getListOfTitles(self):
         return self._drawableClasses.keys()

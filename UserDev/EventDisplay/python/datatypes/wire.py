@@ -1,6 +1,7 @@
 from database import dataBase
 from ROOT import evd
 import pyqtgraph as pg
+import numpy as np
 
 
 class wire(dataBase):
@@ -10,8 +11,43 @@ class wire(dataBase):
     def __init__(self):
         super(wire, self).__init__()
         self._process = None
+        self._n_tpc = None
+        self._n_plane = None
+        self._gap = None
 
     def getPlane(self, plane):
+        '''
+        Returns the array of values for the selected plane.
+        The values are stored in a 2d array, containing the
+        wires on axis 0, and the waveform values on axis 1.
+        In the special case in which there are 2 TPCs, the waveform 
+        are taken from the same plane on both TPCs. The waveform
+        on the second TPC is flipped in time, so as to keep the same
+        x orientation. The waveforms on the 2 TPCs are then
+        concatenated together on a wire by wire basis. 
+        A padding with zeros is added between waveforms on different 
+        TPCs, to account for a gap between the two cathodes. This gap is
+        customizable by changing the geometry value "cathode gap".
+        '''
+        if self._n_tpc == 2:
+            array_right = self._process.getArrayByPlane(plane)
+            if plane == 0: left_plane = 4
+            if plane == 1: left_plane = 3
+            if plane == 2: left_plane = 5
+            array_left  = self._process.getArrayByPlane(left_plane)#plane + self._n_plane / self._n_tpc)
+            array_left = np.flip(array_left, axis=1)
+            # print ('before:', array_left.shape)
+            # array_left = np.rot90(array_left, 2)
+            # print ('after:', array_left.shape)
+
+
+
+            npad = ((0, 0), (0, int(self._gap)))
+            array_right = np.pad(array_right, pad_width=npad, mode='constant', constant_values=0)
+
+            array = np.concatenate((array_right, array_left), axis=1)
+            return array
+
         return self._process.getArrayByPlane(plane)
 
 
@@ -19,6 +55,9 @@ class recoWire(wire):
 
     def __init__(self, geom):
         super(recoWire, self).__init__()
+        self._n_tpc = geom.nTPCs()
+        self._n_plane = geom.nPlanes()
+        self._gap = geom.cathodeGap()
         self._process = evd.DrawWire()
         self._process.initialize()
         self._process.setInput(self._producerName)
@@ -38,6 +77,9 @@ class rawDigit(wire):
 
     def __init__(self, geom):
         super(rawDigit, self).__init__()
+        self._n_tpc = geom.nTPCs()
+        self._n_plane = geom.nPlanes()
+        self._gap = geom.cathodeGap()
         self._process = evd.DrawRawDigit()
         for i in xrange(len(geom._pedestals)):
             self._process.setPedestal(geom._pedestals[i], i)

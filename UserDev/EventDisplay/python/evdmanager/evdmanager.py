@@ -123,7 +123,7 @@ class evd_manager_base(manager, QtCore.QObject):
 
         self._wireDrawer = None
         # self._truthDrawer = None
-
+        
 
     def pingFile(self, file):
         """
@@ -361,7 +361,10 @@ class evd_manager_2D(evd_manager_base):
             self._drawnClasses[informal_type].setProducer(product.fullName())
             self.processEvent(True)
             self._drawnClasses[informal_type].clearDrawnObjects(self._view_manager)
-            self._drawnClasses[informal_type].drawObjects(self._view_manager)
+            if informal_type == 'MCTrack' or informal_type == 'Track': 
+                self._drawnClasses[informal_type].drawObjects(self._view_manager, self._gui._tracksOnBothTPCs)
+            else:
+                self._drawnClasses[informal_type].drawObjects(self._view_manager)
             return
 
         # Now, draw the new product
@@ -387,7 +390,10 @@ class evd_manager_2D(evd_manager_base):
             self._drawnClasses.update({informal_type: drawingClass})
             # Need to process the event
             self.processEvent(True)
-            drawingClass.drawObjects(self._view_manager)
+            if informal_type == 'MCTrack' or informal_type == 'Track': 
+                drawingClass.drawObjects(self._view_manager, self._gui._tracksOnBothTPCs)
+            else:
+                drawingClass.drawObjects(self._view_manager)
 
     def clearAll(self):
         for recoProduct in self._drawnClasses:
@@ -405,6 +411,7 @@ class evd_manager_2D(evd_manager_base):
         # self.drawTruth()
         for item in order:
             if item in self._drawnClasses:
+                print ('fresh *********Name: ', item)
                 self._drawnClasses[item].drawObjects(self._view_manager)
 
     def getAutoRange(self, plane):
@@ -497,6 +504,11 @@ class evd_manager_2D(evd_manager_base):
             # Get the hits:
             hits = self._drawnClasses['Hit'].getHitsOnWire(plane, wire)
             self._view_manager.drawHitsOnPlot(hits)
+
+            if self._geom.nTPCs() == 2 and plane == 2:
+                hits = self._drawnClasses['Hit'].getHitsOnWire(plane + self._geom.nPlanes() / self._geom.nTPCs(), wire)
+                self._view_manager.drawHitsOnPlot(hits, flip=True)
+
 
 try:
     import pyqtgraph.opengl as gl

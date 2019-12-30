@@ -51,20 +51,20 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
 
   // The time position is the X coordinate, corrected for
   // trigger offset and the offset of the plane
-  // auto detp = DetectorProperties::GetME();
+  auto detp = DetectorProperties::GetME();
   returnPoint.t = _3D_position.X();
   // Add in the trigger offset:
   // (Trigger offset is time that the data is recorded
   // before the actual spill.
   // So, it moves the "0" farther away from the actual
   // time and is an addition)
-  // returnPoint.t += detp -> TriggerOffset() * fTimeToCm;
+  returnPoint.t += detp -> TriggerOffset() * fTimeToCm;
   // std::cout << "trigger offset, plane " << plane
   //           << ": " << detp -> TriggerOffset() * fTimeToCm << std::endl;
   //
   //Get the origin point of this plane:
-  // Double_t planeOrigin[3];
-  // geom -> PlaneOriginVtx(plane, planeOrigin);
+  Double_t planeOrigin[3];
+  geom -> PlaneOriginVtx(plane, planeOrigin);
   // Correct for the origin of the planes
   // X = 0 is at the very first wire plane, so the values
   // of the coords of the planes are either 0 or negative
@@ -72,7 +72,7 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
   // beyond 0 needs to make the time coordinate larger
   // Therefore, subtract the offest (which is already
   // in centimeters)
-  // returnPoint.t -= planeOrigin[0];
+  returnPoint.t -= planeOrigin[0];
 
 // std::cout << "origin offset, plane " << plane
 //             << ": " << planeOrigin[0] << std::endl;
