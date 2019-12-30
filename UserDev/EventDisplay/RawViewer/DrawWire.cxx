@@ -70,7 +70,6 @@ bool DrawWire::analyze(gallery::Event * ev) {
   auto const & wires
     = ev -> getValidHandle<std::vector <recob::Wire> >(wires_tag);
 
-  std::cout << "got Wire data using producer  " << _producer << std::endl;
 
   _planeData.clear();
   initDataHolder();
@@ -92,7 +91,6 @@ bool DrawWire::analyze(gallery::Event * ev) {
       // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
       const int FirstTick = iROI.begin_index();
       if (plane == 2) {
-        std::cout << "\t first tick = " << FirstTick  << std::endl;
       }
       size_t i = 0;
       for (float ADC : iROI) {

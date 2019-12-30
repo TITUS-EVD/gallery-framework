@@ -39,7 +39,7 @@ class cluster(recoBase):
         geom = view_manager._geometry
 
         for view in view_manager.getViewPorts():
-            colorIndex = 0
+    
             # get the plane
             thisPlane = view.plane()
 
@@ -48,7 +48,20 @@ class cluster(recoBase):
 
 
             clusters = self._process.getDataByPlane(thisPlane)
+            self.drawClusterList(view, clusters, thisPlane, geom)
 
+            # In case of 2 TPCs, also draw the hits on
+            # the other plane, but flipping the time
+            if geom.nTPCs() == 2:
+                if thisPlane == 0: left_plane = 4
+                if thisPlane == 1: left_plane = 3
+                if thisPlane == 2: left_plane = 5
+                clusters_2 = self._process.getDataByPlane(left_plane)
+                self.drawClusterList(view, clusters_2, thisPlane, geom, flip=True)
+
+
+    def drawClusterList(self, view, clusters, thisPlane, geom, flip=False):
+            colorIndex = 0
             for i in xrange(len(clusters)):
                 cluster = clusters[i]
                 # Now make the cluster
@@ -60,7 +73,7 @@ class cluster(recoBase):
                 self._listOfClusters[thisPlane].append(cluster_box_coll)
 
                 # draw the hits in this cluster:
-                cluster_box_coll.drawHits(view, cluster, geom)
+                cluster_box_coll.drawHits(view, cluster, geom, flip)
 
                 colorIndex += 1
                 if colorIndex >= len(self._clusterColors):

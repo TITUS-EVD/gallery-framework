@@ -22,6 +22,7 @@
 *.pyc
 *.png
 *.ipynb
+._*
 /lib/*
 /doc/dOxy*
 /bin/larlite

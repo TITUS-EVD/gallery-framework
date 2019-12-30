@@ -11,6 +11,7 @@ import evdmanager
 
 # Import the class that manages the view windows
 from viewport import viewport
+from opticalviewport import opticalviewport
 
 
 class view_manager(QtCore.QObject):
@@ -24,6 +25,8 @@ class view_manager(QtCore.QObject):
     self._drawerList = []
     self._cmapList = []
     self._geometry = geometry
+
+    self._opt_view = opticalviewport(self._geometry)
 
     self._wireDrawer = pg.GraphicsLayoutWidget()
     self._wireDrawer.setBackground(None)
@@ -56,6 +59,10 @@ class view_manager(QtCore.QObject):
   def restoreDefaults(self):
     for view in self._drawerList:
       view.restoreDefaults()
+
+  def restoret0(self):
+    for view in self._drawerList:
+      view.restoret0()
 
   def clearPoints(self):
     for view in self._drawerList:
@@ -192,10 +199,29 @@ class view_manager(QtCore.QObject):
       self._layout.removeWidget(self._wireDrawer)
       self._wireDrawer.setVisible(False)
 
+  def drawOpDets(self,opdetsView):
+    if opdetsView:
+      self._layout.addWidget(self._opt_view)
+      self._opt_view.setVisible(True)
+    else:
+      self._layout.removeWidget(self._opt_view)
+      self._opt_view.setVisible(False)
+
   def useCM(self,useCM):
     for view in self._drawerList:
       view.useCM(useCM)
 
+  def showAnodeCathode(self,showAC):
+    for view in self._drawerList:
+      view.showAnodeCathode(showAC)
+
+  def uniteCathodes(self,uniteC):
+    for view in self._drawerList:
+      view.uniteCathodes(uniteC)
+
+  def t0slide(self,t0):
+    for view in self._drawerList:
+      view.t0slide(t0)
 
   def drawPlanes(self,event_manager):
     for i in xrange(len(self._drawerList)):
@@ -218,14 +244,32 @@ class view_manager(QtCore.QObject):
       #   self._wirePlotItem.setData(axisData,wireData)
       # else:
 
-  def drawHitsOnPlot(self,hits):
+  def drawHitsOnPlot(self,hits,flip=False):
     if not self._wireDrawer.isVisible():
       return
+
+    if len(hits) == 0:
+      return
+
     offset = self._geometry.timeOffsetTicks(hits[0].plane())
+    
     for i in xrange(len(hits)):
       hit = hits[i]
-      xPts = np.linspace(hit.start_time() + offset, hit.end_time() + offset, hit.end_time() - hit.start_time() + 1)
-      yPts = hit.peak_amplitude() * np.exp( - 0.5 * (xPts - (hit.peak_time() + offset))**2 / hit.rms()**2  )
+
+      start_time = hit.start_time() + offset
+      end_time   = hit.end_time() + offset
+      delta      = hit.end_time() - hit.start_time() + 1
+      peak_time  = hit.peak_time() + offset
+    
+      # In case of 2 TPCs, also draw the hits on
+      # the other plane, but flipping the time
+      if flip:
+        start_time = 2 * self._geometry.tRange() - start_time 
+        end_time   = 2 * self._geometry.tRange() - end_time 
+        peak_time  = 2 * self._geometry.tRange() - peak_time
+
+      xPts = np.linspace(start_time, end_time, delta)
+      yPts = hit.peak_amplitude() * np.exp( - 0.5 * (xPts - peak_time)**2 / hit.rms()**2  )
       # self._plottedHits.append(self._wirePlot.plot(xPts,yPts))
       self._plottedHits.append(self._wirePlot.plot(xPts,yPts,pen=pg.mkPen((255,0,0,200),width=2)))
 
@@ -241,8 +285,28 @@ class view_manager(QtCore.QObject):
     self._wirePlotItem.setData(freqs,np.absolute(fft))
     return
 
+  def drawingRawDigits(self, status):
+    '''
+    Returns True if the viewports are
+    currentlt drawing RawDigits, False
+    otherwise.
+    '''
+    for view in self._drawerList:
+        view.drawingRawDigits(status)
+
   def getViewPorts(self):
+    '''
+    Returns all the viewports
+    for the wire data drawing
+    '''
     return self._drawerList
+
+  def getOpticalViewport(self):
+    '''
+    Returns the viewports that 
+    shows optical data
+    '''
+    return self._opt_view
 
 
 class gui(QtGui.QWidget):
@@ -253,6 +317,7 @@ class gui(QtGui.QWidget):
     # initUI should not do ANY data handling, it should only get the interface loaded
     self._geometry = geometry
     self._view_manager = view_manager(geometry)
+    self._tracksOnBothTPCs = False
     # self.setStyleSheet("background-color:rgb(230,230,230);")
 
   def initManager(self,manager=None):
@@ -371,6 +436,13 @@ class gui(QtGui.QWidget):
     self._drawRawOption.setToolTip("Draw the raw wire signals in 2D")
     self._drawRawOption.setTristate(False)
 
+    # check box to toggle the opdet drawing
+    self._drawOpDetOption = QtGui.QCheckBox("Optical Display")
+    self._drawOpDetOption.setToolTip("Draw the opdets when clicked on")
+    self._drawOpDetOption.stateChanged.connect(self.drawOpDetWorker)
+    self._drawOpDetOption.setVisible(False)
+    
+
     # add a box to restore the drawing defaults:
     self._restoreDefaults = QtGui.QPushButton("Restore Defaults")
     self._restoreDefaults.setToolTip("Restore the drawing defaults of the views.")
@@ -404,9 +476,47 @@ class gui(QtGui.QWidget):
     self._fftButton.setToolTip("Compute and show the FFT of the wire currently drawn")
     self._fftButton.clicked.connect(self._view_manager.plotFFT)
 
+    self._anodeCathodeOption = QtGui.QCheckBox("Draw anode/cathode")
+    self._anodeCathodeOption.setToolTip("Shows the anode and cathode position for t0=0.")
+    self._anodeCathodeOption.setTristate(False)
+    self._anodeCathodeOption.stateChanged.connect(self.showAnodeCathodeWorker)
+
+    self._uniteCathodes = QtGui.QCheckBox("Unite cathodes")
+    self._uniteCathodes.setToolTip("Unites the cathodes waveforms.")
+    self._uniteCathodes.setTristate(False)
+    self._uniteCathodes.stateChanged.connect(self.uniteCathodesWorker)
+
+    self._t0sliderLabelIntro = QtGui.QLabel("Set t<sub>0</sub>:")
+    self._t0slider = QtGui.QSlider(0x1)
+    self._t0slider.setToolTip("Change the t<sub>0</sub>.")
+    self._t0slider.setMinimum(-self._geometry.triggerOffset())
+    self._t0slider.setMaximum(self._geometry.triggerOffset())
+    self._t0slider.setSingleStep(10)
+    self._t0slider.valueChanged.connect(self.t0sliderWorker)
+    self._t0sliderLabel = QtGui.QLabel("Current t<sub>0</sub> = 0")
+
+    self._t0sliderLabelIntro.setVisible(False)
+    self._t0slider.setVisible(False)
+    self._t0sliderLabel.setVisible(False)
+    self._uniteCathodes.setVisible(False)
+
+    self._separators = []  
+    for i in xrange(2):
+      self._separators.append(QtGui.QFrame())
+      self._separators[i].setFrameShape(QtGui.QFrame.HLine)
+      self._separators[i].setFrameShadow(QtGui.QFrame.Sunken)
+      self._separators[i].setVisible(False)
+
+
+
+    self._spliTracksOption = QtGui.QCheckBox("Tracks on Both TPCs")
+    self._spliTracksOption.setToolTip("Split the MCTracks and Tracks so that they are projected on both TPCs.")
+    self._spliTracksOption.setTristate(False)
+    self._spliTracksOption.stateChanged.connect(self.splitTracksWorker)
+    self._spliTracksOption.setVisible(False)
+
 
     # Pack the stuff into a layout
-
     self._drawingControlBox = QtGui.QVBoxLayout()
     self._drawingControlBox.addWidget(self._restoreDefaults)
     self._drawingControlBox.addWidget(self._maxRangeButton)
@@ -416,9 +526,18 @@ class gui(QtGui.QWidget):
     self._drawingControlBox.addWidget(self._autoRangeBox)
     self._drawingControlBox.addWidget(self._lockAspectRatio)
     self._drawingControlBox.addWidget(self._drawWireOption)
+    self._drawingControlBox.addWidget(self._drawOpDetOption)
+    self._drawingControlBox.addWidget(self._separators[0])
+    self._drawingControlBox.addWidget(self._anodeCathodeOption)
+    self._drawingControlBox.addWidget(self._t0sliderLabelIntro)
+    self._drawingControlBox.addWidget(self._t0slider)
+    self._drawingControlBox.addWidget(self._t0sliderLabel)
+    self._drawingControlBox.addWidget(self._uniteCathodes)
+    self._drawingControlBox.addWidget(self._separators[1])
     self._drawingControlBox.addWidget(self._unitDisplayOption)
     self._drawingControlBox.addWidget(self._scaleBarOption)
     self._drawingControlBox.addWidget(self._logoOption)
+    self._drawingControlBox.addWidget(self._spliTracksOption)
 
     return self._drawingControlBox
 
@@ -457,6 +576,12 @@ class gui(QtGui.QWidget):
     else:
       self._view_manager.toggleLogo(False)  
 
+  def splitTracksWorker(self):
+    if self._spliTracksOption.isChecked():
+      self._tracksOnBothTPCs = True
+    else:
+      self._tracksOnBothTPCs = False
+
   def clearPointsWorker(self):
     self._view_manager.clearPoints()
     pass
@@ -477,15 +602,57 @@ class gui(QtGui.QWidget):
     else:
       self._view_manager.drawWire(False)    
 
+  def drawOpDetWorker(self):
+    if self._drawOpDetOption.isChecked():
+      self._view_manager.drawOpDets(True)
+    else:
+      self._view_manager.drawOpDets(False) 
+
   def useCMWorker(self):
     if self._unitDisplayOption.isChecked():
       self._view_manager.useCM(True)
     else:
-      self._view_manager.useCM(False)    
+      self._view_manager.useCM(False)   
+
+  def showAnodeCathodeWorker(self):
+    if self._anodeCathodeOption.isChecked():
+      self._view_manager.showAnodeCathode(True)
+      self._separators[0].setVisible(True)
+      self._t0slider.setVisible(True)
+      self._t0sliderLabel.setVisible(True)
+      self._t0sliderLabelIntro.setVisible(True)
+      self._uniteCathodes.setVisible(True)
+      self._separators[1].setVisible(True)
+    else:
+      self._view_manager.showAnodeCathode(False)  
+      self._separators[0].setVisible(False)
+      self._t0slider.setVisible(False)
+      self._t0sliderLabel.setVisible(False)
+      self._t0sliderLabelIntro.setVisible(False)
+      self._uniteCathodes.setVisible(False)
+      self._separators[1].setVisible(False)
+
+  def uniteCathodesWorker(self):
+    if self._uniteCathodes.isChecked():
+      self._view_manager.uniteCathodes(True)
+    else:
+      self._view_manager.uniteCathodes(False) 
+
+  def t0sliderWorker(self):
+    t0 = self._t0slider.value()
+    t0sliderLabel = "Current t<sub>0</sub> = " + str(t0)
+    self._t0sliderLabel.setText(t0sliderLabel)
+    self._view_manager.t0slide(t0)
+
+  def restoret0(self):
+    self._view_manager.restoret0()
+    self._t0slider.setValue(0)
 
   def restoreDefaultsWorker(self):
     self._view_manager.restoreDefaults()
     self._view_manager.setRangeToMax()
+    self._view_manager.uniteCathodes(False)
+    self.restoret0()
     
   # This function prepares the quit buttons layout and returns it
   def getQuitLayout(self):
@@ -525,10 +692,15 @@ class gui(QtGui.QWidget):
     self._viewChoiceLayout.addWidget(self._viewChoiceLabel)
     self._viewChoiceLayout.addWidget(self._allViewsButton)
 
+    views = ['U', 'V', 'Y']
     i = 0
     self._viewButtonArray = []
-    for plane in xrange(self._geometry.nViews()):
-      button = QtGui.QRadioButton("Plane" + str(i))
+    for plane in xrange(self._geometry.nViews() / self._geometry.nTPCs()):
+      text = "Plane" + str(i)
+      # Use U, V and W in the case of SBND
+      if self._geometry.nTPCs() == 2: 
+        text = "View " + views[i]
+      button = QtGui.QRadioButton(text)
       i += 1
       self._viewButtonGroup.addButton(button)
       button.clicked.connect(self.viewSelectWorker)
@@ -625,6 +797,13 @@ class gui(QtGui.QWidget):
     # Area to hold data:
     nviews = self._geometry.nViews()
     # nviews = self._baseData._nviews
+    if self._geometry.nTPCs() == 2:
+      nviews /= self._geometry.nTPCs()
+
+    if self._geometry.nTPCs() > 2:
+      print('Only 1 or 2 TPCs are supported.')
+      exit()
+
     for i in range(0, nviews):
       # These boxes hold the wire/time views:
       self._view_manager.addEvdDrawer(i)

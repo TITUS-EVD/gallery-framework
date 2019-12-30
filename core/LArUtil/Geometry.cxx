@@ -116,6 +116,7 @@ void Geometry::ClearData()
   fWireAngle.clear();
   fOpChannelVtx.clear();
   fOpChannel2OpDet.clear();
+  fOpChannel2Name.clear();
   fOpDetVtx.clear();
   fPlaneOriginVtx.clear();
 }
@@ -292,7 +293,9 @@ bool Geometry::ReadTree()
     if (!(ch->GetBranch("fOpChannel2OpDet"))) error_msg += "      fOpChannel2OpDet\n";
     if (!(ch->GetBranch("fOpDetVtx")))        error_msg += "      fOpDetVtx\n";
   }
-
+  if (LArUtilConfig::Detector() == galleryfmwk::geo::kSBND) {
+    if (!(ch->GetBranch("fOpChannel2Name"))) error_msg += "      fOpChannel2Name\n";
+  }
   if (!(ch->GetBranch("fPlaneOriginVtx"))) error_msg += "      fPlaneOriginVtx\n";
 
   if (!error_msg.empty()) {
@@ -329,6 +332,7 @@ bool Geometry::ReadTree()
   std::vector<std::vector<Float_t> > *pOpChannelVtx = nullptr;
   std::vector<std::vector<Float_t> > *pOpDetVtx = nullptr;
   std::vector<unsigned int> *pOpChannel2OpDet = nullptr;
+  std::vector<std::string> *pOpChannel2Name = nullptr;
   ch->SetBranchAddress("fDetLength", &fDetLength);
   ch->SetBranchAddress("fDetHalfWidth", &fDetHalfWidth);
   ch->SetBranchAddress("fDetHalfHeight", &fDetHalfHeight);
@@ -368,6 +372,11 @@ bool Geometry::ReadTree()
     ch->SetBranchAddress("fOpDetVtx", &pOpDetVtx);
     ch->SetBranchAddress("fOpChannel2OpDet", &pOpChannel2OpDet);
   }
+  if (LArUtilConfig::Detector() == galleryfmwk::geo::kSBND) {
+    ch->SetBranchAddress("fOpChannel2Name", &pOpChannel2Name);
+  }
+  
+
   ch->GetEntry(0);
 
 
@@ -381,7 +390,6 @@ bool Geometry::ReadTree()
   // Copy TPC-wise variabels
   if (LArUtilConfig::Detector() == galleryfmwk::geo::kSBND) {
     size_t n_tpcs = pTPCPlaneWireToChannelMap->size();
-    std::cout <<"n_tpcs " << n_tpcs << std::endl;
     fTPCPlaneWireToChannelMap.reserve(n_tpcs);
     for (size_t i = 0; i < n_tpcs; ++i) {
       fTPCPlaneWireToChannelMap.push_back(pTPCPlaneWireToChannelMap->at(i));
@@ -391,7 +399,6 @@ bool Geometry::ReadTree()
 
   // Copy channel-wise variables
   size_t n_channels = pChannelToPlaneMap->size();
-  std::cout <<"n_channels " << n_channels << std::endl;
   fChannelToPlaneMap.reserve(n_channels);
   fChannelToWireMap.reserve(n_channels);
   fChannelToTPCMap.reserve(n_channels);
@@ -405,7 +412,6 @@ bool Geometry::ReadTree()
 
   // Copy plane-wise variables
   size_t n_planes = pPlaneWireToChannelMap->size();
-  std::cout <<"n_planes " << n_planes << std::endl;
 
   fPlaneWireToChannelMap.reserve(n_planes);
   fSignalType.reserve(n_planes);
@@ -453,10 +459,19 @@ bool Geometry::ReadTree()
 
     size_t n_opmap = pOpChannel2OpDet->size();
     fOpChannel2OpDet.reserve(n_opmap);
-    for (size_t i = 0; i < n_opmap; ++i)
+    for (size_t i = 0; i < n_opmap; ++i) {
       fOpChannel2OpDet.push_back(pOpChannel2OpDet->at(i));
-
+    }
   }
+
+  if (LArUtilConfig::Detector() == galleryfmwk::geo::kSBND) {
+    size_t n_opmap = pOpChannel2Name->size();
+    fOpChannel2Name.reserve(n_opmap);
+    for (size_t i = 0; i < n_opmap; ++i) {
+      fOpChannel2Name.push_back(pOpChannel2Name->at(i));
+    }
+  }
+
   delete ch;
   return true;
 }
@@ -515,6 +530,36 @@ UInt_t Geometry::Nwires(UInt_t p) const
   }
 
   return fPlaneWireToChannelMap.at(p).size();
+}
+
+/// Number of OpDet in the detector
+Double_t Geometry::OpDetX(UInt_t d) const
+{
+  if (d >= fOpDetVtx.size()) {
+    throw LArUtilException(Form("Invalid opdet number: %d", d));
+    return galleryfmwk::data::kINVALID_CHAR;
+  }
+  return fOpDetVtx.at(d).at(0);
+}
+  
+/// Number of OpDet in the detector
+Double_t Geometry::OpDetY(UInt_t d) const
+{
+  if (d >= fOpDetVtx.size()) {
+    throw LArUtilException(Form("Invalid opdet number: %d", d));
+    return galleryfmwk::data::kINVALID_CHAR;
+  }
+  return fOpDetVtx.at(d).at(1);
+}
+
+/// Number of OpDet in the detector
+Double_t Geometry::OpDetZ(UInt_t d) const
+{
+  if (d >= fOpDetVtx.size()) {
+    throw LArUtilException(Form("Invalid opdet number: %d", d));
+    return galleryfmwk::data::kINVALID_CHAR;
+  }
+  return fOpDetVtx.at(d).at(2);
 }
 
 UChar_t  Geometry::ChannelToTPC(const UInt_t ch) const
@@ -788,12 +833,9 @@ void Geometry::WireEndPoints(const UChar_t plane,
     return;
   }
   if (wire >= fWireStartVtx.at(plane).size()) {
-    // throw LArUtilException(Form("Wire %d invalid for plane %d! Max is %i.", wire, 
-    //                                                                         plane, 
-    //                                                                         fWireStartVtx.at(plane).size()-1));
-    std::cout << "Ahhhhhhhhhhhhhhh"<< Form("Wire %d invalid for plane %d! Max is %i.", wire, 
-                                                                            plane, 
-                                                                            fWireStartVtx.at(plane).size()-1) << std::endl;
+    throw LArUtilException(Form("Wire %d invalid for plane %d! Max is %lu.", wire, 
+                                                                             plane, 
+                                                                             fWireStartVtx.at(plane).size()-1));
     return;
   }
 
@@ -1036,6 +1078,13 @@ UInt_t Geometry::OpDetFromOpChannel(UInt_t ch) const
   if (ch >= fOpChannel2OpDet.size())
     throw LArUtilException(Form("Invalid OpChannel: %d", ch));
   return fOpChannel2OpDet[ch];
+}
+
+std::string Geometry::OpDetNameFromOpChannel(UInt_t ch) const
+{
+  if (ch >= fOpChannel2Name.size())
+    throw LArUtilException(Form("Invalid OpChannel: %d", ch));
+  return fOpChannel2Name[ch];
 }
 
 void Geometry::GetOpChannelPosition(const UInt_t i, Double_t *xyz) const

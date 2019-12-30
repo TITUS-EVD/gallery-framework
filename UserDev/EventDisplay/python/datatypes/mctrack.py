@@ -14,7 +14,7 @@ class mctrack(recoBase):
         self._process = evd.DrawMCTrack()
         self.init()
 
-    def drawObjects(self, view_manager):
+    def drawObjects(self, view_manager, on_both_tpcs=False):
         geom = view_manager._geometry
 
         for view in view_manager.getViewPorts():
@@ -32,6 +32,10 @@ class mctrack(recoBase):
                 for pair in track.track():
                     x = pair.first / geom.wire2cm()
                     y = pair.second / geom.time2cm() + offset
+                    if geom.nTPCs() == 2 and on_both_tpcs:
+                        cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
+                        if y > cathode_time:
+                            y += geom.tRange() - geom.triggerOffset()
                     points.append(QtCore.QPointF(x, y))
 
                 # self._drawnObjects[view.plane()].append(thisPoly)

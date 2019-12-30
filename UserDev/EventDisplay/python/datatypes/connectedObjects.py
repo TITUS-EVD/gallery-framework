@@ -132,11 +132,20 @@ class boxCollection(QtCore.QObject):
         if self.sender() == None:
             self.highlightChange.emit()
 
-    def drawHits(self, view, cluster, geom):
+    def drawHits(self, view, cluster, geom, flip=False):
         for i in xrange(len(cluster)):
             hit = cluster[i]
+
+            wire = hit.wire()
+            time = hit.time() + geom.timeOffsetTicks(view.plane())
+            width = 1
+            height = hit.rms()
+
+            if flip and hit.plane() > 2:
+                time = 2 * geom.tRange() - time + geom.cathodeGap()
+
             # Draws a rectangle at (x,y,xlength, ylength)
-            r = connectedBox(hit.wire(), hit.time() + geom.timeOffsetTicks(view.plane()), 1, hit.rms())
+            r = connectedBox(wire, time, width, height)
             r.setPen(pg.mkPen(None))
             r.setBrush(pg.mkColor(self._color))
             self._listOfHits.append(r)

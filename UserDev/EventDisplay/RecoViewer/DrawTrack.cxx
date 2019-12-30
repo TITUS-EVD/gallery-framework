@@ -16,7 +16,7 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
           auto loc = track.LocationAtPoint(i);
           TVector3 xyz(loc.X(),loc.Y(),loc.Z());
           auto point = geoHelper->Point_3Dto2D(xyz, plane);
-        result._track.push_back(std::make_pair(point.w, point.t));
+          result._track.push_back(std::make_pair(point.w, point.t));
       }
     } catch (...) {
       continue;

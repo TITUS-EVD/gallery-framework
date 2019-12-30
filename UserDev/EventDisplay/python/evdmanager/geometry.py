@@ -12,12 +12,15 @@ class geoBase(object):
     def __init__(self):
         super(geoBase, self).__init__()
         self._nViews = 2
+        self._nTPCs = 0
+        self._nPlanes = 2
         self._tRange = 1600
         self._wRange = [240, 240]
         self._aspectRatio = 4
         self._time2Cm = 0.1
         self._wire2Cm = 0.4
         self._levels = [(-15, 15), (-10, 30)]
+        self._pedestals = [0, 0]
         self._name = "null"
         self._offset = [0, 0]
         self._halfwidth = 1.0
@@ -35,6 +38,11 @@ class geoBase(object):
         self._readoutPadding = 0
         self._timeOffsetTicks = 0
         self._timeOffsetCm = 0
+        self._cathodeGap = 0
+        self._opdet_radius = 10.16 #cm
+        self._opdet_x = [0]
+        self._opdet_y = [0]
+        self._opdet_name = ['pmt']
 
     def halfwidth(self):
        return self._halfwidth
@@ -48,6 +56,12 @@ class geoBase(object):
     def nViews(self):
         return self._nViews
 
+    def nTPCs(self):
+        return self._nTPCs
+
+    def nPlanes(self):
+        return self._nPlanes
+
     def tRange(self):
         return self._tRange
 
@@ -56,6 +70,9 @@ class geoBase(object):
 
     def getLevels(self, plane):
         return self._levels[plane]
+
+    def getPedestal(self, plane):
+        return self._pedestals[plane]
 
     def aspectRatio(self):
         return self._aspectRatio
@@ -106,6 +123,18 @@ class geoBase(object):
     def timeOffsetCm(self, plane):
         return self._timeOffsetCm
 
+    def cathodeGap(self):
+        return self._cathodeGap
+
+    def opdetLoc(self):
+        return self._opdet_x, self._opdet_y, self._opdet_z
+
+    def opdetName(self):
+        return self._opdet_name
+
+    def opdetRadius(self):
+        return self._opdet_radius
+
 class geometry(geoBase):
 
     def __init__(self):
@@ -121,11 +150,23 @@ class geometry(geoBase):
         self._aspectRatio = self._wire2Cm / self._time2Cm
         self._nViews = larutil.Geometry.GetME().Nviews()
         self._nTPCs = int(larutil.Geometry.GetME().NTPC())
+        self._nPlanes = int(larutil.Geometry.GetME().Nplanes())
         # self._tRange = larutil.DetectorProperties.GetME().ReadOutWindowSize()
         self._wRange = []
         self._offset = []
         for v in range(0, self._nViews):
             self._wRange.append(larutil.Geometry.GetME().Nwires(v))
+
+        self._opdet_x = []
+        self._opdet_y = []
+        self._opdet_z = []
+        self._opdet_name = []
+        for d in range (0, larutil.Geometry.GetME().NOpDets()):
+            self._opdet_x.append(larutil.Geometry.GetME().OpDetX(d))
+            self._opdet_y.append(larutil.Geometry.GetME().OpDetY(d))
+            self._opdet_z.append(larutil.Geometry.GetME().OpDetZ(d))
+            self._opdet_name.append(larutil.Geometry.GetME().OpDetNameFromOpChannel(d))
+
 
     def colorMap(self, plane):
         return self._defaultColorScheme[plane]
@@ -143,21 +184,22 @@ class sbnd(geometry):
         # self._time2Cm = 0.05515
         self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
         self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
-        for i in xrange(len(self._pedestals)):
-            self._levels[i][0] += self._pedestals[i]
-            self._levels[i][1] += self._pedestals[i]
+        # for i in xrange(len(self._pedestals)):
+        #     self._levels[i][0] += self._pedestals[i]
+        #     self._levels[i][1] += self._pedestals[i]
 
         self._name = "sbnd"
-        # self._logo = self._path + "/logos/uboone_logo_bw_transparent.png"
+        self._logo = self._path + "/logos/SBND-color.png"
         self._logoRatio = 1.0
         self._haslogo = False
-        self._logopos = [1250,10]
-        self._logoscale = 0.1
-        self._tRange = 3000
-        self._triggerOffset = 0
-        self._readoutWindowSize = 3000
+        self._logopos = [30, 30]
+        self._logoscale = 0.13
+        self._tRange = 7500 #3000
+        self._triggerOffset = 2500 #0
+        self._readoutWindowSize = 7500 #3000
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6] 
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        self._cathodeGap = 100
         # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
         #           * larutil.GeometryHelper.GetME().TimeToCm()
         # self._offset[:] = [x - remove for x in self._offset]

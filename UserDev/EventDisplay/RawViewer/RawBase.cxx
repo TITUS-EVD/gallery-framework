@@ -6,13 +6,9 @@
 namespace evd {
 
 RawBase::RawBase() {
-  std::cout << "====RawBase::RawBase() 1" << std::endl;
   geoService = larutil::Geometry::GetME();
-  std::cout << "====RawBase::RawBase() 2" << std::endl;
   detProp = larutil::DetectorProperties::GetME();
-  std::cout << "====RawBase::RawBase() 3" << std::endl;
   import_array();
-  std::cout << "====RawBase::RawBase() 4" << std::endl;
 }
 
 RawBase::~RawBase() {

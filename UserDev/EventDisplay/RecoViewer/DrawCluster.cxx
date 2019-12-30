@@ -142,6 +142,15 @@ bool DrawCluster::analyze(gallery::Event * ev) {
       // }
       // Hit(float w, float t, float c, float r) :
 
+      // Same as above, but for the hit view. Usually hits are in the same
+      // plane as the cluster they belong too, although is a particle
+      // has been matched across TPCs, the cluster plane is the plane
+      // that contains the majority of hits, and the hits are 
+      // on two planes, one per TPC.
+      int hit_plane = geoService->ChannelToPlane(hit->Channel());
+      int hit_tpc = geoService->ChannelToTPC(hit->Channel());
+      int hit_view = hit_plane + hit_tpc * (geoService->Nplanes() / geoService->NTPC()); 
+
       _dataByPlane.at(view).back().emplace_back(
         Hit2D(hit->WireID().Wire,
               hit->PeakTime(),
@@ -151,7 +160,7 @@ bool DrawCluster::analyze(gallery::Event * ev) {
               hit->PeakTime(),
               hit->EndTick(),
               hit->PeakAmplitude(),
-              view
+              hit_view
              ));
 
 

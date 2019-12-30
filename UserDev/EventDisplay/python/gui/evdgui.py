@@ -48,6 +48,7 @@ class recoBox(QtGui.QWidget):
         self._box.activated[str].connect(self.emitSignal)
         self._product = product
         self._producers = producers
+        self._current_producer = None
         self._stage = "all"
         if producers == None:
             self._box.addItem("--None--")
@@ -103,10 +104,16 @@ class recoBox(QtGui.QWidget):
         for prod in self._producers:
             if prod.producer() == producer:
                 if stage == "all" or prod.stage() == stage:
+                    self._current_producer = producer
                     return prod
+        self._current_producer = None
+        return None
 
     def name(self):
         return self._name
+
+    def currentProducer(self):
+        return self._current_producer
 
 # Inherit the basic gui to extend it
 # override the gui to give the lariat display special features:
@@ -138,7 +145,7 @@ class evdgui(gui):
         # This function just makes a dummy eastern layout to use.
         label1 = QtGui.QLabel("EVD")
         geoName = self._geometry.name()
-        label2 = QtGui.QLabel(geoName.capitalize())
+        label2 = QtGui.QLabel(geoName.upper())
         font = label1.font()
         font.setBold(True)
         label1.setFont(font)
@@ -242,23 +249,17 @@ class evdgui(gui):
 
     def wireChoiceWorker(self):
         sender = self.sender()
+        self._view_manager.drawingRawDigits(False)
         if sender == self._noneWireButton:
             self._event_manager.toggleWires(None)
-            # print "None is selected"
         if sender == self._wireButton:
             self._event_manager.toggleWires('wire',stage = self._stage)
-            # print "Wire is selected"
         if sender == self._rawDigitButton:
             self._event_manager.toggleWires('rawdigit',stage = self._stage)
-            # print "Raw digit is selected"
+            self._view_manager.drawingRawDigits(True)
 
         self._view_manager.drawPlanes(self._event_manager)
-        # if self._wireDrawBox.isChecked():
-        #   self._event_manager.toggleWires(True)
-        # else:
-        #   self._event_manager.toggleWires(False)
-
-        # self._view_manager.drawPlanes(self._event_manager)
+        
 
     def stageSelectHandler(self, _str):
         self._stage = _str
@@ -285,13 +286,45 @@ class evdgui(gui):
     #     self._event_manager.drawFresh()
     #     # gui.py defines the message bar and handler, connect it to this:
 
+    def splitTracksWorker(self):
+        if self._spliTracksOption.isChecked():
+            self._tracksOnBothTPCs = True
+            for box in self._listOfRecoBoxes:
+                if box.name() == 'MCTrack' or box.name() == 'Track':
+                    box.emitSignal(box.currentProducer())
+        else:
+            self._tracksOnBothTPCs = False
+            for box in self._listOfRecoBoxes:
+                if box.name() == 'MCTrack' or box.name() == 'Track':
+                    box.emitSignal(box.currentProducer())
+
     def recoBoxHandler(self, text):
         sender = self.sender()
-        # print sender.product(), "was changed to" , text
-        if text == "--Select--" or text == "--None--":
+        # Get the full product obj for this:
+        prod = sender.productObj(text, self._stage)
+
+        if text == "--Select--" or text == "--None--" or text == None:
             self._event_manager.redrawProduct(sender.name(), None, self._view_manager)
+            self.specialHandles(sender.name(), False)
             return
         else:
-            # Get the full product obj for this:
-            prod = sender.productObj(text, self._stage)
             self._event_manager.redrawProduct(sender.name(), prod, self._view_manager)
+            self.specialHandles(sender.name(), True)
+
+
+    def specialHandles(self, name, visibility):
+        '''
+        Here we handle all cases specific to 
+        the product we are drawing
+        '''
+        if name == 'MCTrack':
+            if visibility:
+                self._spliTracksOption.setVisible(True)
+            else:
+                self._spliTracksOption.setVisible(False)
+        if name == 'Track':
+            if visibility:
+                self._spliTracksOption.setVisible(True)
+            else:
+                self._spliTracksOption.setVisible(False)
+

@@ -7,6 +7,29 @@ from ROOT import larutil
 
 from database import recoBase3D
 
+class opflash(recoBase):
+    def __init__(self):
+        super(opflash, self).__init__()
+        self._productName = 'opflash'
+        self._process = evd.DrawOpflash()
+        self.init()
+
+    def drawObjects(self, view_manager):
+        geom = view_manager._geometry
+
+        view = view_manager.getOpticalViewport()
+
+        self._drawnObjects.append([])
+
+        flashes = self._process.getExtraData()
+
+        print ('Opflash drawing still need implementation.')
+
+
+
+
+
+
 try:
     import pyqtgraph.opengl as gl
     import numpy as np

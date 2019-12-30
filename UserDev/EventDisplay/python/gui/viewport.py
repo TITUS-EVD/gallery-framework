@@ -17,6 +17,18 @@ class viewport(pg.GraphicsLayoutWidget):
     self._item = pg.ImageItem(useOpenGL=True)
     # self._item._setPen((0,0,0))
     self._view.addItem(self._item)
+    # ???
+    # self._line = pg.LineSegmentROI(positions=((0, 3000), (2800, 3000)), movable=False)
+    self._line_a = None
+    self._line_c = None
+    self._line_a_2 = None
+    self._line_c_2 = None
+    self._removed_entries = 0
+    self._line_tpc_div = None
+    self._manual_t0 = 0
+    self._showAnodeCathode = False
+    # ???
+    # self._view.addItem(self._line)
     # connect the scene to click events, used to get wires
     self.scene().sigMouseClicked.connect(self.mouseClicked)
     # connect the views to mouse move events, used to update the info box at the bottom
@@ -24,6 +36,7 @@ class viewport(pg.GraphicsLayoutWidget):
     self._plane = plane
     self._cmSpace = False
     self._geometry = geometry
+    self._original_image = None
 
     self._dataPoints = []
     self._drawnPoints = []
@@ -45,10 +58,12 @@ class viewport(pg.GraphicsLayoutWidget):
     # Set up the blank data:
     # self._blankData = np.ones((self._geometry.wRange(self._plane),self._geometry.tRange()))
     self.setBackground('w')
+    # self.setBackground(pg.mkColor(0, 0, 0))
 
     self._useLogo = False
     self._logo = None
 
+    self._drawingRawDigits = False
     # each drawer contains its own color gradient and levels
     # this class can return a widget containing the right layout for everything
     # Define some color collections:
@@ -69,8 +84,15 @@ class viewport(pg.GraphicsLayoutWidget):
     self._upperLevel.returnPressed.connect(self.levelChanged)
     self._lowerLevel.returnPressed.connect(self.levelChanged)
 
-    self._lowerLevel.setText(str(self._geometry.getLevels(self._plane)[0]))
-    self._upperLevel.setText(str(self._geometry.getLevels(self._plane)[1]))
+    level_lower = self._geometry.getLevels(self._plane)[0]
+    level_upper = self._geometry.getLevels(self._plane)[1]
+
+    if self._drawingRawDigits:
+        level_lower += self._geometry.getPedestal(self._plane)
+        level_upper += self._geometry.getPedestal(self._plane)
+
+    self._lowerLevel.setText(str(level_lower))
+    self._upperLevel.setText(str(level_upper))
 
 
     # Fix the maximum width of the widgets:
@@ -88,18 +110,27 @@ class viewport(pg.GraphicsLayoutWidget):
     self._widget = QtGui.QWidget()
     self._widget.setLayout(self._totalLayout)
 
+
+  def drawingRawDigits(self, status):
+    if status != self._drawingRawDigits:
+      self._drawingRawDigits = status
+      self.restoreDefaults()
+    self._drawingRawDigits = status
+
+
   def toggleScale(self,scaleBool):
     # If there is a scale, remove it:
     if self._xBar in self._view.addedItems:
       self._view.removeItem(self._xBar)
       self._view.removeItem(self._xBarText)
-    # if self._yBar in self._view.addedItems:
-    #   self._view.removeItem(self._yBar)
-    #   self._view.removeItem(self._yBarText)
     self.useScaleBar = scaleBool
     self.refreshScaleBar()
 
   def toggleLogo(self,logoBool):
+    '''
+    Toggles the experiment's 
+    logo on and off
+    '''
 
     if self._logo in self.scene().items():
         self.scene().removeItem(self._logo)
@@ -112,21 +143,22 @@ class viewport(pg.GraphicsLayoutWidget):
       return
 
     self._logo = QtGui.QGraphicsPixmapItem(QtGui.QPixmap(self._geometry.logo()))
-    self.scene().addItem(self._logo)
     self._logo.setX(self._geometry.logoPos()[0])
     self._logo.setY(self._geometry.logoPos()[1])
     self._logo.setScale(self._geometry.logoScale())
-
-
-    # self._logo.scale(1.0*(width/rectW),-1*(height/rectH))
-    # self._view.addItem(self._logo)
-
-    # self._logo.setY(0.7)
+    self.scene().addItem(self._logo)
 
 
   def restoreDefaults(self):
-    self._lowerLevel.setText(str(self._geometry.getLevels(self._plane)[0]))
-    self._upperLevel.setText(str(self._geometry.getLevels(self._plane)[1]))
+    level_lower = self._geometry.getLevels(self._plane)[0]
+    level_upper = self._geometry.getLevels(self._plane)[1]
+    
+    if self._drawingRawDigits:
+        level_lower += self._geometry.getPedestal(self._plane)
+        level_upper += self._geometry.getPedestal(self._plane)
+
+    self._lowerLevel.setText(str(level_lower))
+    self._upperLevel.setText(str(level_upper))
 
     self._cmap.restoreState(self._colorMap)
 
@@ -155,6 +187,143 @@ class viewport(pg.GraphicsLayoutWidget):
   def useCM(self,useCMBool):
     self._cmSpace = useCMBool
     self.refreshScaleBar()
+
+  def showAnodeCathode(self,showAC):
+    self._showAnodeCathode = showAC
+    if self._line_a in self.scene().items():
+        self.scene().removeItem(self._line_a)
+    if self._line_c in self.scene().items():
+        self.scene().removeItem(self._line_c)
+
+    if self._line_a_2 in self.scene().items():
+        self.scene().removeItem(self._line_a_2)
+    if self._line_c_2 in self.scene().items():
+        self.scene().removeItem(self._line_c_2)
+
+    self.refreshAnodeCathode()
+
+  def refreshAnodeCathode(self):
+    '''
+    Draws lines corresponding to the cathode and
+    anode positions for t0 = 0
+    Red line = anode
+    Blue line = cathode
+    '''
+
+    # x_pos = 20
+    # y_pos = 400
+    # x_scale = 2
+    # y_scale = -17
+    # self._tpcText = QtGui.QGraphicsSimpleTextItem("TPC 0, Plane 0")
+    # self._tpcText.setBrush(pg.mkColor(255,255,255))
+    # # xScale = 0.015* width
+    # # yScale = - 0.5* height
+    # self._tpcText.setPos(x_pos, y_pos)
+    # self._tpcText.scale(x_scale, y_scale)
+    # self._tpcText.font().setPixelSize(15)
+    # self._view.addItem(self._tpcText)
+
+
+    if not self._showAnodeCathode:
+      return
+
+    x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
+    x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
+    max_wire = self._geometry._wRange[self._plane]
+
+    x_cathode += self._manual_t0
+    x_anode   += self._manual_t0
+
+    self._line_c = QtGui.QGraphicsLineItem()
+    self._line_c.setLine(0, x_cathode, max_wire, x_cathode)
+    self._line_c.setPen(pg.mkPen('b'))
+
+    self._line_a = QtGui.QGraphicsLineItem()
+    self._line_a.setLine(0, x_anode, max_wire, x_anode)
+    self._line_a.setPen(pg.mkPen('r'))
+
+    self._view.addItem(self._line_a)
+    self._view.addItem(self._line_c)
+
+    # print ('data = self._item.image', self._item.image)
+
+    # data = self._item.image
+
+    # n_removable_entries = int(self._geometry.tRange() - x_cathode)
+    # print ('deleting between ', self._geometry.tRange() - n_removable_entries, self._geometry.tRange() )
+
+    # data = np.delete(data, slice(self._geometry.tRange() - n_removable_entries, self._geometry.tRange()), axis=1)
+    # self.drawPlane(data)
+
+    if self._geometry.nTPCs() == 2:
+
+        x_cathode = 2 * self._geometry.tRange() - x_cathode
+        x_anode   = 2 * self._geometry.tRange() - x_anode
+        max_wire = self._geometry._wRange[self._plane]
+
+        x_cathode += self._geometry.cathodeGap()
+        x_anode   += self._geometry.cathodeGap()
+
+        x_cathode = x_cathode - 2*self._removed_entries
+        x_anode   = x_anode - 2*self._removed_entries
+
+        self._line_c_2 = QtGui.QGraphicsLineItem()
+        self._line_c_2.setLine(0, x_cathode, max_wire, x_cathode)
+        self._line_c_2.setPen(pg.mkPen('b'))
+
+        self._line_a_2 = QtGui.QGraphicsLineItem()
+        self._line_a_2.setLine(0, x_anode, max_wire, x_anode)
+        self._line_a_2.setPen(pg.mkPen('r'))
+
+        self._view.addItem(self._line_a_2)
+        self._view.addItem(self._line_c_2)
+
+  def uniteCathodes(self,uniteC):
+    self._uniteCathodes = uniteC
+    if self._uniteCathodes:
+
+        x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
+        x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
+
+        x_cathode += self._manual_t0
+        x_anode   += self._manual_t0
+
+        data = self._item.image
+        self._original_image = np.copy(data)
+
+        n_removable_entries = int(self._geometry.tRange() - x_cathode)
+
+        start_removal = self._geometry.tRange() - n_removable_entries
+        end_removal = self._geometry.tRange()
+        slice_right = slice(start_removal, end_removal)
+
+        start_removal = self._geometry.tRange() + self._geometry.cathodeGap()
+        end_removal = start_removal + n_removable_entries
+        slice_left = slice(start_removal, end_removal)
+
+        final_slice = np.r_[slice_right, slice_left]
+
+        self._removed_entries = n_removable_entries
+        
+        data = np.delete(data, final_slice, axis=1)
+        self.drawPlane(data)
+
+        self.showAnodeCathode(self._showAnodeCathode)
+
+    else:
+        self._removed_entries = 0
+        self.drawPlane(self._original_image)
+        self.showAnodeCathode(self._showAnodeCathode)
+
+
+  def t0slide(self, t0):
+    self._manual_t0 = t0
+    self.showAnodeCathode(True)
+
+  def restoret0(self):
+    self._manual_t0 = 0
+    self.showAnodeCathode(False)
+
 
   def mouseMoved(self, pos):
     self.q = self._item.mapFromScene(pos)
@@ -193,8 +362,11 @@ class viewport(pg.GraphicsLayoutWidget):
         message += str(int(self.q.y()))
 
     # print message
+    max_trange = self._geometry.tRange()
+    if self._geometry.nTPCs() == 2: 
+        max_trange *= 2
     if self.q.x() > 0 and self.q.x() < self._geometry.wRange(self._plane):
-      if self.q.y() > 0 and self.q.y() < self._geometry.tRange():
+      if self.q.y() > 0 and self.q.y() < max_trange:
         self._statusBar.showMessage(message)
 
   def mouseClicked(self, event):
@@ -235,6 +407,8 @@ class viewport(pg.GraphicsLayoutWidget):
   def setRangeToMax(self):
     xR = (0,self._geometry.wRange(self._plane))
     yR = (0,self._geometry.tRange())
+    if self._geometry.nTPCs() == 2:
+      yR = (0,2*self._geometry.tRange())
     self._view.setRange(xRange=xR,yRange=yR, padding=0.002)
 
   def autoRange(self,xR,yR):
@@ -290,11 +464,12 @@ class viewport(pg.GraphicsLayoutWidget):
     self._xBarText = QtGui.QGraphicsSimpleTextItem(xString)
     self._xBarText.setBrush(pg.mkColor(255,255,255))
     xScale = 0.015* width
-    yScale = - 0.5* height
+    yScale = - 0.3* height
     self._xBarText.setPos(xLoc,yLoc)
     self._xBarText.scale(xScale,yScale)
     self._xBarText.font().setPixelSize(15)
     self._view.addItem(self._xBarText)
+    print (xString, xLoc, yLoc, xScale, yScale)
 
     # # Now do the y Bar
     # width = 0.01*(xMax - xMin)
@@ -339,6 +514,32 @@ class viewport(pg.GraphicsLayoutWidget):
     self._item.setVisible(True)
     # Make sure the levels are actually set:
     self.levelChanged()
+
+    if self._geometry.nTPCs() == 2:
+        self.drawTPCdivision()
+
+  def drawTPCdivision(self):
+    if self._line_tpc_div in self._view.addedItems:
+      self._view.removeItem(self._line_tpc_div)
+
+    x_tpc = self._geometry.tRange()           # Place it at the end of one TPC
+    x_tpc += self._geometry.cathodeGap() / 2  # Add half the gap between the 2 TPCs 
+    x_tpc -= self._removed_entries            # Remove eventually removed entries to unite the cathodes
+    
+    max_wire = self._geometry._wRange[self._plane]
+
+    self._line_tpc_div = QtGui.QGraphicsRectItem()
+    self._line_tpc_div.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
+    self._line_tpc_div.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
+    self._line_tpc_div.setRect(0, x_tpc - self._geometry.cathodeGap() / 2, max_wire, self._geometry.cathodeGap())
+
+    # self._line_tpc_div = QtGui.QGraphicsLineItem()
+    # self._line_tpc_div.setLine(0, x_tpc, max_wire, x_tpc)
+    # self._line_tpc_div.setPen(pg.mkPen(color='r', width=self._geometry.cathodeGap()))
+
+    self._view.addItem(self._line_tpc_div)
+
+
 
   def drawBlank(self):
     self._item.clear()
