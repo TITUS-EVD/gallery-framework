@@ -640,7 +640,8 @@ class gui(QtGui.QWidget):
 
   def t0sliderWorker(self):
     t0 = self._t0slider.value()
-    t0sliderLabel = "Current t<sub>0</sub> = " + str(t0)
+    t0_label = t0 * self._geometry.samplingRate() / 1000.
+    t0sliderLabel = "Current t<sub>0</sub> = " + str(t0_label / 1000.) + " &mu;s"
     self._t0sliderLabel.setText(t0sliderLabel)
     self._view_manager.t0slide(t0)
 

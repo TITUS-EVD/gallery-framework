@@ -19,6 +19,7 @@ class geoBase(object):
         self._aspectRatio = 4
         self._time2Cm = 0.1
         self._wire2Cm = 0.4
+        self._samplingRate = 0.5
         self._levels = [(-15, 15), (-10, 30)]
         self._pedestals = [0, 0]
         self._name = "null"
@@ -86,6 +87,9 @@ class geoBase(object):
     def time2cm(self):
         return self._time2Cm
 
+    def samplingRate(self):
+        return self._samplingRate
+
     def name(self):
         return self._name
 
@@ -147,6 +151,7 @@ class geometry(geoBase):
         self._length = larutil.Geometry.GetME().DetLength()      
         self._time2Cm = larutil.GeometryHelper.GetME().TimeToCm()
         self._wire2Cm = larutil.GeometryHelper.GetME().WireToCm()
+        self._samplingRate = larutil.DetectorProperties.GetME().SamplingRate()
         self._aspectRatio = self._wire2Cm / self._time2Cm
         self._nViews = larutil.Geometry.GetME().Nviews()
         self._nTPCs = int(larutil.Geometry.GetME().NTPC())
