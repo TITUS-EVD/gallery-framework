@@ -1,4 +1,4 @@
-# README
+# Gallery Framework
 
 
 ## What is this?
