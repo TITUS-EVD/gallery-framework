@@ -20,16 +20,17 @@
 #include "LArUtil/DetectorProperties.h"
 
 
+
 struct _object;
 typedef _object PyObject;
 
 
-
-#ifndef __CINT__
-#include "Python.h"
-#include "numpy/arrayobject.h"
+#ifndef ROOT_TMVA_PyMethodBase
+  #ifndef __CINT__
+    #include "Python.h"
+    #include "numpy/arrayobject.h"
+  #endif
 #endif
-
 
 
 namespace evd {
