@@ -43,6 +43,10 @@ bool LArUtilManager::ReconfigureUtilities()
                          kUTIL_DATA_FILENAME[LArUtilConfig::Detector()].c_str()));
   larp->SetTreeName(kTREENAME_LARPROPERTIES);
   status = status && larp->LoadData(true);
+  // larp->SetFileName(Form("%s/LArUtil/dat/%s",
+  //                        getenv("GALLERY_FMWK_COREDIR"),
+  //                        kUTIL_FCL_FILENAME[LArUtilConfig::Detector()].c_str()));
+  // status = status && larp->LoadDataFromServices(true);
 
   // DetectorProperties
   galleryfmwk::Message::send(galleryfmwk::msg::kNORMAL, __FUNCTION__, "Reconfiguring DetectorProperties");

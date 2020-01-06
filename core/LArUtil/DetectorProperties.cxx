@@ -49,9 +49,9 @@ namespace larutil {
 
   //   ClearData();
 
-  //   auto detp = LArUtilServicesHandler::GeDetProperties(_file_name);
+  //   auto detp = LArUtilServicesHandler::GetDetProperties(_file_name);
+  //   auto _geo_service = LArUtilServicesHandler::GetGeometry(_file_name);
 
-  //   std::cout << "detp->SamplingRate() " << detp->SamplingRate() << std::endl;
   //   fSamplingRate = detp->SamplingRate();
   //   fTriggerOffset = detp->TriggerOffset();
   //   fElectronsToADC = detp->ElectronsToADC();
@@ -60,10 +60,13 @@ namespace larutil {
   //   fTimeOffsetU = detp->TimeOffsetU();
   //   fTimeOffsetV = detp->TimeOffsetV();
   //   fTimeOffsetZ = detp->TimeOffsetZ();
+  //   fXTicksCoefficient = detp->GetXTicksCoefficient(0, 0); 
     
-  //   // Double_t fXTicksCoefficient; ///< Parameters for x<-->ticks
-  //   // bool     fXTicksParamsLoaded;///<  calculations
-  //   // std::vector<Double_t> fXTicksOffsets;
+  //   for (size_t tpc = 0; tpc < _geo_service->NTPC(); tpc++) {
+  //     for (size_t plane = 0; plane < _geo_service->Nplanes(tpc); plane++) {
+  //       fXTicksOffsets.push_back(detp->GetXTicksOffset(plane, tpc, 0));  
+  //     }
+  //   }
    
   //   return true;
   // }

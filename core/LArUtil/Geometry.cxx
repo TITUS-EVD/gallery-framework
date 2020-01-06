@@ -32,7 +32,6 @@ Geometry::Geometry(bool default_load) : LArUtilBase()
   }
 
   // if(default_load) {
-  //     std::cout << "**************************" << std::endl;
   //     _file_name = Form("%s/LArUtil/dat/%s",
   //     getenv("GALLERY_FMWK_COREDIR"),
   //     kUTIL_FCL_FILENAME[LArUtilConfig::Detector()].c_str());

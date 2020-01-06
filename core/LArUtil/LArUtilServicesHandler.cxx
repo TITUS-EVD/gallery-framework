@@ -35,7 +35,7 @@ namespace larutil {
   }
 
 
-  std::unique_ptr<detinfo::DetectorPropertiesStandard> LArUtilServicesHandler::GeDetProperties(std::string fcl_file_name)
+  std::unique_ptr<detinfo::DetectorPropertiesStandard> LArUtilServicesHandler::GetDetProperties(std::string fcl_file_name)
   {
     std::string configFile = fcl_file_name;
     fhicl::ParameterSet config;

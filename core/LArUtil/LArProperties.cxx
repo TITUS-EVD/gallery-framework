@@ -73,6 +73,17 @@ void LArProperties::ClearData()
 // bool LArProperties::ReadFromServices()
 // {
 //     ClearData();
+
+//     auto larp = LArUtilServicesHandler::GetLArProperties(_file_name);
+//     auto detp = LArUtilServicesHandler::GetDetProperties(_file_name);
+
+//     fEfield.push_back(detp->Efield());
+//     fTemperature = detp->Temperature();      
+//     fElectronlifetime = detp->ElectronLifetime(); 
+//     fRadiationLength = larp->RadiationLength();  
+
+//     fArgon39DecayRate = larp->Argon39DecayRate(); 
+
 //     return true;
 // }
 

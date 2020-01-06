@@ -67,7 +67,7 @@ namespace larutil {
     /// Method to get geometry
     static std::unique_ptr<::geo::GeometryCore> GetGeometry(std::string fcl_file_name);
     static std::unique_ptr<detinfo::LArPropertiesStandard>  GetLArProperties(std::string fcl_file_name);
-    static std::unique_ptr<detinfo::DetectorPropertiesStandard>  GeDetProperties(std::string fcl_file_name);
+    static std::unique_ptr<detinfo::DetectorPropertiesStandard>  GetDetProperties(std::string fcl_file_name);
 
     // std::unique_ptr<::geo::GeometryCore> _geom;
     // std::unique_ptr<detinfo::LArPropertiesStandard> _larp;
