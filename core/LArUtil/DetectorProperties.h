@@ -15,7 +15,7 @@
 #define GALLERY_FMWK_DETECTORPROPERTIES_H
 
 #include "LArUtilBase.h"
-// #include "LArUtilServicesHandler.h"
+#include "LArUtilServicesHandler.h"
 
 namespace larutil {
   /**

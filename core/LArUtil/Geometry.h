@@ -16,7 +16,7 @@
 
 #include "LArUtilBase.h"
 #include "Base/GeoTypes.h"
-// #include "LArUtilServicesHandler.h"
+#include "LArUtilServicesHandler.h"
 
 #include <TMath.h>
 #include <TVector3.h>
