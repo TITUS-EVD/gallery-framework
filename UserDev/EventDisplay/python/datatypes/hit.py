@@ -3,6 +3,21 @@ from ROOT import evd
 from pyqtgraph.Qt import QtGui
 import pyqtgraph as pg
 
+class hitBox(QtGui.QGraphicsRectItem):
+
+    """docstring for hitBox"""
+
+    def __init__(self, *args, **kwargs):
+        super(hitBox, self).__init__(*args)
+        self.setAcceptHoverEvents(True)
+        self._isHighlighted = False
+
+    def hoverEnterEvent(self, e):
+        self.setPen(pg.mkPen('r', width=2))
+
+    def hoverLeaveEvent(self, e):
+        self.setPen(pg.mkPen(None))
+
 
 class hit(recoBase):
 
@@ -48,10 +63,15 @@ class hit(recoBase):
                 time = 2 * geom.tRange() - time + geom.cathodeGap()
 
             # Draws a rectangle at (x,y,xlength, ylength)
-            r = QtGui.QGraphicsRectItem(wire, 
-                                        time, 
-                                        width, 
-                                        height)
+            # r = QtGui.QGraphicsRectItem(wire, 
+            #                             time, 
+            #                             width, 
+            #                             height)
+
+            r = hitBox(wire, 
+                       time, 
+                       width, 
+                       height)
 
             opacity = int(128 * hit.charge() / self._process.maxCharge(thisPlane)) + 127
             # opacity = exp( 1 + hit.charge() / self._process.maxCharge(thisPlane))/exp(2);
@@ -63,8 +83,17 @@ class hit(recoBase):
             r.setPen(pg.mkPen(None))
             r.setBrush(pg.mkColor(0,0,0,opacity))
             # r.setBrush((0,0,0,opacity))
+
+            r.setToolTip(self.genToolTip(hit))
+           
             self._drawnObjects[thisPlane].append(r)
             view._view.addItem(r)
+
+    def genToolTip(self, hit):
+        return 'Time: {time:0.1f}\nRMS: {rms:0.1f}\nIntegral: {integral:0.1f}'.format(
+            time=hit.wire(), 
+            rms=hit.rms(), 
+            integral=hit.charge())
 
     def getHitsOnWire(self, plane, wire):
         return self._process.getHitsOnWirePlane(wire,plane)

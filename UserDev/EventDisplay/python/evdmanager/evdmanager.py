@@ -118,10 +118,12 @@ class evd_manager_base(manager, QtCore.QObject):
 
         # Toggle whether or not to draw wires:
         self._drawWires = False
+        self._drawOpDetWvf = False
         # self._drawParams = False
         # self._drawTruth = False
 
         self._wireDrawer = None
+        self._opDetWvfDrawer = None
         # self._truthDrawer = None
         
 
@@ -487,12 +489,40 @@ class evd_manager_2D(evd_manager_base):
             self.processEvent(force=True)
             self.drawFresh()
 
+    def toggleOpDetWvf(self, product, stage=None):
+
+        if stage is None:
+            stage = 'all'
+
+        if product == 'opdetwaveform':
+
+            if 'raw::OpDetWaveform' not in self._keyTable[stage]:
+                print "No OpDetWaveform data available to draw"
+                self._drawWires = False
+                return
+            self._drawOpDetWvf = True
+            self._opDetWvfDrawer = datatypes.opdetwaveform(self._geom)
+            self._opDetWvfDrawer.setProducer(self._keyTable[stage]['raw::OpDetWaveform'][0].fullName())
+            self._processer.add_process("raw::OpDetWaveform",self._opDetWvfDrawer._process)
+            self.processEvent(True)
+
+
     def getPlane(self, plane):
         if self._drawWires:
             return self._wireDrawer.getPlane(plane)
 
+    def getOpDetWvf(self):
+        if self._drawOpDetWvf:
+            return self._opDetWvfDrawer.getData()
+
     def hasWireData(self):
         if self._drawWires:
+            return True
+        else:
+            return False
+
+    def hasOpDetWvfData(self):
+        if self._drawOpDetWvf:
             return True
         else:
             return False

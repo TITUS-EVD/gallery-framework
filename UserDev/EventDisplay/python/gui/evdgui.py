@@ -60,7 +60,7 @@ class recoBox(QtGui.QWidget):
         self._box.connectOwnerKPE(owner.keyPressEvent)
 
         # This is the widget itself, so set it up
-        self._layout = QtGui.QVBoxLayout()
+        self._layout = QtGui.QHBoxLayout()
         self._layout.addWidget(self._label)
         self._layout.addWidget(self._box)
         self.setLayout(self._layout)
@@ -123,7 +123,7 @@ class evdgui(gui):
 
     """special evd gui"""
 
-    def __init__(self, geometry, manager=None):
+    def __init__(self, geometry, manager=None, app=None):
         super(evdgui, self).__init__(geometry)
         if manager is None:
             manager = evd_manager(geometry)
@@ -133,6 +133,8 @@ class evdgui(gui):
         self._event_manager.fileChanged.connect(self.drawableProductsChanged)
         self._event_manager.eventChanged.connect(self.update)
         # self._event_manager.truthLabelChanged.connect(self.updateMessageBar)
+
+        self._app = app
 
     # override the initUI function to change things:
     def initUI(self):
@@ -192,6 +194,11 @@ class evdgui(gui):
         self._rawDigitButton.clicked.connect(self.wireChoiceWorker)
         self._wireButtonGroup.addButton(self._rawDigitButton)
 
+        # Draw Wires:
+        self._opdetWvfButton = QtGui.QRadioButton("OpDetWaveform")
+        self._opdetWvfButton.clicked.connect(self.opdetWvfChoiceWorker)
+        self._wireButtonGroup.addButton(self._opdetWvfButton)
+
         # Make a layout for this stuff:
         self._wireChoiceLayout = QtGui.QVBoxLayout()
         self._wireChoiceLabel = QtGui.QLabel("Wire Draw Options")
@@ -199,6 +206,7 @@ class evdgui(gui):
         self._wireChoiceLayout.addWidget(self._noneWireButton)
         self._wireChoiceLayout.addWidget(self._wireButton)
         self._wireChoiceLayout.addWidget(self._rawDigitButton)
+        self._wireChoiceLayout.addWidget(self._opdetWvfButton)
 
         self._eastLayout.addLayout(self._wireChoiceLayout)
 
@@ -259,6 +267,12 @@ class evdgui(gui):
             self._view_manager.drawingRawDigits(True)
 
         self._view_manager.drawPlanes(self._event_manager)
+
+    def opdetWvfChoiceWorker(self):
+        sender = self.sender()
+        if sender == self._opdetWvfButton:
+            self._event_manager.toggleOpDetWvf('opdetwaveform', stage=self._stage)
+        self._view_manager.drawOpDetWvf(self._event_manager)
         
 
     def stageSelectHandler(self, _str):

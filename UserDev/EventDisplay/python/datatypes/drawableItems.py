@@ -41,7 +41,7 @@ class drawableItems(object):
         self._drawableClasses.update({'Endpoint 2D': [endpoint2d.endpoint2d,"recob::EndPoint2D"]})
         self._drawableClasses.update({'Vertex': [vertex.vertex,"recob::Vertex"]})
         self._drawableClasses.update({'SPS': [spacepoint.spacepoint,"recob::SpacePoint"]})
-        self._drawableClasses.update({'Numu Selection': [numuselection.numuselection, "recob::Trackrecob::Vertexvoidart::Assn"]})
+        # self._drawableClasses.update({'Numu Selection': [numuselection.numuselection, "recob::Trackrecob::Vertexvoidart::Assn"]})
         self._drawableClasses.update({'OpFlash': [opflash.opflash, "recob::OpFlash"]})
 
     def getListOfTitles(self):

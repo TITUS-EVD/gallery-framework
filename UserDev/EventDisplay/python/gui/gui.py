@@ -94,14 +94,22 @@ class view_manager(QtCore.QObject):
       self._planeWidgets.append(widget)
       self._layout.addWidget(widget,0)
 
+    self._opt_widget, _ = self._opt_view.getWidget()
+    self._layout.addWidget(self._opt_widget, 0)
+    self._opt_widget.setVisible(False)
+
     self._widget.setLayout(self._layout)
 
     return self._widget
 
   def refreshDrawListWidget(self):
 
+    # The last one is the optical view
+    optical_view = self._geometry.nViews() / self._geometry.nTPCs()
+
     # Draw all planes:
     if self._selectedPlane == -1:
+      self.drawOpDets(False)
       i = 0
       for widget in self._planeWidgets:
         widget.setVisible(True)
@@ -113,7 +121,10 @@ class view_manager(QtCore.QObject):
           self._drawerList[i].toggleLogo(False)
         i += 1
 
+    elif self._selectedPlane == optical_view:
+      self.drawOpDets(True)
     else:
+      self.drawOpDets(False)
       i = 0
       for widget in self._planeWidgets:
         if i == self._selectedPlane:
@@ -145,6 +156,8 @@ class view_manager(QtCore.QObject):
   def connectStatusBar(self,statusBar):
     for view in self._drawerList:
       view.connectStatusBar(statusBar)
+    self._opt_view.connectStatusBar(statusBar)
+
 
 
   def linkViews(self):
@@ -166,6 +179,10 @@ class view_manager(QtCore.QObject):
   #       if view._view != self.sender():
   #         view._view.setRange
   #   print "range changed by ", self.sender()
+
+  def setDarkMode(self, opt):
+    for view in self._drawerList:
+      view.setDarkMode(opt)
 
   def toggleScale(self,scaleBool):
     for view in self._drawerList:
@@ -201,11 +218,15 @@ class view_manager(QtCore.QObject):
 
   def drawOpDets(self,opdetsView):
     if opdetsView:
-      self._layout.addWidget(self._opt_view)
-      self._opt_view.setVisible(True)
+      # self._layout.addWidget(self._opt_view)
+      self._opt_widget.setVisible(True)
+      for widget in self._planeWidgets:
+        widget.setVisible(False)
     else:
-      self._layout.removeWidget(self._opt_view)
-      self._opt_view.setVisible(False)
+      # self._layout.removeWidget(self._opt_view)
+      self._opt_widget.setVisible(False)
+      for widget in self._planeWidgets:
+        widget.setVisible(True)
 
   def useCM(self,useCM):
     for view in self._drawerList:
@@ -229,6 +250,10 @@ class view_manager(QtCore.QObject):
         self._drawerList[i].drawPlane(event_manager.getPlane(i))
       else:
         self._drawerList[i].drawBlank()
+
+  def drawOpDetWvf(self, event_manager):
+    if event_manager.hasOpDetWvfData():
+      self._opt_view.drawOpDetWvf(event_manager.getOpDetWvf())
 
  
   def drawWireOnPlot(self, wireData):
@@ -264,9 +289,9 @@ class view_manager(QtCore.QObject):
       # In case of 2 TPCs, also draw the hits on
       # the other plane, but flipping the time
       if flip:
-        start_time = 2 * self._geometry.tRange() - start_time 
-        end_time   = 2 * self._geometry.tRange() - end_time 
-        peak_time  = 2 * self._geometry.tRange() - peak_time
+        start_time = 2 * self._geometry.tRange() - start_time + self._geometry.cathodeGap()
+        end_time   = 2 * self._geometry.tRange() - end_time   + self._geometry.cathodeGap()
+        peak_time  = 2 * self._geometry.tRange() - peak_time  + self._geometry.cathodeGap()
 
       xPts = np.linspace(start_time, end_time, delta)
       yPts = hit.peak_amplitude() * np.exp( - 0.5 * (xPts - peak_time)**2 / hit.rms()**2  )
@@ -436,13 +461,6 @@ class gui(QtGui.QWidget):
     self._drawRawOption.setToolTip("Draw the raw wire signals in 2D")
     self._drawRawOption.setTristate(False)
 
-    # check box to toggle the opdet drawing
-    self._drawOpDetOption = QtGui.QCheckBox("Optical Display")
-    self._drawOpDetOption.setToolTip("Draw the opdets when clicked on")
-    self._drawOpDetOption.stateChanged.connect(self.drawOpDetWorker)
-    self._drawOpDetOption.setVisible(False)
-    
-
     # add a box to restore the drawing defaults:
     self._restoreDefaults = QtGui.QPushButton("Restore Defaults")
     self._restoreDefaults.setToolTip("Restore the drawing defaults of the views.")
@@ -526,7 +544,6 @@ class gui(QtGui.QWidget):
     self._drawingControlBox.addWidget(self._autoRangeBox)
     self._drawingControlBox.addWidget(self._lockAspectRatio)
     self._drawingControlBox.addWidget(self._drawWireOption)
-    self._drawingControlBox.addWidget(self._drawOpDetOption)
     self._drawingControlBox.addWidget(self._separators[0])
     self._drawingControlBox.addWidget(self._anodeCathodeOption)
     self._drawingControlBox.addWidget(self._t0sliderLabelIntro)
@@ -549,8 +566,11 @@ class gui(QtGui.QWidget):
 
   def viewSelectWorker(self):
 
+    n_views = self._geometry.nViews() / self._geometry.nTPCs()
+    n_views += 1 # Add the optical evd
+
     i = 0
-    for i in xrange(self._geometry.nViews()):
+    for i in xrange(n_views):
       if self.sender() == self._viewButtonArray[i]:
         self._view_manager.selectPlane(i)
         self._view_manager.refreshDrawListWidget()
@@ -602,12 +622,6 @@ class gui(QtGui.QWidget):
     else:
       self._view_manager.drawWire(False)    
 
-  def drawOpDetWorker(self):
-    if self._drawOpDetOption.isChecked():
-      self._view_manager.drawOpDets(True)
-    else:
-      self._view_manager.drawOpDets(False) 
-
   def useCMWorker(self):
     if self._unitDisplayOption.isChecked():
       self._view_manager.useCM(True)
@@ -654,13 +668,49 @@ class gui(QtGui.QWidget):
     self._view_manager.setRangeToMax()
     self._view_manager.uniteCathodes(False)
     self.restoret0()
-    
+
+  def darkModeWorker(self):
+    app = QtGui.QApplication.instance()
+    if app is None:
+      raise RuntimeError("No Qt Application found.")
+
+    if self._darkModeButton.isChecked():
+      dark_palette = QtGui.QPalette()    
+      dark_palette.setColor(QtGui.QPalette.Window, QtGui.QColor(53, 53, 53))
+      dark_palette.setColor(QtGui.QPalette.WindowText, QtCore.Qt.white)
+      dark_palette.setColor(QtGui.QPalette.Base, QtGui.QColor(25, 25, 25))
+      dark_palette.setColor(QtGui.QPalette.AlternateBase, QtGui.QColor(53, 53, 53))
+      dark_palette.setColor(QtGui.QPalette.ToolTipBase, QtCore.Qt.white)
+      dark_palette.setColor(QtGui.QPalette.ToolTipText, QtCore.Qt.white)
+      dark_palette.setColor(QtGui.QPalette.Text, QtCore.Qt.white)
+      dark_palette.setColor(QtGui.QPalette.Button, QtGui.QColor(53, 53, 53)) # <-
+      dark_palette.setColor(QtGui.QPalette.ButtonText, QtCore.Qt.white)
+      dark_palette.setColor(QtGui.QPalette.BrightText, QtCore.Qt.red)
+      dark_palette.setColor(QtGui.QPalette.Link, QtGui.QColor(42, 130, 218))
+      dark_palette.setColor(QtGui.QPalette.Highlight, QtGui.QColor(42, 130, 218))
+      dark_palette.setColor(QtGui.QPalette.HighlightedText, QtCore.Qt.black)    
+      self._app.setPalette(dark_palette)    
+      self._app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
+    else:
+      self._app.setPalette(self._app.style().standardPalette())
+      self._app.setStyleSheet("")
+
+    # Propagate to viewports:
+    self._view_manager.setDarkMode(self._darkModeButton.isChecked())
+
   # This function prepares the quit buttons layout and returns it
   def getQuitLayout(self):
     self._quitButton = QtGui.QPushButton("Quit")
     self._quitButton.setToolTip("Close the viewer.")
     self._quitButton.clicked.connect(self.quit)
     return self._quitButton
+
+  # This function prepares the dark mode buttons layout and returns it
+  def getDarkModeLayout(self):
+    self._darkModeButton = QtGui.QRadioButton("Dark Mode")
+    self._darkModeButton.setToolTip("Changes the appearance to dark mode.")
+    self._darkModeButton.clicked.connect(self.darkModeWorker)
+    return self._darkModeButton
 
   # This function combines the control button layouts, range layouts, and quit button
   def getWestLayout(self):
@@ -671,6 +721,9 @@ class gui(QtGui.QWidget):
 
     # Add the quit button?
     quit_control = self.getQuitLayout()
+
+    # Add dark mode button?
+    dark_mode_control = self.getDarkModeLayout()
     
     self._westLayout = QtGui.QVBoxLayout()
     self._westLayout.addLayout(event_control)
@@ -708,10 +761,18 @@ class gui(QtGui.QWidget):
       self._viewButtonArray.append(button)
       self._viewChoiceLayout.addWidget(button)
 
+    # Add a button for the optical event display
+    button = QtGui.QRadioButton("Optical")
+    button.clicked.connect(self.viewSelectWorker)
+    self._viewButtonGroup.addButton(button)
+    self._viewButtonArray.append(button)
+    self._viewChoiceLayout.addWidget(button)
+
     self._westLayout.addLayout(self._viewChoiceLayout)
 
     self._westLayout.addStretch(1)
 
+    self._westLayout.addWidget(dark_mode_control)
     self._westLayout.addWidget(quit_control)
     self._westWidget = QtGui.QWidget()
     self._westWidget.setLayout(self._westLayout)

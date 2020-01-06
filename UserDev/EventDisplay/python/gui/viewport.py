@@ -17,8 +17,7 @@ class viewport(pg.GraphicsLayoutWidget):
     self._item = pg.ImageItem(useOpenGL=True)
     # self._item._setPen((0,0,0))
     self._view.addItem(self._item)
-    # ???
-    # self._line = pg.LineSegmentROI(positions=((0, 3000), (2800, 3000)), movable=False)
+    
     self._line_a = None
     self._line_c = None
     self._line_a_2 = None
@@ -27,8 +26,7 @@ class viewport(pg.GraphicsLayoutWidget):
     self._line_tpc_div = None
     self._manual_t0 = 0
     self._showAnodeCathode = False
-    # ???
-    # self._view.addItem(self._line)
+    
     # connect the scene to click events, used to get wires
     self.scene().sigMouseClicked.connect(self.mouseClicked)
     # connect the views to mouse move events, used to update the info box at the bottom
@@ -110,6 +108,12 @@ class viewport(pg.GraphicsLayoutWidget):
     self._widget = QtGui.QWidget()
     self._widget.setLayout(self._totalLayout)
 
+  def setDarkMode(self, opt):
+    self._dark_mode = opt
+    if self._dark_mode:
+      self.setBackground(pg.mkColor(25, 25, 25))
+    else:
+      self.setBackground('w')
 
   def drawingRawDigits(self, status):
     if status != self._drawingRawDigits:
@@ -401,8 +405,8 @@ class viewport(pg.GraphicsLayoutWidget):
   def connectWireDrawingFunction(self,func):
     self._wdf = func
 
-  def connectStatusBar(self, _statusBar):
-    self._statusBar = _statusBar
+  def connectStatusBar(self, statusBar):
+    self._statusBar = statusBar
 
   def setRangeToMax(self):
     xR = (0,self._geometry.wRange(self._plane))

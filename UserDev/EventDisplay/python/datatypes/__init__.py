@@ -5,6 +5,7 @@ from drawableItems import drawableItems
 # from shower import shower
 # from track import track
 from wire import wire, rawDigit, recoWire
+from opdetwaveform import opdetwaveform
 # from match import match
 # from endpoint2d import endpoint2d
 # from vertex import vertex

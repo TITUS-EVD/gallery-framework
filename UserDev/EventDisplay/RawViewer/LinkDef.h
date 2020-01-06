@@ -13,6 +13,7 @@
 #pragma link C++ class evd::RawBase+;
 #pragma link C++ class evd::DrawWire+;
 #pragma link C++ class evd::DrawRawDigit+;
+#pragma link C++ class evd::DrawOpDetWaveform+;
 //ADD_NEW_CLASS ... do not change this line
 #endif
 
