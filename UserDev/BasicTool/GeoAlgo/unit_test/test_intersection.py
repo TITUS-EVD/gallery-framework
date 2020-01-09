@@ -122,7 +122,7 @@ def test_dAlgo():
 
     except Exception:
         error('geoalgo::IntersectAlgo unit test failed.')
-        print traceback.format_exception(*sys.exc_info())[2]
+        print(traceback.format_exception(*sys.exc_info())[2])
         return 1
     
     info('geoalgo::IntersectAlgo unit test complete.')

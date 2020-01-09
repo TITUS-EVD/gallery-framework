@@ -36,7 +36,7 @@ def main():
 
 
     if len(sys.argv) < 2:
-        print "Error: must include an input file."
+        print("Error: must include an input file.")
         exit()
 
     _file = sys.argv[-1]

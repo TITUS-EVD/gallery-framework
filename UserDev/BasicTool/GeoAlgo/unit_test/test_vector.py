@@ -53,7 +53,7 @@ def test_vector():
 
     except Exception:
         error('geoalgo::Vector unit test failed.')
-        print traceback.format_exception(*sys.exc_info())[2]
+        print(traceback.format_exception(*sys.exc_info())[2])
         return 1
 
     info('geoalgo::Vector unit test complete.')
