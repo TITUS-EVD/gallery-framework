@@ -68,7 +68,7 @@ class DrawShower : public galleryfmwk::ana_base, public RecoBase<Shower2D> {
 public:
 
     /// Default constructor
-    DrawShower();
+    DrawShower(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
 
     /// Default destructor
     // ~DrawShower(){}

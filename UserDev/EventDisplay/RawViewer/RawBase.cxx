@@ -5,10 +5,19 @@
 
 namespace evd {
 
-RawBase::RawBase() {
-  geoService = larutil::Geometry::GetME();
-  detProp = larutil::DetectorProperties::GetME();
-  import_array();
+// RawBase::RawBase() {
+//   geoService = larutil::Geometry::GetME();
+//   detProp = larutil::DetectorProperties::GetME();
+//   import_array();
+// }
+
+RawBase::RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+  _geo_service(geometry),
+  _det_prop(detectorProperties) 
+{
+  // geoService = larutil::Geometry::GetME();
+  // detProp = larutil::DetectorProperties::GetME();
+  _import_array();
 }
 
 RawBase::~RawBase() {
@@ -18,7 +27,8 @@ RawBase::~RawBase() {
 
 const std::vector<float> & RawBase::getDataByPlane(unsigned int p) const {
   static std::vector<float> returnNull;
-  if (p >= geoService->Nviews()) {
+  unsigned int n_views = _geo_service.Nplanes() * _geo_service.NTPC();
+  if (p >= n_views) {
     std::cerr << "ERROR: Request for nonexistant plane " << p << std::endl;
     return returnNull;
   }
@@ -42,7 +52,8 @@ bool RawBase::fileExists(std::string s){
 PyObject * RawBase::getArrayByPlane(unsigned int p) {
 
   PyObject * returnNull = nullptr;
-  if (p >= geoService->Nviews()) {
+  unsigned int n_views = _geo_service.Nplanes() * _geo_service.NTPC();
+  if (p >= n_views) {
     std::cerr << "ERROR: Request for nonexistant plane " << p << std::endl;
     return returnNull;
   }
@@ -53,9 +64,10 @@ PyObject * RawBase::getArrayByPlane(unsigned int p) {
       int * dims = new int[n_dim];
       dims[0] = _x_dimensions.at(p);
       dims[1] = _y_dimensions.at(p);
-      int data_type = PyArray_FLOAT;
+      int data_type = NPY_FLOAT; //PyArray_FLOAT;
 
       return (PyObject *) PyArray_FromDimsAndData(n_dim, dims, data_type, (char*) & ((_planeData.at(p))[0]) );
+      // return (PyObject *) PyArray_SimpleNewFromData(n_dim, dims, NPY_FLOAT, _planeData[p].data());
     }
     catch ( ... ) {
       std::cerr << "WARNING:  REQUEST FOR PLANE FOR WHICH THERE IS NOT WIRE DATA.\n";

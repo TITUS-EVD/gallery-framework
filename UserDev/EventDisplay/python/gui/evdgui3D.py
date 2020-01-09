@@ -219,5 +219,5 @@ class evdgui3D(gui3D):
         elif state == 2:
             self._event_manager.toggleMCCosmic(False)
         else:
-            print "Can't recognize checkbox state. state is ", state
+            print("Can't recognize checkbox state. state is ", state)
 

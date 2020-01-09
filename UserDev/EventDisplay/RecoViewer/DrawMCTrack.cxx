@@ -25,7 +25,9 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane) {
   return result;
 }
 
-DrawMCTrack::DrawMCTrack() {
+DrawMCTrack::DrawMCTrack(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+    RecoBase(geometry, detectorProperties) 
+{
   _name = "DrawMCTrack";
   _fout = 0;
 }

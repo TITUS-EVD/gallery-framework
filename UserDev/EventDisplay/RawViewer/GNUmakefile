@@ -15,7 +15,7 @@ INCFLAGS  = -I.                       #Include itself
 INCFLAGS += -I$(GALLERY_FMWK_COREDIR)
 INCFLAGS += -I$(GALLERY_FMWK_USERDEVDIR)/EventDisplay
 INCFLAGS += $(shell python-config --includes)
-INCFLAGS += -I$(shell python -c "import numpy; print numpy.get_include()")
+INCFLAGS += -I$(shell python -c "import numpy; print(numpy.get_include())")
 INCFLAGS += $(shell gallery-config --includes)
 INCFLAGS += $(shell gallery-fmwk-config --includes)
 

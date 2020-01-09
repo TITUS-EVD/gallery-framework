@@ -1,4 +1,4 @@
-from database import dataBase
+from datatypes.database import dataBase
 from ROOT import evd
 import pyqtgraph as pg
 import numpy as np
@@ -58,12 +58,11 @@ class recoWire(wire):
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
-        self._process = evd.DrawWire()
+        self._process = evd.DrawWire(geom.getGeometryCore(), geom.getDetectrorProperties())
         self._process.initialize()
         self._process.setInput(self._producerName)
-        for plane in xrange(geom.nViews()):
-            self._process.setYDimension(geom.readoutWindowSize(),plane)
-            print geom.readoutPadding()
+        for plane in range(geom.nViews() * geom.nTPCs()):
+            self._process.setYDimension(geom.readoutWindowSize(), plane)
             if geom.readoutPadding() != 0:
                 self._process.setPadding(geom.readoutPadding(), plane)
 
@@ -80,16 +79,16 @@ class rawDigit(wire):
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
-        self._process = evd.DrawRawDigit()
-        for i in xrange(len(geom._pedestals)):
+        self._process = evd.DrawRawDigit(geom.getGeometryCore(), geom.getDetectrorProperties())
+        for i in range(len(geom._pedestals)):
             self._process.setPedestal(geom._pedestals[i], i)
         self._process.initialize()
         if "boone" in geom.name():
             self._process.SetCorrectData(False)
         else:
             self._process.SetCorrectData(False)
-        for plane in xrange(geom.nViews()):
-            self._process.setYDimension(geom.readoutWindowSize(),plane)
+        for plane in range(geom.nViews() * geom.nTPCs()):
+            self._process.setYDimension(geom.readoutWindowSize(), plane)
             if geom.readoutPadding() != 0:
                 self._process.setPadding(geom.readoutPadding(), plane)
 

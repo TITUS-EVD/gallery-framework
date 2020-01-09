@@ -1,5 +1,5 @@
 from pyqtgraph.Qt import QtCore
-from event import manager, event
+from evdmanager.event import manager, event
 import datatypes
 from ROOT import gallery
 import os
@@ -216,14 +216,14 @@ class evd_manager_base(manager, QtCore.QObject):
             # First, check that the file exists:
             try:
                 if not os.path.exists(file):
-                    print "ERROR: requested file does not exist."
+                    print("ERROR: requested file does not exist.")
                     continue
-            except Exception, e:
-                print e
+            except (Exception, e):
+                print(e)
                 return
             # Next, verify it is a root file:
             if not file.endswith(".root"):
-                print "ERROR: must supply a root file."
+                print("ERROR: must supply a root file.")
                 continue
 
             # Finally, ping the file to see what is available to draw
@@ -292,13 +292,13 @@ class evd_manager_base(manager, QtCore.QObject):
         if self._event < self._n_entries - 1:
             self.goToEvent(self._event + 1)
         else:
-            print "On the last event, can't go to next."
+            print("On the last event, can't go to next.")
 
     def prev(self):
         if self._event != 0:
             self.goToEvent(self._event - 1)
         else:
-            print "On the first event, can't go to previous."
+            print("On the first event, can't go to previous.")
 
     def processEvent(self, force=False):
         if self._lastProcessed != self._event or force:
@@ -323,7 +323,7 @@ class evd_manager_base(manager, QtCore.QObject):
                     while event != self._data_manager.eventEntry():
                         self._data_manager.next()
         else:
-            print "Selected event is too high"
+            print("Selected event is too high")
             return
 
         self.setEvent(self._data_manager.eventEntry())
@@ -373,7 +373,7 @@ class evd_manager_2D(evd_manager_base):
         if informal_type in self._drawableItems.getListOfTitles():
             # drawable items contains a reference to the class, so instantiate
             # it
-            drawingClass = self._drawableItems.getDict()[informal_type][0]()
+            drawingClass = self._drawableItems.getDict()[informal_type][0](self._geom)
             # Special case for clusters, connect it to the signal:
             # if name == 'Cluster':
             #     self.noiseFilterChanged.connect(
@@ -452,7 +452,7 @@ class evd_manager_2D(evd_manager_base):
 
         if product == 'wire':
             if 'recob::Wire' not in self._keyTable[stage]:
-                print "No wire data available to draw"
+                print("No wire data available to draw")
                 self._drawWires = False
                 return
             self._drawWires = True
@@ -463,7 +463,7 @@ class evd_manager_2D(evd_manager_base):
 
         elif product == 'rawdigit':
             if 'raw::RawDigit' not in self._keyTable[stage]:
-                print "No raw digit data available to draw"
+                print("No raw digit data available to draw")
                 self._drawWires = False
                 return
             self._drawWires = True
@@ -497,7 +497,7 @@ class evd_manager_2D(evd_manager_base):
         if product == 'opdetwaveform':
 
             if 'raw::OpDetWaveform' not in self._keyTable[stage]:
-                print "No OpDetWaveform data available to draw"
+                print("No OpDetWaveform data available to draw")
                 self._drawWires = False
                 return
             self._drawOpDetWvf = True

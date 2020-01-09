@@ -45,7 +45,7 @@ class DrawCluster : public galleryfmwk::ana_base, public RecoBase<Cluster2D> {
 public:
 
   /// Default constructor
-  DrawCluster();
+  DrawCluster(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
 
   /// Default destructor
   virtual ~DrawCluster();

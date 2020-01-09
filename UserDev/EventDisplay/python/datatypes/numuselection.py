@@ -1,9 +1,9 @@
-from database import recoBase
+from datatypes.database import recoBase
 from ROOT import evd
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 
-from track import polyLine
+from datatypes.track import polyLine
 
 class numuselection(recoBase):
     """docstring for numuselection"""
@@ -26,7 +26,7 @@ class numuselection(recoBase):
             # First get the hit information:
             numus = self._process.getDataByPlane(thisPlane)
 
-            for i in xrange(len(numus)):
+            for i in range(len(numus)):
                 # Draw the vertex:
 
                 vertex = numus[i].vertex()
@@ -53,7 +53,7 @@ class numuselection(recoBase):
 
                 # Draw all the tracks:
                 tracks = numus[i].tracks()
-                for j in xrange(len(numus[i].tracks())):
+                for j in range(len(numus[i].tracks())):
                     track = tracks[j]
                     # construct a polygon for this track:
                     points = []

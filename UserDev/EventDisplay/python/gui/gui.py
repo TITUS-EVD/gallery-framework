@@ -10,8 +10,8 @@ import numpy as np
 import evdmanager
 
 # Import the class that manages the view windows
-from viewport import viewport
-from opticalviewport import opticalviewport
+from gui.viewport import viewport
+from gui.opticalviewport import opticalviewport
 
 
 class view_manager(QtCore.QObject):
@@ -245,7 +245,7 @@ class view_manager(QtCore.QObject):
       view.t0slide(t0)
 
   def drawPlanes(self,event_manager):
-    for i in xrange(len(self._drawerList)):
+    for i in range(len(self._drawerList)):
       if event_manager.hasWireData():
         self._drawerList[i].drawPlane(event_manager.getPlane(i))
       else:
@@ -278,7 +278,7 @@ class view_manager(QtCore.QObject):
 
     offset = self._geometry.timeOffsetTicks(hits[0].plane())
     
-    for i in xrange(len(hits)):
+    for i in range(len(hits)):
       hit = hits[i]
 
       start_time = hit.start_time() + offset
@@ -427,7 +427,6 @@ class gui(QtGui.QWidget):
 
   # this function helps pass the entry of the line edit item to the event control
   def goToEventWorker(self):
-    print "called goToEventWorker"
     try:
       event = int(self._larliteEventEntry.text())
     except:
@@ -519,7 +518,7 @@ class gui(QtGui.QWidget):
     self._uniteCathodes.setVisible(False)
 
     self._separators = []  
-    for i in xrange(2):
+    for i in range(2):
       self._separators.append(QtGui.QFrame())
       self._separators[i].setFrameShape(QtGui.QFrame.HLine)
       self._separators[i].setFrameShadow(QtGui.QFrame.Sunken)
@@ -566,11 +565,11 @@ class gui(QtGui.QWidget):
 
   def viewSelectWorker(self):
 
-    n_views = self._geometry.nViews() / self._geometry.nTPCs()
+    n_views = int(self._geometry.nViews() / self._geometry.nTPCs())
     n_views += 1 # Add the optical evd
 
     i = 0
-    for i in xrange(n_views):
+    for i in range(n_views):
       if self.sender() == self._viewButtonArray[i]:
         self._view_manager.selectPlane(i)
         self._view_manager.refreshDrawListWidget()
@@ -749,7 +748,8 @@ class gui(QtGui.QWidget):
     views = ['U', 'V', 'Y']
     i = 0
     self._viewButtonArray = []
-    for plane in xrange(self._geometry.nViews() / self._geometry.nTPCs()):
+    n_views = int(self._geometry.nViews() / self._geometry.nTPCs())
+    for plane in range(n_views):
       text = "Plane" + str(i)
       # Use U, V and W in the case of SBND
       if self._geometry.nTPCs() == 2: 
@@ -857,10 +857,7 @@ class gui(QtGui.QWidget):
     self.southLayout = self.getSouthLayout()
 
     # Area to hold data:
-    nviews = self._geometry.nViews()
-    # nviews = self._baseData._nviews
-    if self._geometry.nTPCs() == 2:
-      nviews /= self._geometry.nTPCs()
+    nviews = int(self._geometry.nViews() / self._geometry.nTPCs())
 
     if self._geometry.nTPCs() > 2:
       print('Only 1 or 2 TPCs are supported.')

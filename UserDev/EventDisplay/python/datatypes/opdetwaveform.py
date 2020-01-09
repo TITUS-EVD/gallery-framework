@@ -1,4 +1,4 @@
-from database import dataBase
+from datatypes.database import dataBase
 from ROOT import evd
 import pyqtgraph as pg
 import numpy as np
@@ -16,7 +16,7 @@ class opdetwaveform(dataBase):
         self._process = evd.DrawOpDetWaveform()
         self._process.initialize()
         self._process.setInput(self._producerName)
-        # for plane in xrange(geom.nViews()):
+        # for plane in range(geom.nViews()):
         #     self._process.setYDimension(geom.readoutWindowSize(),plane)
         #     print geom.readoutPadding()
         #     if geom.readoutPadding() != 0:
@@ -28,5 +28,4 @@ class opdetwaveform(dataBase):
             self._process.setInput(self._producerName)
 
     def getData(self):
-        print ('opdetwaveform::getData called')
         return self._process.getArray()

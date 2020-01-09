@@ -7,7 +7,9 @@
 namespace evd {
 
 
-DrawSpacepoint::DrawSpacepoint() {
+DrawSpacepoint::DrawSpacepoint(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+    RecoBase(geometry, detectorProperties)
+{
   _name = "DrawSpacepoint";
   _fout = 0;
 

@@ -1,4 +1,4 @@
-from database import recoBase
+from datatypes.database import recoBase
 from pyqtgraph.Qt import QtGui, QtCore
 from ROOT import evd
 import pyqtgraph as pg
@@ -18,17 +18,17 @@ class polyLine(QtGui.QGraphicsPathItem):
 
         # Fill the path:
         path.moveTo(points[0])
-        for i in xrange(len(points)-1):
+        for i in range(len(points)-1):
             path.lineTo(points[i+1])
         self.setPath(path)
 
 
 class track(recoBase):
 
-    def __init__(self):
+    def __init__(self, geom):
         super(track, self).__init__()
         self._productName = 'track'
-        self._process = evd.DrawTrack()
+        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectrorProperties())
         self.init()
 
     def drawObjects(self, view_manager, on_both_tpcs=False):
@@ -40,7 +40,7 @@ class track(recoBase):
             tracks = self._process.getDataByPlane(view.plane())
             offset = geom.offset(view.plane()) / geom.time2cm()
 
-            for i in xrange(len(tracks)):
+            for i in range(len(tracks)):
                 track = tracks[i]
                 # construct a polygon for this track:
                 points = []
@@ -68,7 +68,7 @@ class track(recoBase):
                 self._drawnObjects[view.plane()].append(thisPoly)
 
 
-from database import recoBase3D
+from datatypes.database import recoBase3D
 
 try:
     import pyqtgraph.opengl as gl
@@ -78,7 +78,7 @@ try:
         def __init__(self):
             super(track3D, self).__init__()
             self._productName = 'track3D'
-            self._process = evd.DrawTrack3D()
+            self._process = evd.DrawTrack3D(geom.getGeometryCore(), geom.getDetectrorProperties())
             self.init()
 
 
@@ -113,6 +113,6 @@ try:
 
     
 
-except Exception, e:
+except:
     pass
 

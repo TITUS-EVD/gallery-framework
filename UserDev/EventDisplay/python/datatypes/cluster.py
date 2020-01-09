@@ -1,6 +1,6 @@
-from database import recoBase
+from datatypes.database import recoBase
 from pyqtgraph.Qt import QtGui, QtCore
-from connectedObjects import connectedBox, connectedCircle, boxCollection
+from datatypes.connectedObjects import connectedBox, connectedCircle, boxCollection
 from ROOT import evd, vector
 import pyqtgraph as pg
 
@@ -62,7 +62,7 @@ class cluster(recoBase):
 
     def drawClusterList(self, view, clusters, thisPlane, geom, flip=False):
             colorIndex = 0
-            for i in xrange(len(clusters)):
+            for i in range(len(clusters)):
                 cluster = clusters[i]
                 # Now make the cluster
                 cluster_box_coll = boxCollection()

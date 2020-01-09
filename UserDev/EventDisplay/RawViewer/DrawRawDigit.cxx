@@ -2,10 +2,13 @@
 #define EVD_DRAWRAWDIGIT_CXX
 
 #include "DrawRawDigit.h"
+#include "lardataobj/RecoBase/Wire.h"
 
 namespace evd {
 
-DrawRawDigit::DrawRawDigit() {
+DrawRawDigit::DrawRawDigit(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+  RawBase(geometry, detectorProperties)
+{
   _name = "DrawRawDigit";
   _producer = "daq";
 
@@ -27,10 +30,14 @@ bool DrawRawDigit::initialize() {
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
   //
-  _padding_by_plane.resize(geoService->Nviews());
-  for (unsigned int p = 0; p < geoService->Nviews(); p++) {
-    setXDimension(geoService->Nwires(p), p);
-    setYDimension(detProp->ReadOutWindowSize(), p);
+  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC());
+  int counter = 0;
+  for (unsigned int t = 0; t < _geo_service.NTPC(); t++) {
+    for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
+      setXDimension(_geo_service.Nwires(p, t), counter);
+      setYDimension(_det_prop.ReadOutWindowSize(), counter);
+      counter++;
+    }
   }
   initDataHolder();
 
@@ -63,14 +70,18 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   // drawing.
   // So, obviously, first thing to do is to get the wires.
 
+  std::cout << "DrawRawDigit::analyze() -- Using _producer" << _producer << std::endl;
+
   art::InputTag wires_tag(_producer);
   auto const &raw_digits =
       ev->getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
 
   // if the tick-length set is different from what is actually stored in the ADC
   // vector -> fix.
+  size_t n_views = _geo_service.Nplanes() * _geo_service.NTPC();
+
   if (raw_digits->size() > 0) {
-    for (size_t pl = 0; pl < geoService->Nplanes(); pl++) {
+    for (size_t pl = 0; pl < n_views; pl++) {
       if (_y_dimensions[pl] < raw_digits->at(0).ADCs().size()) {
         _y_dimensions[pl] = raw_digits->at(0).ADCs().size();
       }
@@ -78,10 +89,10 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   }
 
   _planeData.clear();
-  size_t _n_ticks = raw_digits->front().ADCs().size();
+  size_t n_ticks = raw_digits->front().ADCs().size();
 
   if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
-    _noise_filter.set_n_time_ticks(_n_ticks);
+    _noise_filter.set_n_time_ticks(n_ticks);
   }
   initDataHolder();
 
@@ -90,41 +101,53 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   // temporarily store the data in it's native format, then copy
   // the data over to the final output.
 
-  std::vector<std::vector<float>> _temp_data_holder(geoService->Nviews());
+  std::vector<std::vector<float>> temp_data_holder(n_views);
 
-  for (size_t i_plane = 0; i_plane < geoService->Nviews(); i_plane++) {
-    _temp_data_holder.at(i_plane).resize(_n_ticks * _x_dimensions[i_plane]);
+  for (size_t i_plane = 0; i_plane < n_views; i_plane++) {
+    temp_data_holder.at(i_plane).resize(n_ticks * _x_dimensions[i_plane]);
   }
 
-  for (auto const &rawdigit : *raw_digits) {
-    unsigned int ch = rawdigit.Channel();
+  for (auto const &rawdigit : *raw_digits) 
+  {
+    unsigned int ch  = rawdigit.Channel();
+    float        ped = rawdigit.GetPedestal();
+
     if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE &&
         ch >= 8254)
       continue;
 
-    unsigned int wire = geoService->ChannelToWire(ch);
-    unsigned int plane = geoService->ChannelToPlane(ch);
-    unsigned int tpc = geoService->ChannelToTPC(ch);
+    std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
+    unsigned int wire = widVec[0].Wire;
+    unsigned int plane = widVec[0].Plane;
+    unsigned int tpc = widVec[0].TPC;
+
+    if (wire > _geo_service.Nwires(plane, tpc)) continue;
 
     // If a second TPC is present, its planes 0, 1 and 2 are 
     // stored consecutively to those of the first TPC. 
     // So we have planes 0, 1, 2, 3, 4, 5.
-    plane += tpc * (geoService->Nplanes() / geoService->NTPC());
+    plane += tpc * _geo_service.Nplanes();
 
-    if (wire > geoService->Nwires(plane)) continue;
+    int offset = wire * n_ticks;
 
-    int offset = wire * _n_ticks;
+    std::vector<float>&          planeRawDigitVec = temp_data_holder[plane];
+    std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;
 
-    size_t i = 0;
-    for (auto &tick : rawdigit.ADCs()) {
-      _temp_data_holder.at(plane).at(offset + i) = tick;
-      i++;
+    // Copy with pedestal subtraction
+    for(const auto& adcVal : rawdigit.ADCs()) {
+      *startItr++ = adcVal; // - ped;
     }
+
+    // size_t i = 0;
+    // for (auto &tick : rawdigit.ADCs()) {
+    //   temp_data_holder.at(plane).at(offset + i) = tick;
+    //   i++;
+    // }
   }
 
 
   if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
-    _noise_filter.set_data(&_temp_data_holder);
+    _noise_filter.set_data(&temp_data_holder);
     if (_correct_data && ev->eventAuxiliary().isRealData()) {
       _noise_filter.clean_data();
     } else {
@@ -139,8 +162,8 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
 
   std::vector<int> _temp_padding_by_plane(_padding_by_plane.size(), 0);
 
-  for (size_t i_plane = 0; i_plane < geoService->Nviews(); i_plane++) {
-    if (_n_ticks + _padding_by_plane[i_plane] > _y_dimensions[i_plane]) {
+  for (size_t i_plane = 0; i_plane < n_views; i_plane++) {
+    if (n_ticks + _padding_by_plane[i_plane] > _y_dimensions[i_plane]) {
       _temp_padding_by_plane[i_plane] = 0;
     }
     else{
@@ -150,16 +173,16 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
 
   // Now, copy the data from the temp storage to the output storage:
 
-  for (size_t i_plane = 0; i_plane < geoService->Nviews(); i_plane++) {
-    int _n_wires = _temp_data_holder.at(i_plane).size() / _n_ticks;
+  for (size_t i_plane = 0; i_plane < n_views; i_plane++) {
 
-    for (size_t i_wire = 0; i_wire < _n_wires; i_wire++) {
-      int offset_raw = i_wire * _n_ticks;
-      int offset_final =
-          i_wire * _y_dimensions[i_plane] + _temp_padding_by_plane[i_plane];
-      for (size_t i_tick = 0; i_tick < _n_ticks; i_tick++) {
+    size_t n_wires = temp_data_holder.at(i_plane).size() / n_ticks;
+
+    for (size_t i_wire = 0; i_wire < n_wires; i_wire++) {
+      int offset_raw   = i_wire * n_ticks;
+      int offset_final = i_wire * _y_dimensions[i_plane] + _temp_padding_by_plane[i_plane];
+      for (size_t i_tick = 0; i_tick < n_ticks; i_tick++) {
         _planeData.at(i_plane).at(offset_final + i_tick) =
-            _temp_data_holder.at(i_plane).at(offset_raw + i_tick);
+            temp_data_holder.at(i_plane).at(offset_raw + i_tick);
       }
     }
   }

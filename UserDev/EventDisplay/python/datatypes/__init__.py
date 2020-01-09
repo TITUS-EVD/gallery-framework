@@ -1,11 +1,11 @@
-from database import dataBase, recoBase
-from drawableItems import drawableItems
+from datatypes.database import dataBase, recoBase
+from datatypes.drawableItems import drawableItems
 # from hit import hit
 # from cluster import cluster
 # from shower import shower
 # from track import track
-from wire import wire, rawDigit, recoWire
-from opdetwaveform import opdetwaveform
+from datatypes.wire import wire, rawDigit, recoWire
+from datatypes.opdetwaveform import opdetwaveform
 # from match import match
 # from endpoint2d import endpoint2d
 # from vertex import vertex
@@ -13,7 +13,7 @@ from opdetwaveform import opdetwaveform
 # from spacepoint import spacepoint
 try:
     import pyqtgraph.opengl as gl
-    from drawableItems import drawableItems3D
+    from datatypes.drawableItems import drawableItems3D
 #     from track import track3D
 #     from shower import shower3D
 #     from mctrack import mctrack3D

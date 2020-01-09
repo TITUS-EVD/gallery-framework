@@ -15,6 +15,25 @@ from ROOT import evd
 
 from evdmanager import geometry, evd_manager_2D
 
+try:
+    import SBNDservices
+    geometryCore    = SBNDservices.ServiceManager('Geometry')
+    detProperties   = SBNDservices.ServiceManager('DetectorProperties')
+    detClocks       = SBNDservices.ServiceManager('DetectorClocks')
+    lar_properties  = SBNDservices.ServiceManager('LArProperties')
+except:
+    pass
+
+try:
+    import ICARUSservices
+    geometryCore    = ICARUSservices.ServiceManager('Geometry')
+    detProperties   = ICARUSservices.ServiceManager('DetectorProperties')
+    detClocks       = ICARUSservices.ServiceManager('DetectorClocks')
+    lar_properties  = ICARUSservices.ServiceManager('LArProperties')
+except:
+    pass
+
+
 # This is to allow key commands to work when focus is on a box
 
 
@@ -42,6 +61,9 @@ def main():
     geom.add_argument('-S', '-s', '--sbnd',
                       action='store_true',
                       help="Run with the SBND Geometry")
+    geom.add_argument('-I', '-i', '--icarus',
+                      action='store_true',
+                      help="Run with the ICARUS Geometry")
     geom.add_argument('-L', '-l', '--lariat',
                       action='store_true',
                       help="Run with the lariat geometry")
@@ -58,7 +80,9 @@ def main():
     elif args.lariat:
         geom = geometry.lariat()
     elif args.sbnd:
-        geom = geometry.sbnd()
+        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+    elif args.icarus:
+        geom = geometry.icarus()
     else:
         geom = geometry.argoneut()
 

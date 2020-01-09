@@ -1,7 +1,7 @@
-from database import recoBase
+from datatypes.database import recoBase
 from ROOT import evd, protoshower
 import pyqtgraph as pg
-from connectedObjects import connectedBox, connectedCircle, boxCollection
+from datatypes.connectedObjects import connectedBox, connectedCircle, boxCollection
 from cluster import clusterParams
 
 class match(recoBase):
@@ -53,7 +53,7 @@ class match(recoBase):
 
             matchedClusters = self._process.getDataByPlane(thisPlane)
 
-            for i in xrange(len(matchedClusters)):
+            for i in range(len(matchedClusters)):
                 cluster = matchedClusters[i]
 
 
@@ -106,15 +106,15 @@ class match(recoBase):
 
         # Now, connect all the clusters across the planes to make the highlights match:
         # Check that the vectors are the same across all planes first
-        for plane in xrange(len(self._listOfClusters)):
+        for plane in range(len(self._listOfClusters)):
             if len(self._listOfClusters[plane]) != len(self._listOfClusters[0]):
                 print("ERROR: matched cluster sizes don't match")
                 exit(-1)
 
         # At this point, we've confirmed that everything is at least the same size
         # So go through and try to connect everything
-        for plane in xrange(len(self._listOfClusters)):
-            for i_cluster in xrange(len(self._listOfClusters[plane])):
+        for plane in range(len(self._listOfClusters)):
+            for i_cluster in range(len(self._listOfClusters[plane])):
                 if self._listOfClusters[plane][i_cluster] != None:
                     # In this case, connect to the other clusters.
                     otherPlanes = range(len(self._listOfClusters))

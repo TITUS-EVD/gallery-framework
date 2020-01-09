@@ -52,7 +52,7 @@ class DrawRawDigit : public galleryfmwk::ana_base, public RawBase {
 public:
 
     /// Default constructor
-    DrawRawDigit();
+    DrawRawDigit(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
 
     /// Default destructor
     virtual ~DrawRawDigit() {}

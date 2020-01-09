@@ -5,7 +5,9 @@
 
 namespace evd {
 
-DrawVertex::DrawVertex() {
+DrawVertex::DrawVertex(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+    RecoBase(geometry, detectorProperties) 
+{
   _name = "DrawVertex";
   _fout = 0;
 

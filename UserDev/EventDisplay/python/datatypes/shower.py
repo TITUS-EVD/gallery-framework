@@ -1,9 +1,9 @@
-from database import recoBase
+from datatypes.database import recoBase
 from ROOT import evd, TVector3
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 import math as mt
-from connectedObjects import boxCollection
+from datatypes.connectedObjects import boxCollection
 
 
 # # add shower polygon Qt object
@@ -92,7 +92,7 @@ class shower(recoBase):
 
             i_color = 0
 
-            for i in xrange(len(showers)):
+            for i in range(len(showers)):
                 
                 shower = showers[i]
 
@@ -169,7 +169,7 @@ class shower(recoBase):
                 i_color += 1
 
 
-from database import recoBase3D
+from datatypes.database import recoBase3D
 
 try:
     import pyqtgraph.opengl as gl
@@ -216,7 +216,7 @@ try:
             showers = self._process.getData()
             i_color = 0
 
-            for i in xrange(len(showers)):
+            for i in range(len(showers)):
                 shower = showers[i]
 
                 if i_color > len(self._showerColors):
@@ -276,5 +276,5 @@ try:
                 i_color += 1
 
 
-except Exception, e:
+except:
     pass

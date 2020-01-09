@@ -133,7 +133,7 @@ class boxCollection(QtCore.QObject):
             self.highlightChange.emit()
 
     def drawHits(self, view, cluster, geom, flip=False):
-        for i in xrange(len(cluster)):
+        for i in range(len(cluster)):
             hit = cluster[i]
 
             wire = hit.wire()

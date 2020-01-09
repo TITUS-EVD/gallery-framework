@@ -50,7 +50,7 @@ class lariat_manager(manager, wire, QtCore.QObject):
   def selectFile(self):
     filePath = str(QtGui.QFileDialog.getOpenFileName())
     self.parseFileName(filePath)
-    print "Selected file is ", filePath
+    print("Selected file is ", filePath)
 
   # override the functions from manager as needed here
   def next(self):
@@ -61,7 +61,7 @@ class lariat_manager(manager, wire, QtCore.QObject):
     elif self._cycling:
       self.goToEvent(1)
     else:
-      print "On the last event, can't go to next."
+      print("On the last event, can't go to next.")
 
   def prev(self):
     if self._event != 1:
@@ -69,7 +69,7 @@ class lariat_manager(manager, wire, QtCore.QObject):
     elif self._cycling:
       self.goToEvent(self._process.n_events() -1)  
     else:
-      print "On the first event, can't go to previous."
+      print("On the first event, can't go to previous.")
 
   def goToEvent(self,event):
     self.setRun(self._process.run())
@@ -119,7 +119,7 @@ class lariat_manager(manager, wire, QtCore.QObject):
       # In that case, refresh the thread and start over.
       # It can also be called by the parsefileName function, which implies a file is ready
       if self._watcher == None and fileName == None:
-          print "ERROR: there is no file to watch, can not start a run."
+          print("ERROR: there is no file to watch, can not start a run.")
           return
       self._stopFlag = threading.Event()
       self._watcher = fileWatcher(self._stopFlag, self._monitorFile)
@@ -187,7 +187,7 @@ class fileWatcher(QtCore.QObject,threading.Thread):
       try:
         f = open(self._fileToWatch)
       except Exception, e:
-        print "The file selected for watching does not exist!"
+        print("The file selected for watching does not exist!")
         raise e
       # At this point, the file exists.
       fileToDraw = f.readline()
@@ -197,11 +197,11 @@ class fileWatcher(QtCore.QObject,threading.Thread):
         # print "Not drawing because file has not changed."
         continue
       if fileExtension == ".root":
-        print "Refreshing file!"
+        print("Refreshing file!")
         self.fileChanged.emit(fileToDraw)
         self._prevFile = fileToDraw
       else:
-        print "File has changed but does not appear to be a root file."
+        print("File has changed but does not appear to be a root file.")
         self._prevFile = fileToDraw
 
 class delayTimer(QtCore.QObject,threading.Thread):

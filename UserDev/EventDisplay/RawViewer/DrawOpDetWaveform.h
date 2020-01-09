@@ -17,7 +17,7 @@
 
 #include "Analysis/ana_base.h"
 #include "LArUtil/Geometry.h"
-#include "RawBase.h"
+#include "LArUtil/DetectorProperties.h"
 
 #include "canvas/Persistency/Common/FindMany.h"
 #include "canvas/Utilities/InputTag.h"

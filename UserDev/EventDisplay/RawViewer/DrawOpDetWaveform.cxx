@@ -15,7 +15,7 @@ DrawOpDetWaveform::DrawOpDetWaveform() {
   _geoService = larutil::Geometry::GetME();
   _detProp = larutil::DetectorProperties::GetME();
   
-  import_array();
+  _import_array();
 }
 
 

@@ -28,6 +28,11 @@ typedef _object PyObject;
 #include "LArUtil/GeometryHelper.h"
 #include "LArUtil/DetectorProperties.h"
 
+#include "larcorealg/Geometry/GeometryCore.h"
+#include "lardataalg/DetectorInfo/DetectorProperties.h"
+
+#include "LArUtil/SimpleGeometryHelper.h"
+
 
 /**
    \class RecoBase
@@ -42,7 +47,7 @@ class RecoBase {
 public:
 
   /// Default constructor
-  RecoBase();
+  RecoBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
 
   /// Default destructor
   virtual ~RecoBase() {}
@@ -67,6 +72,9 @@ protected:
   const larutil::GeometryHelper * geoHelper;
   const larutil::DetectorProperties * detProp;
 
+  const geo::GeometryCore&           _geo_service;
+  const detinfo::DetectorProperties& _det_prop;
+
   std::string _producer;
 
   // Store the reco data to draw;
@@ -84,10 +92,14 @@ protected:
 
 
 template <class DATA_TYPE>
-RecoBase <DATA_TYPE>::RecoBase() {
+RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+  _geo_service(geometry),
+  _det_prop(detectorProperties)
+{
   geoService = larutil::Geometry::GetME();
   geoHelper = larutil::GeometryHelper::GetME();
   detProp = larutil::DetectorProperties::GetME();
+  
   // Set up default values of the _wire and _time range
   _wireRange.resize(geoService -> Nviews());
   _timeRange.resize(geoService -> Nviews());

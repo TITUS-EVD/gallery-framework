@@ -1,4 +1,4 @@
-from database import recoBase
+from datatypes.database import recoBase
 from ROOT import evd
 from pyqtgraph.Qt import QtGui
 import pyqtgraph as pg
@@ -51,7 +51,7 @@ class hit(recoBase):
                 self.drawHitList(view, hits_2, thisPlane, geom, flip=True)
 
     def drawHitList(self, view, hits, thisPlane, geom, flip=False):
-        for i in xrange(len(hits)):
+        for i in range(len(hits)):
             hit = hits[i]
 
             wire = hit.wire()

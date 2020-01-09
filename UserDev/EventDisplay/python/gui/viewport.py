@@ -167,7 +167,7 @@ class viewport(pg.GraphicsLayoutWidget):
     self._cmap.restoreState(self._colorMap)
 
   def mouseDrag(self):
-    print "mouse was dragged"
+    print("mouse was dragged")
 
   def getWidget(self):
 

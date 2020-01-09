@@ -15,7 +15,7 @@ INCFLAGS  = -I.                       #Include itself
 INCFLAGS += $(shell gallery-config --includes)
 INCFLAGS += $(shell gallery-fmwk-config --includes)
 INCFLAGS += $(shell python-config --includes)
-INCFLAGS += -I$(shell python -c "import numpy; print numpy.get_include()")
+INCFLAGS += -I$(shell python -c "import numpy; print(numpy.get_include())")
 INCFLAGS += '-I/cvmfs/larsoft.opensciencegrid.org/products/larcorealg/v07_03_00/include/'
 
 # Add -p flag to CINT compilation

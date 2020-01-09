@@ -1,9 +1,9 @@
-from database import recoBase
+from datatypes.database import recoBase
 from pyqtgraph.Qt import QtGui, QtCore
 from ROOT import evd
 import pyqtgraph as pg
 
-from track import polyLine
+from datatypes.track import polyLine
 
 
 class mctrack(recoBase):
@@ -23,7 +23,7 @@ class mctrack(recoBase):
             tracks = self._process.getDataByPlane(view.plane())
             offset = geom.offset(view.plane()) / geom.time2cm()
 
-            for i in xrange(len(tracks)):
+            for i in range(len(tracks)):
                 track = tracks[i]
                 # construct a polygon for this track:
                 points = []
@@ -58,7 +58,7 @@ class mctrack(recoBase):
                 self._drawnObjects[view.plane()].append(thisPoly)
 
 
-from database import recoBase3D
+from datatypes.database import recoBase3D
 
 try:
     import pyqtgraph.opengl as gl
@@ -117,6 +117,6 @@ try:
     # self.addItem(cylinder)
 
 
-except Exception, e:
+except:
     pass
 

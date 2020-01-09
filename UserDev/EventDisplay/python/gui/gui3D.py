@@ -62,7 +62,7 @@ class view_manager3D(QtCore.QObject):
     self._view.update()
 
   def restoreDefaults(self):
-    print "restoreDefaults called but not implemented"
+    print("restoreDefaults called but not implemented")
 
 class gui3D(QtGui.QWidget):
 
@@ -214,7 +214,7 @@ class gui3D(QtGui.QWidget):
     try:
       event = int(self._larliteEventEntry.text())
     except:
-      print "Error, must enter an integer"
+      print("Error, must enter an integer")
       self._larliteEventEntry.setText(str(self._event_manager.event()))
       return
     self._event_manager.goToEvent(event)

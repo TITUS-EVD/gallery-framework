@@ -35,7 +35,7 @@ class DrawVertex : public galleryfmwk::ana_base, public RecoBase<Vertex2D> {
 public:
 
   /// Default constructor
-  DrawVertex();
+  DrawVertex(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
 
   /// Default destructor
   virtual ~DrawVertex() {};

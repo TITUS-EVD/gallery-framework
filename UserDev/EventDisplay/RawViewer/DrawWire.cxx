@@ -5,10 +5,13 @@
 
 #include "DrawWire.h"
 #include "LArUtil/DetectorProperties.h"
+#include "lardataobj/RecoBase/Wire.h"
 
 namespace evd {
 
-DrawWire::DrawWire() {
+DrawWire::DrawWire(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+  RawBase(geometry, detectorProperties)
+{
   _name = "DrawWire";
   _producer = "caldata";
 
@@ -29,16 +32,16 @@ bool DrawWire::initialize() {
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
   //
-
-  _padding_by_plane.resize(geoService -> Nviews());
-
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
-    setXDimension(geoService->Nwires(p), p);
-    setYDimension(detProp -> ReadOutWindowSize(), p);
+  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC());
+  int counter = 0;
+  for (unsigned int t = 0; t < _geo_service.NTPC(); t++) {
+    for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
+      setXDimension(_geo_service.Nwires(p, t), counter);
+      setYDimension(_det_prop.ReadOutWindowSize(), counter);
+      counter++;
+    }
   }
   initDataHolder();
-
-
 
   return true;
 
@@ -76,28 +79,36 @@ bool DrawWire::analyze(gallery::Event * ev) {
 
   for (auto const& wire : *wires) {
     unsigned int ch = wire.Channel();
-    unsigned int detWire = geoService->ChannelToWire(ch);
-    unsigned int plane = geoService->ChannelToPlane(ch);
-    unsigned int tpc = geoService->ChannelToTPC(ch);
+    std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
+    size_t detWire = widVec[0].Wire;
+    size_t plane   = widVec[0].Plane;
+    size_t tpc      = widVec[0].TPC;
 
     // If a second TPC is present, its planes 0, 1 and 2 are 
     // stored consecutively to those of the first TPC. 
     // So we have planes 0, 1, 2, 3, 4, 5.
-    plane += tpc * (geoService->Nplanes() / geoService->NTPC());
+    plane += tpc * (_geo_service.Nplanes() / _geo_service.NTPC());
     
     int offset = detWire * _y_dimensions[plane] + _padding_by_plane[plane];
 
-    for (auto & iROI : wire.SignalROI().get_ranges()) {
-      // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
-      const int FirstTick = iROI.begin_index();
-      if (plane == 2) {
-      }
-      size_t i = 0;
-      for (float ADC : iROI) {
-        _planeData.at(plane).at(offset + FirstTick + i) = ADC;
-        i ++;
-      }
+    std::vector<float>&          planeData   = _planeData[plane];
+    std::vector<float>::iterator wireDataItr = planeData.begin() + offset;
 
+    for (auto & iROI : wire.SignalROI().get_ranges()) {
+      
+      size_t                       firstTick = iROI.begin_index();
+      std::vector<float>::iterator adcItr    = wireDataItr + firstTick;
+
+      std::copy(iROI.begin(),iROI.end(),adcItr);
+
+      // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
+      // const int firstTick = iROI.begin_index();
+
+      // size_t i = 0;
+      // for (float ADC : iROI) {
+      //   _planeData.at(plane).at(offset + firstTick + i) = ADC;
+      //   i ++;
+      // }
 
     }
   }

@@ -48,7 +48,7 @@ namespace evd {
   public:
 
     /// Default constructor
-    DrawWire();
+    DrawWire(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& DetectorProperties);
 
     /// Default destructor
     virtual ~DrawWire(){}

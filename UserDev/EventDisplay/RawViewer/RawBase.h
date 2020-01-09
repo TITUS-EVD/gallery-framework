@@ -16,8 +16,11 @@
 
 #include <iostream>
 #include <vector>
-#include "LArUtil/Geometry.h"
-#include "LArUtil/DetectorProperties.h"
+// #include "LArUtil/Geometry.h"
+// #include "LArUtil/DetectorProperties.h"
+
+#include "larcorealg/Geometry/GeometryCore.h"
+#include "lardataalg/DetectorInfo/DetectorProperties.h"
 
 
 
@@ -28,6 +31,7 @@ typedef _object PyObject;
 #ifndef ROOT_TMVA_PyMethodBase
   #ifndef __CINT__
     #include "Python.h"
+    #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
     #include "numpy/arrayobject.h"
   #endif
 #endif
@@ -45,7 +49,10 @@ namespace evd {
   public:
 
     /// Default constructor
-    RawBase();
+    // RawBase();
+
+    /// Default constructor
+    RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
 
     /// Default destructor
     virtual ~RawBase();
@@ -92,8 +99,11 @@ namespace evd {
 
     std::vector<float> _pedestals;
 
-    const larutil::Geometry * geoService;
-    const larutil::DetectorProperties * detProp;
+    // const larutil::Geometry * geoService;
+    // const larutil::DetectorProperties * detProp;
+
+    const geo::GeometryCore&           _geo_service;
+    const detinfo::DetectorProperties& _det_prop;
 
     std::string _producer;
 

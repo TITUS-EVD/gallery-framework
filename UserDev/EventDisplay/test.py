@@ -17,7 +17,7 @@ a.analyze(b)
 
 c = a.getArrayByPlane(0)
 
-print type(c)
-print c.shape
+print (type(c))
+print (c.shape)
 
-print b
+print (b)

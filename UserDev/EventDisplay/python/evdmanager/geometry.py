@@ -45,6 +45,10 @@ class geoBase(object):
         self._opdet_y = [0]
         self._opdet_name = ['pmt']
         self._opdet_default = -9999
+        self._geometryCore = None
+        self._detectorProperties = None
+        self._clockProperties = None
+        self._lar_properties = None
 
     def halfwidth(self):
        return self._halfwidth
@@ -143,6 +147,19 @@ class geoBase(object):
     def opdetDefaultValue(self):
         return self._opdet_default
 
+    def getGeometryCore(self):
+        return self._geometryCore
+
+    def getDetectrorProperties(self):
+        return self._detectorProperties
+
+    def getDetectrorClockProperties(self):
+        return self._clockProperties
+
+    def getLArProperties(self):
+        return self._lar_properties
+
+
 class geometry(geoBase):
 
     def __init__(self):
@@ -150,6 +167,11 @@ class geometry(geoBase):
         self._defaultColorScheme = []
 
     def configure(self):
+        '''
+        This is the default configuration
+        that uses the singleton implemetation of
+        the Geometry and GeometryHelper 
+        '''
         self._halfwidth = larutil.Geometry.GetME().DetHalfWidth()
         self._halfheight = larutil.Geometry.GetME().DetHalfHeight()
         self._length = larutil.Geometry.GetME().DetLength()      
@@ -177,25 +199,68 @@ class geometry(geoBase):
             self._opdet_name.append(larutil.Geometry.GetME().OpDetNameFromOpChannel(d))
 
 
+    def configure(self, geometryCore, detProperties, detClocks, lar_properties):
+        '''
+        This is a new implementation that 
+        uses LArSoft services to get the 
+        GeometryCore and DetectorProperties
+        '''
+        if geometryCore is None or detProperties is None or detClocks is None:
+            self.configure()
+            return 
+
+        print ('Configuring SBND geometry from services')
+
+        self._geometryCore = geometryCore
+        self._detectorProperties = detProperties
+        self._clockProperties = detClocks
+        self._lar_properties = lar_properties
+
+        self._halfwidth = geometryCore.DetHalfWidth()
+        self._halfheight = geometryCore.DetHalfHeight()
+        self._length = geometryCore.DetLength()      
+        self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature());
+        self._wire2Cm = geometryCore.WirePitch()
+        self._samplingRate = detProperties.SamplingRate()
+        self._aspectRatio = self._wire2Cm / self._time2Cm
+        self._nViews = geometryCore.Nviews() * geometryCore.NTPC() #TODO
+        self._nTPCs = int(geometryCore.NTPC())
+        self._nPlanes = int(geometryCore.Nplanes()) * geometryCore.NTPC() #TODO
+        # self._tRange = larutil.DetectorProperties.GetME().ReadOutWindowSize()
+        self._wRange = []
+        self._offset = []
+        for v in range(0, self._nViews):
+            self._wRange.append(geometryCore.Nwires(v))
+
+        self._opdet_x = []
+        self._opdet_y = []
+        self._opdet_z = []
+        self._opdet_name = []
+        # for opch in range (0, geometryCore.NOpDets()):
+        #     xyz = [0, 0, 0]
+        #     geometryCore.OpDetGeoFromOpChannel(opch).GetCenter(xyz);
+        #     self._opdet_x.append(larutil.Geometry.GetME().OpDetX(d))
+        #     self._opdet_y.append(larutil.Geometry.GetME().OpDetY(d))
+        #     self._opdet_z.append(larutil.Geometry.GetME().OpDetZ(d))
+        #     self._opdet_name.append(larutil.Geometry.GetME().OpDetNameFromOpChannel(d))
+        print (self.__dict__)
+
+
     def colorMap(self, plane):
         return self._defaultColorScheme[plane]
 
 class sbnd(geometry): 
 
 
-    def __init__(self):
+    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(sbnd, self).__init__()
         larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
-        self.configure()
-        # self._colorScheme =
-        # self._time2Cm = 0.05515
+        self.configure(geometryCore, detProperties, detClocks, lar_properties)
+
         self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
         self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
-        # for i in xrange(len(self._pedestals)):
-        #     self._levels[i][0] += self._pedestals[i]
-        #     self._levels[i][1] += self._pedestals[i]
 
         self._name = "sbnd"
         self._logo = self._path + "/logos/SBND-color.png"
@@ -208,10 +273,8 @@ class sbnd(geometry):
         self._readoutWindowSize = 7500 #3000
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6] 
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
-        self._cathodeGap = 5.5 / self._time2Cm # 5.3 cm   # 100
-        # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
-        #           * larutil.GeometryHelper.GetME().TimeToCm()
-        # self._offset[:] = [x - remove for x in self._offset]
+        self._cathodeGap = 6 / self._time2Cm # 5.3 cm   # 100
+
         self._defaultColorScheme = [(
             {'ticks': [(1, (22, 30, 151, 255)),
                        (0.791, (0, 181, 226, 255)),
