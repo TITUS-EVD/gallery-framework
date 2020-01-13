@@ -14,6 +14,8 @@ class wire(dataBase):
         self._n_tpc = None
         self._n_plane = None
         self._gap = None
+        self._plane_mix = {0: [3, 6, 9], 1: [4, 7, 10], 2: [5, 8, 11]}
+        self._plane_flip = [False, False, False, True, True, True, False, False, False, True, True, True]
 
     def getPlane(self, plane):
         '''
@@ -31,22 +33,39 @@ class wire(dataBase):
         '''
         if self._n_tpc == 2:
             array_right = self._process.getArrayByPlane(plane)
-            if plane == 0: left_plane = 4
-            if plane == 1: left_plane = 3
-            if plane == 2: left_plane = 5
-            array_left  = self._process.getArrayByPlane(left_plane)#plane + self._n_plane / self._n_tpc)
-            array_left = np.flip(array_left, axis=1)
-            # print ('before:', array_left.shape)
-            # array_left = np.rot90(array_left, 2)
-            # print ('after:', array_left.shape)
+            for left_plane in self._plane_mix[plane]:
+                array_left  = self._process.getArrayByPlane(left_plane)
+
+                if self._plane_flip[left_plane]:
+                    array_left = np.flip(array_left, axis=1)
+
+                npad = ((0, 0), (0, int(self._gap)))
+                array_right = np.pad(array_right, pad_width=npad, mode='constant', constant_values=0)
+
+                array_right = np.concatenate((array_right, array_left), axis=1)
+
+            # if plane == 0: left_plane = self._plane_mix[0][0]
+            # if plane == 1: left_plane = self._plane_mix[1][0]
+            # if plane == 2: left_plane = self._plane_mix[2][0]
+            # array_left  = self._process.getArrayByPlane(left_plane)#plane + self._n_plane / self._n_tpc)
+            # array_left = np.flip(array_left, axis=1)
+            # # print ('before:', array_left.shape)
+            # # array_left = np.rot90(array_left, 2)
+            # # print ('after:', array_left.shape)
+            # print ('shape right', array_right.shape)
+            # print ('shape left', array_left.shape)
+            # print ('value at [100, 100]', array_left[100][100])
 
 
 
-            npad = ((0, 0), (0, int(self._gap)))
-            array_right = np.pad(array_right, pad_width=npad, mode='constant', constant_values=0)
+            # npad = ((0, 0), (0, int(self._gap)))
+            # array_right = np.pad(array_right, pad_width=npad, mode='constant', constant_values=0)
 
-            array = np.concatenate((array_right, array_left), axis=1)
-            return array
+            # array = np.concatenate((array_right, array_left), axis=1)
+            # print ('array shape after concat', array.shape)
+
+            # return array
+            return array_right
 
         return self._process.getArrayByPlane(plane)
 
@@ -69,7 +88,12 @@ class recoWire(wire):
     def setProducer(self, producer):
         self._producerName = producer
         if self._process is not None:
-            self._process.setInput(self._producerName)
+            self._process.clearInput()
+            if isinstance(producer, list):
+                for p in producer:
+                    self._process.addInput(p)
+            else:
+                self._process.setInput(self._producerName)
 
 
 class rawDigit(wire):
@@ -96,7 +120,12 @@ class rawDigit(wire):
     def setProducer(self, producer):
         self._producerName = producer
         if self._process is not None:
-            self._process.setInput(self._producerName)
+            self._process.clearInput()
+            if isinstance(producer, list):
+                for p in producer:
+                    self._process.addInput(p)
+            else:
+                self._process.setInput(self._producerName)
             
     def toggleNoiseFilter(self, filterNoise):
         self._process.SetCorrectData(filterNoise) 

@@ -26,6 +26,11 @@ class viewport(pg.GraphicsLayoutWidget):
     self._line_tpc_div = None
     self._manual_t0 = 0
     self._showAnodeCathode = False
+
+    self._anode_lines = []
+    self._cathode_lines = []
+    self._tpc_div_lines = []
+
     
     # connect the scene to click events, used to get wires
     self.scene().sigMouseClicked.connect(self.mouseClicked)
@@ -194,15 +199,23 @@ class viewport(pg.GraphicsLayoutWidget):
 
   def showAnodeCathode(self,showAC):
     self._showAnodeCathode = showAC
-    if self._line_a in self.scene().items():
-        self.scene().removeItem(self._line_a)
-    if self._line_c in self.scene().items():
-        self.scene().removeItem(self._line_c)
+    # if self._line_a in self.scene().items():
+    #     self.scene().removeItem(self._line_a)
+    # if self._line_c in self.scene().items():
+    #     self.scene().removeItem(self._line_c)
 
-    if self._line_a_2 in self.scene().items():
-        self.scene().removeItem(self._line_a_2)
-    if self._line_c_2 in self.scene().items():
-        self.scene().removeItem(self._line_c_2)
+    # if self._line_a_2 in self.scene().items():
+    #     self.scene().removeItem(self._line_a_2)
+    # if self._line_c_2 in self.scene().items():
+    #     self.scene().removeItem(self._line_c_2)
+
+    for l in self._cathode_lines:
+        if l in self.scene().items():
+            self.scene().removeItem(l)
+
+    for l in self._anode_lines:
+        if l in self.scene().items():
+            self.scene().removeItem(l)
 
     self.refreshAnodeCathode()
 
@@ -231,56 +244,103 @@ class viewport(pg.GraphicsLayoutWidget):
     if not self._showAnodeCathode:
       return
 
-    x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
-    x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
     max_wire = self._geometry._wRange[self._plane]
 
-    x_cathode += self._manual_t0
-    x_anode   += self._manual_t0
+    for tpc in range(0, self._geometry.nPlanes() / 3):
 
-    self._line_c = QtGui.QGraphicsLineItem()
-    self._line_c.setLine(0, x_cathode, max_wire, x_cathode)
-    self._line_c.setPen(pg.mkPen('b'))
+        x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
+        x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
 
-    self._line_a = QtGui.QGraphicsLineItem()
-    self._line_a.setLine(0, x_anode, max_wire, x_anode)
-    self._line_a.setPen(pg.mkPen('r'))
+        # If we are changing the t0, shift the anode and cathode position
+        x_cathode += self._manual_t0
+        x_anode   += self._manual_t0
 
-    self._view.addItem(self._line_a)
-    self._view.addItem(self._line_c)
+        if tpc % 2 == 1:
+            # Time is flipped for odd TPC
+            x_cathode = self._geometry.tRange() - x_cathode
+            x_anode   = self._geometry.tRange() - x_anode
 
-    # print ('data = self._item.image', self._item.image)
 
-    # data = self._item.image
+        # Add the ad-hoc gap between TPCs
+        x_cathode += tpc * self._geometry.cathodeGap()
+        x_anode   += tpc * self._geometry.cathodeGap()
 
-    # n_removable_entries = int(self._geometry.tRange() - x_cathode)
-    # print ('deleting between ', self._geometry.tRange() - n_removable_entries, self._geometry.tRange() )
+        # Shift up to the appropriate TPC
+        x_cathode += tpc * self._geometry.tRange()
+        x_anode   += tpc * self._geometry.tRange()
 
-    # data = np.delete(data, slice(self._geometry.tRange() - n_removable_entries, self._geometry.tRange()), axis=1)
-    # self.drawPlane(data)
 
-    if self._geometry.nTPCs() == 2:
+        # If we are deleting entries to see the cathodes together, do it here too
+        x_cathode = x_cathode - 2 * tpc * self._removed_entries
+        x_anode   = x_anode - 2 * tpc * self._removed_entries
 
-        x_cathode = 2 * self._geometry.tRange() - x_cathode
-        x_anode   = 2 * self._geometry.tRange() - x_anode
-        max_wire = self._geometry._wRange[self._plane]
 
-        x_cathode += self._geometry.cathodeGap()
-        x_anode   += self._geometry.cathodeGap()
+        # Construct the cathode line and append it
+        line = QtGui.QGraphicsLineItem()
+        line.setLine(0, x_cathode, max_wire, x_cathode)
+        line.setPen(pg.mkPen('b'))
+        self._cathode_lines.append(line)
+        self._view.addItem(line)
 
-        x_cathode = x_cathode - 2*self._removed_entries
-        x_anode   = x_anode - 2*self._removed_entries
+        # Construct the anode line and append it
+        line = QtGui.QGraphicsLineItem()
+        line.setLine(0, x_anode, max_wire, x_anode)
+        line.setPen(pg.mkPen('r'))
+        self._anode_lines.append(line)
+        self._view.addItem(line)
 
-        self._line_c_2 = QtGui.QGraphicsLineItem()
-        self._line_c_2.setLine(0, x_cathode, max_wire, x_cathode)
-        self._line_c_2.setPen(pg.mkPen('b'))
 
-        self._line_a_2 = QtGui.QGraphicsLineItem()
-        self._line_a_2.setLine(0, x_anode, max_wire, x_anode)
-        self._line_a_2.setPen(pg.mkPen('r'))
 
-        self._view.addItem(self._line_a_2)
-        self._view.addItem(self._line_c_2)
+    # x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
+    # x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
+    # max_wire = self._geometry._wRange[self._plane]
+
+    # x_cathode += self._manual_t0
+    # x_anode   += self._manual_t0
+
+    # self._line_c = QtGui.QGraphicsLineItem()
+    # self._line_c.setLine(0, x_cathode, max_wire, x_cathode)
+    # self._line_c.setPen(pg.mkPen('b'))
+
+    # self._line_a = QtGui.QGraphicsLineItem()
+    # self._line_a.setLine(0, x_anode, max_wire, x_anode)
+    # self._line_a.setPen(pg.mkPen('r'))
+
+    # self._view.addItem(self._line_a)
+    # self._view.addItem(self._line_c)
+
+    # # print ('data = self._item.image', self._item.image)
+
+    # # data = self._item.image
+
+    # # n_removable_entries = int(self._geometry.tRange() - x_cathode)
+    # # print ('deleting between ', self._geometry.tRange() - n_removable_entries, self._geometry.tRange() )
+
+    # # data = np.delete(data, slice(self._geometry.tRange() - n_removable_entries, self._geometry.tRange()), axis=1)
+    # # self.drawPlane(data)
+
+    # if self._geometry.nTPCs() == 2:
+
+    #     x_cathode = 2 * self._geometry.tRange() - x_cathode
+    #     x_anode   = 2 * self._geometry.tRange() - x_anode
+    #     max_wire = self._geometry._wRange[self._plane]
+
+    #     x_cathode += self._geometry.cathodeGap()
+    #     x_anode   += self._geometry.cathodeGap()
+
+    #     x_cathode = x_cathode - 2*self._removed_entries
+    #     x_anode   = x_anode - 2*self._removed_entries
+
+    #     self._line_c_2 = QtGui.QGraphicsLineItem()
+    #     self._line_c_2.setLine(0, x_cathode, max_wire, x_cathode)
+    #     self._line_c_2.setPen(pg.mkPen('b'))
+
+    #     self._line_a_2 = QtGui.QGraphicsLineItem()
+    #     self._line_a_2.setLine(0, x_anode, max_wire, x_anode)
+    #     self._line_a_2.setPen(pg.mkPen('r'))
+
+    #     self._view.addItem(self._line_a_2)
+    #     self._view.addItem(self._line_c_2)
 
   def uniteCathodes(self,uniteC):
     self._uniteCathodes = uniteC
@@ -408,11 +468,14 @@ class viewport(pg.GraphicsLayoutWidget):
   def connectStatusBar(self, statusBar):
     self._statusBar = statusBar
 
+  def setColorMap(self, colormaptype='default'):
+    self._colorMap = self._geometry.colorMap(self._plane, colormaptype)
+    self._cmap.restoreState(self._colorMap)
+
   def setRangeToMax(self):
-    xR = (0,self._geometry.wRange(self._plane))
-    yR = (0,self._geometry.tRange())
-    if self._geometry.nTPCs() == 2:
-      yR = (0,2*self._geometry.tRange())
+    xR = (0, self._geometry.wRange(self._plane))
+    n_planes_per_view = self._geometry.nTPCs() * self._geometry.nCryos()
+    yR = (0, n_planes_per_view * self._geometry.tRange())
     self._view.setRange(xRange=xR,yRange=yR, padding=0.002)
 
   def autoRange(self,xR,yR):
@@ -473,7 +536,6 @@ class viewport(pg.GraphicsLayoutWidget):
     self._xBarText.scale(xScale,yScale)
     self._xBarText.font().setPixelSize(15)
     self._view.addItem(self._xBarText)
-    print (xString, xLoc, yLoc, xScale, yScale)
 
     # # Now do the y Bar
     # width = 0.01*(xMax - xMin)
@@ -526,22 +588,39 @@ class viewport(pg.GraphicsLayoutWidget):
     if self._line_tpc_div in self._view.addedItems:
       self._view.removeItem(self._line_tpc_div)
 
-    x_tpc = self._geometry.tRange()           # Place it at the end of one TPC
-    x_tpc += self._geometry.cathodeGap() / 2  # Add half the gap between the 2 TPCs 
-    x_tpc -= self._removed_entries            # Remove eventually removed entries to unite the cathodes
-    
+    for l in self._tpc_div_lines:
+        if l in self._view.addedItems:
+            self._view.removeItem(l)
+
     max_wire = self._geometry._wRange[self._plane]
 
-    self._line_tpc_div = QtGui.QGraphicsRectItem()
-    self._line_tpc_div.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
-    self._line_tpc_div.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
-    self._line_tpc_div.setRect(0, x_tpc - self._geometry.cathodeGap() / 2, max_wire, self._geometry.cathodeGap())
+    for tpc in range(1, self._geometry.nPlanes() / 3):
 
-    # self._line_tpc_div = QtGui.QGraphicsLineItem()
-    # self._line_tpc_div.setLine(0, x_tpc, max_wire, x_tpc)
-    # self._line_tpc_div.setPen(pg.mkPen(color='r', width=self._geometry.cathodeGap()))
+        x_tpc = tpc * self._geometry.tRange()              # Place it at the end of one TPC
+        x_tpc += (tpc - 1) * self._geometry.cathodeGap()   # Add the gap accumulated previously 
+        x_tpc += self._geometry.cathodeGap() / 2           # Add half the gap between the 2 TPCs 
+        x_tpc -= tpc * self._removed_entries               # Remove eventually removed entries to unite the cathodes
+    
+        # Draw the line and append it
+        line = QtGui.QGraphicsRectItem()
+        line.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
+        line.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
+        line.setRect(0, x_tpc - self._geometry.cathodeGap() / 2, max_wire, self._geometry.cathodeGap())
+        self._view.addItem(line)
+        self._tpc_div_lines.append(line)
 
-    self._view.addItem(self._line_tpc_div)
+
+    # self._line_tpc_div = QtGui.QGraphicsRectItem()
+    # self._line_tpc_div.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
+    # self._line_tpc_div.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
+    # self._line_tpc_div.setRect(0, x_tpc - self._geometry.cathodeGap() / 2, max_wire, self._geometry.cathodeGap())
+
+    # # self._line_tpc_div = QtGui.QGraphicsLineItem()
+    # # self._line_tpc_div.setLine(0, x_tpc, max_wire, x_tpc)
+    # # self._line_tpc_div.setPen(pg.mkPen(color='r', width=self._geometry.cathodeGap()))
+
+
+    # self._view.addItem(self._line_tpc_div)
 
 
 

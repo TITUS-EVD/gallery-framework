@@ -57,10 +57,13 @@ namespace evd {
     /// Default destructor
     virtual ~RawBase();
 
-    // This function sets the input target
-    // for larlite, this can be used to set the producer
-    // for lariat, this can be used to set the file
-    void setInput(std::string s){_producer = s;}
+    /// Sets the producer tag (if only one)
+    void setInput(std::string s){_producer = s; _producers.clear();}
+
+    /// Add a producer tag (if multiple tags, like in ICARUS)
+    void addInput(std::string s){_producers.push_back(s); _producer = "";}
+
+    void clearInput() {_producers.clear(); _producer = "";};
 
     // This class has two outputs.
     // First, a user can get the plane data as a vector of float
@@ -105,8 +108,8 @@ namespace evd {
     const geo::GeometryCore&           _geo_service;
     const detinfo::DetectorProperties& _det_prop;
 
-    std::string _producer;
-
+    std::string _producer; ///< The producer tag (if only one)
+    std::vector<std::string> _producers; ///< The list of producer tags (if multiples)
   };
 } // evd
 

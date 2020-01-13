@@ -27,7 +27,7 @@ RawBase::~RawBase() {
 
 const std::vector<float> & RawBase::getDataByPlane(unsigned int p) const {
   static std::vector<float> returnNull;
-  unsigned int n_views = _geo_service.Nplanes() * _geo_service.NTPC();
+  unsigned int n_views = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (p >= n_views) {
     std::cerr << "ERROR: Request for nonexistant plane " << p << std::endl;
     return returnNull;
@@ -52,7 +52,7 @@ bool RawBase::fileExists(std::string s){
 PyObject * RawBase::getArrayByPlane(unsigned int p) {
 
   PyObject * returnNull = nullptr;
-  unsigned int n_views = _geo_service.Nplanes() * _geo_service.NTPC();
+  unsigned int n_views = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (p >= n_views) {
     std::cerr << "ERROR: Request for nonexistant plane " << p << std::endl;
     return returnNull;

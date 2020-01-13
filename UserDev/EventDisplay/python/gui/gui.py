@@ -10,9 +10,12 @@ import numpy as np
 import evdmanager
 
 # Import the class that manages the view windows
-from gui.viewport import viewport
-from gui.opticalviewport import opticalviewport
-
+try:
+  from viewport import viewport
+  from opticalviewport import opticalviewport
+except ImportError:
+  from gui.viewport import viewport
+  from gui.opticalviewport import opticalviewport
 
 class view_manager(QtCore.QObject):
   """This class manages a collection of viewports"""
@@ -105,7 +108,7 @@ class view_manager(QtCore.QObject):
   def refreshDrawListWidget(self):
 
     # The last one is the optical view
-    optical_view = self._geometry.nViews() / self._geometry.nTPCs()
+    optical_view = self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos()
 
     # Draw all planes:
     if self._selectedPlane == -1:
@@ -183,6 +186,10 @@ class view_manager(QtCore.QObject):
   def setDarkMode(self, opt):
     for view in self._drawerList:
       view.setDarkMode(opt)
+
+  def changeColorMap(self, colormaptype='default'):
+    for view in self._drawerList:
+      view.setColorMap(colormaptype)
 
   def toggleScale(self,scaleBool):
     for view in self._drawerList:
@@ -438,6 +445,11 @@ class gui(QtGui.QWidget):
   # This function prepares the range controlling options and returns a layout
   def getDrawingControlButtons(self):
 
+    self._grayScale = QtGui.QCheckBox("Gray Scale")
+    self._grayScale.setToolTip("Changes the color map to grayscale.")
+    self._grayScale.setTristate(False)
+    self._grayScale.stateChanged.connect(self.changeColorMapWorker) 
+
     # Button to set range to max
     self._maxRangeButton = QtGui.QPushButton("Max Range")
     self._maxRangeButton.setToolTip("Set the range of the viewers to show the whole event")
@@ -540,6 +552,7 @@ class gui(QtGui.QWidget):
     self._drawingControlBox.addWidget(self._clearPointsButton)
     self._drawingControlBox.addWidget(self._makePathButton)
     self._drawingControlBox.addWidget(self._fftButton)
+    self._drawingControlBox.addWidget(self._grayScale)
     self._drawingControlBox.addWidget(self._autoRangeBox)
     self._drawingControlBox.addWidget(self._lockAspectRatio)
     self._drawingControlBox.addWidget(self._drawWireOption)
@@ -557,6 +570,13 @@ class gui(QtGui.QWidget):
 
     return self._drawingControlBox
 
+  def changeColorMapWorker(self):
+    if self._grayScale.isChecked():
+      self._view_manager.changeColorMap(colormaptype='grayscale')
+    else:
+      self._view_manager.changeColorMap(colormaptype='default')
+
+
   def autoRangeWorker(self):
     if self._autoRangeBox.isChecked():
       self._view_manager.autoRange(self._event_manager)
@@ -565,7 +585,7 @@ class gui(QtGui.QWidget):
 
   def viewSelectWorker(self):
 
-    n_views = int(self._geometry.nViews() / self._geometry.nTPCs())
+    n_views = int(self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos())
     n_views += 1 # Add the optical evd
 
     i = 0
@@ -644,6 +664,9 @@ class gui(QtGui.QWidget):
       self._t0sliderLabelIntro.setVisible(False)
       self._uniteCathodes.setVisible(False)
       self._separators[1].setVisible(False)
+
+    if self._geometry.name() == 'icarus': 
+      self._uniteCathodes.setVisible(False)
 
   def uniteCathodesWorker(self):
     if self._uniteCathodes.isChecked():
@@ -745,13 +768,13 @@ class gui(QtGui.QWidget):
     self._viewChoiceLayout.addWidget(self._viewChoiceLabel)
     self._viewChoiceLayout.addWidget(self._allViewsButton)
 
-    views = ['U', 'V', 'Y']
+    views = self._geometry.viewNames()
     i = 0
     self._viewButtonArray = []
-    n_views = int(self._geometry.nViews() / self._geometry.nTPCs())
+    n_views = int(self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos())
     for plane in range(n_views):
       text = "Plane" + str(i)
-      # Use U, V and W in the case of SBND
+      # Use U, V and W in the case of SBND and ICARUS
       if self._geometry.nTPCs() == 2: 
         text = "View " + views[i]
       button = QtGui.QRadioButton(text)
@@ -857,7 +880,7 @@ class gui(QtGui.QWidget):
     self.southLayout = self.getSouthLayout()
 
     # Area to hold data:
-    nviews = int(self._geometry.nViews() / self._geometry.nTPCs())
+    nviews = int(self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos())
 
     if self._geometry.nTPCs() > 2:
       print('Only 1 or 2 TPCs are supported.')

@@ -16,23 +16,21 @@ from ROOT import evd
 from evdmanager import geometry, evd_manager_2D
 
 try:
-    import SBNDservices
-    geometryCore    = SBNDservices.ServiceManager('Geometry')
-    detProperties   = SBNDservices.ServiceManager('DetectorProperties')
-    detClocks       = SBNDservices.ServiceManager('DetectorClocks')
-    lar_properties  = SBNDservices.ServiceManager('LArProperties')
+    import SBNDservices as services
 except:
+    print ('Did not find SBND services.')
     pass
 
 try:
-    import ICARUSservices
-    geometryCore    = ICARUSservices.ServiceManager('Geometry')
-    detProperties   = ICARUSservices.ServiceManager('DetectorProperties')
-    detClocks       = ICARUSservices.ServiceManager('DetectorClocks')
-    lar_properties  = ICARUSservices.ServiceManager('LArProperties')
+    import ICARUSservices as services
 except:
+    print ('Did not find ICARUS services.')
     pass
 
+geometryCore    = services.ServiceManager('Geometry')
+detProperties   = services.ServiceManager('DetectorProperties')
+detClocks       = services.ServiceManager('DetectorClocks')
+lar_properties  = services.ServiceManager('LArProperties')
 
 # This is to allow key commands to work when focus is on a box
 
@@ -82,7 +80,7 @@ def main():
     elif args.sbnd:
         geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
     elif args.icarus:
-        geom = geometry.icarus()
+        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties)
     else:
         geom = geometry.argoneut()
 

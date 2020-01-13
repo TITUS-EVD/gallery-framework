@@ -2,7 +2,6 @@
 #define EVD_DRAWRAWDIGIT_CXX
 
 #include "DrawRawDigit.h"
-#include "lardataobj/RecoBase/Wire.h"
 
 namespace evd {
 
@@ -30,18 +29,20 @@ bool DrawRawDigit::initialize() {
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
   //
-  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC());
+  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
   int counter = 0;
-  for (unsigned int t = 0; t < _geo_service.NTPC(); t++) {
-    for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
-      setXDimension(_geo_service.Nwires(p, t), counter);
-      setYDimension(_det_prop.ReadOutWindowSize(), counter);
-      counter++;
+  for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
+    for (unsigned int t = 0; t < _geo_service.NTPC(c); t++) {
+      for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
+        setXDimension(_geo_service.Nwires(p, t, c), counter);
+        setYDimension(_det_prop.ReadOutWindowSize(), counter);
+        counter++;
+      }
     }
   }
   initDataHolder();
 
-  if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
+  if (_geo_service.DetectorName() == "microboone") {
     _noise_filter.init();
   }
 
@@ -70,28 +71,40 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   // drawing.
   // So, obviously, first thing to do is to get the wires.
 
-  std::cout << "DrawRawDigit::analyze() -- Using _producer" << _producer << std::endl;
+  // std::cout << " DetectorName " << _geo_service.DetectorName() << std::endl;
 
-  art::InputTag wires_tag(_producer);
-  auto const &raw_digits =
-      ev->getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
+  std::vector<gallery::ValidHandle<std::vector<raw::RawDigit>>> raw_digits_v;
+
+  if (_producer != "") {
+    std::cout << "Drawing RawDigits using producer " << _producer << std::endl;
+    art::InputTag wires_tag(_producer);
+    auto const & raw_digits = ev->getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
+    raw_digits_v.push_back(raw_digits);
+  } else {
+    for (auto p : _producers) {
+      std::cout << "Drawing RawDigits using producer " << p << std::endl;
+      art::InputTag wires_tag(p);
+      auto const & raw_digits = ev->getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
+      raw_digits_v.push_back(raw_digits);
+    }
+  }
 
   // if the tick-length set is different from what is actually stored in the ADC
   // vector -> fix.
-  size_t n_views = _geo_service.Nplanes() * _geo_service.NTPC();
+  size_t n_views = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
-  if (raw_digits->size() > 0) {
+  if (raw_digits_v[0]->size() > 0) {
     for (size_t pl = 0; pl < n_views; pl++) {
-      if (_y_dimensions[pl] < raw_digits->at(0).ADCs().size()) {
-        _y_dimensions[pl] = raw_digits->at(0).ADCs().size();
+      if (_y_dimensions[pl] < raw_digits_v[0]->at(0).ADCs().size()) {
+        _y_dimensions[pl] = raw_digits_v[0]->at(0).ADCs().size();
       }
     }
   }
 
   _planeData.clear();
-  size_t n_ticks = raw_digits->front().ADCs().size();
+  size_t n_ticks = raw_digits_v[0]->front().ADCs().size();
 
-  if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
+  if (_geo_service.DetectorName() == "microboone") {
     _noise_filter.set_n_time_ticks(n_ticks);
   }
   initDataHolder();
@@ -107,46 +120,42 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
     temp_data_holder.at(i_plane).resize(n_ticks * _x_dimensions[i_plane]);
   }
 
-  for (auto const &rawdigit : *raw_digits) 
-  {
-    unsigned int ch  = rawdigit.Channel();
-    float        ped = rawdigit.GetPedestal();
+  for (auto const &raw_digits : raw_digits_v) {
+    for (auto const &rawdigit : *raw_digits) 
+    {
+      unsigned int ch  = rawdigit.Channel();
+      float        ped = rawdigit.GetPedestal();
 
-    if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE &&
-        ch >= 8254)
-      continue;
+      std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
+      unsigned int wire = widVec[0].Wire;
+      unsigned int plane = widVec[0].Plane;
+      unsigned int tpc = widVec[0].TPC;
+      unsigned int cryo = widVec[0].Cryostat;
 
-    std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
-    unsigned int wire = widVec[0].Wire;
-    unsigned int plane = widVec[0].Plane;
-    unsigned int tpc = widVec[0].TPC;
+      if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;
 
-    if (wire > _geo_service.Nwires(plane, tpc)) continue;
+      if (_geo_service.DetectorName() == "microboone" && ch >= 8254) continue;
 
-    // If a second TPC is present, its planes 0, 1 and 2 are 
-    // stored consecutively to those of the first TPC. 
-    // So we have planes 0, 1, 2, 3, 4, 5.
-    plane += tpc * _geo_service.Nplanes();
+      // If a second TPC is present, its planes 0, 1 and 2 are 
+      // stored consecutively to those of the first TPC. 
+      // So we have planes 0, 1, 2, 3, 4, 5.
+      plane += tpc * _geo_service.Nplanes();
+      plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
 
-    int offset = wire * n_ticks;
+      int offset = wire * n_ticks;
 
-    std::vector<float>&          planeRawDigitVec = temp_data_holder[plane];
-    std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;
+      std::vector<float>&          planeRawDigitVec = temp_data_holder[plane];
+      std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;
 
-    // Copy with pedestal subtraction
-    for(const auto& adcVal : rawdigit.ADCs()) {
-      *startItr++ = adcVal; // - ped;
+      // Copy with pedestal subtraction
+      for(const auto& adcVal : rawdigit.ADCs()) {
+        *startItr++ = adcVal; // - ped;
+      }
     }
-
-    // size_t i = 0;
-    // for (auto &tick : rawdigit.ADCs()) {
-    //   temp_data_holder.at(plane).at(offset + i) = tick;
-    //   i++;
-    // }
   }
 
 
-  if (larutil::LArUtilConfig::Detector() == galleryfmwk::geo::kMicroBooNE) {
+  if (_geo_service.DetectorName() == "microboone") {
     _noise_filter.set_data(&temp_data_holder);
     if (_correct_data && ev->eventAuxiliary().isRealData()) {
       _noise_filter.clean_data();
@@ -172,7 +181,6 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   }
 
   // Now, copy the data from the temp storage to the output storage:
-
   for (size_t i_plane = 0; i_plane < n_views; i_plane++) {
 
     size_t n_wires = temp_data_holder.at(i_plane).size() / n_ticks;

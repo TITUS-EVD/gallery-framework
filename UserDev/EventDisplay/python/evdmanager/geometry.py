@@ -12,8 +12,10 @@ class geoBase(object):
     def __init__(self):
         super(geoBase, self).__init__()
         self._nViews = 2
-        self._nTPCs = 0
+        self._nTPCs = 1
+        self._nCryos = 1
         self._nPlanes = 2
+        self._view_names = ['U', 'V', 'Y']
         self._tRange = 1600
         self._wRange = [240, 240]
         self._aspectRatio = 4
@@ -45,6 +47,9 @@ class geoBase(object):
         self._opdet_y = [0]
         self._opdet_name = ['pmt']
         self._opdet_default = -9999
+        self._plane_mix = {}
+        self._plane_flip = []
+
         self._geometryCore = None
         self._detectorProperties = None
         self._clockProperties = None
@@ -65,8 +70,14 @@ class geoBase(object):
     def nTPCs(self):
         return self._nTPCs
 
+    def nCryos(self):
+        return self._nCryos
+
     def nPlanes(self):
         return self._nPlanes
+
+    def viewNames(self):
+        return self._view_names
 
     def tRange(self):
         return self._tRange
@@ -165,6 +176,32 @@ class geometry(geoBase):
     def __init__(self):
         super(geometry, self).__init__()
         self._defaultColorScheme = []
+        self._colorScheme = {}
+
+        self._defaultColorScheme = [(
+            {'ticks': [(1, (22, 30, 151, 255)),
+                       (0.791, (0, 181, 226, 255)),
+                       (0.645, (76, 140, 43, 255)),
+                       (0.47, (0, 206, 24, 255)),
+                       (0.33333, (254, 209, 65, 255)),
+                       (0, (255, 0, 0, 255))],
+             'mode': 'rgb'})]
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
 
     def configure(self):
         '''
@@ -209,7 +246,7 @@ class geometry(geoBase):
             self.configure()
             return 
 
-        print ('Configuring SBND geometry from services')
+        print ('Configuring geometry from services.')
 
         self._geometryCore = geometryCore
         self._detectorProperties = detProperties
@@ -223,10 +260,14 @@ class geometry(geoBase):
         self._wire2Cm = geometryCore.WirePitch()
         self._samplingRate = detProperties.SamplingRate()
         self._aspectRatio = self._wire2Cm / self._time2Cm
-        self._nViews = geometryCore.Nviews() * geometryCore.NTPC() #TODO
+        self._nViews = geometryCore.Nviews() * geometryCore.NTPC() * geometryCore.Ncryostats()
         self._nTPCs = int(geometryCore.NTPC())
-        self._nPlanes = int(geometryCore.Nplanes()) * geometryCore.NTPC() #TODO
-        # self._tRange = larutil.DetectorProperties.GetME().ReadOutWindowSize()
+        self._nCryos = int(geometryCore.Ncryostats())
+        self._nPlanes = int(geometryCore.Nplanes()) * geometryCore.NTPC() * geometryCore.Ncryostats()
+        self._tRange = detProperties.NumberTimeSamples()
+        self._readoutWindowSize = detProperties.NumberTimeSamples()
+        self._triggerOffset = detProperties.TriggerOffset()
+
         self._wRange = []
         self._offset = []
         for v in range(0, self._nViews):
@@ -236,18 +277,25 @@ class geometry(geoBase):
         self._opdet_y = []
         self._opdet_z = []
         self._opdet_name = []
-        # for opch in range (0, geometryCore.NOpDets()):
-        #     xyz = [0, 0, 0]
-        #     geometryCore.OpDetGeoFromOpChannel(opch).GetCenter(xyz);
-        #     self._opdet_x.append(larutil.Geometry.GetME().OpDetX(d))
-        #     self._opdet_y.append(larutil.Geometry.GetME().OpDetY(d))
-        #     self._opdet_z.append(larutil.Geometry.GetME().OpDetZ(d))
-        #     self._opdet_name.append(larutil.Geometry.GetME().OpDetNameFromOpChannel(d))
-        print (self.__dict__)
+        for opch in range(0, geometryCore.NOpDets()):
+            xyz = geometryCore.OpDetGeoFromOpChannel(opch).GetCenter();
+            self._opdet_x.append(xyz.X())
+            self._opdet_y.append(xyz.Y())
+            self._opdet_z.append(xyz.Z())
+            shape_name = geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName()
+            if shape_name == 'TGeoSphere':
+                self._opdet_name.append('pmt')
+            else:
+                self._opdet_name.append('unknown')
+            # print ('opch', opch, 'shape', geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName())
+            # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
 
 
-    def colorMap(self, plane):
-        return self._defaultColorScheme[plane]
+    def colorMap(self, plane, colormaptype='default'):
+        if colormaptype == 'default':
+            return self._defaultColorScheme[plane]
+        else:
+            return self._colorScheme[colormaptype][plane]
 
 class sbnd(geometry): 
 
@@ -262,6 +310,10 @@ class sbnd(geometry):
         self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
         self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
 
+        self._view_names = ['U', 'V', 'Y']
+        self._plane_mix = {0: [3], 1: [4], 2: [5]}
+        self._plane_flip = [False, False, False, True, True, True]
+
         self._name = "sbnd"
         self._logo = self._path + "/logos/SBND-color.png"
         self._logoRatio = 1.0
@@ -275,54 +327,82 @@ class sbnd(geometry):
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
         self._cathodeGap = 6 / self._time2Cm # 5.3 cm   # 100
 
-        self._defaultColorScheme = [(
-            {'ticks': [(1, (22, 30, 151, 255)),
-                       (0.791, (0, 181, 226, 255)),
-                       (0.645, (76, 140, 43, 255)),
-                       (0.47, (0, 206, 24, 255)),
-                       (0.33333, (254, 209, 65, 255)),
-                       (0, (255, 0, 0, 255))],
+        color_scheme = [(
+            {'ticks': [(1, (255, 255, 255, 255)),
+                       (0, (0, 0, 0, 255))],
              'mode': 'rgb'})]
-        self._defaultColorScheme.append(
-            {'ticks': [(0, (22, 30, 151, 255)),
-                       (0.33333, (0, 181, 226, 255)),
-                       (0.47, (76, 140, 43, 255)),
-                       (0.645, (0, 206, 24, 255)),
-                       (0.791, (254, 209, 65, 255)),
-                       (1, (255, 0, 0, 255))],
+        color_scheme.append(
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
              'mode': 'rgb'})
-        self._defaultColorScheme.append(
-            {'ticks': [(0, (22, 30, 151, 255)),
-                       (0.33333, (0, 181, 226, 255)),
-                       (0.47, (76, 140, 43, 255)),
-                       (0.645, (0, 206, 24, 255)),
-                       (0.791, (254, 209, 65, 255)),
-                       (1, (255, 0, 0, 255))],
+        color_scheme.append(
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
              'mode': 'rgb'})
-        self._defaultColorScheme.append(
-            {'ticks': [(1, (22, 30, 151, 255)),
-                       (0.791, (0, 181, 226, 255)),
-                       (0.645, (76, 140, 43, 255)),
-                       (0.47, (0, 206, 24, 255)),
-                       (0.33333, (254, 209, 65, 255)),
-                       (0, (255, 0, 0, 255))],
+
+        self._colorScheme['grayscale'] = color_scheme
+
+        self._offset = []
+        for v in range(0, self._nViews):
+            # Set up the correct drift time offset.
+            # Offset is returned in terms of centimeters.
+
+            self._offset.append(
+                self.triggerOffset()
+                * self.time2cm()
+                - self.planeOriginX(v) )
+
+
+class icarus(geometry): 
+
+
+    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None):
+        # Try to get the values from the geometry file.  Configure for sbnd
+        # and then call the base class __init__
+        super(icarus, self).__init__()
+        # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
+        self.configure(geometryCore, detProperties, detClocks, lar_properties)
+
+        self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
+        self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
+
+        self._view_names = ['H', 'U', 'V']
+        self._plane_mix = {0: [3, 6, 9], 1: [4, 7, 10], 2: [5, 8, 11]}
+        self._plane_flip = [False, False, False, True, True, True, False, False, False, True, True, True]
+
+        self._name = "icarus"
+        self._logo = self._path + "/logos/logo_icarus.png"
+        self._logoRatio = 1.0
+        self._haslogo = False
+        self._logopos = [30, 30]
+        self._logoscale = 0.13
+        # self._tRange = 7500 #3000
+        # self._triggerOffset = 2500 #0
+        # self._readoutWindowSize = 7500 #3000
+        self._planeOriginX = [0.0, -0.3, -0.6, 
+                              0.0, -0.3, -0.6, 
+                              0.0, -0.3, -0.6, 
+                              0.0, -0.3, -0.6] 
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 
+                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 
+                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 
+                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        self._cathodeGap = 6 / self._time2Cm # 5.3 cm   # 100
+
+        color_scheme = [(
+            {'ticks': [(1, (255, 255, 255, 255)),
+                       (0, (0, 0, 0, 255))],
+             'mode': 'rgb'})]
+        color_scheme.append(
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
              'mode': 'rgb'})
-        self._defaultColorScheme.append(
-            {'ticks': [(0, (22, 30, 151, 255)),
-                       (0.33333, (0, 181, 226, 255)),
-                       (0.47, (76, 140, 43, 255)),
-                       (0.645, (0, 206, 24, 255)),
-                       (0.791, (254, 209, 65, 255)),
-                       (1, (255, 0, 0, 255))],
+        color_scheme.append(
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
              'mode': 'rgb'})
-        self._defaultColorScheme.append(
-            {'ticks': [(0, (22, 30, 151, 255)),
-                       (0.33333, (0, 181, 226, 255)),
-                       (0.47, (76, 140, 43, 255)),
-                       (0.645, (0, 206, 24, 255)),
-                       (0.791, (254, 209, 65, 255)),
-                       (1, (255, 0, 0, 255))],
-             'mode': 'rgb'})
+
+        self._colorScheme['grayscale'] = color_scheme
 
         self._offset = []
         for v in range(0, self._nViews):
@@ -360,30 +440,6 @@ class microboone(geometry):
         # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
         #           * larutil.GeometryHelper.GetME().TimeToCm()
         # self._offset[:] = [x - remove for x in self._offset]
-        self._defaultColorScheme = [(
-            {'ticks': [(1, (22, 30, 151, 255)),
-                       (0.791, (0, 181, 226, 255)),
-                       (0.645, (76, 140, 43, 255)),
-                       (0.47, (0, 206, 24, 255)),
-                       (0.33333, (254, 209, 65, 255)),
-                       (0, (255, 0, 0, 255))],
-             'mode': 'rgb'})]
-        self._defaultColorScheme.append(
-            {'ticks': [(0, (22, 30, 151, 255)),
-                       (0.33333, (0, 181, 226, 255)),
-                       (0.47, (76, 140, 43, 255)),
-                       (0.645, (0, 206, 24, 255)),
-                       (0.791, (254, 209, 65, 255)),
-                       (1, (255, 0, 0, 255))],
-             'mode': 'rgb'})
-        self._defaultColorScheme.append(
-            {'ticks': [(0, (22, 30, 151, 255)),
-                       (0.33333, (0, 181, 226, 255)),
-                       (0.47, (76, 140, 43, 255)),
-                       (0.645, (0, 206, 24, 255)),
-                       (0.791, (254, 209, 65, 255)),
-                       (1, (255, 0, 0, 255))],
-             'mode': 'rgb'})
 
         self._offset = []
         for v in range(0, self._nViews):

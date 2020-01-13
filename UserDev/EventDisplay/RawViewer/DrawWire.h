@@ -16,7 +16,6 @@
 #define EVD_DRAWRAWWIRE_H
 
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
 #include "RawBase.h"
 
 #include "canvas/Persistency/Common/FindMany.h"
@@ -27,15 +26,6 @@
 
 #include "TTree.h"
 #include "TGraph.h"
-
-// struct _object;
-// typedef _object PyObject;
-
-// #ifndef __CINT__
-// #include "Python.h"
-// #include "numpy/arrayobject.h"
-// // #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-// #endif
 
 
 namespace evd {

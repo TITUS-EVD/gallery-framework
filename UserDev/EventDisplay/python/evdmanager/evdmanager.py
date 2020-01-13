@@ -1,5 +1,10 @@
 from pyqtgraph.Qt import QtCore
-from evdmanager.event import manager, event
+
+try:
+  from event import manager, event
+except ImportError:
+  from evdmanager.event import manager, event
+
 import datatypes
 from ROOT import gallery
 import os
@@ -457,6 +462,15 @@ class evd_manager_2D(evd_manager_base):
                 return
             self._drawWires = True
             self._wireDrawer = datatypes.recoWire(self._geom)
+
+            if self._geom.name() == 'icarus':
+                producer = [self._keyTable[stage]['raw::RawDigit'][0].fullName(),
+                            self._keyTable[stage]['raw::RawDigit'][1].fullName(),
+                            self._keyTable[stage]['raw::RawDigit'][2].fullName(),
+                            self._keyTable[stage]['raw::RawDigit'][3].fullName()]
+            else:
+                producer = self._keyTable[stage]['raw::RawDigit'][0].fullName()
+                
             self._wireDrawer.setProducer(self._keyTable[stage]['recob::Wire'][0].fullName())
             self._processer.add_process("recob::Wire",self._wireDrawer._process)
             self.processEvent(True)
@@ -468,7 +482,16 @@ class evd_manager_2D(evd_manager_base):
                 return
             self._drawWires = True
             self._wireDrawer = datatypes.rawDigit(self._geom)
-            self._wireDrawer.setProducer(self._keyTable[stage]['raw::RawDigit'][0].fullName())
+
+            if self._geom.name() == 'icarus':
+                producer = [self._keyTable[stage]['raw::RawDigit'][0].fullName(),
+                            self._keyTable[stage]['raw::RawDigit'][1].fullName(),
+                            self._keyTable[stage]['raw::RawDigit'][2].fullName(),
+                            self._keyTable[stage]['raw::RawDigit'][3].fullName()]
+            else:
+                producer = self._keyTable[stage]['raw::RawDigit'][0].fullName()
+
+            self._wireDrawer.setProducer(producer)
             self._processer.add_process("raw::RawDigit", self._wireDrawer._process)
             self._wireDrawer.toggleNoiseFilter(self.filterNoise)
 

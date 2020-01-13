@@ -63,7 +63,7 @@ public:
   virtual bool finalize();
 
 private:
-  Track2D getTrack2D(recob::Track track, unsigned int plane);
+  Track2D getTrack2D(recob::Track track, unsigned int plane, unsigned int tpc = 0, unsigned int cryostat = 0);
 };
 
 } // evd

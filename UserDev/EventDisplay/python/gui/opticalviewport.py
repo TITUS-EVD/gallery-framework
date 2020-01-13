@@ -20,10 +20,11 @@ class opticalviewport(QtGui.QWidget):
     self._wf_view = optical_waveform_view(self._geometry)
     self._totalLayout.addWidget(self._wf_view)
 
-    self._opdet_view_right = pg.GraphicsLayoutWidget()
-    self._totalLayout.addWidget(self._opdet_view_right)
-    self._opdet_view_left = pg.GraphicsLayoutWidget()
-    self._totalLayout.addWidget(self._opdet_view_left)
+    self._opdet_views = []
+    for tpc in range(self._geometry.nTPCs() * self._geometry.nCryos()):
+        opdet_view = pg.GraphicsLayoutWidget()
+        self._totalLayout.addWidget(opdet_view)
+        self._opdet_views.append(opdet_view)
 
     self.init_opdet_ui()
 
@@ -32,90 +33,79 @@ class opticalviewport(QtGui.QWidget):
     self._wf_view.setMaximumHeight(200)
     self._wf_view.setMinimumHeight(200)
 
-    self._opdet_view_right.setMaximumHeight(500)
-    self._opdet_view_right.setMinimumHeight(200)
-
-    self._opdet_view_left.setMaximumHeight(500)
-    self._opdet_view_left.setMinimumHeight(200)
+    for view in self._opdet_views:
+        view.setMaximumHeight(500)
+        view.setMinimumHeight(50)
 
     self._totalLayout.setAlignment(QtCore.Qt.AlignTop)
 
 
   def add_button_layout(self):
 
-    self._tpc_all = QtGui.QRadioButton("All")
-    self._tpc_all.setToolTip("Changes the appearance to dark mode.")
-    self._tpc_all.clicked.connect(self.viewSelectionWorker) 
+    self._tpc_all_button = QtGui.QRadioButton("All Cryos and TPCs")
+    self._tpc_all_button.setToolTip("Shows all TPCs.")
+    self._tpc_all_button.clicked.connect(self.viewSelectionWorker) 
 
-    self._tpc_right = QtGui.QRadioButton("Right TPC")
-    self._tpc_right.setToolTip("Changes the appearance to dark mode.")
-    self._tpc_right.clicked.connect(self.viewSelectionWorker) 
-
-    self._tpc_left = QtGui.QRadioButton("Left TPC")
-    self._tpc_left.setToolTip("Changes the appearance to dark mode.")
-    self._tpc_left.clicked.connect(self.viewSelectionWorker) 
+    self._tpc_buttons = []
+    for cryo in range(self._geometry.nCryos()):
+        for tpc in range(self._geometry.nTPCs()):
+            tpc_button = QtGui.QRadioButton("Cryo "+str(cryo)+", TPC "+str(tpc))
+            tpc_button.setToolTip("Shows only Cryo "+str(cryo)+", TPC "+str(tpc))
+            tpc_button.clicked.connect(self.viewSelectionWorker) 
+            self._tpc_buttons.append(tpc_button)
     
     self._buttonLayout = QtGui.QHBoxLayout()
 
-    self.increasebutton = QtGui.QPushButton("Increase Amplitude")
-    self.decreasebutton = QtGui.QPushButton("Decrease Amplitude")
+    # self.increasebutton = QtGui.QPushButton("Increase Amplitude")
+    # self.decreasebutton = QtGui.QPushButton("Decrease Amplitude")
 
-    self._buttonLayout.addWidget(self._tpc_all)
-    self._buttonLayout.addWidget(self._tpc_right)
-    self._buttonLayout.addWidget(self._tpc_left)
-    self._buttonLayout.addWidget(self.increasebutton)
-    self._buttonLayout.addWidget(self.decreasebutton)
+    self._buttonLayout.addWidget(self._tpc_all_button)
+    for item in self._tpc_buttons:
+        self._buttonLayout.addWidget(item)
+
+    # self._buttonLayout.addWidget(self.increasebutton)
+    # self._buttonLayout.addWidget(self.decreasebutton)
 
     self._totalLayout.addLayout(self._buttonLayout)
 
   def viewSelectionWorker(self):
     self._wf_view.setVisible(False)
-    self._opdet_view_right.setVisible(False)
-    self._opdet_view_left.setVisible(False)
-    if self.sender() == self._tpc_all:
-        self._wf_view.setVisible(True)
-        self._opdet_view_right.setVisible(True)
-        self._opdet_view_left.setVisible(True)
-    if self.sender() == self._tpc_right:
-        self._wf_view.setVisible(True)
-        self._opdet_view_right.setVisible(True)
-    if self.sender() == self._tpc_left:
-        self._wf_view.setVisible(True)
-        self._opdet_view_left.setVisible(True)
+    for view in self._opdet_views:
+        view.setVisible(False)
 
+    if self.sender() == self._tpc_all_button:
+        self._wf_view.setVisible(True)
+        for view in self._opdet_views:
+            view.setVisible(True)
 
+    for i in range(0, len(self._tpc_buttons)):
+        if self.sender() == self._tpc_buttons[i]:
+            self._wf_view.setVisible(True)
+            self._opdet_views[i].setVisible(True)
 
   def init_opdet_ui(self):
+
+    self._opdet_plots = []
+    self._pmts = []
+    self._arapucas = []
+
+    for tpc in range(self._geometry.nTPCs() * self._geometry.nCryos()):
+        opdet_plot = self._opdet_views[tpc].addPlot()
     
-    # Right TPC
-    self._opdet_plot_right = self._opdet_view_right.addPlot()
-    
-    self._pmts_right = pmts(self._geometry, tpc=0)
-    self._opdet_plot_right.addItem(self._pmts_right)
-    self._pmts_right.sigClicked.connect(self.pmtClickWorker)
-
-    self._arapucas_right = arapucas(self._geometry, tpc=0)
-    self._opdet_plot_right.addItem(self._arapucas_right)
-    self._arapucas_right.sigClicked.connect(self.arapucaClickWorker)
-
-    # Left TPC
-    self._opdet_plot_left = self._opdet_view_left.addPlot()
-    
-    self._pmts_left = pmts(self._geometry, tpc=1)
-    self._opdet_plot_left.addItem(self._pmts_left)
-    self._pmts_left.sigClicked.connect(self.pmtClickWorker)
-
-    self._arapucas_left = arapucas(self._geometry, tpc=1)
-    self._opdet_plot_left.addItem(self._arapucas_left)
-    self._arapucas_left.sigClicked.connect(self.arapucaClickWorker)
+        these_pmts = pmts(self._geometry, tpc=tpc)
+        opdet_plot.addItem(these_pmts)
+        these_pmts.sigClicked.connect(self.pmtClickWorker)
+        these_pmts.scene().sigMouseMoved.connect(these_pmts.onMove)
 
 
-    self._pmts_right.scene().sigMouseMoved.connect(self._pmts_right.onMove)
-    self._pmts_left.scene().sigMouseMoved.connect(self._pmts_left.onMove)
-    self._arapucas_right.scene().sigMouseMoved.connect(self._arapucas_right.onMove)
-    self._arapucas_left.scene().sigMouseMoved.connect(self._arapucas_left.onMove)
+        these_arapucas = arapucas(self._geometry, tpc=tpc)
+        opdet_plot.addItem(these_arapucas)
+        these_arapucas.sigClicked.connect(self.arapucaClickWorker)
+        these_arapucas.scene().sigMouseMoved.connect(these_arapucas.onMove)
 
-
+        self._opdet_plots.append(opdet_plot)
+        self._pmts.append(these_pmts)
+        self._arapucas.append(these_arapucas)
 
   def drawOpDetWvf(self, data):
     self._wf_view.drawOpDetWvf(data)
@@ -124,13 +114,13 @@ class opticalviewport(QtGui.QWidget):
   def getWidget(self):
     return self, self._totalLayout
 
-
   def connectStatusBar(self, statusBar):
     self._statusBar = statusBar
-    self._pmts_right.connectStatusBar(self._statusBar)
-    self._pmts_left.connectStatusBar(self._statusBar)
-    self._arapucas_right.connectStatusBar(self._statusBar)
-    self._arapucas_left.connectStatusBar(self._statusBar)
+    for t in range(0, len(self._pmts)):
+        self._pmts[t].connectStatusBar(self._statusBar)
+        self._pmts[t].connectStatusBar(self._statusBar)
+        self._arapucas[t].connectStatusBar(self._statusBar)
+        self._arapucas[t].connectStatusBar(self._statusBar)
 
   def pmtClickWorker(self, plot, points):
     for p in self._last_clicked_pmts:
@@ -187,7 +177,10 @@ class pmts(pg.ScatterPlotItem):
 
     for d in range(0, len(opdets_x)):
         if opdets_name[d] in names:
-            if (opdets_x[d] < 0 and tpc == 0) or (opdets_x[d] > 0 and tpc == 1):
+            if ((opdets_x[d] < -100 and tpc == 0) or
+               (opdets_x[d] > -100 and opdets_x[d] < 0 and tpc == 1) or
+               (opdets_x[d] > 0 and opdets_x[d] < 100 and tpc == 2) or
+               (opdets_x[d] > 100 and tpc == 3)):
                 self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]), 
                                             'size'   : diameter, 
                                             'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2}, 
@@ -205,7 +198,6 @@ class pmts(pg.ScatterPlotItem):
 
   def connectStatusBar(self, statusBar):
     self._statusBar = statusBar
-
 
   # def hoverEnterEvent(self, e):
   #     print ('hoverEnterEvent')
@@ -288,7 +280,6 @@ class arapucas(pg.ScatterPlotItem):
 
   # def hoverEnterEvent(self, e):
   #     print ('hoverEnterEvent')
-
 
   def onMove(self, pos):
     act_pos = self.mapFromScene(pos)

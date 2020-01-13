@@ -1,4 +1,3 @@
-
 #ifndef EVD_DRAWWIRE_CXX
 #define EVD_DRAWWIRE_CXX
 
@@ -32,13 +31,15 @@ bool DrawWire::initialize() {
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
   //
-  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC());
+  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
   int counter = 0;
-  for (unsigned int t = 0; t < _geo_service.NTPC(); t++) {
-    for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
-      setXDimension(_geo_service.Nwires(p, t), counter);
-      setYDimension(_det_prop.ReadOutWindowSize(), counter);
-      counter++;
+  for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
+    for (unsigned int t = 0; t < _geo_service.NTPC(); t++) {
+      for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
+        setXDimension(_geo_service.Nwires(p, t, c), counter);
+        setYDimension(_det_prop.ReadOutWindowSize(), counter);
+        counter++;
+      }
     }
   }
   initDataHolder();
@@ -82,12 +83,14 @@ bool DrawWire::analyze(gallery::Event * ev) {
     std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
     size_t detWire = widVec[0].Wire;
     size_t plane   = widVec[0].Plane;
-    size_t tpc      = widVec[0].TPC;
+    size_t tpc     = widVec[0].TPC;
+    size_t cryo    = widVec[0].Cryostat;
 
     // If a second TPC is present, its planes 0, 1 and 2 are 
     // stored consecutively to those of the first TPC. 
     // So we have planes 0, 1, 2, 3, 4, 5.
-    plane += tpc * (_geo_service.Nplanes() / _geo_service.NTPC());
+    plane += tpc * _geo_service.Nplanes();
+    plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
     
     int offset = detWire * _y_dimensions[plane] + _padding_by_plane[plane];
 

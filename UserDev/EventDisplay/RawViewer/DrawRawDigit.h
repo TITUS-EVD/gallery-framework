@@ -16,7 +16,6 @@
 #define EVD_DRAWRAWDIGIT_H
 
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
 #include "RawBase.h"
 #include "UbooneNoiseFilter/UbooneNoiseFilter.h"
 
@@ -28,18 +27,6 @@
 #include "gallery/Event.h"
 
 #include "lardataobj/RawData/RawDigit.h"
-
-
-
-
-// struct _object;
-// typedef _object PyObject;
-
-
-// #ifndef __CINT__
-// #include "Python.h"
-// #include "numpy/arrayobject.h"
-// #endif
 
 
 namespace evd {

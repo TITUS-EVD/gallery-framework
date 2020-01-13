@@ -8,10 +8,10 @@ from datatypes.track import polyLine
 
 class mctrack(recoBase):
 
-    def __init__(self):
+    def __init__(self, geom):
         super(mctrack, self).__init__()
         self._productName = 'mctrack'
-        self._process = evd.DrawMCTrack()
+        self._process = evd.DrawMCTrack(geom.getGeometryCore(), geom.getDetectrorProperties())
         self.init()
 
     def drawObjects(self, view_manager, on_both_tpcs=False):
@@ -44,6 +44,8 @@ class mctrack(recoBase):
                     continue
 
                 thisPoly = polyLine(points)
+
+                print('Plane', view.plane(), '- Track pdg is:', track.pdg())
 
                 origin = track.origin()
                 if (origin == 1): # neutrino origin

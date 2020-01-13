@@ -5,7 +5,7 @@
 
 namespace evd {
 
-Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
+Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
   Track2D result;
   auto geoHelper = larutil::GeometryHelper::GetME();
   result._track.reserve(track.NumberTrajectoryPoints());
@@ -15,7 +15,7 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
       if (track.HasValidPoint(i)) {
           auto loc = track.LocationAtPoint(i);
           TVector3 xyz(loc.X(),loc.Y(),loc.Z());
-          auto point = geoHelper->Point_3Dto2D(xyz, plane);
+          auto point = geoHelper->Point_3Dto2D(xyz, plane); //, tpc, cryostat);
           result._track.push_back(std::make_pair(point.w, point.t));
       }
     } catch (...) {

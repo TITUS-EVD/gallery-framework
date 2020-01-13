@@ -16,7 +16,6 @@
 #define EVD_DRAWOPDETWAVEFORM_H
 
 #include "Analysis/ana_base.h"
-#include "LArUtil/Geometry.h"
 #include "LArUtil/DetectorProperties.h"
 
 #include "canvas/Persistency/Common/FindMany.h"
@@ -24,9 +23,6 @@
 #include "gallery/Event.h"
 
 #include "lardataobj/RawData/OpDetWaveform.h"
-
-// #include "TTree.h"
-// #include "TGraph.h"
 
 struct _object;
 typedef _object PyObject;
