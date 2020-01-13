@@ -8,8 +8,6 @@ This is a light framework that interfaces with gallery to read art-root files.  
 
 This framework tries to help with that.  It interfaces with gallery to provide a larlite-style interface.  You write classes that extend from ana_base.h, just like in larlite.  Instead of receiving storage_manager, you receive gallery::Event.  You still have access to a lot of tools from larlite like GeometryHelper and LArUtils in general.
 
-An event display will arrive pretty soon, certainly.  This will let you build just a little code, and then view larsoft format files without any conversion to larlite.
-
 
 ## Requirements
 
@@ -20,11 +18,11 @@ An event display will arrive pretty soon, certainly.  This will let you build ju
 
 3) We're working on a way to build gallery and larsoftobj systems without ups, using your own gcc and such.  This will come out later.
 
-4) If you want to have the display (when it's ready) you'll need numpy and PyQt.  You can get numpy and qt5 through scisoft and ups as well.  PyQt5 you can install once qt5 is built and ready, just make sure to install it to the ups python area.
+4) If you want to have the display you'll need numpy and PyQt.  You can get numpy and qt5 through scisoft and ups as well.  PyQt5 you can install once qt5 is built and ready, just make sure to install it to the ups python area.
 
 
 
-## How to build and install
+## How to build and install the framework
 
 
 1) Set up gallery and larsoftobj.
@@ -34,3 +32,15 @@ An event display will arrive pretty soon, certainly.  This will let you build ju
 3) make from the top area: make -j8
 
 4) Develop in the user dev area.
+
+
+## How to build and run the event display
+
+
+1) Make sure the framework is built.
+
+2) Source the setup script: source UserDev/EventDisplay/setup_evd.sh
+
+3) make from the UserDev/EventDisplay/ area: make -j8
+
+4) Run with `evd.py /path/to/art-root-file.root`. Add option `-s` to use the SBND geometry.
