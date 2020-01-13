@@ -201,7 +201,7 @@ class evdgui(gui):
 
         # Make a layout for this stuff:
         self._wireChoiceLayout = QtGui.QVBoxLayout()
-        self._wireChoiceLabel = QtGui.QLabel("Wire Draw Options")
+        self._wireChoiceLabel = QtGui.QLabel("Draw Options")
         self._wireChoiceLayout.addWidget(self._wireChoiceLabel)
         self._wireChoiceLayout.addWidget(self._noneWireButton)
         self._wireChoiceLayout.addWidget(self._wireButton)

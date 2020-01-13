@@ -278,69 +278,17 @@ class viewport(pg.GraphicsLayoutWidget):
         # Construct the cathode line and append it
         line = QtGui.QGraphicsLineItem()
         line.setLine(0, x_cathode, max_wire, x_cathode)
-        line.setPen(pg.mkPen('b'))
+        line.setPen(pg.mkPen(30,144,255, width=2))
         self._cathode_lines.append(line)
         self._view.addItem(line)
 
         # Construct the anode line and append it
         line = QtGui.QGraphicsLineItem()
         line.setLine(0, x_anode, max_wire, x_anode)
-        line.setPen(pg.mkPen('r'))
+        line.setPen(pg.mkPen(250,128,114, width=2))
         self._anode_lines.append(line)
         self._view.addItem(line)
 
-
-
-    # x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
-    # x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
-    # max_wire = self._geometry._wRange[self._plane]
-
-    # x_cathode += self._manual_t0
-    # x_anode   += self._manual_t0
-
-    # self._line_c = QtGui.QGraphicsLineItem()
-    # self._line_c.setLine(0, x_cathode, max_wire, x_cathode)
-    # self._line_c.setPen(pg.mkPen('b'))
-
-    # self._line_a = QtGui.QGraphicsLineItem()
-    # self._line_a.setLine(0, x_anode, max_wire, x_anode)
-    # self._line_a.setPen(pg.mkPen('r'))
-
-    # self._view.addItem(self._line_a)
-    # self._view.addItem(self._line_c)
-
-    # # print ('data = self._item.image', self._item.image)
-
-    # # data = self._item.image
-
-    # # n_removable_entries = int(self._geometry.tRange() - x_cathode)
-    # # print ('deleting between ', self._geometry.tRange() - n_removable_entries, self._geometry.tRange() )
-
-    # # data = np.delete(data, slice(self._geometry.tRange() - n_removable_entries, self._geometry.tRange()), axis=1)
-    # # self.drawPlane(data)
-
-    # if self._geometry.nTPCs() == 2:
-
-    #     x_cathode = 2 * self._geometry.tRange() - x_cathode
-    #     x_anode   = 2 * self._geometry.tRange() - x_anode
-    #     max_wire = self._geometry._wRange[self._plane]
-
-    #     x_cathode += self._geometry.cathodeGap()
-    #     x_anode   += self._geometry.cathodeGap()
-
-    #     x_cathode = x_cathode - 2*self._removed_entries
-    #     x_anode   = x_anode - 2*self._removed_entries
-
-    #     self._line_c_2 = QtGui.QGraphicsLineItem()
-    #     self._line_c_2.setLine(0, x_cathode, max_wire, x_cathode)
-    #     self._line_c_2.setPen(pg.mkPen('b'))
-
-    #     self._line_a_2 = QtGui.QGraphicsLineItem()
-    #     self._line_a_2.setLine(0, x_anode, max_wire, x_anode)
-    #     self._line_a_2.setPen(pg.mkPen('r'))
-
-    #     self._view.addItem(self._line_a_2)
-    #     self._view.addItem(self._line_c_2)
 
   def uniteCathodes(self,uniteC):
     self._uniteCathodes = uniteC

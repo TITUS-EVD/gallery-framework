@@ -71,7 +71,12 @@ class viewport3D(gl.GLViewWidget):
     halfheight = self._geometry.halfheight()
     length = self._geometry.length()
 
-    self.drawBox(0,-halfheight,0,2*halfwidth,halfheight,length)
+    if self._geometry.name() == 'sbnd':
+      x_gap = self._geometry.cathodeGap() * self._geometry.time2cm()
+      self.drawBox(0+x_gap,           -halfheight,0,2*halfwidth+x_gap,halfheight,length)
+      self.drawBox(-2*halfwidth-x_gap,-halfheight,0,0-x_gap,          halfheight,length)
+    else:
+      self.drawBox(0,-halfheight,0,2*halfwidth,halfheight,length)
 
 
   def buildPaddleBox1(self):

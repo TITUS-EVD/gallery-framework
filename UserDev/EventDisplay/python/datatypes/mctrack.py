@@ -45,7 +45,7 @@ class mctrack(recoBase):
 
                 thisPoly = polyLine(points)
 
-                print('Plane', view.plane(), '- Track pdg is:', track.pdg())
+                #print ('MCTrack pdg', track.pdg())
 
                 origin = track.origin()
                 if (origin == 1): # neutrino origin

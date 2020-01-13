@@ -732,6 +732,8 @@ class gui(QtGui.QWidget):
     self._darkModeButton = QtGui.QRadioButton("Dark Mode")
     self._darkModeButton.setToolTip("Changes the appearance to dark mode.")
     self._darkModeButton.clicked.connect(self.darkModeWorker)
+    self._darkModeButton.setVisible(False)
+
     return self._darkModeButton
 
   # This function combines the control button layouts, range layouts, and quit button

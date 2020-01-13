@@ -133,9 +133,9 @@ class evdgui3D(gui3D):
     # This function sets up the eastern widget
     def getEastLayout(self):
         # This function just makes a dummy eastern layout to use.
-        label1 = QtGui.QLabel("Larlite EVD 3D")
+        label1 = QtGui.QLabel("EVD 3D")
         geoName = self._geometry.name()
-        label2 = QtGui.QLabel(geoName.capitalize())
+        label2 = QtGui.QLabel(geoName.upper())
         font = label1.font()
         font.setBold(True)
         label1.setFont(font)
