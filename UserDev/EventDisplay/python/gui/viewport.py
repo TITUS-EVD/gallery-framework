@@ -240,11 +240,11 @@ class viewport(pg.GraphicsLayoutWidget):
 
     self._line_c = QtGui.QGraphicsLineItem()
     self._line_c.setLine(0, x_cathode, max_wire, x_cathode)
-    self._line_c.setPen(pg.mkPen('b'))
+    self._line_c.setPen(pg.mkPen(30,144,255, width=2))
 
     self._line_a = QtGui.QGraphicsLineItem()
     self._line_a.setLine(0, x_anode, max_wire, x_anode)
-    self._line_a.setPen(pg.mkPen('r'))
+    self._line_a.setPen(pg.mkPen(250,128,114, width=2))
 
     self._view.addItem(self._line_a)
     self._view.addItem(self._line_c)
@@ -273,11 +273,11 @@ class viewport(pg.GraphicsLayoutWidget):
 
         self._line_c_2 = QtGui.QGraphicsLineItem()
         self._line_c_2.setLine(0, x_cathode, max_wire, x_cathode)
-        self._line_c_2.setPen(pg.mkPen('b'))
+        self._line_c_2.setPen(pg.mkPen(30,144,255, width=2))
 
         self._line_a_2 = QtGui.QGraphicsLineItem()
         self._line_a_2.setLine(0, x_anode, max_wire, x_anode)
-        self._line_a_2.setPen(pg.mkPen('r'))
+        self._line_a_2.setPen(pg.mkPen(250,128,114, width=2))
 
         self._view.addItem(self._line_a_2)
         self._view.addItem(self._line_c_2)
@@ -473,7 +473,6 @@ class viewport(pg.GraphicsLayoutWidget):
     self._xBarText.scale(xScale,yScale)
     self._xBarText.font().setPixelSize(15)
     self._view.addItem(self._xBarText)
-    print (xString, xLoc, yLoc, xScale, yScale)
 
     # # Now do the y Bar
     # width = 0.01*(xMax - xMin)

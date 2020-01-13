@@ -46,6 +46,9 @@ class geoBase(object):
         self._opdet_name = ['pmt']
         self._opdet_default = -9999
 
+    def name(self):
+        return self._name
+        
     def halfwidth(self):
        return self._halfwidth
 
@@ -208,7 +211,7 @@ class sbnd(geometry):
         self._readoutWindowSize = 7500 #3000
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6] 
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
-        self._cathodeGap = 5.5 / self._time2Cm # 5.3 cm   # 100
+        self._cathodeGap = 10 / self._time2Cm # 5.3 cm   # 100
         # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
         #           * larutil.GeometryHelper.GetME().TimeToCm()
         # self._offset[:] = [x - remove for x in self._offset]

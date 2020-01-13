@@ -17,6 +17,7 @@
 #include "Analysis/ana_base.h"
 #include "lardataobj/MCBase/MCStep.h"
 #include "lardataobj/MCBase/MCTrack.h"
+#include "nusimdata/SimulationBase/MCTruth.h"
 #include <iostream>
 
 #include "DrawTrack.h"
@@ -35,10 +36,12 @@ class MCTrack2D : public Track2D {
 
 public:
   const int &origin() { return _origin; }
+  const int &pdg() { return _pdg; }
 
 protected:
   int _origin; // mc origin type: 0=unknown, 1=beam neutrino, 2=cosmic,
                // 3=supernova neutrino, 4=single particle
+  int _pdg; 
 };
 
 class DrawMCTrack : public galleryfmwk::ana_base, public RecoBase<MCTrack2D> {

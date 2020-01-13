@@ -468,7 +468,7 @@ class gui3D(QtGui.QWidget):
     self._view.keyPressSignal.connect(self.keyPressEvent)
     self.centerWidget = self._view
     self._view.quitRequested.connect(self.quit)
-    self._view.viewChanged.connect(self.updateCameraInfo)
+    # self._view.viewChanged.connect(self.updateCameraInfo)
 
     # Put the layout together
 

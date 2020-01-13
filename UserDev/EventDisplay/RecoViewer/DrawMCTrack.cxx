@@ -21,6 +21,7 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane) {
   }
 
   result._origin = track.Origin();
+  result._pdg = track.PdgCode();
 
   return result;
 }
@@ -57,6 +58,14 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
   //
   //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
   //
+
+  art::InputTag truth_tag("generator::GenieGen");
+  auto const &truthHandle =
+      ev->getValidHandle<std::vector<simb::MCTruth>>(truth_tag);
+  for (auto &truth : *truthHandle) {
+    std::cout << "Neutrino energy: " << truth.GetNeutrino().Nu().E() << std::endl;
+
+  }
 
   // get a handle to the tracks
   art::InputTag tracks_tag(_producer);

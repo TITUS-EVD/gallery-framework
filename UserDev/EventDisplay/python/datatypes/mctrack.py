@@ -44,7 +44,7 @@ class mctrack(recoBase):
                     continue
 
                 thisPoly = polyLine(points)
-
+                #print ('MCTrack pdg', track.pdg())
                 origin = track.origin()
                 if (origin == 1): # neutrino origin
                     pen = pg.mkPen((128,128,128), width=2)
