@@ -23,10 +23,10 @@ class hit(recoBase):
 
     """docstring for hit"""
 
-    def __init__(self):
+    def __init__(self, geom):
         super(hit, self).__init__()
         self._productName = 'hit'
-        self._process = evd.DrawHit()
+        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectrorProperties())
         self._brush = (0, 0, 0)
         self.init()
 

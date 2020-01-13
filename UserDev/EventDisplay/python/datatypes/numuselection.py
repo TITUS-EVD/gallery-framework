@@ -7,10 +7,10 @@ from datatypes.track import polyLine
 
 class numuselection(recoBase):
     """docstring for numuselection"""
-    def __init__(self):
+    def __init__(self, geom):
         super(numuselection, self).__init__()
         self._productName = 'numuselection'
-        self._process = evd.DrawNumuSelection()
+        self._process = evd.DrawNumuSelection(geom.getGeometryCore(), geom.getDetectrorProperties())
         self._brush = (0, 0, 0)
         self.init()
 

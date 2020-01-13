@@ -8,10 +8,10 @@ from ROOT import larutil
 from datatypes.database import recoBase3D
 
 class opflash(recoBase):
-    def __init__(self):
+    def __init__(self, geom):
         super(opflash, self).__init__()
         self._productName = 'opflash'
-        self._process = evd.DrawOpflash()
+        self._process = evd.DrawOpflash(geom.getGeometryCore(), geom.getDetectrorProperties())
         self.init()
 
     def drawObjects(self, view_manager):

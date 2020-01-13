@@ -558,8 +558,8 @@ class evd_manager_2D(evd_manager_base):
             hits = self._drawnClasses['Hit'].getHitsOnWire(plane, wire)
             self._view_manager.drawHitsOnPlot(hits)
 
-            if self._geom.nTPCs() == 2 and plane == 2:
-                hits = self._drawnClasses['Hit'].getHitsOnWire(plane + self._geom.nPlanes() / self._geom.nTPCs(), wire)
+            if self._geom.nTPCs() == 2:
+                hits = self._drawnClasses['Hit'].getHitsOnWire(plane + int(self._geom.nPlanes() / self._geom.nTPCs()), wire)
                 self._view_manager.drawHitsOnPlot(hits, flip=True)
 
 

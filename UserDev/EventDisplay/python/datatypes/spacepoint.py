@@ -10,10 +10,10 @@ class spacepoint(recoBase):
 
     """docstring for spacepoint"""
 
-    def __init__(self):
+    def __init__(self, geom):
         super(spacepoint, self).__init__()
         self._productName = 'spacepoint'
-        self._process = evd.DrawSpacepoint()
+        self._process = evd.DrawSpacepoint(geom.getGeometryCore(), geom.getDetectrorProperties())
         self.init()
 
     def drawObjects(self, view_manager):

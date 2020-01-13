@@ -14,8 +14,8 @@ class wire(dataBase):
         self._n_tpc = None
         self._n_plane = None
         self._gap = None
-        self._plane_mix = {0: [3, 6, 9], 1: [4, 7, 10], 2: [5, 8, 11]}
-        self._plane_flip = [False, False, False, True, True, True, False, False, False, True, True, True]
+        self._plane_mix = {}
+        self._plane_flip = []
 
     def getPlane(self, plane):
         '''
@@ -77,6 +77,8 @@ class recoWire(wire):
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
+        self._plane_mix = geom.planeMix()
+        self._plane_flip = geom.planeFlip()
         self._process = evd.DrawWire(geom.getGeometryCore(), geom.getDetectrorProperties())
         self._process.initialize()
         self._process.setInput(self._producerName)
@@ -103,6 +105,8 @@ class rawDigit(wire):
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
+        self._plane_mix = geom.planeMix()
+        self._plane_flip = geom.planeFlip()
         self._process = evd.DrawRawDigit(geom.getGeometryCore(), geom.getDetectrorProperties())
         for i in range(len(geom._pedestals)):
             self._process.setPedestal(geom._pedestals[i], i)

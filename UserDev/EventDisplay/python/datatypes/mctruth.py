@@ -6,10 +6,10 @@ import pyqtgraph as pg
 
 class mctruth(recoBase):
 
-    def __init__(self):
+    def __init__(self, geom):
         super(mctruth, self).__init__()
         self._productName = 'mctruth'
-        self._process = evd.DrawMCTruth()
+        self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectrorProperties())
         self.init()
 
     def getLabel(self):

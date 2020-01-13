@@ -44,10 +44,10 @@ class shower(recoBase):
 
     """docstring for shower"""
 
-    def __init__(self):
+    def __init__(self, geom):
         super(shower, self).__init__()
         self._productName = 'shower'
-        self._process = evd.DrawShower()
+        self._process = evd.DrawShower(geom.getGeometryCore(), geom.getDetectrorProperties())
         self.init()
         self._clusters = [ [], [], []]
 

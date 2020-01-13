@@ -13,7 +13,7 @@ class opdetwaveform(dataBase):
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
-        self._process = evd.DrawOpDetWaveform()
+        self._process = evd.DrawOpDetWaveform(geom.getGeometryCore(), geom.getDetectrorProperties())
         self._process.initialize()
         self._process.setInput(self._producerName)
         # for plane in range(geom.nViews()):

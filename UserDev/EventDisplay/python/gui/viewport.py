@@ -246,7 +246,7 @@ class viewport(pg.GraphicsLayoutWidget):
 
     max_wire = self._geometry._wRange[self._plane]
 
-    for tpc in range(0, self._geometry.nPlanes() / 3):
+    for tpc in range(0, int(self._geometry.nPlanes() / 3)):
 
         x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
         x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
@@ -594,7 +594,7 @@ class viewport(pg.GraphicsLayoutWidget):
 
     max_wire = self._geometry._wRange[self._plane]
 
-    for tpc in range(1, self._geometry.nPlanes() / 3):
+    for tpc in range(1, int(self._geometry.nPlanes() / 3)):
 
         x_tpc = tpc * self._geometry.tRange()              # Place it at the end of one TPC
         x_tpc += (tpc - 1) * self._geometry.cathodeGap()   # Add the gap accumulated previously 

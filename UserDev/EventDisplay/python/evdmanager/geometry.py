@@ -79,6 +79,12 @@ class geoBase(object):
     def viewNames(self):
         return self._view_names
 
+    def planeFlip(self):
+        return self._plane_flip
+
+    def planeMix(self):
+        return self._plane_mix
+
     def tRange(self):
         return self._tRange
 

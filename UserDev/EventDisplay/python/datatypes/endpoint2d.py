@@ -9,10 +9,10 @@ class endpoint2d(recoBase):
 
     """docstring for endpoint2d"""
 
-    def __init__(self):
+    def __init__(self, geom):
         super(endpoint2d, self).__init__()
         self._productName = 'endpoint2d'
-        self._process = evd.DrawEndpoint()
+        self._process = evd.DrawEndpoint(geom.getGeometryCore(), geom.getDetectrorProperties())
         self._brush = (0, 0, 0)
         self.init()
 

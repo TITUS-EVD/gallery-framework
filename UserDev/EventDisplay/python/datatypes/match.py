@@ -8,9 +8,9 @@ class match(recoBase):
 
     """Class to handle drawing of matches"""
 
-    def __init__(self):
+    def __init__(self, geom):
         super(match, self).__init__()
-        self._process = evd.DrawMatch()
+        self._process = evd.DrawMatch(geom.getGeometryCore(), geom.getDetectrorProperties())
         self.init()
         self._alg = protoshower.ProtoShowerAlgClusterParams()
         # self._alg = protoshower.ProtoShowerAlgArgoNeuT()
