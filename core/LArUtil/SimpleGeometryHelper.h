@@ -58,10 +58,12 @@ public:
      *
      * @param xyz TVector3 of the point in 3D to project into 2D
      * @param plane The index of the plane to project into.  Ranges from 0 to Nplanes -1 (Nplanes available in Geometry::Nplanes() )
+     * @param tpc The index of the tpc to project into.
+     * @param cryo The index of the cryostat to project into.
      *
      * @return Returns a Point2D of the 2D projection into the plane
      */
-    Point2D Point_3Dto2D(const TVector3 & xyz, unsigned int plane) const;
+    Point2D Point_3Dto2D(const TVector3 & xyz, unsigned int plane, unsigned int tpc = 0, unsigned int cryo = 0) const;
     /**
      * @brief Convert a 3D point in the detector to 2D point on a plane
      * @details Conversion is done by setting the time to the X coordinated, minus any corrections from trigger offset and plane offset.
@@ -69,10 +71,12 @@ public:
      *
      * @param xyz std::vector<float> of the point in 3D to project into 2D
      * @param plane The index of the plane to project into.  Ranges from 0 to Nplanes -1 (Nplanes available in Geometry::Nplanes() )
+     * @param tpc The index of the tpc to project into.
+     * @param cryo The index of the cryostat to project into.
      *
      * @return Returns a Point2D of the 2D projection into the plane
      */
-    Point2D Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane) const;
+    Point2D Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane, unsigned int tpc = 0, unsigned int cryo = 0) const;
 
     /**
      * @brief Convert a 3D point in the detector to 2D point on a plane
@@ -81,10 +85,12 @@ public:
      *
      * @param xyz std::vector<float> of the point in 3D to project into 2D
      * @param plane The index of the plane to project into.  Ranges from 0 to Nplanes -1 (Nplanes available in Geometry::Nplanes() )
+     * @param tpc The index of the tpc to project into.
+     * @param cryo The index of the cryostat to project into.
      *
      * @return Returns a Point2D of the 2D projection into the plane
      */
-    Point2D Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane) const;
+    Point2D Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane, unsigned int tpc = 0, unsigned int cryo = 0) const;
 
 
     /**
@@ -94,10 +100,12 @@ public:
      *
      * @param xyz Pointer to float of the point in 3D to project into 2D.  Caller is responsible for creating and deleting this array
      * @param plane The index of the plane to project into.  Ranges from 0 to Nplanes -1 (Nplanes available in Geometry::Nplanes() )
+     * @param tpc The index of the tpc to project into.
+     * @param cryo The index of the cryostat to project into.
      *
      * @return Returns a Point2D of the 2D projection into the plane
      */
-    Point2D Point_3Dto2D(float * xyz, unsigned int plane) const;
+    Point2D Point_3Dto2D(float * xyz, unsigned int plane, unsigned int tpc = 0, unsigned int cryo = 0) const;
 
     /**
      * @brief Convert a 3D point in the detector to 2D point on a plane
@@ -106,10 +114,12 @@ public:
      *
      * @param xyz Pointer to double of the point in 3D to project into 2D.  Caller is responsible for creating and deleting this array
      * @param plane The index of the plane to project into.  Ranges from 0 to Nplanes -1 (Nplanes available in Geometry::Nplanes() )
+     * @param tpc The index of the tpc to project into.
+     * @param cryo The index of the cryostat to project into.
      *
      * @return Returns a Point2D of the 2D projection into the plane
      */
-    Point2D Point_3Dto2D(double * xyz, unsigned int plane) const;
+    Point2D Point_3Dto2D(double * xyz, unsigned int plane, unsigned int tpc = 0, unsigned int cryo = 0) const;
 
 
     /**
@@ -119,10 +129,12 @@ public:
      *
      * @param xyz Pointer to float of the point in 3D to project into 2D.  Caller is responsible for creating and deleting this array
      * @param plane The index of the plane to project into.  Ranges from 0 to Nplanes -1 (Nplanes available in Geometry::Nplanes() )
+     * @param tpc The index of the tpc to project into.
+     * @param cryo The index of the cryostat to project into.
      *
      * @return Returns a Point2D of the 2D projection into the plane
      */
-    Point2D Point_3Dto2D(float x, float y, float z, unsigned int plane) const;
+    Point2D Point_3Dto2D(float x, float y, float z, unsigned int plane, unsigned int tpc = 0, unsigned int cryo = 0) const;
 
 
     /**

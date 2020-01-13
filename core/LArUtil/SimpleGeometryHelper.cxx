@@ -31,10 +31,10 @@ void SimpleGeometryHelper::Reconfigure()
 
 // The next set of functions is the collection of functions to convert 3D Point to 2D point
 // The first function is maintained, and the rest convert their arguments and call it
-Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane) const {
+Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
 
   // Make a check on the plane:
-  if (plane > geom.Nplanes()) {
+  if (plane > geom.Nplanes(tpc, cryo)) {
     throw larutil::LArUtilException(Form("Can't project 3D point to unknown plane %u", plane));
   }
 
@@ -48,8 +48,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  int tpc = 0;
-  returnPoint.w = geom.WireCoordinate(_3D_position[1], _3D_position[2], geo::PlaneID(0, tpc, plane)) * fWireToCm;
+  returnPoint.w = geom.WireCoordinate(_3D_position[1], _3D_position[2], geo::PlaneID(cryo, tpc, plane)) * fWireToCm;
   // std::cout << "wire is " << returnPoint.w << " (cm)" << std::endl;
 
   // The time position is the X coordinate, corrected for
@@ -68,7 +67,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   //Get the origin point of this plane:
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
-  auto vtx = geom.Plane(plane, tpc).GetCenter();
+  auto vtx = geom.Plane(plane, tpc, cryo).GetCenter();
   planeOrigin[0] = vtx.X();
   planeOrigin[1] = vtx.Y();
   planeOrigin[2] = vtx.Z();
@@ -91,23 +90,23 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   return returnPoint;
 }
 
-Point2D SimpleGeometryHelper::Point_3Dto2D(double * xyz, unsigned int plane) const {
+Point2D SimpleGeometryHelper::Point_3Dto2D(double * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
   return Point_3Dto2D(vec, plane);
 }
-Point2D SimpleGeometryHelper::Point_3Dto2D(float * xyz, unsigned int plane) const {
+Point2D SimpleGeometryHelper::Point_3Dto2D(float * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
   return Point_3Dto2D(vec, plane);
 }
-Point2D SimpleGeometryHelper::Point_3Dto2D(float x, float y, float z, unsigned int plane) const {
+Point2D SimpleGeometryHelper::Point_3Dto2D(float x, float y, float z, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(x, y, z);
   return Point_3Dto2D(vec, plane);
 }
-Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane) const {
+Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
   return Point_3Dto2D(vec, plane);
 }
-Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane) const {
+Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
   return Point_3Dto2D(vec, plane);
 }
