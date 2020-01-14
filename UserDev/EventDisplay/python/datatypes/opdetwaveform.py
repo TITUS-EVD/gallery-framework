@@ -13,14 +13,13 @@ class opdetwaveform(dataBase):
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
-        self._process = evd.DrawOpDetWaveform(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawOpDetWaveform(geom.getGeometryCore(), 
+                                              geom.getDetectorProperties(),
+                                              geom.getDetectorClocks())
+        self._process.set_n_frames(geom.nOpticalFrames())
+        self._process.set_time_offset(geom.opticalOffset())
         self._process.initialize()
         self._process.setInput(self._producerName)
-        # for plane in range(geom.nViews()):
-        #     self._process.setYDimension(geom.readoutWindowSize(),plane)
-        #     print geom.readoutPadding()
-        #     if geom.readoutPadding() != 0:
-        #         self._process.setPadding(geom.readoutPadding(), plane)
 
     def setProducer(self, producer):
         self._producerName = producer

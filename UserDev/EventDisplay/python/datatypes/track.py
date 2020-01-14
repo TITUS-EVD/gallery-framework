@@ -28,7 +28,7 @@ class track(recoBase):
     def __init__(self, geom):
         super(track, self).__init__()
         self._productName = 'track'
-        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties())
         self.init()
 
     def drawObjects(self, view_manager, on_both_tpcs=False):

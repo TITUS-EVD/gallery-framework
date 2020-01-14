@@ -9,7 +9,7 @@ class mctruth(recoBase):
     def __init__(self, geom):
         super(mctruth, self).__init__()
         self._productName = 'mctruth'
-        self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectorProperties())
         self.init()
 
     def getLabel(self):

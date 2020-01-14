@@ -26,8 +26,10 @@ class hit(recoBase):
     def __init__(self, geom):
         super(hit, self).__init__()
         self._productName = 'hit'
-        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectorProperties())
         self._brush = (0, 0, 0)
+        self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
+        self._n_tpcs = geom.nTPCs()
         self.init()
 
     def drawObjects(self, view_manager):
@@ -35,7 +37,7 @@ class hit(recoBase):
         geom = view_manager._geometry
         for view in view_manager.getViewPorts():
             thisPlane = view.plane()
-            self._drawnObjects.append([])
+            for i in range(0, self._n_planes): self._drawnObjects.append([])
             # First get the hit information:
             hits = self._process.getDataByPlane(thisPlane)
 
@@ -44,13 +46,13 @@ class hit(recoBase):
             # In case of 2 TPCs, also draw the hits on
             # the other plane, but flipping the time
             if geom.nTPCs() == 2:
-                if thisPlane == 0: left_plane = 4
-                if thisPlane == 1: left_plane = 3
-                if thisPlane == 2: left_plane = 5
-                hits_2 = self._process.getDataByPlane(left_plane)
-                self.drawHitList(view, hits_2, thisPlane, geom, flip=True)
+                for left_plane in geom.planeMix()[thisPlane]:
+                    hits = self._process.getDataByPlane(left_plane)
+                    self.drawHitList(view, hits, left_plane, geom)
 
-    def drawHitList(self, view, hits, thisPlane, geom, flip=False):
+    def drawHitList(self, view, hits, thisPlane, geom):
+        if len(hits) == 0:
+            return 
         for i in range(len(hits)):
             hit = hits[i]
 
@@ -59,8 +61,17 @@ class hit(recoBase):
             width = 1
             height = hit.rms()
 
-            if flip:
-                time = 2 * geom.tRange() - time + geom.cathodeGap()
+            location = hit.tpc() + hit.cryo() * self._n_tpcs
+
+            # Flip the time if odd tpc
+            if hit.tpc() % 2 == 1:
+                time = geom.tRange() - time
+
+            # Shift up to the appropriate view
+            time = time + location * geom.tRange()
+
+            # Add the ad-hoc gap between TPCs
+            time = time + location * geom.cathodeGap()
 
             # Draws a rectangle at (x,y,xlength, ylength)
             # r = QtGui.QGraphicsRectItem(wire, 
@@ -91,7 +102,7 @@ class hit(recoBase):
 
     def genToolTip(self, hit):
         return 'Time: {time:0.1f}\nRMS: {rms:0.1f}\nIntegral: {integral:0.1f}'.format(
-            time=hit.wire(), 
+            time=hit.time(), 
             rms=hit.rms(), 
             integral=hit.charge())
 

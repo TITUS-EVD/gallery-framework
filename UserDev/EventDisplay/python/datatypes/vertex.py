@@ -11,7 +11,7 @@ class vertex(recoBase):
     def __init__(self, geom):
         super(vertex, self).__init__()
         self._productName = 'vertex'
-        self._process = evd.DrawVertex(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawVertex(geom.getGeometryCore(), geom.getDetectorProperties())
         self._brush = (0, 0, 0)
         self.init()
 

@@ -33,7 +33,7 @@ class Hit2D {
 
 public:
     Hit2D() {}
-    Hit2D(float w, float t, float c, float r, float st, float pt, float et, float pa, int pl) :
+    Hit2D(float w, float t, float c, float r, float st, float pt, float et, float pa, int pl, int tpc, int cryo) :
         _wire(w),
         _time(t),
         _charge(c),
@@ -42,7 +42,9 @@ public:
         _peak_time(pt),
         _end_time(et),
         _peak_amplitude(pa),
-        _plane(pl)
+        _plane(pl),
+        _tpc(tpc),
+        _cryo(cryo)
     {}
     ~Hit2D() {}
     float _wire;
@@ -54,6 +56,8 @@ public:
     float _end_time;
     float _peak_amplitude;
     int   _plane;
+    int   _tpc;
+    int   _cryo;
 
     float wire()   {return _wire;}
     float time()   {return _time;}
@@ -64,6 +68,8 @@ public:
     float end_time()    {return _end_time;}
     float peak_amplitude()  {return _peak_amplitude;}
     int   plane()  {return _plane;}
+    int   tpc()  {return _tpc;}
+    int   cryo()  {return _cryo;}
 };
 
 class DrawHit : public galleryfmwk::ana_base, public RecoBase<Hit2D> {

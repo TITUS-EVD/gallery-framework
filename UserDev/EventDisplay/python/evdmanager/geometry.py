@@ -47,6 +47,8 @@ class geoBase(object):
         self._opdet_y = [0]
         self._opdet_name = ['pmt']
         self._opdet_default = -9999
+        self._n_optical_frames = 1
+        self._n_optical_offset = 0
         self._plane_mix = {}
         self._plane_flip = []
 
@@ -167,14 +169,20 @@ class geoBase(object):
     def opdetDefaultValue(self):
         return self._opdet_default
 
+    def nOpticalFrames(self):
+        return self._n_optical_frames
+
+    def opticalOffset(self):
+        return self._n_optical_offset
+
     def getGeometryCore(self):
         return self._geometryCore
 
-    def getDetectrorProperties(self):
+    def getDetectorProperties(self):
         return self._detectorProperties
 
-    def getDetectrorClockProperties(self):
-        return self._clockProperties
+    def getDetectorClocks(self):
+        return self._detectorClocks
 
     def getLArProperties(self):
         return self._lar_properties
@@ -259,7 +267,7 @@ class geometry(geoBase):
 
         self._geometryCore = geometryCore
         self._detectorProperties = detProperties
-        self._clockProperties = detClocks
+        self._detectorClocks = detClocks
         self._lar_properties = lar_properties
 
         self._halfwidth = geometryCore.DetHalfWidth()
@@ -351,6 +359,9 @@ class sbnd(geometry):
 
         self._colorScheme['grayscale'] = color_scheme
 
+        self._n_optical_frames = 3
+        self._n_optical_offset = 1250
+
         self._offset = []
         for v in range(0, self._nViews):
             # Set up the correct drift time offset.
@@ -417,11 +428,11 @@ class icarus(geometry):
         for v in range(0, self._nViews):
             # Set up the correct drift time offset.
             # Offset is returned in terms of centimeters.
-
-            self._offset.append(
-                self.triggerOffset()
-                * self.time2cm()
-                - self.planeOriginX(v) )
+            self._offset.append(0)
+            # self._offset.append(
+            #     self.triggerOffset()
+            #     * self.time2cm()
+            #     - self.planeOriginX(v) )
 
 class microboone(geometry):
 

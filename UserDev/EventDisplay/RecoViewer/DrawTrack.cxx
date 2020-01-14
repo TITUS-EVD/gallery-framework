@@ -6,22 +6,41 @@
 namespace evd {
 
 Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
+  
   Track2D result;
-  auto geoHelper = larutil::GeometryHelper::GetME();
   result._track.reserve(track.NumberTrajectoryPoints());
+
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+
   for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:
     try {
       if (track.HasValidPoint(i)) {
           auto loc = track.LocationAtPoint(i);
           TVector3 xyz(loc.X(),loc.Y(),loc.Z());
-          auto point = geoHelper->Point_3Dto2D(xyz, plane); //, tpc, cryostat);
+          auto point = geo_helper.Point_3Dto2D(xyz, plane, tpc, cryostat);
           result._track.push_back(std::make_pair(point.w, point.t));
       }
     } catch (...) {
       continue;
     }
   }
+
+  // auto geoHelper = larutil::GeometryHelper::GetME();
+  // result._track.reserve(track.NumberTrajectoryPoints());
+  // for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
+  //   // project a point into 2D:
+  //   try {
+  //     if (track.HasValidPoint(i)) {
+  //         auto loc = track.LocationAtPoint(i);
+  //         TVector3 xyz(loc.X(),loc.Y(),loc.Z());
+  //         auto point = geoHelper->Point_3Dto2D(xyz, plane); //, tpc, cryostat);
+  //         result._track.push_back(std::make_pair(point.w, point.t));
+  //     }
+  //   } catch (...) {
+  //     continue;
+  //   }
+  // }
 
   return result;
 }
@@ -35,9 +54,11 @@ DrawTrack::DrawTrack(const geo::GeometryCore& geometry, const detinfo::DetectorP
 
 bool DrawTrack::initialize() {
 
+  _total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+
   // Resize data holder
-  if (_dataByPlane.size() != geoService->Nviews()) {
-    _dataByPlane.resize(geoService->Nviews());
+  if (_dataByPlane.size() != _total_plane_number) {
+    _dataByPlane.resize(_total_plane_number);
   }
   return true;
 }
@@ -67,7 +88,7 @@ bool DrawTrack::analyze(gallery::Event *ev) {
       ev->getValidHandle<std::vector<recob::Track>>(tracks_tag);
 
   // Clear out the data but reserve some space for the tracks
-  for (unsigned int p = 0; p < geoService->Nviews(); p++) {
+  for (unsigned int p = 0; p < _total_plane_number; p++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(trackHandle->size());
     _wireRange.at(p).first = 99999;
@@ -78,7 +99,7 @@ bool DrawTrack::analyze(gallery::Event *ev) {
 
   // Populate the track vector:
   for (auto &track : *trackHandle) {
-    for (unsigned int view = 0; view < geoService->Nviews(); view++) {
+    for (unsigned int view = 0; view < _total_plane_number; view++) {
       _dataByPlane.at(view).push_back(getTrack2D(track, view));
     }
   }

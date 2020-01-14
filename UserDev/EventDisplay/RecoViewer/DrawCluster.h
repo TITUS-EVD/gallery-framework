@@ -67,6 +67,8 @@ public:
 
 protected:
 
+  size_t _total_plane_number;
+
   // ::cluster::CRUHelper _cru_helper;
 
 };

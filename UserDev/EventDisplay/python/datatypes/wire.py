@@ -44,26 +44,6 @@ class wire(dataBase):
 
                 array_right = np.concatenate((array_right, array_left), axis=1)
 
-            # if plane == 0: left_plane = self._plane_mix[0][0]
-            # if plane == 1: left_plane = self._plane_mix[1][0]
-            # if plane == 2: left_plane = self._plane_mix[2][0]
-            # array_left  = self._process.getArrayByPlane(left_plane)#plane + self._n_plane / self._n_tpc)
-            # array_left = np.flip(array_left, axis=1)
-            # # print ('before:', array_left.shape)
-            # # array_left = np.rot90(array_left, 2)
-            # # print ('after:', array_left.shape)
-            # print ('shape right', array_right.shape)
-            # print ('shape left', array_left.shape)
-            # print ('value at [100, 100]', array_left[100][100])
-
-
-
-            # npad = ((0, 0), (0, int(self._gap)))
-            # array_right = np.pad(array_right, pad_width=npad, mode='constant', constant_values=0)
-
-            # array = np.concatenate((array_right, array_left), axis=1)
-            # print ('array shape after concat', array.shape)
-
             # return array
             return array_right
 
@@ -79,7 +59,7 @@ class recoWire(wire):
         self._gap = geom.cathodeGap()
         self._plane_mix = geom.planeMix()
         self._plane_flip = geom.planeFlip()
-        self._process = evd.DrawWire(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawWire(geom.getGeometryCore(), geom.getDetectorProperties())
         self._process.initialize()
         self._process.setInput(self._producerName)
         for plane in range(geom.nViews() * geom.nTPCs()):
@@ -107,7 +87,7 @@ class rawDigit(wire):
         self._gap = geom.cathodeGap()
         self._plane_mix = geom.planeMix()
         self._plane_flip = geom.planeFlip()
-        self._process = evd.DrawRawDigit(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawRawDigit(geom.getGeometryCore(), geom.getDetectorProperties())
         for i in range(len(geom._pedestals)):
             self._process.setPedestal(geom._pedestals[i], i)
         self._process.initialize()

@@ -62,7 +62,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // time and is an addition)
   returnPoint.t += detp.TriggerOffset() * fTimeToCm;
   // std::cout << "trigger offset, plane " << plane
-  //           << ": " << detp -> TriggerOffset() * fTimeToCm << std::endl;
+  //           << ": " << detp.TriggerOffset() * fTimeToCm << std::endl;
   //
   //Get the origin point of this plane:
   Double_t planeOrigin[3];

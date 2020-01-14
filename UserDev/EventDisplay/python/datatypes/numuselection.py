@@ -10,7 +10,7 @@ class numuselection(recoBase):
     def __init__(self, geom):
         super(numuselection, self).__init__()
         self._productName = 'numuselection'
-        self._process = evd.DrawNumuSelection(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawNumuSelection(geom.getGeometryCore(), geom.getDetectorProperties())
         self._brush = (0, 0, 0)
         self.init()
 

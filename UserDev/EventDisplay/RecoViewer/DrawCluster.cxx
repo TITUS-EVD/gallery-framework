@@ -21,10 +21,11 @@ bool DrawCluster::initialize() {
   // If you have a histogram to fill in the event loop, for example,
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
+  _total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   // Resize data holder
-  if (_dataByPlane.size() != geoService -> Nviews()) {
-    _dataByPlane.resize(geoService -> Nviews());
+  if (_dataByPlane.size() != _total_plane_number) {
+    _dataByPlane.resize(_total_plane_number);
   }
 
   return true;
@@ -54,7 +55,7 @@ bool DrawCluster::analyze(gallery::Event * ev) {
   //
 
   // Clear out the hit data but reserve some space for the hits
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  for (unsigned int p = 0; p < _total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
     _wireRange.at(p).first  = 99999;
     _timeRange.at(p).first  = 99999;
@@ -87,8 +88,9 @@ bool DrawCluster::analyze(gallery::Event * ev) {
 
 
 
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++)
-    _dataByPlane.at(p).reserve(clusters -> size());
+  for (unsigned int p = 0; p < _total_plane_number; p ++) {
+    _dataByPlane.at(p).reserve(clusters->size());
+  }
 
 
 
@@ -96,9 +98,9 @@ bool DrawCluster::analyze(gallery::Event * ev) {
   // I don't know how clusters are stored so I'm taking a conservative
   // approach to packaging them for drawing
   std::vector<int> cluster_index;
-  cluster_index.resize(geoService -> Nviews());
+  cluster_index.resize(_total_plane_number);
 
-  int view;
+  // int view;
 
   // cluster::DefaultParamsAlg params_alg ;
   // cluster::cluster_params params;
@@ -108,19 +110,22 @@ bool DrawCluster::analyze(gallery::Event * ev) {
 
   size_t index = 0;
   for (auto const& cluster : * clusters) {
-    view = cluster.View();
+    // view = cluster.View();
 
-    int tpc = cluster.Plane().TPC;
-    int plane = cluster.Plane().Plane;
+    unsigned int plane = cluster.Plane().Plane;
+    unsigned int tpc = cluster.Plane().TPC;
+    unsigned int cryo = cluster.Plane().Cryostat;
     
     // If a second TPC is present, its planes 0, 1 and 2 are 
     // stored consecutively to those of the first TPC. 
     // So we have planes 0, 1, 2, 3, 4, 5.
-    view = plane + tpc * (geoService->Nplanes() / geoService->NTPC()); 
+    // view = plane + tpc * (geoService->Nplanes() / geoService->NTPC());
+    plane += tpc * _geo_service.Nplanes();
+    plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
 
     // Make a new cluster in the data:
-    _dataByPlane.at(view).push_back(Cluster2D());
-    _dataByPlane.at(view).back()._is_good = true;
+    _dataByPlane.at(plane).push_back(Cluster2D());
+    _dataByPlane.at(plane).back()._is_good = true;
 
     // Fill the cluster params alg
     // _cru_helper.GenerateParams( hit_indices, ev_hit, params);
@@ -149,11 +154,17 @@ bool DrawCluster::analyze(gallery::Event * ev) {
       // has been matched across TPCs, the cluster plane is the plane
       // that contains the majority of hits, and the hits are 
       // on two planes, one per TPC.
-      int hit_plane = geoService->ChannelToPlane(hit->Channel());
-      int hit_tpc = geoService->ChannelToTPC(hit->Channel());
-      int hit_view = hit_plane + hit_tpc * (geoService->Nplanes() / geoService->NTPC()); 
+      unsigned int hit_plane = hit->WireID().Plane;
+      unsigned int hit_tpc = hit->WireID().TPC;
+      unsigned int hit_cryo = hit->WireID().Cryostat;
 
-      _dataByPlane.at(view).back().emplace_back(
+      // If a second TPC is present, its planes 0, 1 and 2 are 
+      // stored consecutively to those of the first TPC. 
+      // So we have planes 0, 1, 2, 3, 4, 5.
+      hit_plane += hit_tpc * _geo_service.Nplanes();
+      hit_plane += hit_cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+
+      _dataByPlane.at(hit_plane).back().emplace_back(
         Hit2D(hit->WireID().Wire,
               hit->PeakTime(),
               hit->Integral(),
@@ -162,23 +173,25 @@ bool DrawCluster::analyze(gallery::Event * ev) {
               hit->PeakTime(),
               hit->EndTick(),
               hit->PeakAmplitude(),
-              hit_view
+              hit_plane,
+              hit->WireID().TPC,
+              hit->WireID().Cryostat
              ));
 
 
       // Determine if this hit should change the view range:
-      if (hit->WireID().Wire > _wireRange.at(view).second)
-        _wireRange.at(view).second = hit->WireID().Wire;
-      if (hit->WireID().Wire < _wireRange.at(view).first)
-        _wireRange.at(view).first = hit->WireID().Wire;
-      if (hit->PeakTime() > _timeRange.at(view).second)
-        _timeRange.at(view).second = hit->PeakTime();
-      if (hit->PeakTime() < _timeRange.at(view).first)
-        _timeRange.at(view).first = hit->PeakTime();
+      if (hit->WireID().Wire > _wireRange.at(plane).second)
+        _wireRange.at(plane).second = hit->WireID().Wire;
+      if (hit->WireID().Wire < _wireRange.at(plane).first)
+        _wireRange.at(plane).first = hit->WireID().Wire;
+      if (hit->PeakTime() > _timeRange.at(plane).second)
+        _timeRange.at(plane).second = hit->PeakTime();
+      if (hit->PeakTime() < _timeRange.at(plane).first)
+        _timeRange.at(plane).first = hit->PeakTime();
 
     }
 
-    cluster_index[view] ++;
+    cluster_index[plane] ++;
     index ++;
 
   }

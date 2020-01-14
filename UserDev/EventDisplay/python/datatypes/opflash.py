@@ -11,7 +11,7 @@ class opflash(recoBase):
     def __init__(self, geom):
         super(opflash, self).__init__()
         self._productName = 'opflash'
-        self._process = evd.DrawOpflash(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawOpflash(geom.getGeometryCore(), geom.getDetectorProperties())
         self.init()
 
     def drawObjects(self, view_manager):

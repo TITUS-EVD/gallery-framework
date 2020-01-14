@@ -47,7 +47,7 @@ class shower(recoBase):
     def __init__(self, geom):
         super(shower, self).__init__()
         self._productName = 'shower'
-        self._process = evd.DrawShower(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawShower(geom.getGeometryCore(), geom.getDetectorProperties())
         self.init()
         self._clusters = [ [], [], []]
 

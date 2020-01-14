@@ -12,9 +12,9 @@ class cluster(recoBase):
     def __init__(self, geom):
         super(cluster, self).__init__()
         self._productName = 'cluster'
-        self._process = evd.DrawCluster(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawCluster(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self.init()
-
 
         self._listOfClusters = []
 
@@ -44,7 +44,7 @@ class cluster(recoBase):
             thisPlane = view.plane()
 
             # extend the list of clusters
-            self._listOfClusters.append([])
+            for i in range(0, self._n_planes): self._listOfClusters.append([])
 
 
             clusters = self._process.getDataByPlane(thisPlane)
@@ -53,14 +53,17 @@ class cluster(recoBase):
             # In case of 2 TPCs, also draw the hits on
             # the other plane, but flipping the time
             if geom.nTPCs() == 2:
-                if thisPlane == 0: left_plane = 4
-                if thisPlane == 1: left_plane = 3
-                if thisPlane == 2: left_plane = 5
-                clusters_2 = self._process.getDataByPlane(left_plane)
-                self.drawClusterList(view, clusters_2, thisPlane, geom, flip=True)
+                for left_plane in geom.planeMix()[thisPlane]:
+                    clusters = self._process.getDataByPlane(left_plane)
+                    self.drawClusterList(view, clusters, left_plane, geom)
+                # if thisPlane == 0: left_plane = 4
+                # if thisPlane == 1: left_plane = 3
+                # if thisPlane == 2: left_plane = 5
+                # clusters_2 = self._process.getDataByPlane(left_plane)
+                # self.drawClusterList(view, clusters_2, thisPlane, geom, flip=True)
 
 
-    def drawClusterList(self, view, clusters, thisPlane, geom, flip=False):
+    def drawClusterList(self, view, clusters, thisPlane, geom):
             colorIndex = 0
             for i in range(len(clusters)):
                 cluster = clusters[i]
@@ -73,7 +76,7 @@ class cluster(recoBase):
                 self._listOfClusters[thisPlane].append(cluster_box_coll)
 
                 # draw the hits in this cluster:
-                cluster_box_coll.drawHits(view, cluster, geom, flip)
+                cluster_box_coll.drawHits(view, cluster, geom)
 
                 colorIndex += 1
                 if colorIndex >= len(self._clusterColors):

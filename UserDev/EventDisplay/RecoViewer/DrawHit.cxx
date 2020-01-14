@@ -14,10 +14,11 @@ DrawHit::DrawHit(const geo::GeometryCore& geometry, const detinfo::DetectorPrope
 }
 
 bool DrawHit::initialize() {
-  // // Resize data holder to accommodate planes and wires:
-  if (_dataByPlane.size() != geoService -> Nviews()) {
-    _dataByPlane.resize(geoService -> Nviews());
-    _maxCharge.resize(geoService -> Nviews());
+  // Resize data holder to accommodate planes and wires:
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (_dataByPlane.size() != total_plane_number) {
+    _dataByPlane.resize(total_plane_number);
+    _maxCharge.resize(total_plane_number);
   }
   return true;
 }
@@ -50,9 +51,10 @@ bool DrawHit::analyze(gallery::Event* ev) {
 
 
   // Clear out the hit data but reserve some space for the hits
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  for (unsigned int p = 0; p < total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
-    _dataByPlane.at(p).reserve(hitHandle -> size());
+    _dataByPlane.at(p).reserve(hitHandle->size());
     _maxCharge.at(p) = 0.0;
     _wireRange.at(p).first  = 99999;
     _timeRange.at(p).first  = 99999;
@@ -65,16 +67,18 @@ bool DrawHit::analyze(gallery::Event* ev) {
 
   for (auto & hit : *hitHandle) {
 
-    unsigned int view = hit.View();
-    int plane = geoService->ChannelToPlane(hit.Channel());
-    int tpc = geoService->ChannelToTPC(hit.Channel());
+    // unsigned int wire = hit.WireID().Wire;
+    unsigned int plane = hit.WireID().Plane;
+    unsigned int tpc = hit.WireID().TPC;
+    unsigned int cryo = hit.WireID().Cryostat;
 
     // If a second TPC is present, its planes 0, 1 and 2 are 
     // stored consecutively to those of the first TPC. 
     // So we have planes 0, 1, 2, 3, 4, 5.
-    view = plane + tpc * (geoService->Nplanes() / geoService->NTPC()); 
+    plane += tpc * _geo_service.Nplanes();
+    plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
 
-    _dataByPlane.at(view).emplace_back(
+    _dataByPlane.at(plane).emplace_back(
       Hit2D(hit.WireID().Wire,
             hit.PeakTime(),
             hit.Integral(),
@@ -83,26 +87,27 @@ bool DrawHit::analyze(gallery::Event* ev) {
             hit.PeakTime(),
             hit.EndTick(),
             hit.PeakAmplitude(),
-            view
+            plane,
+            tpc,
+            cryo
            ));
-    if (_dataByPlane.at(view).back()._charge > _maxCharge.at(view))
-      _maxCharge.at(view) = _dataByPlane.at(view).back()._charge;
+    if (_dataByPlane.at(plane).back()._charge > _maxCharge.at(plane)) {
+      if (plane == 3) std::cout << "Increasing maxcharge for plane 3" << std::endl;
+      _maxCharge.at(plane) = _dataByPlane.at(plane).back()._charge;
+    }
     // Check the auto range values:
-    if (_dataByPlane.at(view).back().wire() < _wireRange.at(view).first) {
-      _wireRange.at(view).first = _dataByPlane.at(view).back().wire();
+    if (_dataByPlane.at(plane).back().wire() < _wireRange.at(plane).first) {
+      _wireRange.at(plane).first = _dataByPlane.at(plane).back().wire();
     }
-    if (_dataByPlane.at(view).back().wire() > _wireRange.at(view).second) {
-      _wireRange.at(view).second = _dataByPlane.at(view).back().wire();
+    if (_dataByPlane.at(plane).back().wire() > _wireRange.at(plane).second) {
+      _wireRange.at(plane).second = _dataByPlane.at(plane).back().wire();
     }
-    if (_dataByPlane.at(view).back().time() < _timeRange.at(view).first) {
-      _timeRange.at(view).first = _dataByPlane.at(view).back().time();
+    if (_dataByPlane.at(plane).back().time() < _timeRange.at(plane).first) {
+      _timeRange.at(plane).first = _dataByPlane.at(plane).back().time();
     }
-    if (_dataByPlane.at(view).back().time() > _timeRange.at(view).second) {
-      _timeRange.at(view).second = _dataByPlane.at(view).back().time();
+    if (_dataByPlane.at(plane).back().time() > _timeRange.at(plane).second) {
+      _timeRange.at(plane).second = _dataByPlane.at(plane).back().time();
     }
-    // wireByPlane -> at(view).push_back(hit.WireID().Wire);
-    // hitStartByPlane -> at(view).push_back(hit.PeakTime() - hit.RMS());
-    // hitEndByPlane -> at(view).push_back(hit.PeakTime() + hit.RMS());
 
   }
 
@@ -111,7 +116,8 @@ bool DrawHit::analyze(gallery::Event* ev) {
 }
 
 float DrawHit::maxCharge(size_t p) {
-  if (p >= geoService->Nviews() ) {
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
     return 1.0;
   }
@@ -130,8 +136,9 @@ float DrawHit::maxCharge(size_t p) {
 
 std::vector<Hit2D> DrawHit::getHitsOnWirePlane(size_t wire, size_t plane) {
   std::vector<Hit2D> result;
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
-  if (plane >= geoService->Nviews() ) {
+  if (plane >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << plane << std::endl;
     return result;
   }

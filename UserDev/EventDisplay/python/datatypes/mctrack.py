@@ -11,7 +11,7 @@ class mctrack(recoBase):
     def __init__(self, geom):
         super(mctrack, self).__init__()
         self._productName = 'mctrack'
-        self._process = evd.DrawMCTrack(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawMCTrack(geom.getGeometryCore(), geom.getDetectorProperties())
         self.init()
 
     def drawObjects(self, view_manager, on_both_tpcs=False):

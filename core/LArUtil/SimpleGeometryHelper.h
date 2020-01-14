@@ -32,8 +32,8 @@ namespace larutil {
 
 class SimpleGeometryHelper  {
 
-private:
-
+public:
+    
     /**
      * @brief Constructor
      * @details Constructor is private.  To access this class, get a pointer using the SimpleGeometryHelper::GetME() function
@@ -42,8 +42,6 @@ private:
 
     /// Default destructor
     ~SimpleGeometryHelper() {}
-
-public:
 
     /**
      * @brief Reconfigures private parameters

@@ -13,7 +13,7 @@ class spacepoint(recoBase):
     def __init__(self, geom):
         super(spacepoint, self).__init__()
         self._productName = 'spacepoint'
-        self._process = evd.DrawSpacepoint(geom.getGeometryCore(), geom.getDetectrorProperties())
+        self._process = evd.DrawSpacepoint(geom.getGeometryCore(), geom.getDetectorProperties())
         self.init()
 
     def drawObjects(self, view_manager):

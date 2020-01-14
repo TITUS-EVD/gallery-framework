@@ -16,11 +16,14 @@
 #define EVD_DRAWOPDETWAVEFORM_H
 
 #include "Analysis/ana_base.h"
-#include "LArUtil/DetectorProperties.h"
 
 #include "canvas/Persistency/Common/FindMany.h"
 #include "canvas/Utilities/InputTag.h"
 #include "gallery/Event.h"
+
+#include "larcorealg/Geometry/GeometryCore.h"
+#include "lardataalg/DetectorInfo/DetectorProperties.h"
+#include "lardataalg/DetectorInfo/DetectorClocks.h"
 
 #include "lardataobj/RawData/OpDetWaveform.h"
 
@@ -30,6 +33,7 @@ typedef _object PyObject;
 #ifndef ROOT_TMVA_PyMethodBase
   #ifndef __CINT__
     #include "Python.h"
+    #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
     #include "numpy/arrayobject.h"
   #endif
 #endif
@@ -45,7 +49,9 @@ namespace evd {
   public:
 
     /// Default constructor
-    DrawOpDetWaveform();
+    DrawOpDetWaveform(const geo::GeometryCore& geometry, 
+                      const detinfo::DetectorProperties& detectorProperties,
+                      const detinfo::DetectorClocks& detectorClocks);
 
     /// Default destructor
     virtual ~DrawOpDetWaveform(){}
@@ -73,18 +79,30 @@ namespace evd {
     // for lariat, this can be used to set the file
     void setInput(std::string s){_producer = s;}
 
+    void set_n_frames(int n) {_n_frames = n;}
+    void set_time_offset(double t) {_time_offset = t;}
+
+
   protected:
 
     // This section holds the waveforms for the data
     std::vector<float> _wvf_data;
+
+    double _tick_period;
+    int _n_op_channels;
+    int _n_time_ticks;
+    int _n_frames = 1;
+    double _time_offset = 0;
 
     std::string _producer;
 
     // sets up the _wvf_data data object
     void initDataHolder();
 
-    const larutil::Geometry * _geoService;
-    const larutil::DetectorProperties * _detProp;
+    const geo::GeometryCore&           _geo_service;
+    const detinfo::DetectorProperties& _det_prop;
+    const detinfo::DetectorClocks&     _det_clocks;
+
 
 
   };

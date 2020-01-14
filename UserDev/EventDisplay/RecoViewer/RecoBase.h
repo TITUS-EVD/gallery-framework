@@ -101,14 +101,28 @@ RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry, const detinfo:
   detProp = larutil::DetectorProperties::GetME();
   
   // Set up default values of the _wire and _time range
-  _wireRange.resize(geoService -> Nviews());
-  _timeRange.resize(geoService -> Nviews());
-  for (size_t view = 0; view < geoService -> Nviews(); view ++) {
-    _wireRange.at(view).first  = 0;
-    _wireRange.at(view).second = geoService -> Nwires(view);
-    _timeRange.at(view).first  = 0;
-    _timeRange.at(view).second = detProp -> NumberTimeSamples();
+  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  _wireRange.resize(total_plane_number);
+  _timeRange.resize(total_plane_number);
+
+  size_t counter = 0;
+  for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
+    for (unsigned int t = 0; t < _geo_service.NTPC(c); t++) {
+      for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
+        _wireRange.at(counter).first  = 0;
+        _wireRange.at(counter).second = _geo_service.Nwires(p, t, c);
+        _timeRange.at(counter).first  = 0;
+        _timeRange.at(counter).second = _det_prop.ReadOutWindowSize();
+        counter++;
+      }
+    }
   }
+  // for (size_t total_plane_number = 0; total_plane_number < total_plane_number; total_plane_number ++) {
+  //   _wireRange.at(total_plane_number).first  = 0;
+  //   _wireRange.at(total_plane_number).second = geoService -> Nwires(view);
+  //   _timeRange.at(total_plane_number).first  = 0;
+  //   _timeRange.at(total_plane_number).second = detProp -> NumberTimeSamples();
+  // }
   // import_array();
 }
 
@@ -119,8 +133,9 @@ void RecoBase <DATA_TYPE>::setProducer(std::string s) {
 
 template <class DATA_TYPE>
 std::pair<float, float> RecoBase<DATA_TYPE>::getWireRange(size_t p) {
+  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   static std::pair<float, float> returnNull;
-  if (p >= geoService->Nviews() ) {
+  if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
     return returnNull;
   }
@@ -138,8 +153,9 @@ std::pair<float, float> RecoBase<DATA_TYPE>::getWireRange(size_t p) {
 
 template <class DATA_TYPE>
 std::pair<float, float> RecoBase<DATA_TYPE>::getTimeRange(size_t p) {
+  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   static std::pair<float, float> returnNull;
-  if (p >= geoService->Nviews() ) {
+  if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
     return returnNull;
   }
@@ -156,8 +172,9 @@ std::pair<float, float> RecoBase<DATA_TYPE>::getTimeRange(size_t p) {
 
 template <class DATA_TYPE>
 const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getDataByPlane(size_t p) {
+  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   static std::vector<DATA_TYPE> returnNull;
-  if (p >= geoService->Nviews() ) {
+  if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
     return returnNull;
   }
@@ -172,31 +189,6 @@ const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getDataByPlane(size_t p) {
   }
 }
 
-// template <class DATA_TYPE>
-// PyObject * RecoBase<DATA_TYPE>::getDataByPlane(size_t p) {
-//   PyObject* pvec = PyList_New(_dataByPlane.at(p).size());
-//   if (p >= geoService->Nviews() ) {
-//     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
-//     Py_DECREF(pvec);
-//     throw std::exception();
-//   }
-//   else {
-//     // try {
-//       for (size_t i = 0; i < _dataByPlane.at(p).size(); ++i) {
-
-//         if (PyList_SetItem(pvec, i, &(_dataByPlane.at(p)[i]))) {
-
-//           Py_DECREF(pvec);
-//           throw std::exception();
-//         }
-//       }
-//       return pvec;
-//     // }
-//     // catch (const std::exception& e) {
-//     //   std::cerr << e.what() << '\n';
-//     // }
-//   }
-// }
 
 template <class DATA_TYPE>
 const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getExtraData() {
