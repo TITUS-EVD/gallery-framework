@@ -78,8 +78,9 @@ class track(recoBase):
                 # plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
                 # delta_x = plane_x - plane_x_ref - 2 * geom.halfwidth()
                 # y += this_offset/geom.time2cm()
-                
-                y += location * (geom.tRange() + geom.cathodeGap())
+
+                y += location * (geom.tRange()) # + geom.cathodeGap())
+                y -= location * (2 * geom.halfwidth())/geom.time2cm()
                 # print (delta_x/geom.time2cm())
 
                 # this_offset = -plane_x_ref + delta_x

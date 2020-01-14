@@ -464,14 +464,15 @@ class evd_manager_2D(evd_manager_base):
             self._wireDrawer = datatypes.recoWire(self._geom)
 
             if self._geom.name() == 'icarus':
-                producer = [self._keyTable[stage]['raw::RawDigit'][0].fullName(),
-                            self._keyTable[stage]['raw::RawDigit'][1].fullName(),
-                            self._keyTable[stage]['raw::RawDigit'][2].fullName(),
-                            self._keyTable[stage]['raw::RawDigit'][3].fullName()]
+                producer = [self._keyTable[stage]['recob::Wire'][0].fullName(),
+                            self._keyTable[stage]['recob::Wire'][1].fullName(),
+                            self._keyTable[stage]['recob::Wire'][2].fullName(),
+                            self._keyTable[stage]['recob::Wire'][3].fullName()]
             else:
-                producer = self._keyTable[stage]['raw::RawDigit'][0].fullName()
+                producer = self._keyTable[stage]['recob::Wire'][0].fullName()
                 
-            self._wireDrawer.setProducer(self._keyTable[stage]['recob::Wire'][0].fullName())
+            # self._wireDrawer.setProducer(self._keyTable[stage]['recob::Wire'][0].fullName())
+            self._wireDrawer.setProducer(producer)
             self._processer.add_process("recob::Wire",self._wireDrawer._process)
             self.processEvent(True)
 
