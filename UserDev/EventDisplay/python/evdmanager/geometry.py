@@ -324,11 +324,13 @@ class sbnd(geometry):
         larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
-        self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
-        self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
+        # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
+        # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
+        self._pedestals = [0, 0, 0]
+        self._levels = [(-80, 0), (-10, 100), (-10, 200)]
 
         self._view_names = ['U', 'V', 'Y']
-        self._plane_mix = {0: [3], 1: [4], 2: [5]}
+        self._plane_mix = {0: [4], 1: [3], 2: [5]}
         self._plane_flip = [False, False, False, True, True, True]
 
         self._name = "sbnd"
@@ -383,11 +385,12 @@ class icarus(geometry):
         # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
-        self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
-        self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
-
+        # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
+        # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
+        self._pedestals = [0, 0, 0]
+        self._levels = [(-80, 0), (-10, 100), (-10, 100)]
         self._view_names = ['H', 'U', 'V']
-        self._plane_mix = {0: [3, 6, 9], 1: [4, 7, 10], 2: [5, 8, 11]}
+        self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
         self._plane_flip = [False, False, False, True, True, True, False, False, False, True, True, True]
 
         self._name = "icarus"

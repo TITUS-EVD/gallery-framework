@@ -97,11 +97,43 @@ bool DrawTrack::analyze(gallery::Event *ev) {
     _wireRange.at(p).second = -1.0;
   }
 
+  // Retrieve the hits to infer the TPC the track belongs to
+  art::InputTag assn_tag(_producer);
+  art::FindMany<recob::Hit> track_to_hits(trackHandle, *ev, assn_tag);
+
   // Populate the track vector:
+  size_t index = 0;
   for (auto &track : *trackHandle) {
-    for (unsigned int view = 0; view < _total_plane_number; view++) {
-      _dataByPlane.at(view).push_back(getTrack2D(track, view));
+    std::vector<recob::Hit const*> hits;
+    track_to_hits.get(index, hits);
+    size_t track_tpc = 0, track_cryo = 0;
+    if (hits.size() > 0) {
+      track_tpc = hits.at(0)->WireID().TPC;
+      track_cryo = hits.at(0)->WireID().Cryostat;
     }
+
+    // for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
+      // for (unsigned int t = 0; t < _geo_service.NTPC(c); t++) {
+        for (unsigned int p = 0; p < _geo_service.Nplanes(track_tpc); p++) {
+          
+          int plane = p + track_tpc * _geo_service.Nplanes();
+          plane += track_cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
+          
+          auto tr = getTrack2D(track, p, track_tpc, track_cryo);
+          tr._tpc = track_tpc;
+          tr._cryo = track_cryo;
+          _dataByPlane.at(plane).push_back(tr);
+
+        }
+      // }
+    // }
+
+
+    // for (unsigned int plane = 0; plane < _total_plane_number; plane++) {
+    //   _dataByPlane.at(view).push_back(getTrack2D(track, plane));
+    // }
+
+    index++;
   }
 
   return true;

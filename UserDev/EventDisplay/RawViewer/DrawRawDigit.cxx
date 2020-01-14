@@ -149,7 +149,7 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
 
       // Copy with pedestal subtraction
       for(const auto& adcVal : rawdigit.ADCs()) {
-        *startItr++ = adcVal; // - ped;
+        *startItr++ = adcVal - ped;
       }
     }
   }

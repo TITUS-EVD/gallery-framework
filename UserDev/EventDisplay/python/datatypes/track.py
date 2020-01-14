@@ -29,6 +29,7 @@ class track(recoBase):
         super(track, self).__init__()
         self._productName = 'track'
         self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self.init()
 
     def drawObjects(self, view_manager, on_both_tpcs=False):
@@ -36,36 +37,85 @@ class track(recoBase):
 
         for view in view_manager.getViewPorts():
             #   # get the showers from the process:
-            self._drawnObjects.append([])
+            # self._drawnObjects.append([])
+            for i in range(0, self._n_planes): self._drawnObjects.append([])
+
             tracks = self._process.getDataByPlane(view.plane())
             offset = geom.offset(view.plane()) / geom.time2cm()
 
-            for i in range(len(tracks)):
-                track = tracks[i]
-                # construct a polygon for this track:
-                points = []
-                # Remeber - everything is in cm, but the display is in
-                # wire/time!
-                for pair in track.track():
-                    x = pair.first / geom.wire2cm()
-                    y = pair.second / geom.time2cm() + offset
-                    if geom.nTPCs() == 2 and on_both_tpcs:
-                        cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
-                        if y > cathode_time:
-                            y += geom.tRange() - geom.triggerOffset()
+            # print ('Drawing tracks for plane', view.plane())
+            self.drawTracks(view, tracks, offset, view.plane(), geom)
 
-                    points.append(QtCore.QPointF(x, y))
+            if geom.nTPCs() == 2:
+                for left_plane in geom.planeMix()[view.plane()]:
+                    tracks = self._process.getDataByPlane(left_plane)
+                    # print ('Drawing tracks for plane', left_plane)
+                    self.drawTracks(view, tracks, offset, left_plane, geom, (255, 128, 0))
 
-                # self._drawnObjects[view.plane()].append(thisPoly)
 
-                thisPoly = polyLine(points)
-                pen = pg.mkPen((130,0,0), width=2)
-                thisPoly.setPen(pen)
-                # polyLine.draw(view._view)
+    def drawTracks(self, view, tracks, offset, plane, geom, color=(130,0,0)):
+
+        if len(tracks) == 0:
+            return
+
+        # print ('  Cool. We have', len(tracks), ' tracks.')
+
+        for i in range(len(tracks)):
+            track = tracks[i]
+            # construct a polygon for this track:
+            points = []
+
+            location = track.tpc() + track.cryo() * geom.nTPCs()
+            # print ('  location is', location)
+
+            # Remeber - everything is in cm, but the display is in
+            # wire/time!
+            for pair in track.track():
+                x = pair.first / geom.wire2cm()
+                y = pair.second / geom.time2cm() + offset
+
+                # plane_x = geom.getGeometryCore().Plane(view.plane(), track.tpc(), track.cryo()).GetCenter().X()
+                # plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
+                # delta_x = plane_x - plane_x_ref - 2 * geom.halfwidth()
+                # y += this_offset/geom.time2cm()
+                
+                y += location * (geom.tRange() + geom.cathodeGap())
+                # print (delta_x/geom.time2cm())
+
+                # this_offset = -plane_x_ref + delta_x
+
+                # print ('    increading y by', location * (geom.tRange() + geom.cathodeGap()))
+                # y += location * (geom.tRange() + geom.cathodeGap())
+                # y += location * (2 * geom.halfwidth())/geom.time2cm() + geom.cathodeGap()
+                # y += location * delta_x/geom.time2cm()
+                # y += location * (geom.triggerOffset() + geom.cathodeGap())
+                # y += location * (geom.tRange() - (2 * geom.halfwidth())/geom.time2cm() + geom.cathodeGap())
+                # y += location * delta_x/geom.time2cm()
+                # y += this_offset/geom.time2cm()
+                    # if track.tpc() == 1:
+                    #     y += (geom.halfwidth() + geom.offset(view.plane()) + geom.cathodeGap())/geom.time2cm()
+                    #     y += geom.triggerOffset()
+                    #     y += geom.tRange() - geom.triggerOffset() + geom.cathodeGap()
+
+                    # if geom.nTPCs() == 2 and on_both_tpcs:
+                    #     cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
+                    #     if y > cathode_time:
+                    #         y += geom.tRange() - geom.triggerOffset()
+
+                points.append(QtCore.QPointF(x, y))
+
+            # self._drawnObjects[view.plane()].append(thisPoly)
+
+            thisPoly = polyLine(points)
+            pen = pg.mkPen(color, width=2)
+            thisPoly.setPen(pen)
+            # polyLine.draw(view._view)
             
-                view._view.addItem(thisPoly)
+            view._view.addItem(thisPoly)
 
-                self._drawnObjects[view.plane()].append(thisPoly)
+            self._drawnObjects[plane].append(thisPoly)
+
+
 
 
 from datatypes.database import recoBase3D

@@ -16,6 +16,8 @@
 
 #include "Analysis/ana_base.h"
 #include "lardataobj/RecoBase/Track.h"
+#include "lardataobj/RecoBase/Hit.h"
+#include "canvas/Persistency/Common/FindMany.h"
 #include <iostream>
 
 #include "RecoBase.h"
@@ -40,9 +42,13 @@ public:
 
   const std::vector<std::pair<float, float>> &track() { return _track; }
   const std::vector<std::pair<float, float>> &direction() { return _track; }
+  const unsigned int &tpc() { return _tpc; }
+  const unsigned int &cryo() { return _cryo; }
 
 protected:
   std::vector<std::pair<float, float>> _track;
+  unsigned int _tpc = 0;
+  unsigned int _cryo = 0;
 };
 
 // typedef std::vector<std::pair<float, float> > Track2D;

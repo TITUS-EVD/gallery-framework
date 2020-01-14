@@ -373,7 +373,7 @@ class viewport(pg.GraphicsLayoutWidget):
         message += ", T: "
         message += str(int(self.q.y()))
 
-    # print message
+    # print (message)
     max_trange = self._geometry.tRange()
     if self._geometry.nTPCs() == 2: 
         max_trange *= 2

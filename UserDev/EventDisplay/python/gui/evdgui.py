@@ -333,12 +333,12 @@ class evdgui(gui):
         '''
         if name == 'MCTrack':
             if visibility:
-                self._spliTracksOption.setVisible(True)
+                self._spliTracksOption.setVisible(False)
             else:
                 self._spliTracksOption.setVisible(False)
         if name == 'Track':
             if visibility:
-                self._spliTracksOption.setVisible(True)
+                self._spliTracksOption.setVisible(False)
             else:
                 self._spliTracksOption.setVisible(False)
 

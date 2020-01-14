@@ -67,10 +67,12 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   //Get the origin point of this plane:
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
-  auto vtx = geom.Plane(plane, tpc, cryo).GetCenter();
+  // auto vtx = geom.Plane(plane, tpc, cryo).GetCenter();
+  auto vtx = geom.Plane(plane).GetCenter();
   planeOrigin[0] = vtx.X();
   planeOrigin[1] = vtx.Y();
   planeOrigin[2] = vtx.Z();
+  // std::cout << "p " << plane << ", t " << tpc << ", c " << cryo << ": plane center x = " << vtx.X() << std::endl;
 
   // Correct for the origin of the planes
   // X = 0 is at the very first wire plane, so the values
