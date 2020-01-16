@@ -49,6 +49,8 @@ class view_manager(QtCore.QObject):
     self._autoRange = False
     self._wireData = None
 
+    self._drawing_raw_digits = False
+
   def addEvdDrawer(self,plane):
     self._drawerList.append(viewport(self._geometry, plane))
     self._drawerList[-1].connectWireDrawingFunction(self.drawWireOnPlot)
@@ -317,14 +319,23 @@ class view_manager(QtCore.QObject):
     self._wirePlotItem.setData(freqs,np.absolute(fft))
     return
 
-  def drawingRawDigits(self, status):
+  def setDrawingRawDigits(self, status):
     '''
-    Returns True if the viewports are
-    currentlt drawing RawDigits, False
+    Sets True if the viewports are
+    currently drawing RawDigits, False
     otherwise.
     '''
+    self._drawing_raw_digits = status
     for view in self._drawerList:
         view.drawingRawDigits(status)
+
+  def drawingRawDigits(self):
+    '''
+    Returns True if the viewports are
+    currently drawing RawDigits, False
+    otherwise.
+    '''
+    return self._drawing_raw_digits
 
   def getViewPorts(self):
     '''
@@ -472,6 +483,12 @@ class gui(QtGui.QWidget):
     self._drawRawOption.setToolTip("Draw the raw wire signals in 2D")
     self._drawRawOption.setTristate(False)
 
+    self._subtractPedestal = QtGui.QCheckBox("Subtract Pedestal")
+    self._subtractPedestal.setToolTip("Subtracts the pedestal from RawDigits. You will need to adjust the range.")
+    self._subtractPedestal.setTristate(False)
+    self._subtractPedestal.setCheckState(QtCore.Qt.Checked)
+    self._subtractPedestal.stateChanged.connect(self.subtractPedestalWorker)
+
     # add a box to restore the drawing defaults:
     self._restoreDefaults = QtGui.QPushButton("Restore Defaults")
     self._restoreDefaults.setToolTip("Restore the drawing defaults of the views.")
@@ -556,6 +573,7 @@ class gui(QtGui.QWidget):
     self._drawingControlBox.addWidget(self._autoRangeBox)
     self._drawingControlBox.addWidget(self._lockAspectRatio)
     self._drawingControlBox.addWidget(self._drawWireOption)
+    self._drawingControlBox.addWidget(self._subtractPedestal)
     self._drawingControlBox.addWidget(self._separators[0])
     self._drawingControlBox.addWidget(self._anodeCathodeOption)
     self._drawingControlBox.addWidget(self._t0sliderLabelIntro)
@@ -602,6 +620,10 @@ class gui(QtGui.QWidget):
       self._view_manager.selectPlane(-1)
       self._view_manager.refreshDrawListWidget()
       return
+
+  def subtractPedestalWorker(self):
+    # Implemented in evdgui.py
+    return
 
   def scaleBarWorker(self):
     if self._scaleBarOption.isChecked():

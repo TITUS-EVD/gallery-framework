@@ -257,14 +257,14 @@ class evdgui(gui):
 
     def wireChoiceWorker(self):
         sender = self.sender()
-        self._view_manager.drawingRawDigits(False)
+        self._view_manager.setDrawingRawDigits(False)
         if sender == self._noneWireButton:
             self._event_manager.toggleWires(None)
         if sender == self._wireButton:
             self._event_manager.toggleWires('wire',stage = self._stage)
         if sender == self._rawDigitButton:
             self._event_manager.toggleWires('rawdigit',stage = self._stage)
-            self._view_manager.drawingRawDigits(True)
+            self._view_manager.setDrawingRawDigits(True)
 
         self._view_manager.drawPlanes(self._event_manager)
 
@@ -325,6 +325,21 @@ class evdgui(gui):
             self._event_manager.redrawProduct(sender.name(), prod, self._view_manager)
             self.specialHandles(sender.name(), True)
 
+    def subtractPedestalWorker(self):
+        if self._subtractPedestal.isChecked():
+            print ('_subtractPedestal is checked')
+            self._subtract_pedestal = True
+        else:
+            print ('_subtractPedestal is NOT checked')
+            self._subtract_pedestal = False
+
+        if self._view_manager.drawingRawDigits():
+            print ('        calling toggleWires')
+            self._event_manager.toggleWires('rawdigit',
+                                            stage=self._stage, 
+                                            subtract_pedestal=self._subtract_pedestal)
+
+            self._view_manager.drawPlanes(self._event_manager)
 
     def specialHandles(self, name, visibility):
         '''

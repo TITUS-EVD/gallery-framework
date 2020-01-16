@@ -74,13 +74,19 @@ class track(recoBase):
                 x = pair.first / geom.wire2cm()
                 y = pair.second / geom.time2cm() + offset
 
+
+                # cathode_x = geom.getGeometryCore().Plane(0, track.tpc(), track.cryo()).GetCenter().X() - 2 * geom.getGeometryCore().DetHalfWidth()
+                # print ('cathode_x', cathode_x)
+                # y -= cathode_x
+
                 # plane_x = geom.getGeometryCore().Plane(view.plane(), track.tpc(), track.cryo()).GetCenter().X()
                 # plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
                 # delta_x = plane_x - plane_x_ref - 2 * geom.halfwidth()
                 # y += this_offset/geom.time2cm()
 
-                y += location * (geom.tRange()) # + geom.cathodeGap())
-                y -= location * (2 * geom.halfwidth())/geom.time2cm()
+                # y += location * (geom.tRange()) # + geom.cathodeGap())
+                # y -= location * (2 * geom.halfwidth())/geom.time2cm()
+
                 # print (delta_x/geom.time2cm())
 
                 # this_offset = -plane_x_ref + delta_x

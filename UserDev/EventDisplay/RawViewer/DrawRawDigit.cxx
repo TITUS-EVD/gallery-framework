@@ -147,9 +147,13 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
       std::vector<float>&          planeRawDigitVec = temp_data_holder[plane];
       std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;
 
+      float pedestal = 0;
+      if (_subtract_pedestal) {
+        pedestal = ped;
+      }
       // Copy with pedestal subtraction
       for(const auto& adcVal : rawdigit.ADCs()) {
-        *startItr++ = adcVal - ped;
+        *startItr++ = adcVal - pedestal;
       }
     }
   }

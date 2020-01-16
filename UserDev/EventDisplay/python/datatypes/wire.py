@@ -113,3 +113,7 @@ class rawDigit(wire):
             
     def toggleNoiseFilter(self, filterNoise):
         self._process.SetCorrectData(filterNoise) 
+
+    def setSubtractPedestal(self, subtract_pedestal=True):
+        self._process.SetSubtractPedestal(subtract_pedestal)
+

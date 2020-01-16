@@ -273,7 +273,7 @@ class geometry(geoBase):
         self._halfwidth = geometryCore.DetHalfWidth()
         self._halfheight = geometryCore.DetHalfHeight()
         self._length = geometryCore.DetLength()      
-        self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature());
+        self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
         self._wire2Cm = geometryCore.WirePitch()
         self._samplingRate = detProperties.SamplingRate()
         self._aspectRatio = self._wire2Cm / self._time2Cm
@@ -385,7 +385,7 @@ class icarus(geometry):
         # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
-        # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
+        # self._pedestals = [2048, 2048, 400]
         # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
         self._pedestals = [0, 0, 0]
         self._levels = [(-80, 0), (-10, 100), (-10, 100)]
@@ -399,6 +399,7 @@ class icarus(geometry):
         self._haslogo = False
         self._logopos = [30, 30]
         self._logoscale = 0.13
+        self._opdet_radius = 7
         # self._tRange = 7500 #3000
         # self._triggerOffset = 2500 #0
         # self._readoutWindowSize = 7500 #3000

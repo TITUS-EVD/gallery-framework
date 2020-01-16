@@ -61,6 +61,7 @@ public:
 
     void SetCorrectData(bool _doit = true) {_correct_data = _doit;}
     void setPadding(size_t padding, size_t plane);
+    void SetSubtractPedestal(bool option = true) {_subtract_pedestal = option;}
 
 
 private:
@@ -70,6 +71,8 @@ private:
 
     ub_noise_filter::UbooneNoiseFilter _noise_filter;
     std::vector<size_t> _padding_by_plane;
+
+    bool _subtract_pedestal; ///< Settable. If true, the pedestal is subtracted.
 
 };
 }

@@ -391,6 +391,7 @@ class evd_manager_2D(evd_manager_base):
             if informal_type == "RawDigit":
                 self.noiseFilterChanged.connect(
                     drawingClass.runNoiseFilter)
+                drawingClass.SetSubtractPdedestal(True)
 
             drawingClass.setProducer(product.fullName())
             self._processer.add_process(product, drawingClass._process)
@@ -418,7 +419,6 @@ class evd_manager_2D(evd_manager_base):
         # self.drawTruth()
         for item in order:
             if item in self._drawnClasses:
-                print ('fresh *********Name: ', item)
                 self._drawnClasses[item].drawObjects(self._view_manager)
 
     def getAutoRange(self, plane):
@@ -449,8 +449,9 @@ class evd_manager_2D(evd_manager_base):
         return xRange, yRange
 
     # handle all the wire stuff:
-    def toggleWires(self, product, stage=None):
+    def toggleWires(self, product, stage=None, subtract_pedestal=True):
         # Now, either add the drawing process or remove it:
+        print ('toggleWires called, subtract_pedestal =', subtract_pedestal)
 
         if stage is None:
             stage = 'all'
@@ -463,7 +464,7 @@ class evd_manager_2D(evd_manager_base):
             self._drawWires = True
             self._wireDrawer = datatypes.recoWire(self._geom)
 
-            if self._geom.name() == 'icarus':
+            if self._geom.name() == 'icarus' and len(self._keyTable[stage]['recob::Wire']) > 3:
                 producer = [self._keyTable[stage]['recob::Wire'][0].fullName(),
                             self._keyTable[stage]['recob::Wire'][1].fullName(),
                             self._keyTable[stage]['recob::Wire'][2].fullName(),
@@ -483,8 +484,9 @@ class evd_manager_2D(evd_manager_base):
                 return
             self._drawWires = True
             self._wireDrawer = datatypes.rawDigit(self._geom)
+            self._wireDrawer.setSubtractPedestal(subtract_pedestal)
 
-            if self._geom.name() == 'icarus':
+            if self._geom.name() == 'icarus' and len(self._keyTable[stage]['recob::Wire']) > 3:
                 producer = [self._keyTable[stage]['raw::RawDigit'][0].fullName(),
                             self._keyTable[stage]['raw::RawDigit'][1].fullName(),
                             self._keyTable[stage]['raw::RawDigit'][2].fullName(),
