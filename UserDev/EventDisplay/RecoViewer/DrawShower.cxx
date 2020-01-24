@@ -17,14 +17,18 @@ DrawShower::DrawShower(const geo::GeometryCore& geometry, const detinfo::Detecto
 bool DrawShower::initialize() {
 
   // // Resize data holder to accommodate planes and wires:
-  if (_dataByPlane.size() != geoService -> Nviews()) {
-    _dataByPlane.resize(geoService -> Nviews());
+  size_t _total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (_dataByPlane.size() != _total_plane_number) {
+    _dataByPlane.resize(_total_plane_number);
   }
   return true;
 
 }
 
 bool DrawShower::analyze(gallery::Event * ev) {
+
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+
 
   // get a handle to the showers
   art::InputTag shower_tag(_producer);
@@ -42,7 +46,7 @@ bool DrawShower::analyze(gallery::Event * ev) {
 
 
   // Clear out the hit data but reserve some space for the showers
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  for (unsigned int p = 0; p < total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(showerHandle -> size());
     _wireRange.at(p).first  = 99999;
@@ -57,7 +61,7 @@ bool DrawShower::analyze(gallery::Event * ev) {
 
     auto const& shower = showerHandle->at(s);
 
-    for (unsigned int view = 0; view < geoService -> Nviews(); view++) {
+    for (unsigned int view = 0; view < total_plane_number; view++) {
       // get the reconstructed shower for this plane
       auto shr2D = getShower2d(shower, view);
       _dataByPlane.at(view).push_back( shr2D );
@@ -78,17 +82,17 @@ bool DrawShower::finalize() {
 
 Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane) {
 
-
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
 
   Shower2D result;
   result._is_good = false;
   result._plane = plane;
   // Fill out the parameters of the 2d shower
-  result._startPoint
-    = geoHelper -> Point_3Dto2D(shower.ShowerStart(), plane);
+  result._startPoint = geo_helper.Point_3Dto2D(shower.ShowerStart(), plane);
+    // = geoHelper -> Point_3Dto2D(shower.ShowerStart(), plane);
 
   // Next get the direction:
-  result._angleInPlane = geoHelper->Slope_3Dto2D(shower.Direction(), plane);
+  result._angleInPlane = geo_helper.Slope_3Dto2D(shower.Direction(), plane);
 
   // Get the opening Angle:
   // result._openingAngle = shower.OpeningAngle();
@@ -100,7 +104,7 @@ Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane) {
 
 
   result._endPoint
-    = geoHelper -> Point_3Dto2D(secondPoint, plane);
+    = geo_helper.Point_3Dto2D(secondPoint, plane);
 
   result._length = sqrt(pow(result.startPoint().w - result.endPoint().w, 2) +
                         pow(result.startPoint().t - result.endPoint().t, 2));

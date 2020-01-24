@@ -17,7 +17,7 @@ class wire(dataBase):
         self._plane_mix = {}
         self._plane_flip = []
 
-    def getPlane(self, plane):
+    def getPlane(self, plane, cryo=0):
         '''
         Returns the array of values for the selected plane.
         The values are stored in a 2d array, containing the
@@ -31,6 +31,8 @@ class wire(dataBase):
         TPCs, to account for a gap between the two cathodes. This gap is
         customizable by changing the geometry value "cathode gap".
         '''
+        plane += cryo * self._n_plane * self._n_tpc
+        
         if self._n_tpc == 2:
             array_right = self._process.getArrayByPlane(plane)
             for left_plane in self._plane_mix[plane]:

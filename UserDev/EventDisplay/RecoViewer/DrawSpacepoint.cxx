@@ -16,13 +16,17 @@ DrawSpacepoint::DrawSpacepoint(const geo::GeometryCore& geometry, const detinfo:
 }
 
 bool DrawSpacepoint::initialize() {
-  if (_dataByPlane.size() != geoService -> Nviews()) {
-    _dataByPlane.resize(geoService -> Nviews());
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (_dataByPlane.size() != total_plane_number) {
+    _dataByPlane.resize(total_plane_number);
   }
   return true;
 }
 
 bool DrawSpacepoint::analyze(gallery::Event * ev) {
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+
 
 
   // get a handle to the tracks
@@ -30,10 +34,10 @@ bool DrawSpacepoint::analyze(gallery::Event * ev) {
   auto const & spacepointHandle
         = ev -> getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
 
-  geoHelper = larutil::GeometryHelper::GetME();
+  // geoHelper = larutil::GeometryHelper::GetME();
 
   // Clear out the data but reserve some space
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  for (unsigned int p = 0; p < total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(spacepointHandle -> size());
     _wireRange.at(p).first  = 99999;
@@ -48,11 +52,12 @@ bool DrawSpacepoint::analyze(gallery::Event * ev) {
   for (auto & spt : *spacepointHandle) {
 
     // A spacepoint is a 3D object.  So take it and project it into each plane:
-    for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+    for (unsigned int p = 0; p < total_plane_number; p ++) {
 
 
       try {
-        point = geoHelper -> Point_3Dto2D(spt.XYZ(), p);
+        // point = geoHelper -> Point_3Dto2D(spt.XYZ(), p);
+        point = geo_helper.Point_3Dto2D(spt.XYZ(), p);
       }
       catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
@@ -61,14 +66,14 @@ bool DrawSpacepoint::analyze(gallery::Event * ev) {
 
 
       // Determine if this hit should change the view range:
-      if (point.w / geoHelper->WireToCm() > _wireRange.at(p).second)
-        _wireRange.at(p).second = point.w / geoHelper->WireToCm();
-      if (point.w / geoHelper->WireToCm() < _wireRange.at(p).first)
-        _wireRange.at(p).first = point.w / geoHelper->WireToCm();
-      if (point.t / geoHelper->TimeToCm() > _timeRange.at(p).second)
-        _timeRange.at(p).second = point.t / geoHelper->TimeToCm();
-      if (point.t / geoHelper->TimeToCm() < _timeRange.at(p).first)
-        _timeRange.at(p).first = point.t / geoHelper->TimeToCm();
+      if (point.w / geo_helper.WireToCm() > _wireRange.at(p).second)
+        _wireRange.at(p).second = point.w / geo_helper.WireToCm();
+      if (point.w / geo_helper.WireToCm() < _wireRange.at(p).first)
+        _wireRange.at(p).first = point.w / geo_helper.WireToCm();
+      if (point.t / geo_helper.TimeToCm() > _timeRange.at(p).second)
+        _timeRange.at(p).second = point.t / geo_helper.TimeToCm();
+      if (point.t / geo_helper.TimeToCm() < _timeRange.at(p).first)
+        _timeRange.at(p).first = point.t / geo_helper.TimeToCm();
     }
   }
 

@@ -533,9 +533,9 @@ class evd_manager_2D(evd_manager_base):
             self.processEvent(True)
 
 
-    def getPlane(self, plane):
+    def getPlane(self, plane, cryo=0):
         if self._drawWires:
-            return self._wireDrawer.getPlane(plane)
+            return self._wireDrawer.getPlane(plane, cryo)
 
     def getOpDetWvf(self):
         if self._drawOpDetWvf:

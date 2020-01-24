@@ -8,13 +8,17 @@ namespace evd {
 NumuSelection2D DrawNumuSelection::getNumuSelection2D(
     recob::Vertex vtx, std::vector<recob::Track> tracks, unsigned int plane) {
 
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+
+  
   NumuSelection2D result;
 
   // Vertex
   try {
     double pos[3];
     vtx.XYZ(pos);
-    auto point = geoHelper->Point_3Dto2D(pos, plane);
+    // auto point = geoHelper->Point_3Dto2D(pos, plane);
+    auto point = geo_helper.Point_3Dto2D(pos, plane);
     result._vertex = point;
   } catch (...) {
   }
@@ -32,7 +36,8 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(
         if (trk.HasValidPoint(i)) {
           auto loc = trk.LocationAtPoint(i);
           TVector3 xyz(loc.X(),loc.Y(),loc.Z());
-          auto point = geoHelper->Point_3Dto2D(xyz, plane);
+          // auto point = geoHelper->Point_3Dto2D(xyz, plane);
+          auto point = geo_helper.Point_3Dto2D(xyz, plane);
           trk_out._track.push_back(std::make_pair(point.w, point.t));
         }
       } catch (...) {
@@ -65,8 +70,9 @@ DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore& geometry, const de
 bool DrawNumuSelection::initialize() {
 
   // Resize data holder
-  if (_dataByPlane.size() != geoService->Nviews()) {
-    _dataByPlane.resize(geoService->Nviews());
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (_dataByPlane.size() != total_plane_number) {
+    _dataByPlane.resize(total_plane_number);
   }
   return true;
 }
@@ -91,6 +97,7 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
   //
 
   // std::cout << "Producer is " << _producer << std::endl;
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   std::vector<recob::Vertex> vertices;
   std::vector<recob::Track> tracks;
@@ -115,7 +122,7 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
   }
 
   // Clear out the data but reserve some space for the tracks
-  for (unsigned int p = 0; p < geoService->Nviews(); p++) {
+  for (unsigned int p = 0; p < total_plane_number; p++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(vertices.size());
     _wireRange.at(p).first = 99999;
@@ -125,7 +132,7 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
   }
 
   for (auto const &vtx : vertices) {
-    for (unsigned int view = 0; view < geoService->Nviews(); view++) {
+    for (unsigned int view = 0; view < total_plane_number; view++) {
       _dataByPlane.at(view).push_back(
           this->getNumuSelection2D(vtx, tracks, view));
     }

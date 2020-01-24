@@ -18,6 +18,9 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned i
       if (track.HasValidPoint(i)) {
           auto loc = track.LocationAtPoint(i);
           TVector3 xyz(loc.X(),loc.Y(),loc.Z());
+          if (loc.Z() > 1050 && loc.Z() < 1120) {
+            std::cout << " > " << loc.X() << loc.Y() << loc.Z() << std::endl;
+          }
           auto point = geo_helper.Point_3Dto2D(xyz, plane, tpc, cryostat);
           result._track.push_back(std::make_pair(point.w, point.t));
       }

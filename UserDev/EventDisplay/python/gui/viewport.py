@@ -9,7 +9,7 @@ class viewport(pg.GraphicsLayoutWidget):
 
   drawHitsRequested = QtCore.pyqtSignal(int, int)
 
-  def __init__(self, geometry,plane=-1):
+  def __init__(self, geometry, plane=-1, cryostat=0):
     super(viewport, self).__init__(border=None)
     # add a view box, which is a widget that allows an image to be shown
     self._view = self.addViewBox(border=None)
@@ -18,12 +18,12 @@ class viewport(pg.GraphicsLayoutWidget):
     # self._item._setPen((0,0,0))
     self._view.addItem(self._item)
     
-    self._line_a = None
-    self._line_c = None
-    self._line_a_2 = None
-    self._line_c_2 = None
+    # self._line_a = None
+    # self._line_c = None
+    # self._line_a_2 = None
+    # self._line_c_2 = None
     self._removed_entries = 0
-    self._line_tpc_div = None
+    # self._line_tpc_div = None
     self._manual_t0 = 0
     self._showAnodeCathode = False
 
@@ -37,6 +37,7 @@ class viewport(pg.GraphicsLayoutWidget):
     # connect the views to mouse move events, used to update the info box at the bottom
     self.scene().sigMouseMoved.connect(self.mouseMoved)
     self._plane = plane
+    self._cryostat = cryostat
     self._cmSpace = False
     self._geometry = geometry
     self._original_image = None
@@ -70,7 +71,6 @@ class viewport(pg.GraphicsLayoutWidget):
     # each drawer contains its own color gradient and levels
     # this class can return a widget containing the right layout for everything
     # Define some color collections:
-
 
     self._colorMap = self._geometry.colorMap(self._plane)
 
@@ -246,10 +246,17 @@ class viewport(pg.GraphicsLayoutWidget):
 
     max_wire = self._geometry._wRange[self._plane]
 
-    for tpc in range(0, int(self._geometry.nPlanes() / 3)):
+    for tpc in range(0, int(self._geometry.nTPCs())):
 
-        x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
-        x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
+        # Take into account the distance between planes
+        plane_x_ref = self._geometry.getGeometryCore().Plane(0).GetCenter().X()
+        plane_x = self._geometry.getGeometryCore().Plane(self._plane).GetCenter().X()
+        delta_plane = abs(plane_x - plane_x_ref)
+        
+        offset = self._geometry.triggerOffset() * self._geometry.time2cm() - delta_plane
+
+        x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
+        x_anode   = offset/self._geometry.time2cm()
 
         # If we are changing the t0, shift the anode and cathode position
         x_cathode += self._manual_t0
@@ -340,6 +347,13 @@ class viewport(pg.GraphicsLayoutWidget):
   def mouseMoved(self, pos):
     self.q = self._item.mapFromScene(pos)
     self._lastPos = self.q
+
+    offset = 0
+    for i in range(self._geometry.nTPCs() * self._geometry.nCryos(), 0, -1):
+        if self.q.y() > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
+            offset = -i * (self._geometry.tRange() + self._geometry.cathodeGap())
+            break 
+
     if (pg.Qt.QT_LIB == 'PyQt4'):
       message= QtCore.QString()
     else:
@@ -361,22 +375,24 @@ class viewport(pg.GraphicsLayoutWidget):
     if self._cmSpace:
       if type(message) != str:
         message.append(", Y: ")
-        message.append("{0:.1f}".format(self.q.y()*self._geometry.time2cm() - self._geometry.offset(self._plane)))
+        message.append("{0:.1f}".format((self.q.y()+offset)*self._geometry.time2cm() - self._geometry.offset(self._plane)))
       else:
         message += ", Y: "
-        message += "{0:.1f}".format(self.q.y()*self._geometry.time2cm() - self._geometry.offset(self._plane))
+        message += "{0:.1f}".format((self.q.y()+offset)*self._geometry.time2cm() - self._geometry.offset(self._plane))
     else:
       if type(message) != str:
         message.append(", T: ")
-        message.append(str(int(self.q.y())))
+        message.append(str(int(self.q.y()+offset)))
       else:
         message += ", T: "
-        message += str(int(self.q.y()))
+        message += str(int(self.q.y()+offset))
 
     # print (message)
-    max_trange = self._geometry.tRange()
-    if self._geometry.nTPCs() == 2: 
-        max_trange *= 2
+    max_trange = self._geometry.tRange() * self._geometry.nTPCs()
+
+    # if self._geometry.nTPCs() == 2: 
+    #     max_trange *= 2
+
     if self.q.x() > 0 and self.q.x() < self._geometry.wRange(self._plane):
       if self.q.y() > 0 and self.q.y() < max_trange:
         self._statusBar.showMessage(message)
@@ -396,12 +412,21 @@ class viewport(pg.GraphicsLayoutWidget):
       if event.pos() is not  None:
         self.processPoint(self._lastPos)
 
-    # 
-    wire = int( self._lastPos.x())
+    # Figure out in which tpc we are, so we can display only the wire for the selected tpc
+    first_entry = 0
+    last_entry = self._geometry.tRange()
+    for i in range(self._geometry.nTPCs(), 0, -1):
+        if self.q.y() > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
+            first_entry = int (i * (self._geometry.tRange() + self._geometry.cathodeGap()))
+            last_entry = int((i+1) * (self._geometry.tRange() + self._geometry.cathodeGap()))
+            break 
+
+    wire = int(self._lastPos.x())
     if self._item.image is not None:
       # get the data from the plot:
       data = self._item.image
       self._wireData = data[wire]
+      self._wireData = self._wireData[first_entry:last_entry]
       self._wdf(self._wireData)
       # print "Plane: " + str(self._plane) + ", Wire: " + str(wire)
       # return self.plane,self.wire
@@ -422,7 +447,7 @@ class viewport(pg.GraphicsLayoutWidget):
 
   def setRangeToMax(self):
     xR = (0, self._geometry.wRange(self._plane))
-    n_planes_per_view = self._geometry.nTPCs() * self._geometry.nCryos()
+    n_planes_per_view = self._geometry.nTPCs()
     yR = (0, n_planes_per_view * self._geometry.tRange())
     self._view.setRange(xRange=xR,yRange=yR, padding=0.002)
 
@@ -511,6 +536,9 @@ class viewport(pg.GraphicsLayoutWidget):
   def plane(self):
     return self._plane
 
+  def cryostat(self):
+    return self._cryostat
+
   def lockRatio(self, lockAR ):
     ratio = self._geometry.aspectRatio()
     if lockAR:
@@ -533,27 +561,27 @@ class viewport(pg.GraphicsLayoutWidget):
         self.drawTPCdivision()
 
   def drawTPCdivision(self):
-    if self._line_tpc_div in self._view.addedItems:
-      self._view.removeItem(self._line_tpc_div)
 
     for l in self._tpc_div_lines:
         if l in self._view.addedItems:
             self._view.removeItem(l)
 
     max_wire = self._geometry._wRange[self._plane]
+    line_width = 1
 
-    for tpc in range(1, int(self._geometry.nPlanes() / 3)):
+    for tpc in range(1, self._geometry.nTPCs()):
 
         x_tpc = tpc * self._geometry.tRange()              # Place it at the end of one TPC
         x_tpc += (tpc - 1) * self._geometry.cathodeGap()   # Add the gap accumulated previously 
         x_tpc += self._geometry.cathodeGap() / 2           # Add half the gap between the 2 TPCs 
-        x_tpc -= tpc * self._removed_entries               # Remove eventually removed entries to unite the cathodes
-    
+        x_tpc -= tpc * self._removed_entries               # Remove potentially removed entries to unite the cathodes
+
         # Draw the line and append it
         line = QtGui.QGraphicsRectItem()
         line.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
         line.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
-        line.setRect(0, x_tpc - self._geometry.cathodeGap() / 2, max_wire, self._geometry.cathodeGap())
+        # Remove half a pixel (line_width/2), that would otherwise cover half a time tick
+        line.setRect(0 + line_width/2, x_tpc - self._geometry.cathodeGap() / 2 + line_width/2, max_wire - line_width/2, self._geometry.cathodeGap() - line_width/2)
         self._view.addItem(line)
         self._tpc_div_lines.append(line)
 

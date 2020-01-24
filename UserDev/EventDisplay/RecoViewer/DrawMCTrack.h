@@ -60,7 +60,7 @@ public:
   virtual bool finalize();
 
 private:
-  MCTrack2D getMCTrack2D(sim::MCTrack track, unsigned int plane);
+  MCTrack2D getMCTrack2D(sim::MCTrack track, unsigned int plane, unsigned int tpc = 0, unsigned int cryostat = 0);
 };
 
 } // evd

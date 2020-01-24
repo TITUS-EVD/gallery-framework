@@ -16,8 +16,6 @@
 
 #include <iostream>
 #include <vector>
-// #include "LArUtil/Geometry.h"
-// #include "LArUtil/DetectorProperties.h"
 
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorProperties.h"
@@ -101,9 +99,6 @@ namespace evd {
     std::vector<unsigned int> _y_dimensions;
 
     std::vector<float> _pedestals;
-
-    // const larutil::Geometry * geoService;
-    // const larutil::DetectorProperties * detProp;
 
     const geo::GeometryCore&           _geo_service;
     const detinfo::DetectorProperties& _det_prop;

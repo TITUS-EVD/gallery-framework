@@ -94,23 +94,23 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
 
 Point2D SimpleGeometryHelper::Point_3Dto2D(double * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
-  return Point_3Dto2D(vec, plane);
+  return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(float * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
-  return Point_3Dto2D(vec, plane);
+  return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(float x, float y, float z, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(x, y, z);
-  return Point_3Dto2D(vec, plane);
+  return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
-  return Point_3Dto2D(vec, plane);
+  return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
-  return Point_3Dto2D(vec, plane);
+  return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 
 void SimpleGeometryHelper::Line_3Dto2D( const TVector3 & startPoint3D, const TVector3 & direction3D, unsigned int plane,
@@ -397,8 +397,8 @@ double SimpleGeometryHelper::CalculatePitch(UInt_t pl, double phi, double theta)
 
   double pitch = -1.;
 
-  if (geom.View(pl) == galleryfmwk::geo::kUnknown ||
-      geom.View(pl) == galleryfmwk::geo::k3D) {
+  if (geom.View(pl) == geo::View_t::kUnknown ||
+      geom.View(pl) == geo::View_t::k3D) {
     galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for view %d", geom.View(pl)));
     return pitch;
   }

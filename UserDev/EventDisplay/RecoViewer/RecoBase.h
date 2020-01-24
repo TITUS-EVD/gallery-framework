@@ -24,9 +24,9 @@ typedef _object PyObject;
 // #include "numpy/arrayobject.h"
 // #endif
 
-#include "LArUtil/Geometry.h"
-#include "LArUtil/GeometryHelper.h"
-#include "LArUtil/DetectorProperties.h"
+// #include "LArUtil/Geometry.h"
+// #include "LArUtil/GeometryHelper.h"
+// #include "LArUtil/DetectorProperties.h"
 
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorProperties.h"
@@ -68,9 +68,9 @@ protected:
 
   void _init_base();
 
-  const larutil::Geometry * geoService;
-  const larutil::GeometryHelper * geoHelper;
-  const larutil::DetectorProperties * detProp;
+  // const larutil::Geometry * geoService;
+  // const larutil::GeometryHelper * geoHelper;
+  // const larutil::DetectorProperties * detProp;
 
   const geo::GeometryCore&           _geo_service;
   const detinfo::DetectorProperties& _det_prop;
@@ -96,9 +96,9 @@ RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry, const detinfo:
   _geo_service(geometry),
   _det_prop(detectorProperties)
 {
-  geoService = larutil::Geometry::GetME();
-  geoHelper = larutil::GeometryHelper::GetME();
-  detProp = larutil::DetectorProperties::GetME();
+  // geoService = larutil::Geometry::GetME();
+  // geoHelper = larutil::GeometryHelper::GetME();
+  // detProp = larutil::DetectorProperties::GetME();
   
   // Set up default values of the _wire and _time range
   int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();

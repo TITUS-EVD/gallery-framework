@@ -64,8 +64,9 @@ class recoBase(dataBase):
         self._process.initialize()
 
     def clearDrawnObjects(self, view_manager):
+        geom = view_manager._geometry
         for view in view_manager.getViewPorts():
-            thisPlane = view.plane()
+            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
             if len(self._drawnObjects) > thisPlane:
                 for item in self._drawnObjects[thisPlane]:
                     view._view.removeItem(item)

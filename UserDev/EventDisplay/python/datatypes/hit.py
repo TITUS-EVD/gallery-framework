@@ -36,7 +36,8 @@ class hit(recoBase):
 
         geom = view_manager._geometry
         for view in view_manager.getViewPorts():
-            thisPlane = view.plane()
+            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            # print('view.plane()', view.plane(), 'view.cryostat()', view.cryostat(), 'geom.nPlanes()', geom.nPlanes(), 'thisPlane', thisPlane)
             for i in range(0, self._n_planes): self._drawnObjects.append([])
             # First get the hit information:
             hits = self._process.getDataByPlane(thisPlane)
@@ -61,7 +62,7 @@ class hit(recoBase):
             width = 1
             height = hit.rms()
 
-            location = hit.tpc() + hit.cryo() * self._n_tpcs
+            location = hit.tpc()
 
             # Flip the time if odd tpc
             if hit.tpc() % 2 == 1:

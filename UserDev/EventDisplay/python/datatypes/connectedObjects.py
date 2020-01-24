@@ -141,7 +141,7 @@ class boxCollection(QtCore.QObject):
             width = 1
             height = hit.rms()
 
-            location = hit.tpc() + hit.cryo() * geom.nTPCs()
+            location = hit.tpc()
 
             # Flip the time if odd tpc
             if hit.tpc() % 2 == 1:
@@ -152,9 +152,6 @@ class boxCollection(QtCore.QObject):
 
             # Add the ad-hoc gap between TPCs
             time = time + location * geom.cathodeGap()
-
-            # if flip and hit.plane() > 2:
-            #     time = 2 * geom.tRange() - time + geom.cathodeGap()
 
             # Draws a rectangle at (x,y,xlength, ylength)
             r = connectedBox(wire, time, width, height)

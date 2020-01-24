@@ -145,9 +145,11 @@ class evdgui(gui):
     # This function sets up the eastern widget
     def getEastLayout(self):
         # This function just makes a dummy eastern layout to use.
-        label1 = QtGui.QLabel("EVD")
+        label1 = QtGui.QLabel("TITUS")
+        label1a = QtGui.QLabel("The event display")
+        label1b = QtGui.QLabel("for SBN @ Fermilab")
         geoName = self._geometry.name()
-        label2 = QtGui.QLabel(geoName.upper())
+        label2 = QtGui.QLabel('Detector: '+geoName.upper())
         font = label1.font()
         font.setBold(True)
         label1.setFont(font)
@@ -160,6 +162,8 @@ class evdgui(gui):
         self._eastLayout = QtGui.QVBoxLayout()
         # add the information sections:
         self._eastLayout.addWidget(label1)
+        self._eastLayout.addWidget(label1a)
+        self._eastLayout.addWidget(label1b)
         self._eastLayout.addWidget(label2)
         self._eastLayout.addStretch(1)
 
@@ -241,8 +245,8 @@ class evdgui(gui):
         self._eastLayout.addStretch(2)
 
         self._eastWidget.setLayout(self._eastLayout)
-        self._eastWidget.setMaximumWidth(150)
-        self._eastWidget.setMinimumWidth(100)
+        self._eastWidget.setMaximumWidth(180)
+        self._eastWidget.setMinimumWidth(130)
         return self._eastWidget
 
     def drawableProductsChanged(self):

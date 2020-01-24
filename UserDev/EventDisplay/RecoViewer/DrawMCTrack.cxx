@@ -5,15 +5,18 @@
 
 namespace evd {
 
-MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane) {
+MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
   MCTrack2D result;
-  auto geoHelper = larutil::GeometryHelper::GetME();
+  // auto geoHelper = larutil::GeometryHelper::GetME();
   result._track.reserve(track.size());
   for (unsigned int i = 0; i < track.size(); i++) {
     // project a point into 2D:
     try {
-      auto point = geoHelper->Point_3Dto2D(track[i].X(), track[i].Y(),
-                                           track[i].Z(), plane);
+      auto point = geo_helper.Point_3Dto2D(track[i].X(), track[i].Y(), track[i].Z(), 
+                                           plane, tpc, cryostat);
+      // auto point = geoHelper->Point_3Dto2D(track[i].X(), track[i].Y(),
+      //                                      track[i].Z(), plane);
       result._track.push_back(std::make_pair(point.w, point.t));
     } catch (...) {
       continue;
@@ -36,8 +39,9 @@ DrawMCTrack::DrawMCTrack(const geo::GeometryCore& geometry, const detinfo::Detec
 bool DrawMCTrack::initialize() {
 
   // Resize data holder
-  if (_dataByPlane.size() != geoService->Nviews()) {
-    _dataByPlane.resize(geoService->Nviews());
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (_dataByPlane.size() != total_plane_number) {
+    _dataByPlane.resize(total_plane_number);
   }
   return true;
 }
@@ -61,6 +65,9 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
   //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
   //
 
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+
+
   art::InputTag truth_tag("generator::GenieGen");
   auto const &truthHandle =
       ev->getValidHandle<std::vector<simb::MCTruth>>(truth_tag);
@@ -75,7 +82,7 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
       ev->getValidHandle<std::vector<sim::MCTrack>>(tracks_tag);
 
   // Clear out the data but reserve some space for the tracks
-  for (unsigned int p = 0; p < geoService->Nviews(); p++) {
+  for (unsigned int p = 0; p < total_plane_number; p++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(trackHandle->size());
     _wireRange.at(p).first = 99999;
@@ -84,10 +91,17 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
     _wireRange.at(p).second = -1.0;
   }
 
+  // just a placeholder for now
+  unsigned int track_tpc = 0;
+  unsigned int track_cryo = 0;
+
   // Populate the track vector:
   for (auto &track : *trackHandle) {
-    for (unsigned int view = 0; view < geoService->Nviews(); view++) {
-      _dataByPlane.at(view).push_back(getMCTrack2D(track, view));
+    for (unsigned int p = 0; p < total_plane_number; p++) {
+      auto tr = getMCTrack2D(track, p, track_tpc, track_cryo);
+      tr._tpc = track_tpc;
+      tr._cryo = track_cryo;
+      _dataByPlane.at(p).push_back(tr);
     }
   }
 

@@ -219,6 +219,30 @@ class geometry(geoBase):
                        (0.791, (254, 209, 65, 255)),
                        (1, (255, 0, 0, 255))],
              'mode': 'rgb'})
+        self._defaultColorScheme.append(
+            {'ticks': [(1, (22, 30, 151, 255)),
+                       (0.791, (0, 181, 226, 255)),
+                       (0.645, (76, 140, 43, 255)),
+                       (0.47, (0, 206, 24, 255)),
+                       (0.33333, (254, 209, 65, 255)),
+                       (0, (255, 0, 0, 255))],
+             'mode': 'rgb'})
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
+        self._defaultColorScheme.append(
+            {'ticks': [(0, (22, 30, 151, 255)),
+                       (0.33333, (0, 181, 226, 255)),
+                       (0.47, (76, 140, 43, 255)),
+                       (0.645, (0, 206, 24, 255)),
+                       (0.791, (254, 209, 65, 255)),
+                       (1, (255, 0, 0, 255))],
+             'mode': 'rgb'})
 
     def configure(self):
         '''
@@ -278,9 +302,11 @@ class geometry(geoBase):
         self._samplingRate = detProperties.SamplingRate()
         self._aspectRatio = self._wire2Cm / self._time2Cm
         self._nViews = geometryCore.Nviews() * geometryCore.NTPC() * geometryCore.Ncryostats()
+        self._nPlanes = geometryCore.Nplanes()
         self._nTPCs = int(geometryCore.NTPC())
         self._nCryos = int(geometryCore.Ncryostats())
-        self._nPlanes = int(geometryCore.Nplanes()) * geometryCore.NTPC() * geometryCore.Ncryostats()
+        print ('geom self._nCryos', self._nCryos)
+        # self._nPlanes = int(geometryCore.Nplanes()) * geometryCore.NTPC() * geometryCore.Ncryostats()
         self._tRange = detProperties.NumberTimeSamples()
         self._readoutWindowSize = detProperties.NumberTimeSamples()
         self._triggerOffset = detProperties.TriggerOffset()
@@ -358,6 +384,18 @@ class sbnd(geometry):
             {'ticks': [(0, (255, 255, 255, 255)),
                        (1, (0, 0, 0, 255))],
              'mode': 'rgb'})
+        color_scheme.append(
+            {'ticks': [(1, (255, 255, 255, 255)),
+                       (0, (0, 0, 0, 255))],
+             'mode': 'rgb'})
+        color_scheme.append(
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
+             'mode': 'rgb'})
+        color_scheme.append(
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
+             'mode': 'rgb'})
 
         self._colorScheme['grayscale'] = color_scheme
 
@@ -387,10 +425,11 @@ class icarus(geometry):
 
         # self._pedestals = [2048, 2048, 400]
         # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
-        self._pedestals = [0, 0, 0]
-        self._levels = [(-80, 0), (-10, 100), (-10, 100)]
-        self._view_names = ['H', 'U', 'V']
-        self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
+        self._pedestals = [0, 0, 0, 0, 0, 0]
+        self._levels = [(-80, 0), (-10, 100), (-10, 100), (-80, 0), (-10, 100), (-10, 100)]
+        self._view_names = ['Cryo 0, view H', 'Cryo 0, view U', 'Cryo 0, view V', 'Cryo 1, view H', 'Cryo 1, view U', 'Cryo 1, view V']
+        # self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
+        self._plane_mix = {0: [3], 1: [5], 2: [4], 6: [9], 7: [11], 8: [10]}
         self._plane_flip = [False, False, False, True, True, True, False, False, False, True, True, True]
 
         self._name = "icarus"
@@ -398,7 +437,7 @@ class icarus(geometry):
         self._logoRatio = 1.0
         self._haslogo = False
         self._logopos = [30, 30]
-        self._logoscale = 0.13
+        self._logoscale = 0.35
         self._opdet_radius = 7
         # self._tRange = 7500 #3000
         # self._triggerOffset = 2500 #0

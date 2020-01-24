@@ -20,9 +20,9 @@ bool DrawEndpoint::initialize() {
   // If you have a histogram to fill in the event loop, for example,
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
-
-  if (_dataByPlane.size() != geoService -> Nviews()) {
-    _dataByPlane.resize(geoService -> Nviews());
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (_dataByPlane.size() != total_plane_number) {
+    _dataByPlane.resize(total_plane_number);
   }
   return true;
 }
@@ -50,6 +50,8 @@ bool DrawEndpoint::analyze(gallery::Event * ev) {
   // Obtain event-wise data object pointers
   //
 
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+
 
   art::InputTag end2d_tag(_producer);
   auto const & end2dHandle
@@ -58,7 +60,7 @@ bool DrawEndpoint::analyze(gallery::Event * ev) {
 
 
   // Clear out the data but reserve some space
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  for (unsigned int p = 0; p < total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(end2dHandle -> size());
     _wireRange.at(p).first  = 99999;

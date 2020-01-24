@@ -21,14 +21,19 @@ bool DrawVertex::initialize() {
   // If you have a histogram to fill in the event loop, for example,
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
-  if (_dataByPlane.size() != geoService -> Nviews()) {
-    _dataByPlane.resize(geoService -> Nviews());
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  if (_dataByPlane.size() != total_plane_number) {
+    _dataByPlane.resize(total_plane_number);
   }
   return true;
 
 }
 
 bool DrawVertex::analyze(gallery::Event * ev) {
+
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+
+  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   art::InputTag vertex_tag(_producer);
   auto const & vertexHandle
@@ -37,7 +42,7 @@ bool DrawVertex::analyze(gallery::Event * ev) {
 
 
   // Clear out the hit data but reserve some space for the hits
-  for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+  for (unsigned int p = 0; p < total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(vertexHandle -> size());
     _wireRange.at(p).first  = 99999;
@@ -53,13 +58,13 @@ bool DrawVertex::analyze(gallery::Event * ev) {
 
   for (auto & vertex : * vertexHandle) {
     // A vertex is a 3D object.  So take it and project it into each plane:
-    for (unsigned int p = 0; p < geoService -> Nviews(); p ++) {
+    for (unsigned int p = 0; p < total_plane_number; p ++) {
 
       vertex.XYZ(xyz);
 
 
       try {
-        point = geoHelper -> Point_3Dto2D(xyz, p);
+        point = geo_helper.Point_3Dto2D(xyz, p);
       }
       catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

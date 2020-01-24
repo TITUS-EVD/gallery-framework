@@ -41,11 +41,10 @@ class cluster(recoBase):
         for view in view_manager.getViewPorts():
     
             # get the plane
-            thisPlane = view.plane()
+            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
 
             # extend the list of clusters
             for i in range(0, self._n_planes): self._listOfClusters.append([])
-
 
             clusters = self._process.getDataByPlane(thisPlane)
             self.drawClusterList(view, clusters, thisPlane, geom)
@@ -54,13 +53,9 @@ class cluster(recoBase):
             # the other plane, but flipping the time
             if geom.nTPCs() == 2:
                 for left_plane in geom.planeMix()[thisPlane]:
+                    print('left_plane', left_plane)
                     clusters = self._process.getDataByPlane(left_plane)
                     self.drawClusterList(view, clusters, left_plane, geom)
-                # if thisPlane == 0: left_plane = 4
-                # if thisPlane == 1: left_plane = 3
-                # if thisPlane == 2: left_plane = 5
-                # clusters_2 = self._process.getDataByPlane(left_plane)
-                # self.drawClusterList(view, clusters_2, thisPlane, geom, flip=True)
 
 
     def drawClusterList(self, view, clusters, thisPlane, geom):
@@ -82,17 +77,20 @@ class cluster(recoBase):
                 if colorIndex >= len(self._clusterColors):
                     colorIndex = 0
 
+
     def clearDrawnObjects(self, view_manager):
-        i_plane = 0
-        # erase the clusters
-        for plane in self._listOfClusters:
-            view = view_manager.getViewPorts()[i_plane]
-            i_plane += 1
-            for cluster in plane:
+        geom = view_manager._geometry
+        for view in view_manager.getViewPorts():
+            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            for cluster in self._listOfClusters[thisPlane]:
                 cluster.clearHits(view)
+            for left_plane in view_manager._geometry.planeMix()[thisPlane]:
+                for cluster in self._listOfClusters[left_plane]:
+                    cluster.clearHits(view)
 
-
+        # clear the list:
         self._listOfClusters = []
+
 
     def getAutoRange(self, plane):
         w = self._process.getWireRange(plane)

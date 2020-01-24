@@ -39,8 +39,9 @@ class track(recoBase):
             #   # get the showers from the process:
             # self._drawnObjects.append([])
             for i in range(0, self._n_planes): self._drawnObjects.append([])
+            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
 
-            tracks = self._process.getDataByPlane(view.plane())
+            tracks = self._process.getDataByPlane(thisPlane)
             offset = geom.offset(view.plane()) / geom.time2cm()
 
             # print ('Drawing tracks for plane', view.plane())
@@ -74,13 +75,17 @@ class track(recoBase):
                 x = pair.first / geom.wire2cm()
                 y = pair.second / geom.time2cm() + offset
 
-
                 # cathode_x = geom.getGeometryCore().Plane(0, track.tpc(), track.cryo()).GetCenter().X() - 2 * geom.getGeometryCore().DetHalfWidth()
                 # print ('cathode_x', cathode_x)
                 # y -= cathode_x
 
-                # plane_x = geom.getGeometryCore().Plane(view.plane(), track.tpc(), track.cryo()).GetCenter().X()
-                # plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
+                plane_x = geom.getGeometryCore().Plane(view.plane(), track.tpc(), track.cryo()).GetCenter().X()
+                plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
+                # y += plane_x
+                # y -= plane_x_ref
+                y -= location * (plane_x - plane_x_ref - 2 * geom.halfwidth()) / geom.time2cm()
+                y += location * (geom.tRange() + geom.cathodeGap())
+                # print ('added back', plane_x, 'and subtracted', plane_x_ref)
                 # delta_x = plane_x - plane_x_ref - 2 * geom.halfwidth()
                 # y += this_offset/geom.time2cm()
 

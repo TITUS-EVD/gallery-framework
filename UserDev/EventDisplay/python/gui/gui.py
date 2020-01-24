@@ -6,6 +6,7 @@ import argparse
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
+from collections import OrderedDict
 
 import evdmanager
 
@@ -25,7 +26,7 @@ class view_manager(QtCore.QObject):
   def __init__(self, geometry):
     super(view_manager, self).__init__()
     self._nviews = 0
-    self._drawerList = []
+    self._drawerList = OrderedDict()
     self._cmapList = []
     self._geometry = geometry
 
@@ -44,33 +45,40 @@ class view_manager(QtCore.QObject):
     self._drawLogo = False
     self._plottedHits = []
 
-    self._selectedPlane = -1
+    self._selectedPlane = [-1]
+    self._selectedCryo = [0]
 
     self._autoRange = False
     self._wireData = None
 
     self._drawing_raw_digits = False
 
-  def addEvdDrawer(self,plane):
-    self._drawerList.append(viewport(self._geometry, plane))
-    self._drawerList[-1].connectWireDrawingFunction(self.drawWireOnPlot)
-    self._drawerList[-1].drawHitsRequested.connect(self.hitOnWireHandler)
+  def addEvdDrawer(self,plane,cryostat=0):
+    self._drawerList[(plane, cryostat)] = viewport(self._geometry, plane, cryostat)
+    self._drawerList[(plane, cryostat)].connectWireDrawingFunction(self.drawWireOnPlot)
+    self._drawerList[(plane, cryostat)].drawHitsRequested.connect(self.hitOnWireHandler)
+    # self._drawerList.append(viewport(self._geometry, plane, cryostat))
+    # self._drawerList[-1].connectWireDrawingFunction(self.drawWireOnPlot)
+    # self._drawerList[-1].drawHitsRequested.connect(self.hitOnWireHandler)
     self._nviews += 1
   
   def selectPlane(self,plane):
     self._selectedPlane = plane
 
+  def selectCryo(self,cryo):
+    self._selectedCryo = cryo
+
 
   def restoreDefaults(self):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.restoreDefaults()
 
   def restoret0(self):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.restoret0()
 
   def clearPoints(self):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.clearPoints()
 
   def hitOnWireHandler(self,plane,wire):
@@ -93,10 +101,10 @@ class view_manager(QtCore.QObject):
     # self._layout.setMargin(0)
     self._layout.setContentsMargins(0,0,0,0)
 
-    self._planeWidgets = []
-    for view in self._drawerList:
+    self._planeWidgets = OrderedDict()
+    for key, view in self._drawerList.items():
       widget,layout = view.getWidget()
-      self._planeWidgets.append(widget)
+      self._planeWidgets[key] = widget
       self._layout.addWidget(widget,0)
 
     self._opt_widget, _ = self._opt_view.getWidget()
@@ -107,59 +115,60 @@ class view_manager(QtCore.QObject):
 
     return self._widget
 
+
   def refreshDrawListWidget(self):
 
-    # The last one is the optical view
-    optical_view = self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos()
-
-    # Draw all planes:
-    if self._selectedPlane == -1:
+    # -1 Means the All Views, turn all of them on!
+    if self._selectedPlane[0] == -1:
       self.drawOpDets(False)
-      i = 0
-      for widget in self._planeWidgets:
-        widget.setVisible(True)
-        if i == 0:
-          # Draw the logo on the first plane, maybe
-          self._drawerList[i].toggleLogo(self._drawLogo)
-        else:
-          # Definitely don't draw it on the other planes
-          self._drawerList[i].toggleLogo(False)
-        i += 1
 
-    elif self._selectedPlane == optical_view:
-      self.drawOpDets(True)
-    else:
-      self.drawOpDets(False)
-      i = 0
-      for widget in self._planeWidgets:
-        if i == self._selectedPlane:
+      for p, c in zip(self._selectedPlane, self._selectedCryo):
+        for key, widget in self._planeWidgets.items():
+          self._drawerList[key].toggleLogo(False)
+          if (p, c) == (0, 0):
+            self._drawerList[key].toggleLogo(True)
           widget.setVisible(True)
-          self._drawerList[i].toggleLogo(self._drawLogo)
-        else:
-          # If there is a logo, remove it first!
-          self._drawerList[i].toggleLogo(False)
-          widget.setVisible(False)
-        i += 1
+      return
+
+    # -1 Means the Optical View, turn only that one on!
+    if self._selectedPlane[0] == -2:
+      self.drawOpDets(True)
+      return
+
+    # Otherwise, only draw the selected ones
+    self.drawOpDets(False)
+    for key, widget in self._planeWidgets.items():
+      # Turn it off to begin width
+      self._drawerList[key].toggleLogo(False)
+      widget.setVisible(False)
+    for p, c in zip(self._selectedPlane, self._selectedCryo):
+      for key, widget in self._planeWidgets.items():
+        if key == (p, c):
+          # Turn on therequested ones
+          widget.setVisible(True)
+          self._drawerList[key].toggleLogo(self._drawLogo)
+
 
   def toggleLogo(self,tl):
     # Draw the logo on the top plane OR the selected plane
     # 
     self._drawLogo = tl
     if not tl:
-      for view in self._drawerList:
+      for view in self._drawerList.values():
         # Turn everything off, just in case.
         view.toggleLogo(tl)
     else:
       # If drawing just one plane, use that one.
       # Else, use plane 0
-      plane = self._selectedPlane
+      plane = self._selectedPlane[0]
+      cryo = self._selectedCryo[0]
       if plane == -1:
         plane = 0
-      self._drawerList[plane].toggleLogo(tl)
+      self._drawerList[(plane, cryo)].toggleLogo(tl)
 
 
   def connectStatusBar(self,statusBar):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.connectStatusBar(statusBar)
     self._opt_view.connectStatusBar(statusBar)
 
@@ -186,32 +195,32 @@ class view_manager(QtCore.QObject):
   #   print "range changed by ", self.sender()
 
   def setDarkMode(self, opt):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.setDarkMode(opt)
 
   def changeColorMap(self, colormaptype='default'):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.setColorMap(colormaptype)
 
   def toggleScale(self,scaleBool):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.toggleScale(scaleBool)
 
   def setRangeToMax(self):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.setRangeToMax()
 
   def autoRange(self,event_manager):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       xRange,yRange = event_manager.getAutoRange(view.plane())
       view.autoRange(xRange,yRange)
 
   def lockAR(self, lockRatio):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.lockRatio(lockRatio)
 
   def makePath(self):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       path = view.makeIonizationPath()
       if path != None:
         self.drawWireOnPlot(path)
@@ -229,36 +238,40 @@ class view_manager(QtCore.QObject):
     if opdetsView:
       # self._layout.addWidget(self._opt_view)
       self._opt_widget.setVisible(True)
-      for widget in self._planeWidgets:
+      for widget in self._planeWidgets.values():
         widget.setVisible(False)
     else:
       # self._layout.removeWidget(self._opt_view)
       self._opt_widget.setVisible(False)
-      for widget in self._planeWidgets:
+      for widget in self._planeWidgets.values():
         widget.setVisible(True)
 
   def useCM(self,useCM):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.useCM(useCM)
 
   def showAnodeCathode(self,showAC):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.showAnodeCathode(showAC)
 
   def uniteCathodes(self,uniteC):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.uniteCathodes(uniteC)
 
   def t0slide(self,t0):
-    for view in self._drawerList:
+    for view in self._drawerList.values():
       view.t0slide(t0)
 
   def drawPlanes(self,event_manager):
-    for i in range(len(self._drawerList)):
+    for key, viewport in self._drawerList.items():
       if event_manager.hasWireData():
-        self._drawerList[i].drawPlane(event_manager.getPlane(i))
+        plane = key[0]
+        cryo = key[1]
+        print ('drawPlanes called for', plane, cryo)
+        viewport.drawPlane(event_manager.getPlane(plane, cryo))
       else:
-        self._drawerList[i].drawBlank()
+        viewport.drawBlank()
+
 
   def drawOpDetWvf(self, event_manager):
     if event_manager.hasOpDetWvfData():
@@ -326,7 +339,7 @@ class view_manager(QtCore.QObject):
     otherwise.
     '''
     self._drawing_raw_digits = status
-    for view in self._drawerList:
+    for view in self._drawerList.values():
         view.drawingRawDigits(status)
 
   def drawingRawDigits(self):
@@ -342,7 +355,7 @@ class view_manager(QtCore.QObject):
     Returns all the viewports
     for the wire data drawing
     '''
-    return self._drawerList
+    return self._drawerList.values()
 
   def getOpticalViewport(self):
     '''
@@ -456,7 +469,7 @@ class gui(QtGui.QWidget):
   # This function prepares the range controlling options and returns a layout
   def getDrawingControlButtons(self):
 
-    self._grayScale = QtGui.QCheckBox("Gray Scale")
+    self._grayScale = QtGui.QCheckBox("Grayscale")
     self._grayScale.setToolTip("Changes the color map to grayscale.")
     self._grayScale.setTristate(False)
     self._grayScale.stateChanged.connect(self.changeColorMapWorker) 
@@ -601,25 +614,44 @@ class gui(QtGui.QWidget):
     else:
       self._view_manager.setRangeToMax()
 
+
   def viewSelectWorker(self):
 
-    n_views = int(self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos())
-    n_views += 1 # Add the optical evd
+    # Understand what views the user selected
+    if self.sender() == self._all_views_btn:
+      self._optical_view_button.setChecked(False)
+      # Uncheck all the other buttons
+      for btn in self._viewButtonArray:
+        btn.setChecked(False)
+      self._view_manager.selectPlane([-1])
+      self._view_manager.selectCryo([-1])
 
-    i = 0
-    for i in range(n_views):
-      if self.sender() == self._viewButtonArray[i]:
-        self._view_manager.selectPlane(i)
-        self._view_manager.refreshDrawListWidget()
-        return
-      else:
-        i += 1
+    elif self.sender() ==  self._optical_view_button:
+      self._all_views_btn.setChecked(False)
+      for btn in self._viewButtonArray:
+        btn.setChecked(False)
+      self._view_manager.selectPlane([-2])
+      self._view_manager.selectCryo([-2])
 
-    # if there wasn't a match, then it must be the ALL button:
-    if self.sender() != None:
-      self._view_manager.selectPlane(-1)
-      self._view_manager.refreshDrawListWidget()
-      return
+    else:
+      self._all_views_btn.setChecked(False)
+      self._optical_view_button.setChecked(False)
+      selected_planes = []
+      selected_cryos = []
+      n_btn_checked = 0
+      for i, btn in enumerate(self._viewButtonArray):
+        if btn.isChecked():
+          n_btn_checked += 1
+          selected_planes.append(i % self._geometry.nPlanes())
+          selected_cryos.append(int(i / self._geometry.nPlanes()))
+      if n_btn_checked == 0:
+        # Fall back to the all views
+        selected_planes = [-1]
+        selected_cryos = [-1]
+      self._view_manager.selectPlane(selected_planes)
+      self._view_manager.selectCryo(selected_cryos)
+
+    self._view_manager.refreshDrawListWidget()
 
   def subtractPedestalWorker(self):
     # Implemented in evdgui.py
@@ -777,45 +809,150 @@ class gui(QtGui.QWidget):
     self._westLayout.addLayout(draw_control)
     self._westLayout.addStretch(1)
 
-    # Add a section to allow users to just view one window instead of two/three
-    self._viewButtonGroup = QtGui.QButtonGroup()
-    # Draw all planes:
-    self._allViewsButton = QtGui.QRadioButton("All")
-    self._allViewsButton.clicked.connect(self.viewSelectWorker)
-    self._viewButtonGroup.addButton(self._allViewsButton)
 
-    # Put the buttons in a layout
-    self._viewChoiceLayout = QtGui.QVBoxLayout()
+    ############
+    
 
-    # Make a label for this stuff:
-    self._viewChoiceLabel = QtGui.QLabel("View Options")
-    self._viewChoiceLayout.addWidget(self._viewChoiceLabel)
-    self._viewChoiceLayout.addWidget(self._allViewsButton)
+    self._gridLayout = QtGui.QGridLayout()
 
-    views = self._geometry.viewNames()
-    i = 0
+
+    self._all_views_btn = QtGui.QPushButton("All Views")
+    self._all_views_btn.setCheckable(True)
+    self._all_views_btn.clicked.connect(self.viewSelectWorker)
+    self._gridLayout.addWidget(self._all_views_btn, 0, 0, 1, 4)
+
+    viewport_names = self._geometry.viewNames()
+    viewport_names = ['H', 'U', 'V']
     self._viewButtonArray = []
-    n_views = int(self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos())
-    for plane in range(n_views):
-      text = "Plane" + str(i)
-      # Use U, V and W in the case of SBND and ICARUS
-      if self._geometry.nTPCs() == 2: 
-        text = "View " + views[i]
-      button = QtGui.QRadioButton(text)
-      i += 1
-      self._viewButtonGroup.addButton(button)
-      button.clicked.connect(self.viewSelectWorker)
-      self._viewButtonArray.append(button)
-      self._viewChoiceLayout.addWidget(button)
+    self._view_labels = []
+    
+    for i, v in enumerate(viewport_names):
+      
+      label = QtGui.QLabel("View "+v)
+      self._gridLayout.addWidget(label, i+1, 1)
+      self._view_labels.append(label)
 
-    # Add a button for the optical event display
-    button = QtGui.QRadioButton("Optical")
-    button.clicked.connect(self.viewSelectWorker)
-    self._viewButtonGroup.addButton(button)
-    self._viewButtonArray.append(button)
-    self._viewChoiceLayout.addWidget(button)
+      for c in range(0, self._geometry.nCryos()):
 
-    self._westLayout.addLayout(self._viewChoiceLayout)
+        button = QtGui.QPushButton("Cryo "+str(c))
+        button.setToolTip("Visualize view "+v+" in cryostat "+str(c))
+        button.clicked.connect(self.viewSelectWorker)
+        button.setCheckable(True)
+        self._viewButtonArray.append(button)
+        self._gridLayout.addWidget(button, i+1, c+2)
+
+
+    self._optical_view_button = QtGui.QPushButton("Optical")
+    self._optical_view_button.setCheckable(True)
+    self._optical_view_button.clicked.connect(self.viewSelectWorker)
+    self._gridLayout.addWidget(self._optical_view_button, len(viewport_names)+1, 0, 1, 4)
+
+
+
+
+
+    # n_viewports = int(self._geometry.nViews() / self._geometry.nTPCs())
+    # for plane in range(n_viewports):
+    #   text = "Plane" + str(i)
+    #   # Use U, V and W in the case of SBND and ICARUS
+    #   if self._geometry.nTPCs() == 2: 
+    #     text = viewport_names[i]
+    #   button = QtGui.QPushButton(text)
+    #   i += 1
+    #   self._viewButtonGroup.addButton(button)
+    #   button.clicked.connect(self.viewSelectWorker)
+    #   self._viewButtonArray.append(button)
+    #   self._viewChoiceLayout.addWidget(button)
+
+
+
+
+
+    # self._test1 = QtGui.QPushButton("Cryo 0")
+    # self._test1.setToolTip("Close the viewer.")
+    # # self._test1.clicked.connect(self.quit)
+    # self._test1.setCheckable(True)
+    # self._test2 = QtGui.QPushButton("Cryo 1")
+    # self._test2.setCheckable(True)
+
+    # self._test3 = QtGui.QPushButton("Cryo 0")
+    # self._test3.setCheckable(True)
+    # self._test4 = QtGui.QPushButton("Cryo 1")
+    # self._test4.setCheckable(True)
+
+
+
+    # self._l1 = QtGui.QLabel("View H")
+    # self._l2 = QtGui.QLabel("View U")
+
+
+    # self._gridLayout = QtGui.QGridLayout()
+    # self._gridLayout.addWidget(self._test0, 1, 1)
+    # self._gridLayout.addWidget(self._l1, 2, 1)
+    # self._gridLayout.addWidget(self._test1, 2, 2)
+    # self._gridLayout.addWidget(self._test2, 2, 3)
+
+    # self._gridLayout.addWidget(self._l2, 3, 1)
+    # self._gridLayout.addWidget(self._test3, 3, 2)
+    # self._gridLayout.addWidget(self._test4, 3, 3)
+
+
+    # self._viewChoiceLayout3 = QtGui.QHBoxLayout()
+    # self._viewChoiceLayout3.addWidget(self._test1)
+    # self._viewChoiceLayout3.addWidget(self._test2)
+
+    # self._viewChoiceLayout4 = QtGui.QHBoxLayout()
+    # self._viewChoiceLayout4.addWidget(self._test3)
+    # self._viewChoiceLayout4.addWidget(self._test4)
+
+
+    # self._viewChoiceLayout2 = QtGui.QVBoxLayout()
+    # self._viewChoiceLayout2.addWidget(self._viewChoiceLayout3)
+    # self._viewChoiceLayout2.addWidget(self._viewChoiceLayout4)
+    ###########
+
+    # Add a section to allow users to just view one window instead of two/three
+    # self._viewButtonGroup = QtGui.QButtonGroup()
+    # self._viewButtonGroup.setExclusive(False);
+    # # Draw all planes:
+    # self._allViewsButton = QtGui.QRadioButton("All")
+    # self._allViewsButton.clicked.connect(self.viewSelectWorker)
+    # self._viewButtonGroup.addButton(self._allViewsButton)
+
+    # # Put the buttons in a layout
+    # self._viewChoiceLayout = QtGui.QVBoxLayout()
+
+    # # Make a label for this stuff:
+    # self._viewChoiceLabel = QtGui.QLabel("View Options")
+    # self._viewChoiceLayout.addWidget(self._viewChoiceLabel)
+    # self._viewChoiceLayout.addWidget(self._allViewsButton)
+
+    # viewport_names = self._geometry.viewNames()
+    # i = 0
+    # self._viewButtonArray = []
+    # n_viewports = int(self._geometry.nViews() / self._geometry.nTPCs())
+    # for plane in range(n_viewports):
+    #   text = "Plane" + str(i)
+    #   # Use U, V and W in the case of SBND and ICARUS
+    #   if self._geometry.nTPCs() == 2: 
+    #     text = viewport_names[i]
+    #   button = QtGui.QRadioButton(text)
+    #   i += 1
+    #   self._viewButtonGroup.addButton(button)
+    #   button.clicked.connect(self.viewSelectWorker)
+    #   self._viewButtonArray.append(button)
+    #   self._viewChoiceLayout.addWidget(button)
+
+    # # Add a button for the optical event display
+    # button = QtGui.QRadioButton("Optical")
+    # button.clicked.connect(self.viewSelectWorker)
+    # self._viewButtonGroup.addButton(button)
+    # self._viewButtonArray.append(button)
+    # self._viewChoiceLayout.addWidget(button)
+
+    # self._westLayout.addLayout(self._all_view_layout)
+    self._westLayout.addLayout(self._gridLayout)
+    # self._westLayout.addLayout(self._viewChoiceLayout)
 
     self._westLayout.addStretch(1)
 
@@ -823,8 +960,8 @@ class gui(QtGui.QWidget):
     self._westLayout.addWidget(quit_control)
     self._westWidget = QtGui.QWidget()
     self._westWidget.setLayout(self._westLayout)
-    self._westWidget.setMaximumWidth(150)
-    self._westWidget.setMinimumWidth(100)
+    self._westWidget.setMaximumWidth(180)
+    self._westWidget.setMinimumWidth(130)
     return self._westWidget
 
 
@@ -904,15 +1041,19 @@ class gui(QtGui.QWidget):
     self.southLayout = self.getSouthLayout()
 
     # Area to hold data:
-    nviews = int(self._geometry.nViews() / self._geometry.nTPCs() / self._geometry.nCryos())
+    n_viewports = int(self._geometry.nViews() / self._geometry.nTPCs())
 
     if self._geometry.nTPCs() > 2:
       print('Only 1 or 2 TPCs are supported.')
       exit()
-
-    for i in range(0, nviews):
-      # These boxes hold the wire/time views:
-      self._view_manager.addEvdDrawer(i)
+    for c in range(0, self._geometry.nCryos()):
+      for p in range(0, self._geometry.nPlanes()):
+        # These boxes hold the wire/time views:
+        # plane = p + c * self._geometry.nViews()
+        self._view_manager.addEvdDrawer(p, c)
+    # for i in range(0, n_viewports):
+    #   # These boxes hold the wire/time views:
+    #   self._view_manager.addEvdDrawer(i)
 
     self._view_manager.linkViews()
 
