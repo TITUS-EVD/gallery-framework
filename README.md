@@ -51,4 +51,4 @@ This framework contains TITUS: the event display for SBND at Fermilab. TITUS all
 
 3) make from the UserDev/EventDisplay/ area: make -j8
 
-4) Run with `evd.py /path/to/art-root-file.root`. Add option `-s` to use the SBND geometry.
+4) Run with `evd.py /path/to/art-root-file.root`. Add option `-s` to use the SBND geometry. Add option `-i` to use the ICARUS geometry.
