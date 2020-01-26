@@ -12,10 +12,10 @@ This framework tries to help with that.  It interfaces with gallery to provide a
 
 This framework contains TITUS: the event display for SBND at Fermilab. TITUS allows to visualize both raw and reconstructed data in 2D and 3D from the all the detectors in SBN program: SBND, MicroBooNE and ICARUS.
 
-### TUTUS for SBND
+### TITUS for SBND
 ![Example of event display for SBND](docs/evd-sbnd.jpeg)
 
-### TUTUS for ICARUS
+### TITUS for ICARUS
 ![Example of event display for ICARUS](docs/evd-icarus.jpeg)
 ![Example of event display for ICARUS](docs/evd.jpeg)
 
