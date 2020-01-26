@@ -267,9 +267,9 @@ void CorrelatedNoiseFilter::fix_medium_angle_tracks(float * _plane_data,
   {
 
     int current_block = i_block;
-    int matched_block = _detector_properties_interface.same_plane_pair(plane, i_block);
+    int matched_block = _detector_properties_interface.same_plane_pair(/*plane, */i_block);
 
-    if (matched_block >= _correlatedNoiseWaveforms.at(plane).size()) {
+    if (matched_block >= (int)_correlatedNoiseWaveforms.at(plane).size()) {
       continue;
     }
 
@@ -294,7 +294,7 @@ void CorrelatedNoiseFilter::fix_medium_angle_tracks(float * _plane_data,
 
     // Now fix the windows that are broken
     // This involves remaking the median estimate, for this window, using
-    for (int i_window = 0; i_window < windows_to_investigate.size(); i_window ++ ) {
+    for (size_t i_window = 0; i_window < windows_to_investigate.size(); i_window ++ ) {
       int window = windows_to_investigate[i_window];
       // std::cout << "Looking at block of wires from "
       //           << _detector_properties_interface.correlated_noise_blocks(plane)[i_block]
@@ -389,8 +389,8 @@ void CorrelatedNoiseFilter::fix_correlated_noise_errors() {
 
   // Loop over the blocks of wires and fix the errors that come up
 
-  for (int i_plane = 0; i_plane < _correlatedNoiseWaveforms.size(); i_plane ++) {
-    for (int i_block = 0; i_block < _correlatedNoiseWaveforms.at(i_plane).size(); i_block ++) {
+  for (int i_plane = 0; i_plane < (int)_correlatedNoiseWaveforms.size(); i_plane ++) {
+    for (int i_block = 0; i_block < (int)_correlatedNoiseWaveforms.at(i_plane).size(); i_block ++) {
       find_correlated_noise_errors(i_plane, i_block);
     }
   }
@@ -435,7 +435,7 @@ void CorrelatedNoiseFilter::find_correlated_noise_errors(int target_plane, int t
 
       int current_block = correlated_blocks.at(i_plane).at(i_block);
 
-      if (i_plane == target_plane && current_block == target_block) {
+      if ((int)i_plane == target_plane && current_block == target_block) {
         continue;
       }
 
@@ -482,7 +482,7 @@ void CorrelatedNoiseFilter::find_correlated_noise_errors(int target_plane, int t
             << " to "
             << _detector_properties_interface.correlated_noise_blocks(target_plane).at(target_block + 1)
             << ": \n";
-  for (int i_window = 0; i_window < windows_to_investigate.size(); i_window ++ ) {
+  for (int i_window = 0; i_window < (int)windows_to_investigate.size(); i_window ++ ) {
     if (windows_to_investigate.at(i_window) > 1) {
 
       float prev_rms = 0.0;
@@ -577,11 +577,11 @@ void CorrelatedNoiseFilter::find_correlated_noise_errors(int target_plane, int t
 
         int current_block = correlated_blocks.at(i_plane).at(i_block);
 
-        if (i_plane == target_plane) {
+        if ((int)i_plane == target_plane) {
           continue;
         }
 
-        float _corr = 0;
+        // float _corr = 0;
 
         // build up the waveforms to use.
         std::vector<float> _other_waveform;

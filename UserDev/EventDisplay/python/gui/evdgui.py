@@ -245,8 +245,8 @@ class evdgui(gui):
         self._eastLayout.addStretch(2)
 
         self._eastWidget.setLayout(self._eastLayout)
-        self._eastWidget.setMaximumWidth(180)
-        self._eastWidget.setMinimumWidth(130)
+        self._eastWidget.setMaximumWidth(190)
+        self._eastWidget.setMinimumWidth(140)
         return self._eastWidget
 
     def drawableProductsChanged(self):

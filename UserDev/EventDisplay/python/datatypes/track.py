@@ -48,10 +48,10 @@ class track(recoBase):
             self.drawTracks(view, tracks, offset, view.plane(), geom)
 
             if geom.nTPCs() == 2:
-                for left_plane in geom.planeMix()[view.plane()]:
+                for left_plane in geom.planeMix()[thisPlane]:
                     tracks = self._process.getDataByPlane(left_plane)
                     # print ('Drawing tracks for plane', left_plane)
-                    self.drawTracks(view, tracks, offset, left_plane, geom, (255, 128, 0))
+                    self.drawTracks(view, tracks, offset, left_plane, geom) #, (255, 128, 0))
 
 
     def drawTracks(self, view, tracks, offset, plane, geom, color=(130,0,0)):
@@ -66,7 +66,7 @@ class track(recoBase):
             # construct a polygon for this track:
             points = []
 
-            location = track.tpc() + track.cryo() * geom.nTPCs()
+            location = track.tpc()
             # print ('  location is', location)
 
             # Remeber - everything is in cm, but the display is in
@@ -81,38 +81,11 @@ class track(recoBase):
 
                 plane_x = geom.getGeometryCore().Plane(view.plane(), track.tpc(), track.cryo()).GetCenter().X()
                 plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
-                # y += plane_x
-                # y -= plane_x_ref
-                y -= location * (plane_x - plane_x_ref - 2 * geom.halfwidth()) / geom.time2cm()
+
+                y -= location * (2 * geom.halfwidth()) / geom.time2cm()
+                y += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
                 y += location * (geom.tRange() + geom.cathodeGap())
-                # print ('added back', plane_x, 'and subtracted', plane_x_ref)
-                # delta_x = plane_x - plane_x_ref - 2 * geom.halfwidth()
-                # y += this_offset/geom.time2cm()
-
-                # y += location * (geom.tRange()) # + geom.cathodeGap())
-                # y -= location * (2 * geom.halfwidth())/geom.time2cm()
-
-                # print (delta_x/geom.time2cm())
-
-                # this_offset = -plane_x_ref + delta_x
-
-                # print ('    increading y by', location * (geom.tRange() + geom.cathodeGap()))
-                # y += location * (geom.tRange() + geom.cathodeGap())
-                # y += location * (2 * geom.halfwidth())/geom.time2cm() + geom.cathodeGap()
-                # y += location * delta_x/geom.time2cm()
-                # y += location * (geom.triggerOffset() + geom.cathodeGap())
-                # y += location * (geom.tRange() - (2 * geom.halfwidth())/geom.time2cm() + geom.cathodeGap())
-                # y += location * delta_x/geom.time2cm()
-                # y += this_offset/geom.time2cm()
-                    # if track.tpc() == 1:
-                    #     y += (geom.halfwidth() + geom.offset(view.plane()) + geom.cathodeGap())/geom.time2cm()
-                    #     y += geom.triggerOffset()
-                    #     y += geom.tRange() - geom.triggerOffset() + geom.cathodeGap()
-
-                    # if geom.nTPCs() == 2 and on_both_tpcs:
-                    #     cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
-                    #     if y > cathode_time:
-                    #         y += geom.tRange() - geom.triggerOffset()
+  
 
                 points.append(QtCore.QPointF(x, y))
 

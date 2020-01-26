@@ -144,7 +144,8 @@ class view_manager(QtCore.QObject):
     for p, c in zip(self._selectedPlane, self._selectedCryo):
       for key, widget in self._planeWidgets.items():
         if key == (p, c):
-          # Turn on therequested ones
+          print ('Drawing viewport for p, c =', p, c)
+          # Turn on the requested ones
           widget.setVisible(True)
           self._drawerList[key].toggleLogo(self._drawLogo)
 
@@ -267,7 +268,6 @@ class view_manager(QtCore.QObject):
       if event_manager.hasWireData():
         plane = key[0]
         cryo = key[1]
-        print ('drawPlanes called for', plane, cryo)
         viewport.drawPlane(event_manager.getPlane(plane, cryo))
       else:
         viewport.drawBlank()
@@ -422,13 +422,17 @@ class gui(QtGui.QWidget):
 
     # Jump to the next event
     self._nextButton = QtGui.QPushButton("Next")
-    # self._nextButton.setStyleSheet("background-color: red")
     self._nextButton.clicked.connect(self._event_manager.next)
     self._nextButton.setToolTip("Move to the next event.")
     # Go to the previous event
     self._prevButton = QtGui.QPushButton("Previous")
     self._prevButton.clicked.connect(self._event_manager.prev)
     self._prevButton.setToolTip("Move to the previous event.")
+    # Pack Next and Previous in a horizontal layout
+    self._nextPreviousLayout = QtGui.QHBoxLayout()
+    self._nextPreviousLayout.addWidget(self._nextButton)
+    self._nextPreviousLayout.addWidget(self._prevButton)
+
     # Select a file to use
     self._fileSelectButton = QtGui.QPushButton("Select File")
     self._fileSelectButton.clicked.connect(self._event_manager.selectFile)
@@ -449,8 +453,9 @@ class gui(QtGui.QWidget):
     self._eventControlBox.addWidget(self._eventLabel)
     self._eventControlBox.addWidget(self._runLabel)
     self._eventControlBox.addWidget(self._subrunLabel)
-    self._eventControlBox.addWidget(self._nextButton)
-    self._eventControlBox.addWidget(self._prevButton)
+    # self._eventControlBox.addWidget(self._nextButton)
+    # self._eventControlBox.addWidget(self._prevButton)
+    self._eventControlBox.addLayout(self._nextPreviousLayout)
     self._eventControlBox.addWidget(self._fileSelectButton)
 
     return self._eventControlBox
@@ -478,8 +483,9 @@ class gui(QtGui.QWidget):
     self._maxRangeButton = QtGui.QPushButton("Max Range")
     self._maxRangeButton.setToolTip("Set the range of the viewers to show the whole event")
     self._maxRangeButton.clicked.connect(self._view_manager.setRangeToMax)
+
     # Check box to active autorange
-    self._autoRangeBox = QtGui.QCheckBox("Auto Range")
+    self._autoRangeBox = QtGui.QCheckBox("AutoRange")
     self._autoRangeBox.setToolTip("Set the range of the viewers to the regions of interest")
     self._autoRangeBox.setTristate(False)
     self._autoRangeBox.stateChanged.connect(self.autoRangeWorker)  
@@ -487,6 +493,10 @@ class gui(QtGui.QWidget):
     self._lockAspectRatio = QtGui.QCheckBox("Lock A.R.")
     self._lockAspectRatio.setToolTip("Lock the aspect ratio to 1:1")
     self._lockAspectRatio.stateChanged.connect(self.lockARWorker)
+
+    self._rangeLayout = QtGui.QHBoxLayout()
+    self._rangeLayout.addWidget(self._autoRangeBox)
+    self._rangeLayout.addWidget(self._lockAspectRatio)
 
     # check box to toggle the wire drawing
     self._drawWireOption = QtGui.QCheckBox("Wire Drawing")
@@ -512,10 +522,14 @@ class gui(QtGui.QWidget):
     self._unitDisplayOption.setTristate(False)
     self._unitDisplayOption.stateChanged.connect(self.useCMWorker)
 
-    self._scaleBarOption = QtGui.QCheckBox("Draw Scale Bar")
+    self._scaleBarOption = QtGui.QCheckBox("Scale Bar")
     self._scaleBarOption.setToolTip("Display a scale bar on each view showing the distance")
     self._scaleBarOption.setTristate(False)
     self._scaleBarOption.stateChanged.connect(self.scaleBarWorker)
+
+    self._scaleBarLayout = QtGui.QHBoxLayout()
+    self._scaleBarLayout.addWidget(self._scaleBarOption)
+    self._scaleBarLayout.addWidget(self._unitDisplayOption)
 
     self._logoOption = QtGui.QCheckBox("Draw Logo")
     self._logoOption.setToolTip("Display the experiment logo on the window.")
@@ -523,13 +537,18 @@ class gui(QtGui.QWidget):
     self._logoOption.stateChanged.connect(self.logoWorker)
 
 
-    self._clearPointsButton = QtGui.QPushButton("ClearPoints")
+    self._clearPointsButton = QtGui.QPushButton("Clear Points")
     self._clearPointsButton.setToolTip("Clear all of the drawn points from the views")
     self._clearPointsButton.clicked.connect(self.clearPointsWorker)
 
     self._makePathButton = QtGui.QPushButton("Eval. Points")
     self._makePathButton.setToolTip("Compute the ADCs along the path defined by the points")
     self._makePathButton.clicked.connect(self.drawIonizationWorker)
+
+    # Pack Clear Points and Eval Points in a horizontal layout
+    self._clearEvalPointsLayout = QtGui.QHBoxLayout()
+    self._clearEvalPointsLayout.addWidget(self._clearPointsButton)
+    self._clearEvalPointsLayout.addWidget(self._makePathButton)
 
     self._fftButton = QtGui.QPushButton("FFT Wire")
     self._fftButton.setToolTip("Compute and show the FFT of the wire currently drawn")
@@ -579,12 +598,14 @@ class gui(QtGui.QWidget):
     self._drawingControlBox = QtGui.QVBoxLayout()
     self._drawingControlBox.addWidget(self._restoreDefaults)
     self._drawingControlBox.addWidget(self._maxRangeButton)
-    self._drawingControlBox.addWidget(self._clearPointsButton)
-    self._drawingControlBox.addWidget(self._makePathButton)
+    # self._drawingControlBox.addWidget(self._clearPointsButton)
+    # self._drawingControlBox.addWidget(self._makePathButton)
+    self._drawingControlBox.addLayout(self._clearEvalPointsLayout)
     self._drawingControlBox.addWidget(self._fftButton)
     self._drawingControlBox.addWidget(self._grayScale)
-    self._drawingControlBox.addWidget(self._autoRangeBox)
-    self._drawingControlBox.addWidget(self._lockAspectRatio)
+    # self._drawingControlBox.addWidget(self._autoRangeBox)
+    # self._drawingControlBox.addWidget(self._lockAspectRatio)
+    self._drawingControlBox.addLayout(self._rangeLayout)
     self._drawingControlBox.addWidget(self._drawWireOption)
     self._drawingControlBox.addWidget(self._subtractPedestal)
     self._drawingControlBox.addWidget(self._separators[0])
@@ -594,8 +615,9 @@ class gui(QtGui.QWidget):
     self._drawingControlBox.addWidget(self._t0sliderLabel)
     self._drawingControlBox.addWidget(self._uniteCathodes)
     self._drawingControlBox.addWidget(self._separators[1])
-    self._drawingControlBox.addWidget(self._unitDisplayOption)
-    self._drawingControlBox.addWidget(self._scaleBarOption)
+    # self._drawingControlBox.addWidget(self._unitDisplayOption)
+    # self._drawingControlBox.addWidget(self._scaleBarOption)
+    self._drawingControlBox.addLayout(self._scaleBarLayout)
     self._drawingControlBox.addWidget(self._logoOption)
     self._drawingControlBox.addWidget(self._spliTracksOption)
 
@@ -639,15 +661,19 @@ class gui(QtGui.QWidget):
       selected_planes = []
       selected_cryos = []
       n_btn_checked = 0
+      plane_no = -1
       for i, btn in enumerate(self._viewButtonArray):
+        if i % self._geometry.nCryos() == 0:
+          plane_no += 1
         if btn.isChecked():
           n_btn_checked += 1
-          selected_planes.append(i % self._geometry.nPlanes())
-          selected_cryos.append(int(i / self._geometry.nPlanes()))
+          selected_planes.append(plane_no)
+          selected_cryos.append(i % self._geometry.nCryos())
       if n_btn_checked == 0:
         # Fall back to the all views
         selected_planes = [-1]
         selected_cryos = [-1]
+        self._all_views_btn.setChecked(True)
       self._view_manager.selectPlane(selected_planes)
       self._view_manager.selectCryo(selected_cryos)
 
@@ -719,8 +745,8 @@ class gui(QtGui.QWidget):
       self._uniteCathodes.setVisible(False)
       self._separators[1].setVisible(False)
 
-    if self._geometry.name() == 'icarus': 
-      self._uniteCathodes.setVisible(False)
+    # if self._geometry.name() == 'icarus': 
+    #   self._uniteCathodes.setVisible(False)
 
   def uniteCathodesWorker(self):
     if self._uniteCathodes.isChecked():
@@ -810,19 +836,18 @@ class gui(QtGui.QWidget):
     self._westLayout.addStretch(1)
 
 
-    ############
-    
+    # Make the view chouce layout    
 
     self._gridLayout = QtGui.QGridLayout()
 
-
     self._all_views_btn = QtGui.QPushButton("All Views")
     self._all_views_btn.setCheckable(True)
+    self._all_views_btn.setChecked(True) # This is the default one, so is checked
     self._all_views_btn.clicked.connect(self.viewSelectWorker)
     self._gridLayout.addWidget(self._all_views_btn, 0, 0, 1, 4)
 
     viewport_names = self._geometry.viewNames()
-    viewport_names = ['H', 'U', 'V']
+    # viewport_names = ['H', 'U', 'V']
     self._viewButtonArray = []
     self._view_labels = []
     
@@ -834,8 +859,10 @@ class gui(QtGui.QWidget):
 
       for c in range(0, self._geometry.nCryos()):
 
-        button = QtGui.QPushButton("Cryo "+str(c))
-        button.setToolTip("Visualize view "+v+" in cryostat "+str(c))
+        text = "Cryo "+str(c)
+        if self._geometry.name() == 'sbnd': text = v
+        button = QtGui.QPushButton(text)
+        button.setToolTip("Visualize view "+v+" in cryostat "+str(c)+".")
         button.clicked.connect(self.viewSelectWorker)
         button.setCheckable(True)
         self._viewButtonArray.append(button)
@@ -847,112 +874,7 @@ class gui(QtGui.QWidget):
     self._optical_view_button.clicked.connect(self.viewSelectWorker)
     self._gridLayout.addWidget(self._optical_view_button, len(viewport_names)+1, 0, 1, 4)
 
-
-
-
-
-    # n_viewports = int(self._geometry.nViews() / self._geometry.nTPCs())
-    # for plane in range(n_viewports):
-    #   text = "Plane" + str(i)
-    #   # Use U, V and W in the case of SBND and ICARUS
-    #   if self._geometry.nTPCs() == 2: 
-    #     text = viewport_names[i]
-    #   button = QtGui.QPushButton(text)
-    #   i += 1
-    #   self._viewButtonGroup.addButton(button)
-    #   button.clicked.connect(self.viewSelectWorker)
-    #   self._viewButtonArray.append(button)
-    #   self._viewChoiceLayout.addWidget(button)
-
-
-
-
-
-    # self._test1 = QtGui.QPushButton("Cryo 0")
-    # self._test1.setToolTip("Close the viewer.")
-    # # self._test1.clicked.connect(self.quit)
-    # self._test1.setCheckable(True)
-    # self._test2 = QtGui.QPushButton("Cryo 1")
-    # self._test2.setCheckable(True)
-
-    # self._test3 = QtGui.QPushButton("Cryo 0")
-    # self._test3.setCheckable(True)
-    # self._test4 = QtGui.QPushButton("Cryo 1")
-    # self._test4.setCheckable(True)
-
-
-
-    # self._l1 = QtGui.QLabel("View H")
-    # self._l2 = QtGui.QLabel("View U")
-
-
-    # self._gridLayout = QtGui.QGridLayout()
-    # self._gridLayout.addWidget(self._test0, 1, 1)
-    # self._gridLayout.addWidget(self._l1, 2, 1)
-    # self._gridLayout.addWidget(self._test1, 2, 2)
-    # self._gridLayout.addWidget(self._test2, 2, 3)
-
-    # self._gridLayout.addWidget(self._l2, 3, 1)
-    # self._gridLayout.addWidget(self._test3, 3, 2)
-    # self._gridLayout.addWidget(self._test4, 3, 3)
-
-
-    # self._viewChoiceLayout3 = QtGui.QHBoxLayout()
-    # self._viewChoiceLayout3.addWidget(self._test1)
-    # self._viewChoiceLayout3.addWidget(self._test2)
-
-    # self._viewChoiceLayout4 = QtGui.QHBoxLayout()
-    # self._viewChoiceLayout4.addWidget(self._test3)
-    # self._viewChoiceLayout4.addWidget(self._test4)
-
-
-    # self._viewChoiceLayout2 = QtGui.QVBoxLayout()
-    # self._viewChoiceLayout2.addWidget(self._viewChoiceLayout3)
-    # self._viewChoiceLayout2.addWidget(self._viewChoiceLayout4)
-    ###########
-
-    # Add a section to allow users to just view one window instead of two/three
-    # self._viewButtonGroup = QtGui.QButtonGroup()
-    # self._viewButtonGroup.setExclusive(False);
-    # # Draw all planes:
-    # self._allViewsButton = QtGui.QRadioButton("All")
-    # self._allViewsButton.clicked.connect(self.viewSelectWorker)
-    # self._viewButtonGroup.addButton(self._allViewsButton)
-
-    # # Put the buttons in a layout
-    # self._viewChoiceLayout = QtGui.QVBoxLayout()
-
-    # # Make a label for this stuff:
-    # self._viewChoiceLabel = QtGui.QLabel("View Options")
-    # self._viewChoiceLayout.addWidget(self._viewChoiceLabel)
-    # self._viewChoiceLayout.addWidget(self._allViewsButton)
-
-    # viewport_names = self._geometry.viewNames()
-    # i = 0
-    # self._viewButtonArray = []
-    # n_viewports = int(self._geometry.nViews() / self._geometry.nTPCs())
-    # for plane in range(n_viewports):
-    #   text = "Plane" + str(i)
-    #   # Use U, V and W in the case of SBND and ICARUS
-    #   if self._geometry.nTPCs() == 2: 
-    #     text = viewport_names[i]
-    #   button = QtGui.QRadioButton(text)
-    #   i += 1
-    #   self._viewButtonGroup.addButton(button)
-    #   button.clicked.connect(self.viewSelectWorker)
-    #   self._viewButtonArray.append(button)
-    #   self._viewChoiceLayout.addWidget(button)
-
-    # # Add a button for the optical event display
-    # button = QtGui.QRadioButton("Optical")
-    # button.clicked.connect(self.viewSelectWorker)
-    # self._viewButtonGroup.addButton(button)
-    # self._viewButtonArray.append(button)
-    # self._viewChoiceLayout.addWidget(button)
-
-    # self._westLayout.addLayout(self._all_view_layout)
     self._westLayout.addLayout(self._gridLayout)
-    # self._westLayout.addLayout(self._viewChoiceLayout)
 
     self._westLayout.addStretch(1)
 
@@ -960,8 +882,8 @@ class gui(QtGui.QWidget):
     self._westLayout.addWidget(quit_control)
     self._westWidget = QtGui.QWidget()
     self._westWidget.setLayout(self._westLayout)
-    self._westWidget.setMaximumWidth(180)
-    self._westWidget.setMinimumWidth(130)
+    self._westWidget.setMaximumWidth(190)
+    self._westWidget.setMinimumWidth(140)
     return self._westWidget
 
 
@@ -1079,7 +1001,7 @@ class gui(QtGui.QWidget):
 
 
     self.setGeometry(0, 0, 2400/2, 1600/2)
-    self.setWindowTitle('Event Display')    
+    self.setWindowTitle('TITUS Event Display')    
     self.setFocus()
     self.show()
     self._view_manager.setRangeToMax()

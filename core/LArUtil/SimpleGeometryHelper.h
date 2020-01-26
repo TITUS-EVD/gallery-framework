@@ -149,10 +149,10 @@ public:
      * @param startPoint2D Returned by reference: A Point2D representing the projection of the start point into the plane.
      * @param direction2D Returned by reference: A Point2D representing the projection of the direction into the plane, normalized.
      */
-    void Line_3Dto2D( const TVector3 & startPoint3D, const TVector3 & direction3D, unsigned int plane,
+    void Line_3Dto2D( const TVector3 & startPoint3D, const TVector3 & direction3D, unsigned int plane, unsigned int tpc, unsigned int cryo,
                       Point2D & startPoint2D, Point2D & direction2D) const;
 
-    float Slope_3Dto2D(const TVector3 & inputVector, unsigned int plane) const ;
+    float Slope_3Dto2D(const TVector3 & inputVector, unsigned int plane, unsigned int tpc = 0, unsigned int cryo = 0) const ;
 
     /**
      * @brief Given a 3D line get the 3D vector that is the projection of that line on a plane

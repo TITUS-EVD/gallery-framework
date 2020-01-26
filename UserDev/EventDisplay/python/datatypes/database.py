@@ -70,6 +70,12 @@ class recoBase(dataBase):
             if len(self._drawnObjects) > thisPlane:
                 for item in self._drawnObjects[thisPlane]:
                     view._view.removeItem(item)
+            if geom.nTPCs() == 2:
+                # Also remove objects on the other TPC
+                for left_plane in geom.planeMix()[thisPlane]:
+                    if len(self._drawnObjects) > left_plane:
+                        for item in self._drawnObjects[left_plane]:
+                            view._view.removeItem(item)
 
         # clear the list:
         self._drawnObjects = []

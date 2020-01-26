@@ -62,7 +62,7 @@ public:
   // PyObject * getDataByPlane(size_t p);
   
   /// Returns a vector of data, what is stored depends on the implementation
-  const std::vector<DATA_TYPE> & getExtraData();
+  const std::vector<DATA_TYPE> & getExtraData(size_t p);
 
 protected:
 
@@ -80,7 +80,7 @@ protected:
   // Store the reco data to draw;
   std::vector <std::vector < DATA_TYPE > > _dataByPlane;
   // Extra reco data to draw (in case we need this)
-  std::vector < DATA_TYPE > _extraData;
+  std::vector <std::vector < DATA_TYPE > > _extraDataByPlane;
 
   // Store the bounding parameters of interest:
   // highest and lowest wire, highest and lowest time
@@ -191,14 +191,21 @@ const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getDataByPlane(size_t p) {
 
 
 template <class DATA_TYPE>
-const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getExtraData() {
+const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getExtraData(size_t p) {
+  int total_plane_number = _geo_service.NTPC() * _geo_service.Ncryostats();
   static std::vector<DATA_TYPE> returnNull;
-  try {
-    return _extraData;
-  }
-  catch (const std::exception& e) {
-    std::cerr << e.what() << '\n';
+  if (p >= total_plane_number) {
+    std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
     return returnNull;
+  }
+  else {
+    try {
+      return _extraDataByPlane.at(p);
+    }
+    catch (const std::exception& e) {
+      std::cerr << e.what() << '\n';
+      return returnNull;
+    }
   }
 }
 

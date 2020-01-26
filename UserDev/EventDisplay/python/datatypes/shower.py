@@ -50,6 +50,7 @@ class shower(recoBase):
         self._process = evd.DrawShower(geom.getGeometryCore(), geom.getDetectorProperties())
         self.init()
         self._clusters = [ [], [], []]
+        self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
 
         # Defining the cluster colors:
         self._showerColors = [
@@ -73,6 +74,7 @@ class shower(recoBase):
     #   pass
 
     def drawObjects(self, view_manager):
+        geom = view_manager._geometry
 
         # clear any clusters that may be present
         for view in view_manager.getViewPorts():
@@ -86,9 +88,26 @@ class shower(recoBase):
 
         for view in view_manager.getViewPorts():
             # get the showers from the process:
-            self._drawnObjects.append([])
-
+            # self._drawnObjects.append([])
+            for i in range(0, self._n_planes): self._drawnObjects.append([])
             showers = self._process.getDataByPlane(view.plane())
+
+            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+
+            showers = self._process.getDataByPlane(thisPlane)
+            offset = geom.offset(view.plane()) / geom.time2cm()
+
+            # print ('Drawing showers for plane', view.plane())
+            self.drawShowers(view, showers, offset, view.plane(), geom)
+
+            if geom.nTPCs() == 2:
+                for left_plane in geom.planeMix()[thisPlane]:
+                    showers = self._process.getDataByPlane(left_plane)
+                    # print ('Drawing tracks for plane', left_plane)
+                    self.drawShowers(view, showers, offset, left_plane, geom)
+
+
+    def drawShowers(self, view, showers, offset, plane, geom):
 
             i_color = 0
 
@@ -101,14 +120,25 @@ class shower(recoBase):
 
                 color = self._showerColors[i_color]
 
+                location = shower.tpc()
+                plane_x = geom.getGeometryCore().Plane(view.plane(), shower.tpc(), shower.cryo()).GetCenter().X()
+                plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
+                tpc_view_offset = 0
+                tpc_view_offset -= location * (2 * geom.halfwidth()) / geom.time2cm()
+                tpc_view_offset += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
+                tpc_view_offset += location * (geom.tRange() + geom.cathodeGap())
+
+                # tpc_view_offset = location * (geom.tRange() + geom.cathodeGap())
+
                 # construct a polygon for this shower:
                 points = []
                 # Remember - everything is in cm, but the display is in
                 # wire/time!
-                geom = view_manager._geometry
-                offset = geom.offset(view.plane()) / geom.time2cm()
+                
                 x = shower.startPoint().w / geom.wire2cm()
                 y = shower.startPoint().t / geom.time2cm() + offset
+
+                y += tpc_view_offset
 
                 points.append(QtCore.QPoint(x, y))
                 # next connect the two points at the end of the shower to make
@@ -140,6 +170,9 @@ class shower(recoBase):
 
                 y1 += offset
                 y2 += offset
+
+                y1 += tpc_view_offset
+                y2 += tpc_view_offset
 
                 points.append(QtCore.QPoint(x1, y1))
                 points.append(QtCore.QPoint(x2, y2))

@@ -13,6 +13,7 @@ class opticalviewport(QtGui.QWidget):
     self._last_clicked_pmts = []
     self._last_clicked_arapucas = []
 
+    self._flashes = {}
 
     self._totalLayout = QtGui.QVBoxLayout()
     self.setLayout(self._totalLayout)
@@ -34,7 +35,7 @@ class opticalviewport(QtGui.QWidget):
     self._wf_view.setMinimumHeight(200)
 
     for view in self._opdet_views:
-        view.setMaximumHeight(500)
+        view.setMaximumHeight(200)
         view.setMinimumHeight(50)
 
     self._totalLayout.setAlignment(QtCore.Qt.AlignTop)
@@ -68,6 +69,7 @@ class opticalviewport(QtGui.QWidget):
 
     self._totalLayout.addLayout(self._buttonLayout)
 
+
   def viewSelectionWorker(self):
     self._wf_view.setVisible(False)
     for view in self._opdet_views:
@@ -82,6 +84,7 @@ class opticalviewport(QtGui.QWidget):
         if self.sender() == self._tpc_buttons[i]:
             self._wf_view.setVisible(True)
             self._opdet_views[i].setVisible(True)
+
 
   def init_opdet_ui(self):
 
@@ -107,12 +110,19 @@ class opticalviewport(QtGui.QWidget):
         self._pmts.append(these_pmts)
         self._arapucas.append(these_arapucas)
 
+
   def drawOpDetWvf(self, data):
     self._wf_view.drawOpDetWvf(data)
 
 
+  def setFlashesForPlane(self, p, flashes):
+    self._flashes[p] = flashes
+    self._pmts[p].drawFlashes(flashes)
+
+
   def getWidget(self):
     return self, self._totalLayout
+
 
   def connectStatusBar(self, statusBar):
     self._statusBar = statusBar
@@ -121,6 +131,7 @@ class opticalviewport(QtGui.QWidget):
         self._pmts[t].connectStatusBar(self._statusBar)
         self._arapucas[t].connectStatusBar(self._statusBar)
         self._arapucas[t].connectStatusBar(self._statusBar)
+
 
   def pmtClickWorker(self, plot, points):
     for p in self._last_clicked_pmts:
@@ -132,6 +143,7 @@ class opticalviewport(QtGui.QWidget):
     self._last_clicked_pmts = points
 
     self._wf_view.drawWf(self._selected_ch)
+
 
   def arapucaClickWorker(self, plot, points):
     for p in self._last_clicked_arapucas:
@@ -165,36 +177,46 @@ class pmts(pg.ScatterPlotItem):
   def __init__(self, geom, tpc=0):
     super(pmts, self).__init__()
 
-    opdets_x, opdets_y, opdets_z = geom.opdetLoc()
-    opdets_name = geom.opdetName()
-    diameter = geom.opdetRadius() * 2
+    self._geom = geom
+    self._tpc = tpc
+
+    self._opdet_circles = self.get_opdet_circles()
+
+    self.setAcceptHoverEvents(True)
+    self.addPoints(self._opdet_circles)
+
+
+  def get_opdet_circles(self):
+
+    self._opdet_circles = []
+
+    opdets_x, opdets_y, opdets_z = self._geom.opdetLoc()
+    opdets_name = self._geom.opdetName()
+    diameter = self._geom.opdetRadius() * 2
 
     names = ['pmt', 'barepmt']
 
     brush = (0,0,0,0)
     
-    self._opdet_circles = []
-
     for d in range(0, len(opdets_x)):
         if opdets_name[d] in names:
-            if ((opdets_x[d] < -100 and tpc == 0) or
-               (opdets_x[d] > -100 and opdets_x[d] < 0 and tpc == 1) or
-               (opdets_x[d] > 0 and opdets_x[d] < 100 and tpc == 2) or
-               (opdets_x[d] > 100 and tpc == 3)):
+            if self._geom.opdetToTPC(d) == self._tpc:
+            # if ((opdets_x[d] < -100 and self._tpc == 0) or
+            #    (opdets_x[d] > -100 and opdets_x[d] < 0 and self._tpc == 1) or
+            #    (opdets_x[d] > 0 and opdets_x[d] < 100 and self._tpc == 2) or
+            #    (opdets_x[d] > 100 and self._tpc == 3)):
                 self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]), 
                                             'size'   : diameter, 
                                             'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2}, 
                                             'brush'  : brush, 
                                             'symbol' : 'o', 
                                             'data'   : {'id': d, 'highlight': False}})
-
-    self.setAcceptHoverEvents(True)
-    self.addPoints(self._opdet_circles)
-
     self._opdets_name = opdets_name
     self._opdets_x = opdets_x
     self._opdets_y = opdets_y
     self._opdets_z = opdets_z
+
+    return self._opdet_circles
 
   def connectStatusBar(self, statusBar):
     self._statusBar = statusBar
@@ -233,9 +255,25 @@ class pmts(pg.ScatterPlotItem):
             message += ";   Y: "
             message += "{0:.1f}".format(self._opdets_y[opdet_id])
             message += ";   Z: "
-            message += "{0:.1f}".format(self._opdets_x[opdet_id])
+            message += "{0:.1f}".format(self._opdets_z[opdet_id])
         self._statusBar.showMessage(message)
     
+
+  def drawFlashes(self, flashes):
+    if len(flashes) == 0:
+        return
+    total_pes = []
+    for f in flashes:
+      total_pes.append(f.total_pe())
+    max_pe = np.max(total_pes)
+
+    print ('type', type(flashes[0]))
+    for pe in flashes[0].pe_per_opdet():
+        print ('---- ', pe)
+
+    data = self.get_opdet_circles()
+    self.setData(data)
+
 
 
 class arapucas(pg.ScatterPlotItem):

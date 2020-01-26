@@ -67,8 +67,8 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   //Get the origin point of this plane:
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
-  // auto vtx = geom.Plane(plane, tpc, cryo).GetCenter();
-  auto vtx = geom.Plane(plane).GetCenter();
+  auto vtx = geom.Plane(plane, 0, cryo).GetCenter();
+  // auto vtx = geom.Plane(plane).GetCenter();
   planeOrigin[0] = vtx.X();
   planeOrigin[1] = vtx.Y();
   planeOrigin[2] = vtx.Z();
@@ -113,11 +113,11 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsig
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 
-void SimpleGeometryHelper::Line_3Dto2D( const TVector3 & startPoint3D, const TVector3 & direction3D, unsigned int plane,
+void SimpleGeometryHelper::Line_3Dto2D( const TVector3 & startPoint3D, const TVector3 & direction3D, unsigned int plane, unsigned int tpc, unsigned int cryo,
                                   Point2D & startPoint2D, Point2D & direction2D) const
 {
   // First step, project the start point into 2D
-  startPoint2D = Point_3Dto2D(startPoint3D, plane);
+  startPoint2D = Point_3Dto2D(startPoint3D, plane, tpc, cryo);
   if (! Point_isInTPC( startPoint3D ) ) {
     std::cerr << "ERROR - SimpleGeometryHelper::Line_3Dto2D: StartPoint3D must be in the TPC.\n";
     return;
@@ -135,7 +135,7 @@ void SimpleGeometryHelper::Line_3Dto2D( const TVector3 & startPoint3D, const TVe
   //           << ", " << secondPoint3D.Y() << ", " << secondPoint3D.Z() << ")\n";
 
   // Project the second point into 2D:
-  Point2D secondPoint2D = Point_3Dto2D(secondPoint3D, plane);
+  Point2D secondPoint2D = Point_3Dto2D(secondPoint3D, plane, tpc, cryo);
 
   // std::cout << "2D line is (" << startPoint2D.w << ", " << startPoint2D.t
   //           << ") to (" << secondPoint2D.w << ", " << secondPoint2D.t << ")\n";
@@ -151,13 +151,13 @@ void SimpleGeometryHelper::Line_3Dto2D( const TVector3 & startPoint3D, const TVe
   return;
 }
 
-float SimpleGeometryHelper::Slope_3Dto2D(const TVector3 & inputVector, unsigned int plane) const {
+float SimpleGeometryHelper::Slope_3Dto2D(const TVector3 & inputVector, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   // Do this by projecting the line:
   // Generate a start point right in the middle of the detector:
   TVector3 startPoint3D(0, 0, 0);
   startPoint3D.SetZ(0.5 * geom.DetLength());
   larutil::Point2D p1, slope;
-  Line_3Dto2D(startPoint3D, inputVector, plane, p1, slope);
+  Line_3Dto2D(startPoint3D, inputVector, plane, tpc, cryo, p1, slope);
   return slope.t / slope.w;
 }
 

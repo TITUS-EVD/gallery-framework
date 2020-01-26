@@ -93,7 +93,7 @@ void UbooneNoiseFilter::pedestal_subtract_only(){
       // The wire in question is from _data_by_plane[plane][offset]
       // to _data_by_plane[plane][offset + _n_time_ticks_data]
       float * _wire_arr = &(_data_by_plane->at(plane).at(offset));
-      bool wire_is_chirping = is_chirping(_wire_arr,
+      /*bool wire_is_chirping = */is_chirping(_wire_arr,
                                           _n_time_ticks_data,
                                           wire,
                                           plane);
@@ -149,7 +149,7 @@ void UbooneNoiseFilter::clean_data() {
       // The wire in question is from _data_by_plane[plane][offset]
       // to _data_by_plane[plane][offset + _n_time_ticks_data]
       float * _wire_arr = &(_data_by_plane->at(plane).at(offset));
-      bool wire_is_chirping = is_chirping(_wire_arr,
+      /*bool wire_is_chirping = */is_chirping(_wire_arr,
                                           _n_time_ticks_data,
                                           wire,
                                           plane);

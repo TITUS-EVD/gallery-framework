@@ -5,6 +5,19 @@ import numpy as np
 import math
 
 
+class VerticalLabel(QtGui.QLabel):
+
+    def __init__(self, *args):
+        QtGui.QLabel.__init__(self, *args)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.translate(0, self.height())
+        painter.rotate(-90)
+        painter.drawText(0, self.width()/2, self.text())
+        painter.end()
+
+
 class viewport(pg.GraphicsLayoutWidget):
 
   drawHitsRequested = QtCore.pyqtSignal(int, int)
@@ -18,12 +31,7 @@ class viewport(pg.GraphicsLayoutWidget):
     # self._item._setPen((0,0,0))
     self._view.addItem(self._item)
     
-    # self._line_a = None
-    # self._line_c = None
-    # self._line_a_2 = None
-    # self._line_c_2 = None
     self._removed_entries = 0
-    # self._line_tpc_div = None
     self._manual_t0 = 0
     self._showAnodeCathode = False
 
@@ -103,13 +111,35 @@ class viewport(pg.GraphicsLayoutWidget):
     self._cmap.setMaximumWidth(25)
     self._lowerLevel.setMaximumWidth(35)
 
+    # The name of the viewport with appropriate tooltip
+    name = 'View ' 
+    name += self._geometry.viewNames()[plane]
+    name += ', Cryo '
+    name += str(cryostat)
+    self._viewport_name = VerticalLabel(name)
+    self._viewport_name.setStyleSheet('color: rgb(169,169,169);')
+    tooltip = 'Bottom view is for TPC 0, top view is for TPC 1. '
+    tooltip += 'Note that the vaweforms in TPC 1 are flipped in time '
+    tooltip += 'so as to retain the same x direction as in TPC 0. '
+    if self._geometry.viewNames()[plane] == 'U':
+        tooltip += 'NOTE: bottom image is plane 1 for TPC 0 '
+        tooltip += 'but top image is plane 2 for TPC 1'
+    if self._geometry.viewNames()[plane] == 'V':
+        tooltip += 'NOTE: bottom image is plane 2 for TPC 0 '
+        tooltip += 'but top image is plane 1 for TPC 1.'
+    self._viewport_name.setToolTip(tooltip)
+    self._viewport_name.setMaximumWidth(25)
+
+
     colors = QtGui.QVBoxLayout()
     colors.addWidget(self._upperLevel)
     colors.addWidget(self._cmap)
     colors.addWidget(self._lowerLevel)
     self._totalLayout = QtGui.QHBoxLayout()
+    self._totalLayout.addWidget(self._viewport_name)
     self._totalLayout.addWidget(self)
     self._totalLayout.addLayout(colors)
+
     self._widget = QtGui.QWidget()
     self._widget.setLayout(self._totalLayout)
 

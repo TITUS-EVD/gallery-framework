@@ -29,22 +29,6 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned i
     }
   }
 
-  // auto geoHelper = larutil::GeometryHelper::GetME();
-  // result._track.reserve(track.NumberTrajectoryPoints());
-  // for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
-  //   // project a point into 2D:
-  //   try {
-  //     if (track.HasValidPoint(i)) {
-  //         auto loc = track.LocationAtPoint(i);
-  //         TVector3 xyz(loc.X(),loc.Y(),loc.Z());
-  //         auto point = geoHelper->Point_3Dto2D(xyz, plane); //, tpc, cryostat);
-  //         result._track.push_back(std::make_pair(point.w, point.t));
-  //     }
-  //   } catch (...) {
-  //     continue;
-  //   }
-  // }
-
   return result;
 }
 
@@ -115,21 +99,17 @@ bool DrawTrack::analyze(gallery::Event *ev) {
       track_cryo = hits.at(0)->WireID().Cryostat;
     }
 
-    // for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
-      // for (unsigned int t = 0; t < _geo_service.NTPC(c); t++) {
-        for (unsigned int p = 0; p < _geo_service.Nplanes(track_tpc); p++) {
+    for (unsigned int p = 0; p < _geo_service.Nplanes(track_tpc); p++) {
           
-          int plane = p + track_tpc * _geo_service.Nplanes();
-          plane += track_cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
+      int plane = p + track_tpc * _geo_service.Nplanes();
+      plane += track_cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
           
-          auto tr = getTrack2D(track, p, track_tpc, track_cryo);
-          tr._tpc = track_tpc;
-          tr._cryo = track_cryo;
-          _dataByPlane.at(plane).push_back(tr);
+      auto tr = getTrack2D(track, p, track_tpc, track_cryo);
+      tr._tpc = track_tpc;
+      tr._cryo = track_cryo;
+      _dataByPlane.at(plane).push_back(tr);
 
-        }
-      // }
-    // }
+    }
 
 
     // for (unsigned int plane = 0; plane < _total_plane_number; plane++) {

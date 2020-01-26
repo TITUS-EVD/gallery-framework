@@ -65,6 +65,8 @@ bool example_ana::analyze(gallery::Event * ev) {
 
         average_hits += hits.size();
 
+        std::cout << "Track vertex " << track.Vertex() << std::endl;
+
         // Loop over individual hits, if needed:
         // for (auto const& hit : hits) {
         //     std::cout << "Hit start time: " << hit->StartTick << std::endl;

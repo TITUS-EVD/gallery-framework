@@ -142,7 +142,7 @@ float getMean(const std::vector<float> & _input) {
     return 0.0;
   }
 
-  float rms  = 0.0;
+  // float rms  = 0.0;
   float mean = 0.0;
 
   for (unsigned int i = 0; i < _input.size(); i++) {
@@ -227,7 +227,7 @@ void detPropFetcher::init(){
 
 }
 
-int detPropFetcher::same_plane_pair(int plane, int block){
+int detPropFetcher::same_plane_pair(/*int plane, */int block){
   // if (plane == 0 && block > 41){
   //   return -1;
   // }  

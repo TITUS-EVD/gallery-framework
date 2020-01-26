@@ -20,6 +20,8 @@
 #include "RecoBase.h"
 
 #include "lardataobj/RecoBase/Shower.h"
+#include "lardataobj/RecoBase/Hit.h"
+#include "canvas/Persistency/Common/FindMany.h"
 /**
    \class DrawShower
    User defined class DrawShower ... these comments are used to generate
@@ -40,6 +42,8 @@ public:
     ~Shower2D() {}
 
     int plane() {return _plane;}
+    int tpc() { return _tpc; }
+    int cryo() { return _cryo; }
     larutil::Point2D startPoint() {return _startPoint;}
     larutil::Point2D endPoint() {return _endPoint;}
     float angleInPlane() {return _angleInPlane;}
@@ -51,6 +55,8 @@ public:
 
     // ALL OF THESE VARIABLES ARE THE PROJECTION INTO THE PLANE
     int _plane;                ///< The Plane of the shower
+    int _tpc = 0;              ///< The TPC of the shower
+    int _cryo = 0;             ///< The Cryostat of the shower
     larutil::Point2D _startPoint;      ///< Wire time start point (units in cm)
     larutil::Point2D _endPoint;      ///< Wire time start point (units in cm)
     float _angleInPlane;       ///< Angle in the plane
@@ -102,7 +108,7 @@ public:
 
 
 
-    Shower2D getShower2d(recob::Shower shower, unsigned int plane);
+    Shower2D getShower2d(recob::Shower shower, unsigned int plane, unsigned int tpc = 0, unsigned int cryostat = 0);
 
 };
 

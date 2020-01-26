@@ -239,7 +239,7 @@ void ChirpFilter::remove_baseline_deviation(float * wf, int numTicks) const {
     // Find the amplitude by integrating the first time-constant range
     // of the waveform.
     for (int tick = 0; tick < chirp_rc_const; tick ++ ) {
-      if (_current_chirp_info.chirp_stop + tick < numTicks) {
+      if ((int)_current_chirp_info.chirp_stop + tick < numTicks) {
         integral += wf[_current_chirp_info.chirp_stop + tick];
         n_integral ++;
       }

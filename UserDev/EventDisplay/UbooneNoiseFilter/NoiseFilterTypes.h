@@ -107,7 +107,7 @@ public:
    * 
    * @return The same-service-board motherboard (or index of block of wires)
    */
-  int same_plane_pair(int plane, int block);
+  int same_plane_pair(/*int plane, */int block);
 
   /**
    * @brief Get the list of (plane, block) within a service board

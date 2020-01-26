@@ -16,6 +16,8 @@
 
 #include "Analysis/ana_base.h"
 #include "lardataobj/RecoBase/OpFlash.h"
+#include "lardataobj/RecoBase/OpHit.h"
+#include "canvas/Persistency/Common/FindMany.h"
 #include <iostream>
 
 #include "RecoBase.h"
@@ -41,6 +43,7 @@ public:
     float time(){return _time;}
     float time_width(){return _time_width;}
     float total_pe(){return _total_pe;}
+    float plane(){return _plane;}
     std::vector<double> pe_per_opdet(){return _opdet_pe;}
 
 private:
@@ -51,6 +54,7 @@ private:
     float _time;
     float _time_width;
     float _total_pe;
+    float _plane;
     std::vector<double> _opdet_pe;
 };
 
@@ -69,6 +73,10 @@ public:
   virtual bool analyze(gallery::Event *event);
 
   virtual bool finalize();
+
+private:
+
+  int find_plane(int opch);
 
 };
 

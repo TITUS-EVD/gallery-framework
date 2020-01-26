@@ -166,6 +166,9 @@ class geoBase(object):
     def opdetRadius(self):
         return self._opdet_radius
 
+    def opdetToTPC(self):
+        return
+
     def opdetDefaultValue(self):
         return self._opdet_default
 
@@ -305,8 +308,6 @@ class geometry(geoBase):
         self._nPlanes = geometryCore.Nplanes()
         self._nTPCs = int(geometryCore.NTPC())
         self._nCryos = int(geometryCore.Ncryostats())
-        print ('geom self._nCryos', self._nCryos)
-        # self._nPlanes = int(geometryCore.Nplanes()) * geometryCore.NTPC() * geometryCore.Ncryostats()
         self._tRange = detProperties.NumberTimeSamples()
         self._readoutWindowSize = detProperties.NumberTimeSamples()
         self._triggerOffset = detProperties.TriggerOffset()
@@ -347,7 +348,7 @@ class sbnd(geometry):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(sbnd, self).__init__()
-        larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
+        # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
         # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
@@ -365,6 +366,7 @@ class sbnd(geometry):
         self._haslogo = False
         self._logopos = [30, 30]
         self._logoscale = 0.13
+        self._opdet_radius = 7
         self._tRange = 7500 #3000
         self._triggerOffset = 2500 #0
         self._readoutWindowSize = 7500 #3000
@@ -412,6 +414,12 @@ class sbnd(geometry):
                 * self.time2cm()
                 - self.planeOriginX(v) )
 
+    def opdetToTPC(self, ch):
+        if (self._opdet_x[ch] < 0): 
+            return 0
+        else:
+            return 1
+
 
 class icarus(geometry): 
 
@@ -420,14 +428,11 @@ class icarus(geometry):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()
-        # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
-        # self._pedestals = [2048, 2048, 400]
-        # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
         self._pedestals = [0, 0, 0, 0, 0, 0]
         self._levels = [(-80, 0), (-10, 100), (-10, 100), (-80, 0), (-10, 100), (-10, 100)]
-        self._view_names = ['Cryo 0, view H', 'Cryo 0, view U', 'Cryo 0, view V', 'Cryo 1, view H', 'Cryo 1, view U', 'Cryo 1, view V']
+        self._view_names = ['H', 'U', 'V']
         # self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
         self._plane_mix = {0: [3], 1: [5], 2: [4], 6: [9], 7: [11], 8: [10]}
         self._plane_flip = [False, False, False, True, True, True, False, False, False, True, True, True]
@@ -439,9 +444,9 @@ class icarus(geometry):
         self._logopos = [30, 30]
         self._logoscale = 0.35
         self._opdet_radius = 7
-        # self._tRange = 7500 #3000
-        # self._triggerOffset = 2500 #0
-        # self._readoutWindowSize = 7500 #3000
+        # self._tRange = 7500
+        # self._triggerOffset = 2500
+        # self._readoutWindowSize = 7500
         self._planeOriginX = [0.0, -0.3, -0.6, 
                               0.0, -0.3, -0.6, 
                               0.0, -0.3, -0.6, 
@@ -476,6 +481,17 @@ class icarus(geometry):
             #     self.triggerOffset()
             #     * self.time2cm()
             #     - self.planeOriginX(v) )
+
+    def opdetToTPC(self, ch):
+        if (self._opdet_x[ch] < -100): 
+            return 0
+        elif (self._opdet_x[ch] > -100 and self._opdet_x[ch] < 0):
+            return 1 
+        elif (self._opdet_x[ch] > 0 and self._opdet_x[ch] < 100):
+            return 2
+        else:
+            return 3
+
 
 class microboone(geometry):
 

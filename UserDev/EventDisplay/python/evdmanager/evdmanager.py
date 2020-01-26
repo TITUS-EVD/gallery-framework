@@ -451,7 +451,6 @@ class evd_manager_2D(evd_manager_base):
     # handle all the wire stuff:
     def toggleWires(self, product, stage=None, subtract_pedestal=True):
         # Now, either add the drawing process or remove it:
-        print ('toggleWires called, subtract_pedestal =', subtract_pedestal)
 
         if stage is None:
             stage = 'all'

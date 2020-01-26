@@ -43,6 +43,9 @@ bool DrawShower::analyze(gallery::Event * ev) {
     return true;
   }
 
+  // Retrieve the hits to infer the TPC the track belongs to
+  art::InputTag assn_tag(_producer);
+  art::FindMany<recob::Hit> shower_to_hits(showerHandle, *ev, assn_tag);
 
 
   // Clear out the hit data but reserve some space for the showers
@@ -61,12 +64,33 @@ bool DrawShower::analyze(gallery::Event * ev) {
 
     auto const& shower = showerHandle->at(s);
 
-    for (unsigned int view = 0; view < total_plane_number; view++) {
-      // get the reconstructed shower for this plane
-      auto shr2D = getShower2d(shower, view);
-      _dataByPlane.at(view).push_back( shr2D );
+    std::vector<recob::Hit const*> hits;
+    shower_to_hits.get(s, hits);
+    size_t shower_tpc = 0, shower_cryo = 0;
+    if (hits.size() > 0) {
+      shower_tpc = hits.at(0)->WireID().TPC;
+      shower_cryo = hits.at(0)->WireID().Cryostat;
+    }
+
+
+    for (unsigned int p = 0; p < _geo_service.Nplanes(shower_tpc); p++) {
+          
+      int plane = p + shower_tpc * _geo_service.Nplanes();
+      plane += shower_cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
+          
+      auto sh = getShower2d(shower, p, shower_tpc, shower_cryo);
+      sh._tpc = shower_tpc;
+      sh._cryo = shower_cryo;
+      _dataByPlane.at(plane).push_back(sh);
 
     }
+
+    // for (unsigned int view = 0; view < total_plane_number; view++) {
+    //   // get the reconstructed shower for this plane
+    //   auto shr2D = getShower2d(shower, view);
+    //   _dataByPlane.at(view).push_back( shr2D );
+
+    // }
   }
 
 
@@ -80,7 +104,7 @@ bool DrawShower::finalize() {
 
 
 
-Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane) {
+Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
 
   larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
 
@@ -88,11 +112,11 @@ Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane) {
   result._is_good = false;
   result._plane = plane;
   // Fill out the parameters of the 2d shower
-  result._startPoint = geo_helper.Point_3Dto2D(shower.ShowerStart(), plane);
+  result._startPoint = geo_helper.Point_3Dto2D(shower.ShowerStart(), plane, tpc, cryostat);
     // = geoHelper -> Point_3Dto2D(shower.ShowerStart(), plane);
 
   // Next get the direction:
-  result._angleInPlane = geo_helper.Slope_3Dto2D(shower.Direction(), plane);
+  result._angleInPlane = geo_helper.Slope_3Dto2D(shower.Direction(), plane, tpc, cryostat);
 
   // Get the opening Angle:
   // result._openingAngle = shower.OpeningAngle();
@@ -104,7 +128,7 @@ Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane) {
 
 
   result._endPoint
-    = geo_helper.Point_3Dto2D(secondPoint, plane);
+    = geo_helper.Point_3Dto2D(secondPoint, plane, tpc, cryostat);
 
   result._length = sqrt(pow(result.startPoint().w - result.endPoint().w, 2) +
                         pow(result.startPoint().t - result.endPoint().t, 2));
