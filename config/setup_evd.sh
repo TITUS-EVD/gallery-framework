@@ -1,0 +1,116 @@
+#!/bin/bash
+
+me="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Find the directory one above.
+export GALLERY_FMWK_BASEDIR="$( cd "$( dirname "$me" )" && pwd )"
+
+# echo "GALLERY_FMWK_BASEDIR = $GALLERY_FMWK_BASEDIR"
+if [[ -z $GALLERY_FMWK_BASEDIR ]]; then
+    echo \$GALLERY_FMWK_BASEDIR not set! 
+    echo You have to set this first.
+    return;
+fi
+# Abort if ROOT not installed. Let's check rootcint for this.
+if [ `command -v rootcling` ]; then
+    export GALLERY_FMWK_ROOT6=1
+else 
+    if [[ -z `command -v rootcint` ]]; then
+        echo
+        echo Looks like you do not have ROOT installed.
+        echo You cannot use GALLERY_FMWK w/o ROOT!
+        echo Aborting.
+        echo
+        return;
+    fi
+fi
+# Abort if GALLERY not installed. 
+if [[ -z $GALLERY_INC ]]; then
+    echo
+    echo Looks like you do not have GALLERY installed.
+    echo You cannot use GALLERY_FMWK w/o GALLERY!
+    echo Aborting.
+    echo
+    return;
+fi
+
+GALLERY_FMWK_OS=`uname -s`
+
+# Set path to sub directories
+export GALLERY_FMWK_LIBDIR=$GALLERY_FMWK_BASEDIR/lib
+export GALLERY_FMWK_COREDIR=$GALLERY_FMWK_BASEDIR/core
+export GALLERY_FMWK_USERDEVDIR=$GALLERY_FMWK_BASEDIR/UserDev
+
+if [[ -z $USER_MODULE ]]; then
+    export USER_MODULE=""
+fi
+
+# Check compiler availability for clang++ and g++
+GALLERY_FMWK_CXX=g++
+if [ `command -v $GALLERY_FMWK_CXX` ]; then
+    export GALLERY_FMWK_CXX="$GALLERY_FMWK_CXX -std=c++11";
+else
+    GALLERY_FMWK_CXX=g++
+    if [[ -z `command -v $GALLERY_FMWK_CXX` ]]; then
+        echo
+        echo Looks like you do not have neither clang or g++!
+        echo You need one of those to compile GALLERY_FMWK... Abort config...
+        echo
+        return;
+    fi
+    export GALLERY_FMWK_CXX;
+    if [ $GALLERY_FMWK_OS = 'Darwin' ]; then
+        echo $GALLERY_FMWK_OS
+        echo
+        echo "***************** COMPILER WARNING *******************"
+        echo "*                                                    *"
+        echo "* You are using g++ on Darwin to compile Gallery Framework.    *"
+        echo "* Currently Gallery Framework assumes you do not have C++11    *"
+        echo "* in this combination. Contact the author if this is *"
+        echo "* not the case. At this rate you have no ability to  *"
+        echo "* compile packages using C++11 in Gallery Framework.           *"
+        echo "*                                                    *"
+        echo "* Help to install clang? See manual/contact author!  *"
+        echo "*                                                    *"
+        echo "******************************************************"
+        echo 
+    fi
+fi
+if [[ -z $ROOTSYS ]]; then
+    case `uname -n` in
+        (houston.nevis.columbia.edu)
+            if [[ -z ${ROOTSYS} ]]; then
+                source /usr/nevis/adm/nevis-init.sh
+                setup root
+                export PYTHONPATH=$ROOTSYS/lib:$PYTHONPATH;
+            fi
+            ;;
+        (*)
+            echo
+            echo "****************** PyROOT WARNING ********************"
+            echo "*                                                    *"
+            echo "* Did not find your \$ROOTSYS. To use PyROOT feature, *"
+            echo "* Make sure ROOT.py is installed (comes with ROOT).  *"
+            echo "* You need to export \$PYTHONPATH to include the dir  *"
+            echo "* where ROOT.py exists.                              *"
+            echo "*                                                    *"
+            echo "* Help to install PyROOT? See manual/contact author! *"
+            echo "*                                                    *"
+            echo "******************************************************"
+            echo
+            ;;
+        esac
+else
+    export PYTHONPATH=$ROOTSYS/lib:$PYTHONPATH;
+fi
+
+
+export LD_LIBRARY_PATH=$GALLERY_FMWK_LIBDIR:$LD_LIBRARY_PATH
+export PATH=$GALLERY_FMWK_BASEDIR/bin:$PATH
+
+# echo
+# echo "Finish configuration. To build, type:"
+# echo "> cd \$GALLERY_FMWK_BASEDIR"
+# echo "> make"
+# echo
+
+source $GALLERY_FMWK_BASEDIR/UserDev/EventDisplay/setup_evd.sh
