@@ -38,9 +38,9 @@ This framework contains TITUS: the event display for SBND at Fermilab. TITUS all
 
 1) Set up gallery and larsoftobj.
 
-2) Source the setup script: source config/setup.sh
+2) Source the setup script: `source config/setup.sh`
 
-3) make from the top area: make -j8
+3) make from the top area: `make -j`
 
 4) Develop in the user dev area.
 
@@ -50,8 +50,10 @@ This framework contains TITUS: the event display for SBND at Fermilab. TITUS all
 
 1) Make sure the framework is built.
 
-2) Source the setup script: source UserDev/EventDisplay/setup_evd.sh
+2) Source the setup script: `source UserDev/EventDisplay/setup_evd.sh`
 
-3) make from the UserDev/EventDisplay/ area: make -j8
+3) make from the UserDev/EventDisplay/ area: `make -j`
 
 4) Run with `evd.py /path/to/art-root-file.root`. Add option `-s` to use the SBND geometry. Add option `-i` to use the ICARUS geometry.
+
+If you have already built the evd, you can set it up by simply running `source config/setup_evd.sh`
