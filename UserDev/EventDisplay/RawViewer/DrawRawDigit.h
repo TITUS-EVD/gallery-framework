@@ -17,7 +17,7 @@
 
 #include "Analysis/ana_base.h"
 #include "RawBase.h"
-#include "UbooneNoiseFilter/UbooneNoiseFilter.h"
+// #include "UbooneNoiseFilter/UbooneNoiseFilter.h"
 
 #include "TTree.h"
 #include "TGraph.h"
@@ -69,7 +69,7 @@ private:
     // Store whether or not to correct the data
     bool _correct_data;
 
-    ub_noise_filter::UbooneNoiseFilter _noise_filter;
+    // ub_noise_filter::UbooneNoiseFilter _noise_filter;
     std::vector<size_t> _padding_by_plane;
 
     bool _subtract_pedestal; ///< Settable. If true, the pedestal is subtracted.

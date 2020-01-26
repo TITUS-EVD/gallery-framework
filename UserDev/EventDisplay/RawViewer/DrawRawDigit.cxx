@@ -42,9 +42,9 @@ bool DrawRawDigit::initialize() {
   }
   initDataHolder();
 
-  if (_geo_service.DetectorName() == "microboone") {
-    _noise_filter.init();
-  }
+  // if (_geo_service.DetectorName() == "microboone") {
+  //   _noise_filter.init();
+  // }
 
   return true;
 }
@@ -104,9 +104,9 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   _planeData.clear();
   size_t n_ticks = raw_digits_v[0]->front().ADCs().size();
 
-  if (_geo_service.DetectorName() == "microboone") {
-    _noise_filter.set_n_time_ticks(n_ticks);
-  }
+  // if (_geo_service.DetectorName() == "microboone") {
+  //   _noise_filter.set_n_time_ticks(n_ticks);
+  // }
   initDataHolder();
 
   // If the output data holder is not the same size as RawDigit length,
@@ -159,14 +159,14 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   }
 
 
-  if (_geo_service.DetectorName() == "microboone") {
-    _noise_filter.set_data(&temp_data_holder);
-    if (_correct_data && ev->eventAuxiliary().isRealData()) {
-      _noise_filter.clean_data();
-    } else {
-      _noise_filter.pedestal_subtract_only();
-    }
-  }
+  // if (_geo_service.DetectorName() == "microboone") {
+  //   _noise_filter.set_data(&temp_data_holder);
+  //   if (_correct_data && ev->eventAuxiliary().isRealData()) {
+  //     _noise_filter.clean_data();
+  //   } else {
+  //     _noise_filter.pedestal_subtract_only();
+  //   }
+  // }
 
   // In some cases, raw digits are truncated and the padding is needed.
   // In other cases, raw digits are not truncated and no padding is needed,
