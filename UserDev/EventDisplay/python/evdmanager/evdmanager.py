@@ -463,6 +463,9 @@ class evd_manager_2D(evd_manager_base):
             self._drawWires = True
             self._wireDrawer = datatypes.recoWire(self._geom)
 
+            for p in self._keyTable[stage]:
+                print ('0000', p)
+
             if self._geom.name() == 'icarus' and len(self._keyTable[stage]['recob::Wire']) > 3:
                 producer = [self._keyTable[stage]['recob::Wire'][0].fullName(),
                             self._keyTable[stage]['recob::Wire'][1].fullName(),
@@ -485,7 +488,7 @@ class evd_manager_2D(evd_manager_base):
             self._wireDrawer = datatypes.rawDigit(self._geom)
             self._wireDrawer.setSubtractPedestal(subtract_pedestal)
 
-            if self._geom.name() == 'icarus' and len(self._keyTable[stage]['recob::Wire']) > 3:
+            if self._geom.name() == 'icarus' and len(self._keyTable[stage]['raw::RawDigit']) > 3:
                 producer = [self._keyTable[stage]['raw::RawDigit'][0].fullName(),
                             self._keyTable[stage]['raw::RawDigit'][1].fullName(),
                             self._keyTable[stage]['raw::RawDigit'][2].fullName(),
