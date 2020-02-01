@@ -44,31 +44,14 @@ class view_manager(QtCore.QObject):
 
     self._opt_view = opticalviewport(self._geometry)
 
+    self._wireDrawerMain = self.add_wire_drawer_layout()
 
-    # 
-    # Wire Drawer
-    #
-    self._wireDrawerMain = pg.GraphicsLayoutWidget()
-    self._wireDrawerMain.setBackground(None)
-    self._wirePlot = self._wireDrawerMain.addPlot()
-    self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
-    self._wirePlot.addItem(self._wirePlotItem)
-    self._wireDrawerMain.setMaximumHeight(200)
-    self._wireDrawerMain.setMinimumHeight(100)
-
-    self._wireDrawer_name = VerticalLabel("Wire Drawer")
-    self._wireDrawer_name.setMaximumWidth(25)
-    self._wireDrawer_name.setAlignment(QtCore.Qt.AlignCenter)
-    self._wireDrawer_name.setToolTip("Click on a wire to display the waveform.")
-    self._wireDrawer_name.setStyleSheet('color: rgb(169,169,169);')
-    self._wireDrawerLayout = QtGui.QHBoxLayout()
-    self._wireDrawerLayout.addWidget(self._wireDrawer_name)
-    self._wireDrawerLayout.addWidget(self._wireDrawerMain)
+    self._wireDrawerVLayout = QtGui.QVBoxLayout()
+    self._wireDrawerVLayout.addLayout(self._wireDrawerLayout)
+    self._wireDrawerVLayout.addLayout(self._wire_drawer_button_layout)
 
     self._wireDrawer = QtGui.QWidget()
-    self._wireDrawer.setLayout(self._wireDrawerLayout)
-
-
+    self._wireDrawer.setLayout(self._wireDrawerVLayout)
 
 
 
@@ -82,6 +65,46 @@ class view_manager(QtCore.QObject):
     self._wireData = None
 
     self._drawing_raw_digits = False
+
+
+  def add_wire_drawer_layout(self):
+    self._wireDrawerMain = pg.GraphicsLayoutWidget()
+    self._wireDrawerMain.setBackground(None)
+    self._wirePlot = self._wireDrawerMain.addPlot()
+    self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
+    self._wirePlot.addItem(self._wirePlotItem)
+    self._wireDrawerMain.setMaximumHeight(250)
+    self._wireDrawerMain.setMinimumHeight(100)
+
+    self._wireDrawer_name = VerticalLabel("Wire Drawer")
+    self._wireDrawer_name.setMaximumWidth(25)
+    self._wireDrawer_name.setAlignment(QtCore.Qt.AlignCenter)
+    self._wireDrawer_name.setToolTip("Click on a wire to display the waveform.")
+    self._wireDrawer_name.setStyleSheet('color: rgb(169,169,169);')
+    self._wireDrawerLayout = QtGui.QHBoxLayout()
+    self._wireDrawerLayout.addWidget(self._wireDrawer_name)
+    self._wireDrawerLayout.addWidget(self._wireDrawerMain)
+
+    self.left_wire_button = QtGui.QPushButton("Previous Wire")
+    self.left_wire_button.clicked.connect(self.change_wire)
+    self.left_wire_button.setToolTip("Show the previous wire.")
+    self.right_wire_button = QtGui.QPushButton("Next Wire")
+    self.right_wire_button.clicked.connect(self.change_wire)
+    self.right_wire_button.setToolTip("Show the next wire.")
+    self._wire_drawer_button_layout = QtGui.QHBoxLayout()
+    self._wire_drawer_button_layout.addStretch()
+    self._wire_drawer_button_layout.addWidget(self.left_wire_button)
+    self._wire_drawer_button_layout.addWidget(self.right_wire_button)
+
+  def change_wire(self):
+    if self.sender() == self.left_wire_button:
+      wire = self._current_wire - 1
+    else:
+      wire = self._current_wire + 1
+
+    if wire > 0:
+      self._current_wire_drawer.show_waveform(wire=wire, tpc=self._current_tpc)
+    return
 
   def addEvdDrawer(self,plane,cryostat=0):
     self._drawerList[(plane, cryostat)] = viewport(self._geometry, plane, cryostat)
@@ -174,7 +197,6 @@ class view_manager(QtCore.QObject):
     for p, c in zip(self._selectedPlane, self._selectedCryo):
       for key, widget in self._planeWidgets.items():
         if key == (p, c):
-          print ('Drawing viewport for p, c =', p, c)
           # Turn on the requested ones
           widget.setVisible(True)
           self._drawerList[key].toggleLogo(self._drawLogo)
@@ -308,7 +330,7 @@ class view_manager(QtCore.QObject):
       self._opt_view.drawOpDetWvf(event_manager.getOpDetWvf())
 
  
-  def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None):
+  def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None):
     # Need to draw a wire on the wire view
     # Don't bother if the view isn't active:
     if not self._wireDrawer.isVisible():
@@ -323,6 +345,13 @@ class view_manager(QtCore.QObject):
       self._wireDrawer_name.setToolTip(name)
       self._wirePlot.setLabel(axis='left', text=name)
       self._wirePlot.setLabel(axis='bottom', text="Time")
+
+      # Store the viewport that just draw this
+      # as we might need it to increase and 
+      # decrease the displayed wire
+      self._current_wire_drawer = drawer
+      self._current_wire = wire
+      self._current_tpc = tpc
 
 
 
