@@ -445,8 +445,10 @@ class viewport(pg.GraphicsLayoutWidget):
     # Figure out in which tpc we are, so we can display only the wire for the selected tpc
     first_entry = 0
     last_entry = self._geometry.tRange()
+    tpc = 0
     for i in range(self._geometry.nTPCs(), 0, -1):
         if self.q.y() > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
+            tpc = 1
             first_entry = int (i * (self._geometry.tRange() + self._geometry.cathodeGap()))
             last_entry = int((i+1) * (self._geometry.tRange() + self._geometry.cathodeGap()))
             break 
@@ -457,7 +459,7 @@ class viewport(pg.GraphicsLayoutWidget):
       data = self._item.image
       self._wireData = data[wire]
       self._wireData = self._wireData[first_entry:last_entry]
-      self._wdf(self._wireData)
+      self._wdf(wireData=self._wireData, wire=wire, plane=self._plane , tpc=tpc, cryo=self._cryostat)
       # print "Plane: " + str(self._plane) + ", Wire: " + str(wire)
       # return self.plane,self.wire
 

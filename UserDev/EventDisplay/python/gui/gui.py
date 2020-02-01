@@ -18,6 +18,18 @@ except ImportError:
   from gui.viewport import viewport
   from gui.opticalviewport import opticalviewport
 
+class VerticalLabel(QtGui.QLabel):
+
+    def __init__(self, *args):
+        QtGui.QLabel.__init__(self, *args)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.translate(0, self.height())
+        painter.rotate(-90)
+        painter.drawText(0, self.width()/2, self.text())
+        painter.end()
+
 class view_manager(QtCore.QObject):
   """This class manages a collection of viewports"""
 
@@ -32,15 +44,33 @@ class view_manager(QtCore.QObject):
 
     self._opt_view = opticalviewport(self._geometry)
 
-    self._wireDrawer = pg.GraphicsLayoutWidget()
-    self._wireDrawer.setBackground(None)
-    self._wirePlot = self._wireDrawer.addPlot()
-    # self._wirePlot.setPen((0,0,0))
+
+    # 
+    # Wire Drawer
+    #
+    self._wireDrawerMain = pg.GraphicsLayoutWidget()
+    self._wireDrawerMain.setBackground(None)
+    self._wirePlot = self._wireDrawerMain.addPlot()
     self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
-    # self._wirePlotItem.setBac
     self._wirePlot.addItem(self._wirePlotItem)
-    self._wireDrawer.setMaximumHeight(200)
-    self._wireDrawer.setMinimumHeight(100)
+    self._wireDrawerMain.setMaximumHeight(200)
+    self._wireDrawerMain.setMinimumHeight(100)
+
+    self._wireDrawer_name = VerticalLabel("Wire Drawer")
+    self._wireDrawer_name.setMaximumWidth(25)
+    self._wireDrawer_name.setAlignment(QtCore.Qt.AlignCenter)
+    self._wireDrawer_name.setToolTip("Click on a wire to display the waveform.")
+    self._wireDrawer_name.setStyleSheet('color: rgb(169,169,169);')
+    self._wireDrawerLayout = QtGui.QHBoxLayout()
+    self._wireDrawerLayout.addWidget(self._wireDrawer_name)
+    self._wireDrawerLayout.addWidget(self._wireDrawerMain)
+
+    self._wireDrawer = QtGui.QWidget()
+    self._wireDrawer.setLayout(self._wireDrawerLayout)
+
+
+
+
 
     self._drawLogo = False
     self._plottedHits = []
@@ -278,7 +308,7 @@ class view_manager(QtCore.QObject):
       self._opt_view.drawOpDetWvf(event_manager.getOpDetWvf())
 
  
-  def drawWireOnPlot(self, wireData):
+  def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None):
     # Need to draw a wire on the wire view
     # Don't bother if the view isn't active:
     if not self._wireDrawer.isVisible():
@@ -287,9 +317,14 @@ class view_manager(QtCore.QObject):
       # set the display to show the wire:
       self._wireData = wireData
       self._wirePlotItem.setData(self._wireData)
-      # if axisData is not None:
-      #   self._wirePlotItem.setData(axisData,wireData)
-      # else:
+      # update the label
+      name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
+      # self._wireDrawer_name.setText(name)
+      self._wireDrawer_name.setToolTip(name)
+      self._wirePlot.setLabel(axis='left', text=name)
+      self._wirePlot.setLabel(axis='bottom', text="Time")
+
+
 
   def drawHitsOnPlot(self,hits,flip=False):
     if not self._wireDrawer.isVisible():
