@@ -448,8 +448,42 @@ class evd_manager_2D(evd_manager_base):
         yRange[1] = min(yRangeMax[1], yRange[1] + padding/self._geom.time2cm())
         return xRange, yRange
 
+    def get_products(self, name, stage=None):
+        '''
+        Returns all available products
+        '''
+        if stage is None:
+            stage = 'all'
+
+        if name not in self._keyTable[stage]:
+            return None
+
+        return self._keyTable[stage][name]
+
+    def get_default_products(self, name, stage=None):
+        '''
+        Returns only the products that will be 
+        drawn by default, unless the user decides what to see
+        in the dropdown menu
+        '''
+        if stage is None:
+            stage = 'all'
+
+        if name not in self._keyTable[stage]:
+            return None
+
+        if self._geom.name() == 'icarus' and len(self._keyTable[stage][name]) > 3:
+            default_products = [self._keyTable[stage][name][0],
+                                self._keyTable[stage][name][1],
+                                self._keyTable[stage][name][2],
+                                self._keyTable[stage][name][3]]
+        else:
+            default_products = [self._keyTable[stage][name][0]]
+
+        return default_products
+
     # handle all the wire stuff:
-    def toggleWires(self, product, stage=None, subtract_pedestal=True):
+    def toggleWires(self, product, stage=None, subtract_pedestal=True, producers=None):
         # Now, either add the drawing process or remove it:
 
         if stage is None:
@@ -463,10 +497,9 @@ class evd_manager_2D(evd_manager_base):
             self._drawWires = True
             self._wireDrawer = datatypes.recoWire(self._geom)
 
-            for p in self._keyTable[stage]:
-                print ('0000', p)
-
-            if self._geom.name() == 'icarus' and len(self._keyTable[stage]['recob::Wire']) > 3:
+            if producers is not None:
+                producer = producers
+            elif self._geom.name() == 'icarus' and len(self._keyTable[stage]['recob::Wire']) > 3:
                 producer = [self._keyTable[stage]['recob::Wire'][0].fullName(),
                             self._keyTable[stage]['recob::Wire'][1].fullName(),
                             self._keyTable[stage]['recob::Wire'][2].fullName(),
@@ -488,7 +521,9 @@ class evd_manager_2D(evd_manager_base):
             self._wireDrawer = datatypes.rawDigit(self._geom)
             self._wireDrawer.setSubtractPedestal(subtract_pedestal)
 
-            if self._geom.name() == 'icarus' and len(self._keyTable[stage]['raw::RawDigit']) > 3:
+            if producers is not None:
+                producer = producers
+            elif self._geom.name() == 'icarus' and len(self._keyTable[stage]['raw::RawDigit']) > 3:
                 producer = [self._keyTable[stage]['raw::RawDigit'][0].fullName(),
                             self._keyTable[stage]['raw::RawDigit'][1].fullName(),
                             self._keyTable[stage]['raw::RawDigit'][2].fullName(),
@@ -496,6 +531,7 @@ class evd_manager_2D(evd_manager_base):
             else:
                 producer = self._keyTable[stage]['raw::RawDigit'][0].fullName()
 
+            print ('rawdigit, producer', producer)
             self._wireDrawer.setProducer(producer)
             self._processer.add_process("raw::RawDigit", self._wireDrawer._process)
             self._wireDrawer.toggleNoiseFilter(self.filterNoise)

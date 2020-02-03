@@ -443,23 +443,29 @@ class viewport(pg.GraphicsLayoutWidget):
         self.processPoint(self._lastPos)
 
     # Figure out in which tpc we are, so we can display only the wire for the selected tpc
-    first_entry = 0
-    last_entry = self._geometry.tRange()
+    self._first_entry = 0
+    self._last_entry = self._geometry.tRange()
+    tpc = 0
     for i in range(self._geometry.nTPCs(), 0, -1):
         if self.q.y() > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
-            first_entry = int (i * (self._geometry.tRange() + self._geometry.cathodeGap()))
-            last_entry = int((i+1) * (self._geometry.tRange() + self._geometry.cathodeGap()))
-            break 
+            tpc = 1
+            self._first_entry = int (i * (self._geometry.tRange() + self._geometry.cathodeGap()))
+            self._last_entry = int((i+1) * (self._geometry.tRange() + self._geometry.cathodeGap()))
+            break
 
     wire = int(self._lastPos.x())
+
+    self.show_waveform(wire=wire, tpc=tpc)
+
+  def show_waveform(self, wire, tpc):
+
     if self._item.image is not None:
       # get the data from the plot:
       data = self._item.image
-      self._wireData = data[wire]
-      self._wireData = self._wireData[first_entry:last_entry]
-      self._wdf(self._wireData)
-      # print "Plane: " + str(self._plane) + ", Wire: " + str(wire)
-      # return self.plane,self.wire
+      if wire < len(data):
+        self._wireData = data[wire]
+        self._wireData = self._wireData[self._first_entry:self._last_entry]
+        self._wdf(wireData=self._wireData, wire=wire, plane=self._plane , tpc=tpc, cryo=self._cryostat, drawer=self)
 
     # Make a request to draw the hits from this wire:
     self.drawHitsRequested.emit(self._plane,wire)

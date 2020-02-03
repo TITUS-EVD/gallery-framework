@@ -19,24 +19,83 @@ class ComboBoxWithKeyConnect(QtGui.QComboBox):
             return
         else:
             self._owner_KPE(e)
-        # if e.key() == QtCore.Qt.Key_N:
-        #     self._owner_KPE(e)
-        #     pass
-        # if e.key() == QtCore.Qt.Key_P:
-        #     self._owner_KPE(e)
-        #     pass
-        # else:
-        #     super(ComboBoxWithKeyConnect, self).keyPressEvent(e)
-        #     self._owner_KPE(e)
 
-# This is a widget class that contains the label and combo box
-# It also knows what to do when updating
+
+# class CheckableComboBox(QtGui.QComboBox):
+#     def __init__(self):
+#         super(CheckableComboBox, self).__init__()
+#         self.view().pressed.connect(self.handleItemPressed)
+#         self.setModel(QtGui.QStandardItemModel(self))
+
+#     def handleItemPressed(self, index):
+#         item = self.model().itemFromIndex(index)
+#         if item.checkState() == QtCore.Qt.Checked:
+#             item.setCheckState(QtCore.Qt.Unchecked)
+#         else:
+#             item.setCheckState(QtCore.Qt.Checked)
+
+
+class waveformBox(QtGui.QWidget):
+    activated = QtCore.pyqtSignal(str)
+
+    def __init__(self, owner, name, products, default_products=[]):
+        super(waveformBox, self).__init__()
+        # self._label = QtGui.QLabel()
+        self._name = name
+        self._owner = owner
+
+        self._box = QtGui.QToolButton(self)
+        self._box.setMinimumWidth(55)
+        self._box.setText('Select')
+        self._toolmenu = QtGui.QMenu(self)
+        # self.setMinimumWidth(100)
+        self._actions = []
+        for i, product in enumerate(products):
+            action = self._toolmenu.addAction(product.fullName())
+            action.setCheckable(True)
+            if product in default_products:
+                action.setChecked(True)
+            action.triggered.connect(self.emitSignal)
+            self._actions.append(action)
+        self._box.setMenu(self._toolmenu)
+        self._box.setPopupMode(QtGui.QToolButton.InstantPopup)
+        
+        # This is the widget itself, so set it up
+        self._layout = QtGui.QHBoxLayout()
+        # self._layout.addWidget(self._label)
+        # self._layout.addWidget(self._box)
+        self._layout.addWidget(self._box)
+        self.setLayout(self._layout)
+
+
+    def emitSignal(self, text):
+        # self.activated.emit(text)
+        # print('got signal from', self.sender().text(), text)
+        self._active_producers = []
+        for a in self._actions:
+            if a.isChecked():
+                # print ('action', a.text(), 'is checked.')
+                self._active_producers.append(a.text())
+        self._owner.wireChoiceWorker(status=True, activeProducers=self._active_producers)
+        return
+
+    def name(self):
+        return self._name
+
+
+
+
+
+
 
 
 class recoBox(QtGui.QWidget):
     activated = QtCore.pyqtSignal(str)
 
-    """docstring for recoBox"""
+    '''
+    A widget class that contains the label and combo box.
+    It also knows what to do when updating
+    '''
 
     def __init__(self, owner, name, product, producers):
         super(recoBox, self).__init__()
@@ -115,13 +174,14 @@ class recoBox(QtGui.QWidget):
     def currentProducer(self):
         return self._current_producer
 
-# Inherit the basic gui to extend it
-# override the gui to give the lariat display special features:
 
 
 class evdgui(gui):
 
-    """special evd gui"""
+    """
+    Inherit the basic gui to extend it
+    override the gui to give the display special features:
+    """
 
     def __init__(self, geometry, manager=None, app=None):
         super(evdgui, self).__init__(geometry)
@@ -192,11 +252,24 @@ class evdgui(gui):
         self._wireButton = QtGui.QRadioButton("Wire")
         self._wireButton.clicked.connect(self.wireChoiceWorker)
         self._wireButtonGroup.addButton(self._wireButton)
+        products = self._event_manager.get_products('recob::Wire')
+        default_products = self._event_manager.get_default_products('recob::Wire')
+        self._wireChoice = waveformBox(self, 'recob::Wire', products, default_products)
+        self._wireLayout = QtGui.QHBoxLayout()
+        self._wireLayout.addWidget(self._wireButton)
+        self._wireLayout.addWidget(self._wireChoice)
+
 
         # Draw Raw Digit
         self._rawDigitButton = QtGui.QRadioButton("Raw Digit")
         self._rawDigitButton.clicked.connect(self.wireChoiceWorker)
         self._wireButtonGroup.addButton(self._rawDigitButton)
+        products = self._event_manager.get_products('raw::RawDigit')
+        default_products = self._event_manager.get_default_products('raw::RawDigit')
+        self._rawDigitChoice = waveformBox(self, 'raw::RawDigit', products, default_products)
+        self._rawDigitLayout = QtGui.QHBoxLayout()
+        self._rawDigitLayout.addWidget(self._rawDigitButton)
+        self._rawDigitLayout.addWidget(self._rawDigitChoice)
 
         # Draw Wires:
         self._opdetWvfButton = QtGui.QRadioButton("OpDetWaveform")
@@ -208,8 +281,10 @@ class evdgui(gui):
         self._wireChoiceLabel = QtGui.QLabel("Draw Options")
         self._wireChoiceLayout.addWidget(self._wireChoiceLabel)
         self._wireChoiceLayout.addWidget(self._noneWireButton)
-        self._wireChoiceLayout.addWidget(self._wireButton)
-        self._wireChoiceLayout.addWidget(self._rawDigitButton)
+        self._wireChoiceLayout.addLayout(self._wireLayout)
+        # self._wireChoiceLayout.addWidget(self._wireButton)
+        self._wireChoiceLayout.addLayout(self._rawDigitLayout)
+        # self._wireChoiceLayout.addWidget(self._rawDigitButton)
         self._wireChoiceLayout.addWidget(self._opdetWvfButton)
 
         self._eastLayout.addLayout(self._wireChoiceLayout)
@@ -259,18 +334,19 @@ class evdgui(gui):
         # self._eastLayout.setVisible(False)
         # self._eastLayout.setVisible(True)
 
-    def wireChoiceWorker(self):
-        sender = self.sender()
+    def wireChoiceWorker(self, status, activeProducers=None):
+
         self._view_manager.setDrawingRawDigits(False)
-        if sender == self._noneWireButton:
+        if self._noneWireButton.isChecked():
             self._event_manager.toggleWires(None)
-        if sender == self._wireButton:
-            self._event_manager.toggleWires('wire',stage = self._stage)
-        if sender == self._rawDigitButton:
-            self._event_manager.toggleWires('rawdigit',stage = self._stage)
+        if self._wireButton.isChecked():
+            self._event_manager.toggleWires('wire',stage=self._stage, producers=activeProducers)
+        if self._rawDigitButton.isChecked():
+            self._event_manager.toggleWires('rawdigit',stage=self._stage, producers=activeProducers)
             self._view_manager.setDrawingRawDigits(True)
 
         self._view_manager.drawPlanes(self._event_manager)
+
 
     def opdetWvfChoiceWorker(self):
         sender = self.sender()

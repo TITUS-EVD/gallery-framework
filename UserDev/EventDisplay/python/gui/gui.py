@@ -1,6 +1,4 @@
-
-
-import sys, signal
+import sys, signal, datetime
 import argparse
 # import collections
 from pyqtgraph.Qt import QtGui, QtCore
@@ -18,6 +16,18 @@ except ImportError:
   from gui.viewport import viewport
   from gui.opticalviewport import opticalviewport
 
+class VerticalLabel(QtGui.QLabel):
+
+    def __init__(self, *args):
+        QtGui.QLabel.__init__(self, *args)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.translate(0, self.height())
+        painter.rotate(-90)
+        painter.drawText(0, self.width()/2, self.text())
+        painter.end()
+
 class view_manager(QtCore.QObject):
   """This class manages a collection of viewports"""
 
@@ -32,15 +42,7 @@ class view_manager(QtCore.QObject):
 
     self._opt_view = opticalviewport(self._geometry)
 
-    self._wireDrawer = pg.GraphicsLayoutWidget()
-    self._wireDrawer.setBackground(None)
-    self._wirePlot = self._wireDrawer.addPlot()
-    # self._wirePlot.setPen((0,0,0))
-    self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
-    # self._wirePlotItem.setBac
-    self._wirePlot.addItem(self._wirePlotItem)
-    self._wireDrawer.setMaximumHeight(200)
-    self._wireDrawer.setMinimumHeight(100)
+    self._wireDrawerMain = self.add_wire_drawer_layout()
 
     self._drawLogo = False
     self._plottedHits = []
@@ -52,6 +54,53 @@ class view_manager(QtCore.QObject):
     self._wireData = None
 
     self._drawing_raw_digits = False
+
+
+  def add_wire_drawer_layout(self):
+    self._wireDrawerMain = pg.GraphicsLayoutWidget()
+    self._wireDrawerMain.setBackground(None)
+    self._wirePlot = self._wireDrawerMain.addPlot()
+    self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
+    self._wirePlot.addItem(self._wirePlotItem)
+    self._wireDrawerMain.setMaximumHeight(250)
+    self._wireDrawerMain.setMinimumHeight(100)
+
+    self._wireDrawer_name = VerticalLabel("Wire Drawer")
+    self._wireDrawer_name.setMaximumWidth(25)
+    self._wireDrawer_name.setAlignment(QtCore.Qt.AlignCenter)
+    self._wireDrawer_name.setToolTip("Click on a wire to display the waveform.")
+    self._wireDrawer_name.setStyleSheet('color: rgb(169,169,169);')
+    self._wireDrawerLayout = QtGui.QHBoxLayout()
+    self._wireDrawerLayout.addWidget(self._wireDrawer_name)
+    self._wireDrawerLayout.addWidget(self._wireDrawerMain)
+
+    self.left_wire_button = QtGui.QPushButton("Previous Wire")
+    self.left_wire_button.clicked.connect(self.change_wire)
+    self.left_wire_button.setToolTip("Show the previous wire.")
+    self.right_wire_button = QtGui.QPushButton("Next Wire")
+    self.right_wire_button.clicked.connect(self.change_wire)
+    self.right_wire_button.setToolTip("Show the next wire.")
+    self._wire_drawer_button_layout = QtGui.QHBoxLayout()
+    self._wire_drawer_button_layout.addStretch()
+    self._wire_drawer_button_layout.addWidget(self.left_wire_button)
+    self._wire_drawer_button_layout.addWidget(self.right_wire_button)
+
+    self._wireDrawerVLayout = QtGui.QVBoxLayout()
+    self._wireDrawerVLayout.addLayout(self._wireDrawerLayout)
+    self._wireDrawerVLayout.addLayout(self._wire_drawer_button_layout)
+
+    self._wireDrawer = QtGui.QWidget()
+    self._wireDrawer.setLayout(self._wireDrawerVLayout)
+
+  def change_wire(self):
+    if self.sender() == self.left_wire_button:
+      wire = self._current_wire - 1
+    else:
+      wire = self._current_wire + 1
+
+    if wire > 0:
+      self._current_wire_drawer.show_waveform(wire=wire, tpc=self._current_tpc)
+    return
 
   def addEvdDrawer(self,plane,cryostat=0):
     self._drawerList[(plane, cryostat)] = viewport(self._geometry, plane, cryostat)
@@ -144,7 +193,6 @@ class view_manager(QtCore.QObject):
     for p, c in zip(self._selectedPlane, self._selectedCryo):
       for key, widget in self._planeWidgets.items():
         if key == (p, c):
-          print ('Drawing viewport for p, c =', p, c)
           # Turn on the requested ones
           widget.setVisible(True)
           self._drawerList[key].toggleLogo(self._drawLogo)
@@ -278,7 +326,7 @@ class view_manager(QtCore.QObject):
       self._opt_view.drawOpDetWvf(event_manager.getOpDetWvf())
 
  
-  def drawWireOnPlot(self, wireData):
+  def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None):
     # Need to draw a wire on the wire view
     # Don't bother if the view isn't active:
     if not self._wireDrawer.isVisible():
@@ -287,9 +335,21 @@ class view_manager(QtCore.QObject):
       # set the display to show the wire:
       self._wireData = wireData
       self._wirePlotItem.setData(self._wireData)
-      # if axisData is not None:
-      #   self._wirePlotItem.setData(axisData,wireData)
-      # else:
+      # update the label
+      name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
+      # self._wireDrawer_name.setText(name)
+      self._wireDrawer_name.setToolTip(name)
+      self._wirePlot.setLabel(axis='left', text=name)
+      self._wirePlot.setLabel(axis='bottom', text="Time")
+
+      # Store the viewport that just draw this
+      # as we might need it to increase and 
+      # decrease the displayed wire
+      self._current_wire_drawer = drawer
+      self._current_wire = wire
+      self._current_tpc = tpc
+
+
 
   def drawHitsOnPlot(self,hits,flip=False):
     if not self._wireDrawer.isVisible():
@@ -375,6 +435,25 @@ class gui(QtGui.QWidget):
     self._view_manager = view_manager(geometry)
     self._tracksOnBothTPCs = False
     # self.setStyleSheet("background-color:rgb(230,230,230);")
+    self._timer = QtCore.QTimer()
+    self._timer.timeout.connect(self.fix_a_drink)
+    seconds_to_17 = (17 - datetime.datetime.now().hour - 1) * 60 * 60\
+                  + (60 - datetime.datetime.now().minute) * 60\
+                  + (60 - datetime.datetime.now().second)
+    if seconds_to_17 > 0:
+      self._timer.start(seconds_to_17*1e3)
+
+  def fix_a_drink(self):
+    self._timer.stop()
+    choice = QtGui.QMessageBox.question(self, 'It is 5 pm!',
+                                        "Time to fix yourself a drink!",
+                                        QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+    if choice == QtGui.QMessageBox.Yes:
+      print("Awesome.")
+      sys.exit()
+    else:
+      print("Boring.")
+      pass
 
   def initManager(self,manager=None):
     if manager is None:
