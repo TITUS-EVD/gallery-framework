@@ -347,6 +347,8 @@ class view_manager(QtCore.QObject):
       self._wireDrawer_name.setToolTip(name)
       self._wirePlot.setLabel(axis='left', text=name)
       self._wirePlot.setLabel(axis='bottom', text="Time")
+      self._wirePlot.autoRange()
+      self.plotFFT()
 
       # Store the viewport that just draw this
       # as we might need it to increase and 
@@ -401,9 +403,11 @@ class view_manager(QtCore.QObject):
       freqs = np.fft.rfftfreq(len(self._wireData),0.5E-3)
       self._wirePlotItem.setData(freqs,np.absolute(fft))
       self._wirePlot.setLabel(axis='bottom', text="Frequency")
+      self._wirePlot.autoRange()
     else:
       self._wirePlotItem.setData(self._wireData)
       self._wirePlot.setLabel(axis='bottom', text="Time")
+      self._wirePlot.autoRange()
 
 
   def setDrawingRawDigits(self, status):
