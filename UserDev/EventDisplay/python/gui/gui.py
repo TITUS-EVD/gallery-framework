@@ -587,7 +587,7 @@ class gui(QtGui.QWidget):
     self._lockAspectRatio.setToolTip("Lock the aspect ratio to 1:1")
     self._lockAspectRatio.stateChanged.connect(self.lockARWorker)
 
-    self._rangeLayout = QtGui.QHBoxLayout()
+    self._rangeLayout = QtGui.QVBoxLayout()
     self._rangeLayout.addWidget(self._autoRangeBox)
     self._rangeLayout.addWidget(self._lockAspectRatio)
 
@@ -620,7 +620,7 @@ class gui(QtGui.QWidget):
     self._scaleBarOption.setTristate(False)
     self._scaleBarOption.stateChanged.connect(self.scaleBarWorker)
 
-    self._scaleBarLayout = QtGui.QHBoxLayout()
+    self._scaleBarLayout = QtGui.QVBoxLayout()
     self._scaleBarLayout.addWidget(self._scaleBarOption)
     self._scaleBarLayout.addWidget(self._unitDisplayOption)
 
