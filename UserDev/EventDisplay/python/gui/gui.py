@@ -63,7 +63,7 @@ class view_manager(QtCore.QObject):
     self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
     self._wirePlot.addItem(self._wirePlotItem)
     self._wireDrawerMain.setMaximumHeight(250)
-    self._wireDrawerMain.setMinimumHeight(100)
+    self._wireDrawerMain.setMinimumHeight(190)
 
     self._wireDrawer_name = VerticalLabel("Wire Drawer")
     self._wireDrawer_name.setMaximumWidth(25)
@@ -74,16 +74,22 @@ class view_manager(QtCore.QObject):
     self._wireDrawerLayout.addWidget(self._wireDrawer_name)
     self._wireDrawerLayout.addWidget(self._wireDrawerMain)
 
-    self.left_wire_button = QtGui.QPushButton("Previous Wire")
-    self.left_wire_button.clicked.connect(self.change_wire)
-    self.left_wire_button.setToolTip("Show the previous wire.")
-    self.right_wire_button = QtGui.QPushButton("Next Wire")
-    self.right_wire_button.clicked.connect(self.change_wire)
-    self.right_wire_button.setToolTip("Show the next wire.")
+    self._fftButton = QtGui.QPushButton("FFT Wire")
+    self._fftButton.setToolTip("Compute and show the FFT of the wire currently drawn")
+    self._fftButton.setCheckable(True)
+    self._fftButton.clicked.connect(self.plotFFT)
+
+    self._left_wire_button = QtGui.QPushButton("Previous Wire")
+    self._left_wire_button.clicked.connect(self.change_wire)
+    self._left_wire_button.setToolTip("Show the previous wire.")
+    self._right_wire_button = QtGui.QPushButton("Next Wire")
+    self._right_wire_button.clicked.connect(self.change_wire)
+    self._right_wire_button.setToolTip("Show the next wire.")
     self._wire_drawer_button_layout = QtGui.QHBoxLayout()
+    self._wire_drawer_button_layout.addWidget(self._fftButton)
     self._wire_drawer_button_layout.addStretch()
-    self._wire_drawer_button_layout.addWidget(self.left_wire_button)
-    self._wire_drawer_button_layout.addWidget(self.right_wire_button)
+    self._wire_drawer_button_layout.addWidget(self._left_wire_button)
+    self._wire_drawer_button_layout.addWidget(self._right_wire_button)
 
     self._wireDrawerVLayout = QtGui.QVBoxLayout()
     self._wireDrawerVLayout.addLayout(self._wireDrawerLayout)
@@ -93,7 +99,7 @@ class view_manager(QtCore.QObject):
     self._wireDrawer.setLayout(self._wireDrawerVLayout)
 
   def change_wire(self):
-    if self.sender() == self.left_wire_button:
+    if self.sender() == self._left_wire_button:
       wire = self._current_wire - 1
     else:
       wire = self._current_wire + 1
@@ -341,6 +347,8 @@ class view_manager(QtCore.QObject):
       self._wireDrawer_name.setToolTip(name)
       self._wirePlot.setLabel(axis='left', text=name)
       self._wirePlot.setLabel(axis='bottom', text="Time")
+      self._wirePlot.autoRange()
+      self.plotFFT()
 
       # Store the viewport that just draw this
       # as we might need it to increase and 
@@ -384,13 +392,23 @@ class view_manager(QtCore.QObject):
 
 
   def plotFFT(self):
-    # Take the fft of wire data and plot it in place of the wire signal
+    '''
+    Take the fft of wire data and plot it in place of the wire signal
+    '''
     if self._wireData is None:
       return
-    fft = np.fft.rfft(self._wireData)
-    freqs = np.fft.rfftfreq(len(self._wireData),0.5E-3)
-    self._wirePlotItem.setData(freqs,np.absolute(fft))
-    return
+
+    if self._fftButton.isChecked():
+      fft = np.fft.rfft(self._wireData)
+      freqs = np.fft.rfftfreq(len(self._wireData),0.5E-3)
+      self._wirePlotItem.setData(freqs,np.absolute(fft))
+      self._wirePlot.setLabel(axis='bottom', text="Frequency")
+      self._wirePlot.autoRange()
+    else:
+      self._wirePlotItem.setData(self._wireData)
+      self._wirePlot.setLabel(axis='bottom', text="Time")
+      self._wirePlot.autoRange()
+
 
   def setDrawingRawDigits(self, status):
     '''
@@ -573,7 +591,7 @@ class gui(QtGui.QWidget):
     self._lockAspectRatio.setToolTip("Lock the aspect ratio to 1:1")
     self._lockAspectRatio.stateChanged.connect(self.lockARWorker)
 
-    self._rangeLayout = QtGui.QHBoxLayout()
+    self._rangeLayout = QtGui.QVBoxLayout()
     self._rangeLayout.addWidget(self._autoRangeBox)
     self._rangeLayout.addWidget(self._lockAspectRatio)
 
@@ -606,7 +624,7 @@ class gui(QtGui.QWidget):
     self._scaleBarOption.setTristate(False)
     self._scaleBarOption.stateChanged.connect(self.scaleBarWorker)
 
-    self._scaleBarLayout = QtGui.QHBoxLayout()
+    self._scaleBarLayout = QtGui.QVBoxLayout()
     self._scaleBarLayout.addWidget(self._scaleBarOption)
     self._scaleBarLayout.addWidget(self._unitDisplayOption)
 
@@ -629,9 +647,9 @@ class gui(QtGui.QWidget):
     self._clearEvalPointsLayout.addWidget(self._clearPointsButton)
     self._clearEvalPointsLayout.addWidget(self._makePathButton)
 
-    self._fftButton = QtGui.QPushButton("FFT Wire")
-    self._fftButton.setToolTip("Compute and show the FFT of the wire currently drawn")
-    self._fftButton.clicked.connect(self._view_manager.plotFFT)
+    # self._fftButton = QtGui.QPushButton("FFT Wire")
+    # self._fftButton.setToolTip("Compute and show the FFT of the wire currently drawn")
+    # self._fftButton.clicked.connect(self._view_manager.plotFFT)
 
     self._anodeCathodeOption = QtGui.QCheckBox("Draw anode/cathode")
     self._anodeCathodeOption.setToolTip("Shows the anode and cathode position for t0=0.")
@@ -680,7 +698,7 @@ class gui(QtGui.QWidget):
     # self._drawingControlBox.addWidget(self._clearPointsButton)
     # self._drawingControlBox.addWidget(self._makePathButton)
     self._drawingControlBox.addLayout(self._clearEvalPointsLayout)
-    self._drawingControlBox.addWidget(self._fftButton)
+    # self._drawingControlBox.addWidget(self._fftButton)
     self._drawingControlBox.addWidget(self._grayScale)
     # self._drawingControlBox.addWidget(self._autoRangeBox)
     # self._drawingControlBox.addWidget(self._lockAspectRatio)

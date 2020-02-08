@@ -142,6 +142,8 @@ class viewport(pg.GraphicsLayoutWidget):
 
     self._widget = QtGui.QWidget()
     self._widget.setLayout(self._totalLayout)
+    self._widget.setMaximumHeight(1000)
+    self._widget.setMinimumHeight(50)
 
   def setDarkMode(self, opt):
     self._dark_mode = opt
