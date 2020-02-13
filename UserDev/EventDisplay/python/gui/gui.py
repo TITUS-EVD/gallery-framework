@@ -340,6 +340,8 @@ class view_manager(QtCore.QObject):
     else:
       # set the display to show the wire:
       self._wireData = wireData
+      if tpc % 2 != 0:
+        self._wireData = np.flip(wireData)
       self._wirePlotItem.setData(self._wireData)
       # update the label
       name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
@@ -378,10 +380,10 @@ class view_manager(QtCore.QObject):
     
       # In case of 2 TPCs, also draw the hits on
       # the other plane, but flipping the time
-      if flip:
-        start_time = 2 * self._geometry.tRange() - start_time + self._geometry.cathodeGap()
-        end_time   = 2 * self._geometry.tRange() - end_time   + self._geometry.cathodeGap()
-        peak_time  = 2 * self._geometry.tRange() - peak_time  + self._geometry.cathodeGap()
+      # if flip:
+      #   start_time = self._geometry.tRange() - start_time
+      #   end_time   = self._geometry.tRange() - end_time  
+      #   peak_time  = self._geometry.tRange() - peak_time 
 
       xPts = np.linspace(start_time, end_time, delta)
       yPts = hit.peak_amplitude() * np.exp( - 0.5 * (xPts - peak_time)**2 / hit.rms()**2  )
