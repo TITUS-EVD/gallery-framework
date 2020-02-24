@@ -600,7 +600,7 @@ class evd_manager_2D(evd_manager_base):
             self._view_manager.drawHitsOnPlot(hits)
 
             if self._geom.nTPCs() == 2:
-                hits = self._drawnClasses['Hit'].getHitsOnWire(plane + int(self._geom.nPlanes() / self._geom.nTPCs()), wire)
+                hits = self._drawnClasses['Hit'].getHitsOnWire(plane + self._geom.nPlanes(), wire)
                 self._view_manager.drawHitsOnPlot(hits, flip=True)
 
 
