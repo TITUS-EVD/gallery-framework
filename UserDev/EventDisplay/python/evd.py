@@ -32,8 +32,6 @@ detProperties   = services.ServiceManager('DetectorProperties')
 detClocks       = services.ServiceManager('DetectorClocks')
 lar_properties  = services.ServiceManager('LArProperties')
 
-# This is to allow key commands to work when focus is on a box
-
 
 
 
@@ -47,6 +45,10 @@ def main():
 
     parser = argparse.ArgumentParser(description='Python based event display.')
     geom = parser.add_mutually_exclusive_group()
+
+    #
+    # Detector
+    #
     geom.add_argument('-A', '-a', '--argoneut',
                       action='store_true',
                       help="Run with the argoneut geometry")
@@ -65,9 +67,26 @@ def main():
     geom.add_argument('-L', '-l', '--lariat',
                       action='store_true',
                       help="Run with the lariat geometry")
+
+    #
+    # Fhicl configuration
+    #
+    parser.add_argument('--config',
+                        dest="config_path",
+                        help="Configuration file path (must define `services` or host serviceTable below)")
+    parser.add_argument('--table',
+                        dest="service_table",
+                        help="Name of the FHiCL table where all services are configured")
+
+    #
+    # Input file
+    #
     parser.add_argument('file', nargs='*', help="Optional input file to use")
 
     args = parser.parse_args()
+
+    if args.config_path is not None:
+      services.ServiceManager.setConfiguration(args.config_path, args.service_table)
 
     app = QtGui.QApplication(sys.argv)
 
