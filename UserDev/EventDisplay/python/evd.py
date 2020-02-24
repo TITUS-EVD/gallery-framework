@@ -27,13 +27,6 @@ except:
     print ('Did not find ICARUS services.')
     pass
 
-geometryCore    = services.ServiceManager('Geometry')
-detProperties   = services.ServiceManager('DetectorProperties')
-detClocks       = services.ServiceManager('DetectorClocks')
-lar_properties  = services.ServiceManager('LArProperties')
-
-
-
 
 def sigintHandler(*args):
     """Handler for the SIGINT signal."""
@@ -86,7 +79,12 @@ def main():
     args = parser.parse_args()
 
     if args.config_path is not None:
-      services.ServiceManager.setConfiguration(args.config_path, args.service_table)
+        services.ServiceManager.setConfiguration(args.config_path, args.service_table)
+
+    geometryCore    = services.ServiceManager('Geometry')
+    detProperties   = services.ServiceManager('DetectorProperties')
+    detClocks       = services.ServiceManager('DetectorClocks')
+    lar_properties  = services.ServiceManager('LArProperties')
 
     app = QtGui.QApplication(sys.argv)
 
