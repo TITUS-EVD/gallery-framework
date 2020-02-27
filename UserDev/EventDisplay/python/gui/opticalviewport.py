@@ -91,15 +91,18 @@ class opticalviewport(QtGui.QWidget):
     self._opdet_plots = []
     self._pmts = []
     self._arapucas = []
+    self._opdetscales = []
 
     for tpc in range(self._geometry.nTPCs() * self._geometry.nCryos()):
         opdet_plot = self._opdet_views[tpc].addPlot()
+
+        this_scale = pg.GradientEditorItem(orientation='right')
+        self._opdet_views[tpc].addItem(this_scale, 0, 1)
     
-        these_pmts = pmts(self._geometry, tpc=tpc)
+        these_pmts = pmts(self._geometry, tpc=tpc, pmtscale=this_scale)
         opdet_plot.addItem(these_pmts)
         these_pmts.sigClicked.connect(self.pmtClickWorker)
         these_pmts.scene().sigMouseMoved.connect(these_pmts.onMove)
-
 
         these_arapucas = arapucas(self._geometry, tpc=tpc)
         opdet_plot.addItem(these_arapucas)
@@ -109,6 +112,7 @@ class opticalviewport(QtGui.QWidget):
         self._opdet_plots.append(opdet_plot)
         self._pmts.append(these_pmts)
         self._arapucas.append(these_arapucas)
+        self._opdetscales.append(this_scale)
 
 
   def drawOpDetWvf(self, data):
@@ -174,19 +178,23 @@ class pmts(pg.ScatterPlotItem):
   This class handles the drawing of the
   PMTs as a scatter plot
   '''
-  def __init__(self, geom, tpc=0):
+  def __init__(self, geom, tpc=0, pmtscale=None):
     super(pmts, self).__init__()
 
     self._geom = geom
     self._tpc = tpc
 
+    self._pmtscale = pmtscale
+
     self._opdet_circles = self.get_opdet_circles()
+
+    self._n_objects = len(self._opdet_circles)
 
     self.setAcceptHoverEvents(True)
     self.addPoints(self._opdet_circles)
 
 
-  def get_opdet_circles(self):
+  def get_opdet_circles(self, pe=None, max_pe=None):
 
     self._opdet_circles = []
 
@@ -201,6 +209,14 @@ class pmts(pg.ScatterPlotItem):
     for d in range(0, len(opdets_x)):
         if opdets_name[d] in names:
             if self._geom.opdetToTPC(d) == self._tpc:
+                if pe is not None:
+                    # color_map = {'ticks': [(0.0,  (0, 0, 0, 255)),
+                    #                        (1,    (255, 0, 0, 255))],
+                    #              'mode': 'rgb'}
+                    # self._pmtscale.restoreState(color_map)
+
+                    brush = self._pmtscale.colorMap().map(pe[d]/max_pe)
+                    
             # if ((opdets_x[d] < -100 and self._tpc == 0) or
             #    (opdets_x[d] > -100 and opdets_x[d] < 0 and self._tpc == 1) or
             #    (opdets_x[d] > 0 and opdets_x[d] < 100 and self._tpc == 2) or
@@ -267,12 +283,21 @@ class pmts(pg.ScatterPlotItem):
       total_pes.append(f.total_pe())
     max_pe = np.max(total_pes)
 
-    print ('type', type(flashes[0]))
-    for pe in flashes[0].pe_per_opdet():
-        print ('---- ', pe)
+    # for pe in flashes[self._tpc].pe_per_opdet():
+    #     print ('---- ', pe)
 
-    data = self.get_opdet_circles()
-    self.setData(data)
+    # for i in range(0, 1000, 1):
+    #     print(i/10., self._pmtscale.colorMap().map(i/10.))
+
+    max_pe = np.max(flashes[0].pe_per_opdet())
+
+    self._opdet_circles = self.get_opdet_circles(flashes[0].pe_per_opdet(), max_pe)
+    # for i, opdet in enumerate(data):
+    #     pe = flashes[0].pe_per_opdet()[i]
+    #     col = self._pmtscale.colorMap().map(pe/max_pe)
+    #     opdet['brush'] = col
+    # self.setData(data)
+    self.addPoints(self._opdet_circles)
 
 
 

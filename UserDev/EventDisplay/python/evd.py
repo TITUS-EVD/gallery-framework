@@ -87,7 +87,7 @@ def main():
     lar_properties  = services.ServiceManager('LArProperties')
 
     app = QtGui.QApplication(sys.argv)
-
+    
     if args.uboone:
         geom = geometry.microboone()
     elif args.uboonetruncated:
