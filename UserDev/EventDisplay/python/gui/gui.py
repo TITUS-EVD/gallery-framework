@@ -127,6 +127,7 @@ class view_manager(QtCore.QObject):
   def restoreDefaults(self):
     for view in self._drawerList.values():
       view.restoreDefaults()
+    self._opt_view.restoreDefaults()
 
   def restoret0(self):
     for view in self._drawerList.values():

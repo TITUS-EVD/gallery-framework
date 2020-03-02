@@ -4,6 +4,8 @@ import pyqtgraph as pg
 import numpy as np
 import math
 
+from .qrangeslider import QRangeSlider
+
 class opticalviewport(QtGui.QWidget):
   def __init__(self, geometry, plane=-1):
     super(opticalviewport, self).__init__()
@@ -57,17 +59,37 @@ class opticalviewport(QtGui.QWidget):
     
     self._buttonLayout = QtGui.QHBoxLayout()
 
-    # self.increasebutton = QtGui.QPushButton("Increase Amplitude")
-    # self.decreasebutton = QtGui.QPushButton("Decrease Amplitude")
-
     self._buttonLayout.addWidget(self._tpc_all_button)
     for item in self._tpc_buttons:
         self._buttonLayout.addWidget(item)
 
-    # self._buttonLayout.addWidget(self.increasebutton)
-    # self._buttonLayout.addWidget(self.decreasebutton)
+
+    self._time_range_layout = QtGui.QHBoxLayout()
+
+    self._time_range_title = QtGui.QLabel("Time range [us]:")
+    self._time_range_layout.addWidget(self._time_range_title)
+
+    self._time_range = QRangeSlider()
+    self._time_range.setMin(-10)
+    self._time_range.setMax(100)
+    self._time_range.setRange(0, 10)
+    self._time_range.endValueChanged.connect(self.time_range_worker)
+    self._time_range.maxValueChanged.connect(self.time_range_worker)
+    self._time_range.minValueChanged.connect(self.time_range_worker)
+    self._time_range.startValueChanged.connect(self.time_range_worker)
+    self._time_range.minValueChanged.connect(self.time_range_worker)
+    self._time_range.maxValueChanged.connect(self.time_range_worker)
+    self._time_range.startValueChanged.connect(self.time_range_worker)
+    self._time_range.endValueChanged.connect(self.time_range_worker)    
+    self._time_range_layout.addWidget(self._time_range)
+
+    for p in self._pmts:
+        p.set_time_range(self._time_range.getRange())
 
     self._totalLayout.addLayout(self._buttonLayout)
+    self._totalLayout.addLayout(self._time_range_layout)
+    # self._totalLayout.addWidget(self._time_range_title)
+    # self._totalLayout.addWidget(self._time_range)
 
 
   def viewSelectionWorker(self):
@@ -84,6 +106,11 @@ class opticalviewport(QtGui.QWidget):
         if self.sender() == self._tpc_buttons[i]:
             self._wf_view.setVisible(True)
             self._opdet_views[i].setVisible(True)
+
+  def time_range_worker(self):
+    for p in self._pmts:
+        p.set_time_range(self._time_range.getRange())
+    return
 
 
   def init_opdet_ui(self):
@@ -120,6 +147,22 @@ class opticalviewport(QtGui.QWidget):
 
 
   def setFlashesForPlane(self, p, flashes):
+
+    if len(flashes) == 0:
+        return
+
+    times = []
+    for f in flashes:
+        times.append(f.time())
+
+    time_min = np.min(times) - 10
+    time_max = np.max(times) + 10
+
+    self._time_range.setMin(int(time_min))
+    self._time_range.setMax(int(time_max))
+    self._time_range.setVisible(False)
+    self._time_range.setVisible(True)
+
     self._flashes[p] = flashes
     self._pmts[p].drawFlashes(flashes)
 
@@ -139,9 +182,9 @@ class opticalviewport(QtGui.QWidget):
 
   def pmtClickWorker(self, plot, points):
     for p in self._last_clicked_pmts:
-      p.resetPen()
+      p.setPen('w', width=2)
     for p in points:
-      p.setPen('r', width=4)
+      p.setPen('g', width=3)
       self._selected_ch = p.data()['id']
 
     self._last_clicked_pmts = points
@@ -159,6 +202,11 @@ class opticalviewport(QtGui.QWidget):
     self._last_clicked_arapucas = points
 
     self._wf_view.drawWf(self._selected_ch)
+
+  def restoreDefaults(self):
+    self._time_range.setRange(0, 10)
+    self._time_range.setVisible(False)
+    self._time_range.setVisible(True)
 
 
 
@@ -189,6 +237,11 @@ class pmts(pg.ScatterPlotItem):
     self._opdet_circles = self.get_opdet_circles()
 
     self._n_objects = len(self._opdet_circles)
+
+    self._start_time = 0 
+    self._end_time = 10
+
+    self._flashes = None # The flashes to be displayed
 
     self.setAcceptHoverEvents(True)
     self.addPoints(self._opdet_circles)
@@ -273,31 +326,42 @@ class pmts(pg.ScatterPlotItem):
             message += ";   Z: "
             message += "{0:.1f}".format(self._opdets_z[opdet_id])
         self._statusBar.showMessage(message)
+
+  def set_time_range(self, time_range):
+    self._start_time = time_range[0] 
+    self._end_time = time_range[1] 
+    self.drawFlashes(self._flashes)
     
 
   def drawFlashes(self, flashes):
+
+    if flashes is None:
+        return 
+
     if len(flashes) == 0:
         return
-    total_pes = []
+
+    self._flashes = flashes
+
+    n_drawn_flashes = 0
+
+    total_pes_per_opdet = [0] * len(flashes[0].pe_per_opdet())
+
     for f in flashes:
-      total_pes.append(f.total_pe())
-    max_pe = np.max(total_pes)
+        if (f.time() > self._start_time and f.time() < self._end_time):
+            total_pes_per_opdet = np.add(total_pes_per_opdet, f.pe_per_opdet())
+            n_drawn_flashes += 1
 
-    # for pe in flashes[self._tpc].pe_per_opdet():
-    #     print ('---- ', pe)
-
-    # for i in range(0, 1000, 1):
-    #     print(i/10., self._pmtscale.colorMap().map(i/10.))
-
-    max_pe = np.max(flashes[0].pe_per_opdet())
-
-    self._opdet_circles = self.get_opdet_circles(flashes[0].pe_per_opdet(), max_pe)
-    # for i, opdet in enumerate(data):
-    #     pe = flashes[0].pe_per_opdet()[i]
-    #     col = self._pmtscale.colorMap().map(pe/max_pe)
-    #     opdet['brush'] = col
-    # self.setData(data)
+    max_pe = np.max(total_pes_per_opdet)
+    self._opdet_circles = self.get_opdet_circles(total_pes_per_opdet, max_pe)
+    self.clear()
     self.addPoints(self._opdet_circles)
+
+    # print ('Displaying', n_drawn_flashes, 'flashes.')
+
+
+
+
 
 
 
