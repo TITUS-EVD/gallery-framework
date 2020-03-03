@@ -366,7 +366,7 @@ class sbnd(geometry):
         self._haslogo = False
         self._logopos = [30, 30]
         self._logoscale = 0.13
-        self._opdet_radius = 7
+        self._opdet_radius = 6
         self._tRange = 7500 #3000
         self._triggerOffset = 2500 #0
         self._readoutWindowSize = 7500 #3000

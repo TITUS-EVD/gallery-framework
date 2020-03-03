@@ -31,10 +31,21 @@ class opticalviewport(QtGui.QWidget):
 
     self.init_opdet_ui()
 
+    self._flash_time_view = flash_time_view(self._geometry)
+    self._totalLayout.addWidget(self._flash_time_view)
+    self._time_window = pg.LinearRegionItem(values=[0,10], orientation=pg.LinearRegionItem.Vertical) 
+    self._time_window.sigRegionChangeFinished.connect(self.time_range_worker)
+    self._flash_time_view.connectTimeWindow(self._time_window)
+    for p in self._pmts:
+        p.set_time_range(self._time_window.getRegion())
+
     self.add_button_layout()
     
     self._wf_view.setMaximumHeight(200)
     self._wf_view.setMinimumHeight(200)
+
+    self._flash_time_view.setMaximumHeight(100)
+    self._flash_time_view.setMinimumHeight(100)
 
     for view in self._opdet_views:
         view.setMaximumHeight(200)
@@ -64,30 +75,30 @@ class opticalviewport(QtGui.QWidget):
         self._buttonLayout.addWidget(item)
 
 
-    self._time_range_layout = QtGui.QHBoxLayout()
+    # self._time_range_layout = QtGui.QHBoxLayout()
 
-    self._time_range_title = QtGui.QLabel("Time range [us]:")
-    self._time_range_layout.addWidget(self._time_range_title)
+    # self._time_range_title = QtGui.QLabel("Time range [us]:")
+    # self._time_range_layout.addWidget(self._time_range_title)
 
-    self._time_range = QRangeSlider()
-    self._time_range.setMin(-10)
-    self._time_range.setMax(100)
-    self._time_range.setRange(0, 10)
-    self._time_range.endValueChanged.connect(self.time_range_worker)
-    self._time_range.maxValueChanged.connect(self.time_range_worker)
-    self._time_range.minValueChanged.connect(self.time_range_worker)
-    self._time_range.startValueChanged.connect(self.time_range_worker)
-    self._time_range.minValueChanged.connect(self.time_range_worker)
-    self._time_range.maxValueChanged.connect(self.time_range_worker)
-    self._time_range.startValueChanged.connect(self.time_range_worker)
-    self._time_range.endValueChanged.connect(self.time_range_worker)    
-    self._time_range_layout.addWidget(self._time_range)
+    # self._time_range = QRangeSlider()
+    # self._time_range.setMin(-10)
+    # self._time_range.setMax(100)
+    # self._time_range.setRange(0, 10)
+    # self._time_range.endValueChanged.connect(self.time_range_worker)
+    # self._time_range.maxValueChanged.connect(self.time_range_worker)
+    # self._time_range.minValueChanged.connect(self.time_range_worker)
+    # self._time_range.startValueChanged.connect(self.time_range_worker)
+    # self._time_range.minValueChanged.connect(self.time_range_worker)
+    # self._time_range.maxValueChanged.connect(self.time_range_worker)
+    # self._time_range.startValueChanged.connect(self.time_range_worker)
+    # self._time_range.endValueChanged.connect(self.time_range_worker)    
+    # self._time_range_layout.addWidget(self._time_range)
 
-    for p in self._pmts:
-        p.set_time_range(self._time_range.getRange())
+    # for p in self._pmts:
+    #     p.set_time_range(self._time_range.getRange())
 
     self._totalLayout.addLayout(self._buttonLayout)
-    self._totalLayout.addLayout(self._time_range_layout)
+    # self._totalLayout.addLayout(self._time_range_layout)
     # self._totalLayout.addWidget(self._time_range_title)
     # self._totalLayout.addWidget(self._time_range)
 
@@ -108,8 +119,10 @@ class opticalviewport(QtGui.QWidget):
             self._opdet_views[i].setVisible(True)
 
   def time_range_worker(self):
+    # for p in self._pmts:
+    #     p.set_time_range(self._time_range.getRange())
     for p in self._pmts:
-        p.set_time_range(self._time_range.getRange())
+        p.set_time_range(self._time_window.getRegion())
     return
 
 
@@ -158,13 +171,15 @@ class opticalviewport(QtGui.QWidget):
     time_min = np.min(times) - 10
     time_max = np.max(times) + 10
 
-    self._time_range.setMin(int(time_min))
-    self._time_range.setMax(int(time_max))
-    self._time_range.setVisible(False)
-    self._time_range.setVisible(True)
+    # self._time_range.setMin(int(time_min))
+    # self._time_range.setMax(int(time_max))
+    # self._time_range.setVisible(False)
+    # self._time_range.setVisible(True)
 
     self._flashes[p] = flashes
     self._pmts[p].drawFlashes(flashes)
+
+    self._flash_time_view.drawOpFlashTimes(flashes)
 
 
   def getWidget(self):
@@ -204,9 +219,9 @@ class opticalviewport(QtGui.QWidget):
     self._wf_view.drawWf(self._selected_ch)
 
   def restoreDefaults(self):
-    self._time_range.setRange(0, 10)
-    self._time_range.setVisible(False)
-    self._time_range.setVisible(True)
+    self._time_window.setBounds([0, 10])
+    self.time_range_worker()
+
 
 
 
@@ -525,6 +540,57 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
     self._wf_plot.plot(x=data_x, y=data_y)
 
     self._wf_plot.autoRange()
+
+
+
+
+class flash_time_view(pg.GraphicsLayoutWidget):
+
+  def __init__(self, geometry, plane=-1):
+    super(flash_time_view, self).__init__(border=None)
+
+    self._geometry = geometry
+
+    self._data = None
+
+    self._time_plot = pg.PlotItem(name="OpFlash Times")
+
+    self.addItem(self._time_plot)
+
+  def connectTimeWindow(self, tw):
+    self._time_window = tw
+
+
+  def getWidget(self):
+    return self._widget, self._totalLayout
+
+
+    self._wf_plot.autoRange()
+
+  def drawOpFlashTimes(self, flashes):
+
+    if flashes is None:
+        return
+
+    if len(flashes) == 0:
+        return
+
+    self._time_plot.clear()
+
+    times = []
+    for f in flashes:
+        times.append(f.time())
+
+    t_min = np.min(times)
+    t_max = np.max(times)
+    n_bins = int(t_max - t_min)
+
+    data_y, data_x = np.histogram(times, bins=np.linspace(t_min, t_max, n_bins))
+
+    self._time_plot.plot(x=data_x, y=data_y, stepMode=True, fillLevel=0, brush=(0,0,255,150))
+    self._time_plot.addItem(self._time_window)
+
+    self._time_plot.autoRange()
 
    
     

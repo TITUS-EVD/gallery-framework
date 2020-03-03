@@ -221,7 +221,7 @@ class evd_manager_base(manager, QtCore.QObject):
             # First, check that the file exists:
             try:
                 if not os.path.exists(file):
-                    print("ERROR: requested file does not exist.")
+                    print("\033[91m ERROR: requested file does not exist. \033[0m")
                     continue
             except (Exception, e):
                 print(e)
