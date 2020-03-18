@@ -329,6 +329,8 @@ class geometry(geoBase):
             shape_name = geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName()
             if shape_name == 'TGeoSphere':
                 self._opdet_name.append('pmt')
+            elif shape_name == 'TGeoBBox':
+                self._opdet_name.append('arapuca')
             else:
                 self._opdet_name.append('unknown')
             # print ('opch', opch, 'shape', geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName())
@@ -366,10 +368,12 @@ class sbnd(geometry):
         self._haslogo = False
         self._logopos = [30, 30]
         self._logoscale = 0.13
+        from .mapping import sbnd_opdet_map
         self._opdet_radius = 6
-        self._tRange = 7500 #3000
-        self._triggerOffset = 2500 #0
-        self._readoutWindowSize = 7500 #3000
+        self._opdet_name = sbnd_opdet_map 
+        self._tRange = 3000 #7500
+        self._triggerOffset = 0 #2500 
+        self._readoutWindowSize = 3000 #7500
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6] 
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
         self._cathodeGap = 8.5 / self._time2Cm # 5.3 cm   # 100
