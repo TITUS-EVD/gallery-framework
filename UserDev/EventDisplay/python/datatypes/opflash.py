@@ -21,13 +21,12 @@ class opflash(recoBase):
 
         self._drawnObjects.append([])
 
-        print ('Opflash drawing still needs implementation.')
+        # print ('Opflash drawing still needs implementation.')
 
-        return
+        # return
 
         for p in range(0, geom.nTPCs() * geom.nCryos()):
             flashes = self._process.getExtraData(p)
-            print ('plane', p, 'len', len(flashes))
             view.setFlashesForPlane(p, flashes)
 
 

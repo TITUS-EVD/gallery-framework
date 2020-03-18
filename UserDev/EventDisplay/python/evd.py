@@ -54,6 +54,9 @@ def main():
     geom.add_argument('-S', '-s', '--sbnd',
                       action='store_true',
                       help="Run with the SBND Geometry")
+    geom.add_argument('-S3', '-s3', '--sbnd3',
+                      action='store_true',
+                      help="Run with the SBND Geometry with 3 drift windows")
     geom.add_argument('-I', '-i', '--icarus',
                       action='store_true',
                       help="Run with the ICARUS Geometry")
@@ -87,7 +90,7 @@ def main():
     lar_properties  = services.ServiceManager('LArProperties')
 
     app = QtGui.QApplication(sys.argv)
-
+    
     if args.uboone:
         geom = geometry.microboone()
     elif args.uboonetruncated:
@@ -96,6 +99,11 @@ def main():
         geom = geometry.lariat()
     elif args.sbnd:
         geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+    elif args.sbnd3:
+        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+        geom._tRange = 7500
+        geom._triggerOffset = 2500
+        geom._readoutWindowSize = 7500
     elif args.icarus:
         geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties)
     else:
