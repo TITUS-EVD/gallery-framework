@@ -6,14 +6,19 @@ import pyqtgraph as pg
 
 class polyLine(QtGui.QGraphicsPathItem):
 
-    def __init__(self, points, pen=None):
+    def __init__(self, points, color=None, *args):
         super(polyLine, self).__init__()
+        self.setAcceptHoverEvents(True)
         self._points = points
+        self._color = color
 
         # Initialize a path:
         path = QtGui.QPainterPath()
-        if pen is None:
+        if self._color is None:
             pen = QtGui.QPen(QtCore.Qt.black)
+            self._color = (0, 0, 0)
+        else:
+            pen = pg.mkPen(color, width=2)
         self.setPen(pen)
 
         # Fill the path:
@@ -21,6 +26,13 @@ class polyLine(QtGui.QGraphicsPathItem):
         for i in range(len(points)-1):
             path.lineTo(points[i+1])
         self.setPath(path)
+
+
+    def hoverEnterEvent(self, e):
+        self.setPen(pg.mkPen(self._color, width=5))
+
+    def hoverLeaveEvent(self, e):
+        self.setPen(pg.mkPen(self._color, width=2))
 
 
 class track(recoBase):
@@ -92,9 +104,11 @@ class track(recoBase):
             # self._drawnObjects[view.plane()].append(thisPoly)
 
             thisPoly = polyLine(points)
-            pen = pg.mkPen(color, width=2)
-            thisPoly.setPen(pen)
+            # pen = pg.mkPen(color, width=2)
+            # thisPoly.setPen(pen)
             # polyLine.draw(view._view)
+
+            thisPoly.setToolTip('Temp')
             
             view._view.addItem(thisPoly)
 

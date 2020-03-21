@@ -3,13 +3,27 @@ from pyqtgraph.Qt import QtGui, QtCore
 from ROOT import evd, larutil
 import pyqtgraph as pg
 
+pdg_to_name = {
+    12: 'nue',
+    -12: 'anue',
+    14 : "numu",
+    -14 : 'numubar'
+}
+
+mode_to_name = {
+    0: 'QE',
+    1: 'RES',
+    2 : 'DIS',
+    3 : 'COH',
+    10: 'MEC'
+}
 
 class mctruth(recoBase):
 
     def __init__(self, geom):
         super(mctruth, self).__init__()
         self._productName = 'mctruth'
-        self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self.init()
 
     def getLabel(self):
@@ -36,21 +50,27 @@ class mctruth(recoBase):
         geom = view_manager._geometry
 
         # Just draw the vertex to start:
-        info = self._process.getData()
-        vertex = info.vertex()
+        mcts = self._process.getData()
+
+        if len(mcts) == 0:
+            return
+
+        # Only the first neutrin ofor now
+        mct = mcts[0]
+
+        vertex = mct.vertex()
 
         for view in view_manager.getViewPorts():
             self._drawnObjects.append([])
 
             offset = geom.offset(view.plane())
 
-            vertexPoint = larutil.GeometryHelper.GetME().Point_3Dto2D(
-                vertex, view.plane())
+            geo_helper = larutil.SimpleGeometryHelper(geom.getGeometryCore(), 
+                                                      geom.getDetectorProperties())
 
-            # print "VertexPoint in plane {plane}: ({w},{t})".format(
-            #     plane=view.plane(),
-            #     w=vertexPoint.w,
-            #     t=vertexPoint.t)
+            vertexPoint = geo_helper.Point_3Dto2D(vertex, view.plane(), 
+                                                          view.tpc(), 
+                                                          view.cryostat())
             
             points = self.makeCross(vertexPoint.w/geom.wire2cm(),
                                     (vertexPoint.t + offset )/geom.time2cm(),
@@ -64,33 +84,38 @@ class mctruth(recoBase):
             thisPoly = QtGui.QGraphicsPolygonItem(thisPolyF)
             thisPoly.setBrush(pg.mkColor((200,200,200,200)))
 
+            thisPoly.setToolTip('Neutrino Interaction Vertex')
+
             self._drawnObjects[view.plane()].append(thisPoly)
             view._view.addItem(thisPoly)
-            # #   # get the showers from the process:
-            # tracks = self._process.getDataByPlane(view.plane())
-            # offset = geom.offset(view.plane()) / geom.time2cm()
 
-            # for i in range(len(tracks)):
-            #     track = tracks[i]
-            #     # construct a polygon for this track:
-            #     points = []
-            #     # Remeber - everything is in cm, but the display is in
-            #     # wire/time!
-            #     for pair in track.track():
-            #         x = pair.first / geom.wire2cm()
-            #         y = pair.second / geom.time2cm() + offset
-            #         points.append(QtCore.QPointF(x, y))
 
-            #     # self._drawnObjects[view.plane()].append(thisPoly)
+        mb = view_manager.getMessageBar()
+        message = str()
+        tooltip = str()
 
-            #     thisPoly = polyLine(points)
-            #     pen = pg.mkPen((0,0,0), width=2)
-            #     thisPoly.setPen(pen)
-            #     # polyLine.draw(view._view)
+        if mct.origin() == 1:
+            pdg = pdg_to_name[mct.nu_pdg()]
+            mode = mode_to_name[mct.int_mode()]
+            message += f'PDG: {mct.nu_pdg()}, Neutrino Energy: {mct.nu_energy():.3} GeV, mode: {mode}'
 
-            #     view._view.addItem(thisPoly)
+            fs_pdgs = mct.finalstate_pdg()
+            fs_enes = mct.finalstate_energy()
+            print(fs_pdgs)
+            tooltip += 'Final State Particles\n'
+            for p, e in zip(fs_pdgs, fs_enes):
+                tooltip += f'  PDG: {p}, Energy: {e:.3} GeV\n'
 
-            #     self._drawnObjects[view.plane()].append(thisPoly)
+        elif mct.origin() == 2:
+            message += f'Cosmic Origin'
+        elif mct.origin() == 3:
+            message += f'Supernovae Event'
+        elif mct.origin() == 4:
+            message += f'Single Particle Generation'
+
+
+        mb.showMessage(message)
+        mb.setToolTip(tooltip)
 
     def makeCross(self, startX, startY,
                   shortDistX, longDistX,

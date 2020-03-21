@@ -228,6 +228,15 @@ class view_manager(QtCore.QObject):
       view.connectStatusBar(statusBar)
     self._opt_view.connectStatusBar(statusBar)
 
+  def connectMessageBar(self,messageBar):
+    for view in self._drawerList.values():
+      view.connectMessageBar(messageBar)
+    self._opt_view.connectMessageBar(messageBar)
+    self._messageBar = messageBar
+
+  def getMessageBar(self):
+    return self._messageBar
+
 
 
   def linkViews(self):
@@ -998,9 +1007,10 @@ class gui(QtGui.QWidget):
     self._southLayout = QtGui.QHBoxLayout()
     # Add a status bar
     self._statusBar = QtGui.QStatusBar()
-    self._statusBar.showMessage("Test message")
+    self._statusBar.showMessage("Status Bar")
     self._southLayout.addWidget(self._statusBar)
     self._messageBar = QtGui.QStatusBar()
+    self._messageBar.showMessage("Message Bar")
     self._southLayout.addWidget(self._messageBar)
     # self._southLayout.addStretch(1)
     self._southLayout.addWidget(self._screenCaptureButton)
@@ -1080,6 +1090,7 @@ class gui(QtGui.QWidget):
     self._view_manager.linkViews()
 
     self._view_manager.connectStatusBar(self._statusBar)
+    self._view_manager.connectMessageBar(self._messageBar)
 
     self.centerWidget = self._view_manager.getDrawListWidget()
 

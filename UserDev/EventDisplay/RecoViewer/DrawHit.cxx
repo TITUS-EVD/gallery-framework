@@ -6,8 +6,10 @@
 namespace evd {
 
 
-DrawHit::DrawHit(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
-    RecoBase(geometry, detectorProperties) 
+DrawHit::DrawHit(const geo::GeometryCore& geometry, 
+                 const detinfo::DetectorProperties& detectorProperties,
+                 const detinfo::DetectorClocks& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks) 
 {
   _name = "DrawHit";
   _fout = 0;

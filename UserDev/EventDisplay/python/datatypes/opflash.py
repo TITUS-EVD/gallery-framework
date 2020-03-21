@@ -11,7 +11,7 @@ class opflash(recoBase):
     def __init__(self, geom):
         super(opflash, self).__init__()
         self._productName = 'opflash'
-        self._process = evd.DrawOpflash(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawOpflash(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self.init()
 
     def drawObjects(self, view_manager):
@@ -20,10 +20,6 @@ class opflash(recoBase):
         view = view_manager.getOpticalViewport()
 
         self._drawnObjects.append([])
-
-        # print ('Opflash drawing still needs implementation.')
-
-        # return
 
         for p in range(0, geom.nTPCs() * geom.nCryos()):
             flashes = self._process.getExtraData(p)

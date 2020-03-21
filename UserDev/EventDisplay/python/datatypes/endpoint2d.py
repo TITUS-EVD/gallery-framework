@@ -12,7 +12,7 @@ class endpoint2d(recoBase):
     def __init__(self, geom):
         super(endpoint2d, self).__init__()
         self._productName = 'endpoint2d'
-        self._process = evd.DrawEndpoint(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawEndpoint(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._brush = (0, 0, 0)
         self.init()
 

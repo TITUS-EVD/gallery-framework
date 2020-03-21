@@ -60,8 +60,10 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(
   return result;
 }
 
-DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
-    RecoBase(geometry, detectorProperties)
+DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore& geometry, 
+                                     const detinfo::DetectorProperties& detectorProperties,
+                                     const detinfo::DetectorClocks& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawNumuSelection";
   _fout = 0;

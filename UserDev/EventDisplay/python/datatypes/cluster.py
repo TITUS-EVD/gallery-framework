@@ -12,7 +12,7 @@ class cluster(recoBase):
     def __init__(self, geom):
         super(cluster, self).__init__()
         self._productName = 'cluster'
-        self._process = evd.DrawCluster(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawCluster(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self.init()
 

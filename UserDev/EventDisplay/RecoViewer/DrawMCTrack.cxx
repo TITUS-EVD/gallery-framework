@@ -29,8 +29,10 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsi
   return result;
 }
 
-DrawMCTrack::DrawMCTrack(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
-    RecoBase(geometry, detectorProperties) 
+DrawMCTrack::DrawMCTrack(const geo::GeometryCore& geometry, 
+                         const detinfo::DetectorProperties& detectorProperties,
+                         const detinfo::DetectorClocks& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks) 
 {
   _name = "DrawMCTrack";
   _fout = 0;
@@ -68,12 +70,15 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
   size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
 
-  art::InputTag truth_tag("generator::GenieGen");
+  art::InputTag truth_tag("generator");
   auto const &truthHandle =
       ev->getValidHandle<std::vector<simb::MCTruth>>(truth_tag);
   for (auto &truth : *truthHandle) {
-    std::cout << "Neutrino energy: " << truth.GetNeutrino().Nu().E() << std::endl;
-
+    // std::cout << "Neutrino energy: " << truth.GetNeutrino().Nu().E() << std::endl;
+    for (int i = 0; i < truth.NParticles(); i++) {
+      auto mcp = truth.GetParticle(i);
+      std::cout << "<Truth> PDG: " << mcp.PdgCode() << ", E: " << mcp.E() << ", M: " << mcp.Mass() << std::endl;
+    }
   }
 
   // get a handle to the tracks
@@ -101,6 +106,14 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
       auto tr = getMCTrack2D(track, p, track_tpc, track_cryo);
       tr._tpc = track_tpc;
       tr._cryo = track_cryo;
+
+      // Figure out the track time in elec clock 
+      // (still need to subtract trigger time)
+      tr._time = _det_clock.G4ToElecTime(track.Start().T());
+
+      tr._process = track.Process();
+      tr._energy = track.Start().E();
+
       _dataByPlane.at(p).push_back(tr);
     }
   }

@@ -57,7 +57,9 @@ class DrawTrack : public galleryfmwk::ana_base, public RecoBase<Track2D> {
 
 public:
   /// Default constructor
-  DrawTrack(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
+  DrawTrack(const geo::GeometryCore& geometry, 
+            const detinfo::DetectorProperties& detectorProperties,
+            const detinfo::DetectorClocks& detectorClocks);
 
   /// Default destructor
   ~DrawTrack();

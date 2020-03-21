@@ -6,8 +6,10 @@
 namespace evd {
 
 
-DrawShower::DrawShower(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
-    RecoBase<Shower2D>(geometry, detectorProperties)
+DrawShower::DrawShower(const geo::GeometryCore& geometry, 
+                       const detinfo::DetectorProperties& detectorProperties,
+                       const detinfo::DetectorClocks& detectorClocks) :
+    RecoBase<Shower2D>(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawShower";
   _fout = 0;

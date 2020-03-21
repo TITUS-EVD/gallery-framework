@@ -35,20 +35,28 @@ class MCTrack2D : public Track2D {
   friend class DrawMCTrack;
 
 public:
-  const int &origin() { return _origin; }
-  const int &pdg() { return _pdg; }
+  const int         &origin() { return _origin; }
+  const int         &pdg() { return _pdg; }
+  const float       &time() { return _time; }
+  const float       &energy() { return _energy; }
+  const std::string &process() { return _process; }
 
 protected:
-  int _origin; // mc origin type: 0=unknown, 1=beam neutrino, 2=cosmic,
-               // 3=supernova neutrino, 4=single particle
-  int _pdg;    // pdg number
+  int _origin;          // mc origin type: 0=unknown, 1=beam neutrino, 2=cosmic,
+                        // 3=supernova neutrino, 4=single particle
+  int _pdg;             // pdg number
+  float _time = -9999;  // track time
+  float _energy = -9999;// Track energy
+  std::string _process; // Start G4 process 
 };
 
 class DrawMCTrack : public galleryfmwk::ana_base, public RecoBase<MCTrack2D> {
 
 public:
   /// Default constructor
-  DrawMCTrack(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
+  DrawMCTrack(const geo::GeometryCore& geometry, 
+              const detinfo::DetectorProperties& detectorProperties,
+              const detinfo::DetectorClocks& detectorClocks);
 
   /// Default destructor
   ~DrawMCTrack();
