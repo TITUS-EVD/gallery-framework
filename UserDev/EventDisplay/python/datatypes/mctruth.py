@@ -101,10 +101,9 @@ class mctruth(recoBase):
 
             fs_pdgs = mct.finalstate_pdg()
             fs_enes = mct.finalstate_energy()
-            print(fs_pdgs)
-            tooltip += 'Final State Particles\n'
+            tooltip += 'Final State Particles'
             for p, e in zip(fs_pdgs, fs_enes):
-                tooltip += f'  PDG: {p}, Energy: {e:.3} GeV\n'
+                tooltip += f'\n  PDG: {p}, Energy: {e:.3} GeV'
 
         elif mct.origin() == 2:
             message += f'Cosmic Origin'

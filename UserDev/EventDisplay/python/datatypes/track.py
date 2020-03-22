@@ -29,10 +29,30 @@ class polyLine(QtGui.QGraphicsPathItem):
 
 
     def hoverEnterEvent(self, e):
+        QtGui.QGraphicsPathItem.hoverEnterEvent(self, e)
         self.setPen(pg.mkPen(self._color, width=5))
+        self.update()
 
     def hoverLeaveEvent(self, e):
+        QtGui.QGraphicsPathItem.hoverLeaveEvent(self, e)
         self.setPen(pg.mkPen(self._color, width=2))
+        self.update()
+
+    # def shape(self):
+    #     # return self.path() 
+    #     s = QtGui.QPainterPathStroker()    
+    #     s.setWidth(30)
+    #     s.setCapStyle(QtCore.Qt.RoundCap)
+    #     path = s.createStroke(self.path())
+    #     return path
+
+    # def paint(self, painter, option, widget):
+    #     c = QtCore.Qt.red
+    #     # painter.setPen(QtGui.QPen(c, 10, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin))
+    #     painter.drawPath(self.path())
+
+    #     # painter.setPen(QtGui.QPen(QtCore.Qt.blue, 1, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin))
+    #     painter.drawPath(self.shape())
 
 
 class track(recoBase):
@@ -40,7 +60,7 @@ class track(recoBase):
     def __init__(self, geom):
         super(track, self).__init__()
         self._productName = 'track'
-        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self.init()
 
@@ -63,7 +83,7 @@ class track(recoBase):
                 for left_plane in geom.planeMix()[thisPlane]:
                     tracks = self._process.getDataByPlane(left_plane)
                     # print ('Drawing tracks for plane', left_plane)
-                    self.drawTracks(view, tracks, offset, left_plane, geom) #, (255, 128, 0))
+                    self.drawTracks(view, tracks, offset, left_plane, geom, (255, 128, 0))
 
 
     def drawTracks(self, view, tracks, offset, plane, geom, color=(130,0,0)):
@@ -97,13 +117,14 @@ class track(recoBase):
                 y -= location * (2 * geom.halfwidth()) / geom.time2cm()
                 y += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
                 y += location * (geom.tRange() + geom.cathodeGap())
+                y -= location * 185
   
 
                 points.append(QtCore.QPointF(x, y))
 
             # self._drawnObjects[view.plane()].append(thisPoly)
 
-            thisPoly = polyLine(points)
+            thisPoly = polyLine(points, color)
             # pen = pg.mkPen(color, width=2)
             # thisPoly.setPen(pen)
             # polyLine.draw(view._view)

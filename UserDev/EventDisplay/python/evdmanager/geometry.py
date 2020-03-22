@@ -336,6 +336,17 @@ class geometry(geoBase):
             # print ('opch', opch, 'shape', geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName())
             # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
 
+    def recalculateOffsets(self):
+        self._offset = []
+        for v in range(0, self._nViews):
+            # Set up the correct drift time offset.
+            # Offset is returned in terms of centimeters.
+
+            self._offset.append(
+                self.triggerOffset()
+                * self.time2cm()
+                - self.planeOriginX(v) )
+
 
     def colorMap(self, plane, colormaptype='default'):
         if colormaptype == 'default':

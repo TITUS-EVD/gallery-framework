@@ -77,7 +77,7 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
     // std::cout << "Neutrino energy: " << truth.GetNeutrino().Nu().E() << std::endl;
     for (int i = 0; i < truth.NParticles(); i++) {
       auto mcp = truth.GetParticle(i);
-      std::cout << "<Truth> PDG: " << mcp.PdgCode() << ", E: " << mcp.E() << ", M: " << mcp.Mass() << std::endl;
+      // std::cout << "<Truth> PDG: " << mcp.PdgCode() << ", E: " << mcp.E() << ", M: " << mcp.Mass() << std::endl;
     }
   }
 
@@ -113,6 +113,18 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
 
       tr._process = track.Process();
       tr._energy = track.Start().E();
+
+      // Find out in what TPC we are 
+      // (based on the first point of the track)
+      for (auto step : track) {
+        geo::Point_t loc = geo::Point_t(step.X(), step.Y(), step.Z());
+        geo::TPCID tpc_id = _geo_service.PositionToTPCID(loc);
+        if (tpc_id.TPC != -1) {
+          tr._tpc = tpc_id.TPC;
+          break;
+        }
+
+      }
 
       _dataByPlane.at(p).push_back(tr);
     }
