@@ -104,6 +104,7 @@ def main():
         geom._tRange = 7500
         geom._triggerOffset = 2500
         geom._readoutWindowSize = 7500
+        geom.recalculateOffsets()
     elif args.icarus:
         geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties)
     else:

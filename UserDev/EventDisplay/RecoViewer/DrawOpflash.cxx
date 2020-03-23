@@ -6,8 +6,10 @@
 namespace evd {
 
 
-DrawOpflash::DrawOpflash(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
-    RecoBase(geometry, detectorProperties)
+DrawOpflash::DrawOpflash(const geo::GeometryCore& geometry, 
+                         const detinfo::DetectorProperties& detectorProperties,
+                         const detinfo::DetectorClocks& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawOpflash";
   _fout = 0;
@@ -73,7 +75,7 @@ bool DrawOpflash::analyze(gallery::Event *ev) {
     Opflash2D this_flash;
     this_flash._y = opf.YCenter();
     this_flash._z = opf.ZCenter();
-    this_flash._time = opf.Time();
+    this_flash._time = opf.AbsTime();
     this_flash._y_width = opf.YWidth();
     this_flash._z_width = opf.ZWidth();
     this_flash._time_width = opf.TimeWidth();
@@ -99,7 +101,7 @@ int DrawOpflash::find_plane(int opch) {
     if (xyz.X() > 0 && xyz.X() < -300) return 2;
     if (xyz.X() > 300) return 3;
   }
-  if (_geo_service.DetectorName() == "sbnd") {
+  if (_geo_service.DetectorName() == "sbndv1") {
     if (xyz.X() < 0) return 0;
     if (xyz.X() > 0) return 1;
   } 

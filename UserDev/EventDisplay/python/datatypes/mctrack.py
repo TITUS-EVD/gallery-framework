@@ -11,7 +11,7 @@ class mctrack(recoBase):
     def __init__(self, geom):
         super(mctrack, self).__init__()
         self._productName = 'mctrack'
-        self._process = evd.DrawMCTrack(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawMCTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self.init()
 
     def drawObjects(self, view_manager, on_both_tpcs=False):
@@ -32,10 +32,13 @@ class mctrack(recoBase):
                 for pair in track.track():
                     x = pair.first / geom.wire2cm()
                     y = pair.second / geom.time2cm() + offset
+                    y += track.tpc() * (geom.tRange() - geom.triggerOffset())
+
                     if geom.nTPCs() == 2 and on_both_tpcs:
                         cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
                         if y > cathode_time:
                             y += geom.tRange() - geom.triggerOffset()
+
                     points.append(QtCore.QPointF(x, y))
 
                 # self._drawnObjects[view.plane()].append(thisPoly)
@@ -43,17 +46,20 @@ class mctrack(recoBase):
                 if len(points) == 0:
                     continue
 
-                thisPoly = polyLine(points)
+                
 
                 #print ('MCTrack pdg', track.pdg())
 
                 origin = track.origin()
                 if (origin == 1): # neutrino origin
-                    pen = pg.mkPen((128,128,128), width=2)
+                    color = (128,128,128) # Gray
                 else:
-                    pen = pg.mkPen((0,0,0), width=2)
-                thisPoly.setPen(pen)
-                # polyLine.draw(view._view)
+                    color = (0,0,0) # Black
+
+                thisPoly = polyLine(points, color)
+
+                time = track.time()
+                thisPoly.setToolTip(f'PDG = {track.pdg()}\nTime = {track.time():.4} us\nEnergy = {track.energy()/1e3:.4} GeV\nProcess = {track.process()}')
 
                 view._view.addItem(thisPoly)
 

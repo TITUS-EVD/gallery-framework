@@ -32,8 +32,10 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned i
   return result;
 }
 
-DrawTrack::DrawTrack(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
-    RecoBase(geometry, detectorProperties)
+DrawTrack::DrawTrack(const geo::GeometryCore& geometry, 
+                     const detinfo::DetectorProperties& detectorProperties,
+                     const detinfo::DetectorClocks& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawTrack";
   _fout = 0;

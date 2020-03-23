@@ -7,6 +7,7 @@ from datatypes import cluster
 from datatypes import endpoint2d
 from datatypes import vertex
 from datatypes import mctrack
+from datatypes import mctruth
 from datatypes import mcshower
 from datatypes import spacepoint
 from datatypes import simch
@@ -36,6 +37,7 @@ class drawableItems(object):
         # self._drawableClasses.update({'Match': [match.match,"pfpart"]})
         self._drawableClasses.update({'Shower': [shower.shower,"recob::Shower"]})
         self._drawableClasses.update({'Track': [track.track,"recob::Track"]})
+        self._drawableClasses.update({'MCTruth': [mctruth.mctruth,"simb::MCTruth"]})
         self._drawableClasses.update({'MCTrack': [mctrack.mctrack,"sim::MCTrack"]})
         # # self._drawableClasses.update({'Neutrino': [neutrino.neutrino,"ass"]})
         self._drawableClasses.update({'Endpoint 2D': [endpoint2d.endpoint2d,"recob::EndPoint2D"]})
@@ -53,6 +55,25 @@ class drawableItems(object):
     def getDict(self):
         return self._drawableClasses
 
+class drawableItemsLive(object):
+
+    """This class exists to enumerate the drawableItems for the live display"""
+    # If you make a new drawing class, add it here
+
+    def __init__(self):
+        super(drawableItemsLive, self).__init__()
+        # items are stored as pointers to the classes (not instances)
+        self._drawableClasses = collections.OrderedDict()
+        self._drawableClasses.update({'Hit': [hit.hit,"recob::Hit"]})
+
+    def getListOfTitles(self):
+        return self._drawableClasses.keys()
+
+    def getListOfItems(self):
+        return zip(*self._drawableClasses.values())[1]
+
+    def getDict(self):
+        return self._drawableClasses
 
 try:
     import pyqtgraph.opengl as gl

@@ -30,6 +30,7 @@ typedef _object PyObject;
 
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorProperties.h"
+#include "lardataalg/DetectorInfo/DetectorClocks.h"
 
 #include "LArUtil/SimpleGeometryHelper.h"
 
@@ -47,7 +48,9 @@ class RecoBase {
 public:
 
   /// Default constructor
-  RecoBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
+  RecoBase(const geo::GeometryCore& geometry, 
+           const detinfo::DetectorProperties& detectorProperties,
+           const detinfo::DetectorClocks& detectorClocks);
 
   /// Default destructor
   virtual ~RecoBase() {}
@@ -64,6 +67,9 @@ public:
   /// Returns a vector of data, what is stored depends on the implementation
   const std::vector<DATA_TYPE> & getExtraData(size_t p);
 
+  /// Returns a vector of data (not plane dependent)
+  const std::vector<DATA_TYPE> & getData();
+
 protected:
 
   void _init_base();
@@ -74,6 +80,7 @@ protected:
 
   const geo::GeometryCore&           _geo_service;
   const detinfo::DetectorProperties& _det_prop;
+  const detinfo::DetectorClocks&     _det_clock;
 
   std::string _producer;
 
@@ -81,6 +88,8 @@ protected:
   std::vector <std::vector < DATA_TYPE > > _dataByPlane;
   // Extra reco data to draw (in case we need this)
   std::vector <std::vector < DATA_TYPE > > _extraDataByPlane;
+  // A vector of data (for stuff not plane dependent)
+  std::vector < DATA_TYPE > _data;
 
   // Store the bounding parameters of interest:
   // highest and lowest wire, highest and lowest time
@@ -92,9 +101,12 @@ protected:
 
 
 template <class DATA_TYPE>
-RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry, 
+                               const detinfo::DetectorProperties& detectorProperties,
+                               const detinfo::DetectorClocks& detectorClocks) :
   _geo_service(geometry),
-  _det_prop(detectorProperties)
+  _det_prop(detectorProperties),
+  _det_clock(detectorClocks)
 {
   // geoService = larutil::Geometry::GetME();
   // geoHelper = larutil::GeometryHelper::GetME();
@@ -206,6 +218,18 @@ const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getExtraData(size_t p) {
       std::cerr << e.what() << '\n';
       return returnNull;
     }
+  }
+}
+
+template <class DATA_TYPE>
+const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getData() {
+  static std::vector<DATA_TYPE> returnNull;
+  try {
+    return _data;
+  }
+  catch (const std::exception& e) {
+    std::cerr << e.what() << '\n';
+    return returnNull;
   }
 }
 

@@ -22,7 +22,7 @@ class viewport(pg.GraphicsLayoutWidget):
 
   drawHitsRequested = QtCore.pyqtSignal(int, int)
 
-  def __init__(self, geometry, plane=-1, cryostat=0):
+  def __init__(self, geometry, plane=-1, cryostat=0, tpc=0):
     super(viewport, self).__init__(border=None)
     # add a view box, which is a widget that allows an image to be shown
     self._view = self.addViewBox(border=None)
@@ -45,6 +45,7 @@ class viewport(pg.GraphicsLayoutWidget):
     # connect the views to mouse move events, used to update the info box at the bottom
     self.scene().sigMouseMoved.connect(self.mouseMoved)
     self._plane = plane
+    self._tpc = tpc
     self._cryostat = cryostat
     self._cmSpace = False
     self._geometry = geometry
@@ -479,6 +480,12 @@ class viewport(pg.GraphicsLayoutWidget):
   def connectStatusBar(self, statusBar):
     self._statusBar = statusBar
 
+  def connectMessageBar(self, messageBar):
+    self._messageBar = messageBar
+
+  def getMessageBar(self):
+    return self._messageBar
+
   def setColorMap(self, colormaptype='default'):
     self._colorMap = self._geometry.colorMap(self._plane, colormaptype)
     self._cmap.restoreState(self._colorMap)
@@ -573,6 +580,9 @@ class viewport(pg.GraphicsLayoutWidget):
 
   def plane(self):
     return self._plane
+
+  def tpc(self):
+    return self._tpc
 
   def cryostat(self):
     return self._cryostat

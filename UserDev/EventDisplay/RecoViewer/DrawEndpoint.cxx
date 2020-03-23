@@ -5,8 +5,10 @@
 
 namespace evd {
 
-DrawEndpoint::DrawEndpoint(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
-    RecoBase(geometry, detectorProperties)
+DrawEndpoint::DrawEndpoint(const geo::GeometryCore& geometry, 
+                           const detinfo::DetectorProperties& detectorProperties,
+                           const detinfo::DetectorClocks& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawEndpoint";
   _fout = 0;

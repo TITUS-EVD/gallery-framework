@@ -26,7 +26,7 @@ class hit(recoBase):
     def __init__(self, geom):
         super(hit, self).__init__()
         self._productName = 'hit'
-        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._brush = (0, 0, 0)
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._n_tpcs = geom.nTPCs()

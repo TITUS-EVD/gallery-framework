@@ -195,6 +195,8 @@ class opticalviewport(QtGui.QWidget):
         self._arapucas[t].connectStatusBar(self._statusBar)
         self._arapucas[t].connectStatusBar(self._statusBar)
 
+  def connectMessageBar(self, messageBar):
+    self._messageBar = messageBar
 
   def pmtClickWorker(self, plot, points):
     for p in self._last_clicked_pmts:
@@ -288,6 +290,8 @@ class pmts(pg.ScatterPlotItem):
             if self._geom.opdetToTPC(d) == self._tpc:
                 if pe is not None:
                     brush = self._pmtscale.colorMap().map(pe[d]/max_pe)
+
+                # print(f'OpCh{d}: [{opdets_x[d]}, {opdets_y[d]}, {opdets_z[d]}]')
 
                 self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]), 
                                             'size'   : diameter, 
