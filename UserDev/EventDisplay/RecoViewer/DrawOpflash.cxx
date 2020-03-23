@@ -75,7 +75,7 @@ bool DrawOpflash::analyze(gallery::Event *ev) {
     Opflash2D this_flash;
     this_flash._y = opf.YCenter();
     this_flash._z = opf.ZCenter();
-    this_flash._time = opf.Time();
+    this_flash._time = opf.AbsTime();
     this_flash._y_width = opf.YWidth();
     this_flash._z_width = opf.ZWidth();
     this_flash._time_width = opf.TimeWidth();
