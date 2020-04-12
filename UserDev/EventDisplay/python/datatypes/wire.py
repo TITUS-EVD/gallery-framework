@@ -90,6 +90,7 @@ class rawDigit(wire):
         self._plane_mix = geom.planeMix()
         self._plane_flip = geom.planeFlip()
         self._process = evd.DrawRawDigit(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process.setSplitWire(geom.splitWire())
         for i in range(len(geom._pedestals)):
             self._process.setPedestal(geom._pedestals[i], i)
         self._process.initialize()

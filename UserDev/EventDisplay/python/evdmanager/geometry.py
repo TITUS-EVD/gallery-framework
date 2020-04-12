@@ -15,6 +15,7 @@ class geoBase(object):
         self._nTPCs = 1
         self._nCryos = 1
         self._nPlanes = 2
+        self._split_wire = False
         self._view_names = ['U', 'V', 'Y']
         self._tRange = 1600
         self._wRange = [240, 240]
@@ -80,6 +81,9 @@ class geoBase(object):
 
     def nPlanes(self):
         return self._nPlanes
+
+    def splitWire(self):
+        return self._split_wire
 
     def viewNames(self):
         return self._view_names
@@ -439,7 +443,7 @@ class sbnd(geometry):
 class icarus(geometry): 
 
 
-    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None):
+    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None, split_wire=False):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()
@@ -496,6 +500,10 @@ class icarus(geometry):
             #     self.triggerOffset()
             #     * self.time2cm()
             #     - self.planeOriginX(v) )
+
+        if split_wire:
+            self._split_wire = True
+            self._nTPCs = int(self._nTPCs / 2)
 
     def opdetToTPC(self, ch):
         if (self._opdet_x[ch] < -100): 

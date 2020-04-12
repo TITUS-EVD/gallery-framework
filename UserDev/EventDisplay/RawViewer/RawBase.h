@@ -77,6 +77,8 @@ namespace evd {
     void setYDimension(unsigned int y_dim, unsigned int plane);
     void setPedestal(float pedestal, unsigned int plane);
 
+    void setSplitWire(bool sw) {_split_wire = sw;}
+
     bool fileExists(std::string s);
 
     // Function to get the array of data
@@ -105,6 +107,8 @@ namespace evd {
 
     std::string _producer; ///< The producer tag (if only one)
     std::vector<std::string> _producers; ///< The list of producer tags (if multiples)
+
+    bool _split_wire = false;
   };
 } // evd
 
