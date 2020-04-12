@@ -98,41 +98,43 @@ bool DrawWire::analyze(gallery::Event * ev) {
     for (auto const& wire : *wires) {
       unsigned int ch = wire.Channel();
       std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
-      size_t detWire = widVec[0].Wire;
-      size_t plane   = widVec[0].Plane;
-      size_t tpc     = widVec[0].TPC;
-      size_t cryo    = widVec[0].Cryostat;  
-
-      // If a second TPC is present, its planes 0, 1 and 2 are 
-      // stored consecutively to those of the first TPC. 
-      // So we have planes 0, 1, 2, 3, 4, 5.
-      plane += tpc * _geo_service.Nplanes();
-      plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+      for (geo::WireID w_id : widVec) {
+        size_t detWire = w_id.Wire;
+        size_t plane   = w_id.Plane;
+        size_t tpc     = w_id.TPC;
+        size_t cryo    = w_id.Cryostat;  
+  
+        // If a second TPC is present, its planes 0, 1 and 2 are 
+        // stored consecutively to those of the first TPC. 
+        // So we have planes 0, 1, 2, 3, 4, 5.
+        plane += tpc * _geo_service.Nplanes();
+        plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
       
-      int offset = detWire * _y_dimensions[plane] + _padding_by_plane[plane];  
+        int offset = detWire * _y_dimensions[plane] + _padding_by_plane[plane];  
 
-      std::vector<float>&          planeData   = _planeData[plane];
-      std::vector<float>::iterator wireDataItr = planeData.begin() + offset;  
+        std::vector<float>&          planeData   = _planeData[plane];
+        std::vector<float>::iterator wireDataItr = planeData.begin() + offset;  
 
-      for (auto & iROI : wire.SignalROI().get_ranges()) {
+        for (auto & iROI : wire.SignalROI().get_ranges()) {
         
-        size_t                       firstTick = iROI.begin_index();
-        std::vector<float>::iterator adcItr    = wireDataItr + firstTick;  
+          size_t                       firstTick = iROI.begin_index();
+          std::vector<float>::iterator adcItr    = wireDataItr + firstTick;  
 
-        std::copy(iROI.begin(),iROI.end(),adcItr);  
+          std::copy(iROI.begin(),iROI.end(),adcItr);  
 
-        // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
-        // const int firstTick = iROI.begin_index();  
+          // for (auto iROI = wire.SignalROI().begin_range(); wire.SignalROI().end_range(); ++iROI) {
+          // const int firstTick = iROI.begin_index();  
 
-        // size_t i = 0;
-        // for (float ADC : iROI) {
-        //   _planeData.at(plane).at(offset + firstTick + i) = ADC;
-        //   i ++;
-        // }  
+          // size_t i = 0;
+          // for (float ADC : iROI) {
+          //   _planeData.at(plane).at(offset + firstTick + i) = ADC;
+          //   i ++;
+          // }  
 
-      }
-    }
-  }
+        }
+      } // wire id loop
+    } // wires loop
+  } // wire producer loop
 
   return true;
 }
