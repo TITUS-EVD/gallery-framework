@@ -633,6 +633,24 @@ class viewport(pg.GraphicsLayoutWidget):
         self._view.addItem(line)
         self._tpc_div_lines.append(line)
 
+    if self._geometry.splitWire():
+        # Draw the line and append it
+        line = QtGui.QGraphicsRectItem()
+        line.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
+        line.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
+        # Remove half a pixel (line_width/2), that would otherwise cover half a time tick
+        # line.setRect(0 + line_width/2, 
+        #              x_tpc - self._geometry.cathodeGap() / 2 + line_width/2, 
+        #              max_wire - line_width/2, 
+        #              self._geometry.cathodeGap() - line_width/2)
+        line.setRect(max_wire / 2 - self._geometry.cathodeGap() / 2 + line_width/2, 
+                     0 + line_width/2, 
+                     self._geometry.cathodeGap(), 
+                     self._geometry.tRange() * 2 + self._geometry.cathodeGap()  - line_width/2)
+        self._view.addItem(line)
+        self._tpc_div_lines.append(line)
+
+
 
     # self._line_tpc_div = QtGui.QGraphicsRectItem()
     # self._line_tpc_div.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey

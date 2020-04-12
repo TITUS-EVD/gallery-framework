@@ -504,6 +504,18 @@ class icarus(geometry):
         if split_wire:
             self._split_wire = True
             self._nTPCs = int(self._nTPCs / 2)
+            self._plane_mix = {0: [6], 1: [8], 2: [7], 12: [18], 13: [20], 14: [19]}
+            self._plane_flip = [False, False, False, # TPC 0
+                                False, False, False, # TPC 1
+                                True, True, True,    # TPC 2
+                                True, True, True,    # TPC 3
+                                False, False, False, # TPC 4
+                                False, False, False, # TPC 5
+                                True, True, True,    # TPC 6
+                                True, True, True]    # TPC 7
+
+            for v in range(0, len(self._wRange)):
+                self._wRange[v] = self._wRange[v] * 2 + self._cathodeGap
 
     def opdetToTPC(self, ch):
         if (self._opdet_x[ch] < -100): 
