@@ -32,7 +32,7 @@ class wire(dataBase):
         TPCs, to account for a gap between the two cathodes. This gap is
         customizable by changing the geometry value "cathode gap".
         '''
-        print('Requested to draw plane', plane, cryo)
+        print('Requested to draw plane', plane, 'cryo', cryo)
         n_tpc = self._n_tpc * 2 if self._split_wire else self._n_tpc
         plane += cryo * self._n_plane * n_tpc
         
