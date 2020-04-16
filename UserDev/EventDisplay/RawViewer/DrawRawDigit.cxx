@@ -88,7 +88,6 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
       raw_digits_v.push_back(raw_digits);
     }
   }
-  std::cout << "Here 0" << std::endl;
 
   // if the tick-length set is different from what is actually stored in the ADC
   // vector -> fix.
@@ -116,13 +115,11 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
       break;
     }
   }
-  std::cout << "Here 2" << std::endl;
 
   // if (_geo_service.DetectorName() == "microboone") {
   //   _noise_filter.set_n_time_ticks(n_ticks);
   // }
   initDataHolder();
-  std::cout << "Here 3" << std::endl;
 
   // If the output data holder is not the same size as RawDigit length,
   // it messes up the noise filter.  Easist thing to do here is to
@@ -134,7 +131,6 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   for (size_t i_plane = 0; i_plane < n_views; i_plane++) {
     temp_data_holder.at(i_plane).resize(n_ticks * _x_dimensions[i_plane]);
   }
-  std::cout << "Here 4" << std::endl;
 
   for (auto const &raw_digits : raw_digits_v) {
     for (auto const &rawdigit : *raw_digits) 
@@ -149,7 +145,7 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
         unsigned int tpc = w_id.TPC;
         unsigned int cryo = w_id.Cryostat;  
 
-        std::cout << "RawDigit wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
+        std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
 
         if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;  
 
