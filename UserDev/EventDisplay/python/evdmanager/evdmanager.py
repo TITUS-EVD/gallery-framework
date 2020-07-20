@@ -20,42 +20,44 @@ class product(object):
         self._isAssociation=False
         self._associatedProduct=None
         self._producer=None
+        self._instance=None
         self._stage=None
-        self._stage=None
-  
+
         self.parse()
-  
+
     def append_producer(self, s):
         self._producer += s
 
     def producer(self):
         return self._producer
-  
+
     def name(self):
         return self._name
-  
+
     def fullName(self):
-        return "{}::{}".format(self._producer, self._stage)
+        return "{}:{}:{}".format(self._producer, self._instance, self._stage)
 
     def typeName(self):
         return self._typeName
-  
+
     def isAssociation(self):
         return self._isAssociation
 
     def stage(self):
         return self._stage
-  
+
     # def associationProduct(self):
         # pass
-  
+
     # def reverseAssociationProduct(self):
         # pass
-  
+
     def parse(self):
         tokens=self._name.split('_')
+        print("Parsing product, tokens:",tokens)
         # Name goes as object_producer_stage
-        self._producer=tokens[1]
+        self._producer=tokens[-3]
+        self._instance=tokens[-2]
         self._stage=tokens[-1]
         self._typeName = tokens[0].rstrip('s')
 
@@ -130,7 +132,7 @@ class evd_manager_base(manager, QtCore.QObject):
         self._wireDrawer = None
         self._opDetWvfDrawer = None
         # self._truthDrawer = None
-        
+
 
     def pingFile(self, file):
         """
@@ -164,7 +166,6 @@ class evd_manager_base(manager, QtCore.QObject):
 
             prod=product(key.GetName(), key.GetTypeName())
 
-
             # if "NuMu" in key.GetName():
             #     print "NuMu stage is " + str(prod.stage())
             #     print "NuMu name is " +  str(prod.fullName())
@@ -172,9 +173,11 @@ class evd_manager_base(manager, QtCore.QObject):
             _product = prod._typeName
 
 
+            print("Product:",_product,", name:",key.GetName())
 
 
-            # Add the product to the "all" list and 
+
+            # Add the product to the "all" list and
             # also to it's stage list:
 
             # gets three items in thisKeyList, which is a list
@@ -194,12 +197,11 @@ class evd_manager_base(manager, QtCore.QObject):
                 lookUpTable[prod.stage()][_product] += (prod, )
             else:
                 lookUpTable[prod.stage()].update({_product: (prod,)})
-      
-
 
 
         self._keyTable.update(lookUpTable)
-        return 
+
+        return
 
     def setInputFile(self, file):
         f = [file, ]
@@ -312,7 +314,7 @@ class evd_manager_base(manager, QtCore.QObject):
 
     def goToEvent(self, event, force=False):
         # Gallery events don't offer random access
-        
+
 
         # Loop through until the event is gotten:
         if event < self._n_entries:
@@ -345,7 +347,7 @@ class evd_manager_2D(evd_manager_base):
 
     # truthLabelChanged = QtCore.pyqtSignal(str)
     filterNoise = False
-    
+
     '''
     Class to handle the 2D specific aspects of viewer
     '''
@@ -368,7 +370,7 @@ class evd_manager_2D(evd_manager_base):
             self._drawnClasses[informal_type].setProducer(product.fullName())
             self.processEvent(True)
             self._drawnClasses[informal_type].clearDrawnObjects(self._view_manager)
-            if informal_type == 'MCTrack' or informal_type == 'Track': 
+            if informal_type == 'MCTrack' or informal_type == 'Track':
                 self._drawnClasses[informal_type].drawObjects(self._view_manager, self._gui._tracksOnBothTPCs)
             else:
                 self._drawnClasses[informal_type].drawObjects(self._view_manager)
@@ -398,7 +400,7 @@ class evd_manager_2D(evd_manager_base):
             self._drawnClasses.update({informal_type: drawingClass})
             # Need to process the event
             self.processEvent(True)
-            if informal_type == 'MCTrack' or informal_type == 'Track': 
+            if informal_type == 'MCTrack' or informal_type == 'Track':
                 drawingClass.drawObjects(self._view_manager, self._gui._tracksOnBothTPCs)
             else:
                 drawingClass.drawObjects(self._view_manager)
@@ -458,11 +460,13 @@ class evd_manager_2D(evd_manager_base):
         if name not in self._keyTable[stage]:
             return None
 
+        print("Returning: keyTable:",name,", stage:",stage,", val:",self._keyTable[stage][name])
+
         return self._keyTable[stage][name]
 
     def get_default_products(self, name, stage=None):
         '''
-        Returns only the products that will be 
+        Returns only the products that will be
         drawn by default, unless the user decides what to see
         in the dropdown menu
         '''
@@ -506,7 +510,7 @@ class evd_manager_2D(evd_manager_base):
                             self._keyTable[stage]['recob::Wire'][3].fullName()]
             else:
                 producer = self._keyTable[stage]['recob::Wire'][0].fullName()
-                
+
             # self._wireDrawer.setProducer(self._keyTable[stage]['recob::Wire'][0].fullName())
             self._wireDrawer.setProducer(producer)
             self._processer.add_process("recob::Wire",self._wireDrawer._process)
@@ -624,9 +628,9 @@ try:
         # when the producer changes
         def redrawProduct(self, name, product, producer, view_manager, stage = None):
             # print "Received request to redraw ", product, " by ",producer, " with name ", name
-            # First, determine if there is a drawing process for this product:  
+            # First, determine if there is a drawing process for this product:
             if stage is None:
-                stage = 'all'         
+                stage = 'all'
             if producer is None:
                 if name in self._drawnClasses:
                     self._drawnClasses[name].clearDrawnObjects(self._view_manager)
