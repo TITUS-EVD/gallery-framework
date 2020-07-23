@@ -228,7 +228,7 @@ class evd_manager_base(manager, QtCore.QObject):
                 return
             # Next, verify it is a root file:
             if not file.endswith(".root"):
-                print("ERROR: must supply a root file.")
+                print("\033[91m ERROR: must supply a root file. \033[0m")
                 continue
 
             # Finally, ping the file to see what is available to draw
