@@ -738,6 +738,11 @@ class flash_time_view(pg.GraphicsLayoutWidget):
     t_max = np.max(times)
     n_bins = int(t_max - t_min)
 
+    if len(flashes) == 1:
+        t_min -= 100
+        t_max += 100
+        n_bins = 200
+
     data_y, data_x = np.histogram(times, bins=np.linspace(t_min, t_max, n_bins))
 
     self._time_plot.plot(x=data_x, y=data_y, stepMode=True, fillLevel=0, brush=(0,0,255,150))
@@ -745,5 +750,4 @@ class flash_time_view(pg.GraphicsLayoutWidget):
 
     self._time_plot.autoRange()
 
-   
-    
+
