@@ -32,28 +32,35 @@ class wire(dataBase):
         TPCs, to account for a gap between the two cathodes. This gap is
         customizable by changing the geometry value "cathode gap".
         '''
-        print('Requested to draw plane', plane, 'cryo', cryo)
-        n_tpc = self._n_tpc * 2 if self._split_wire else self._n_tpc
-        plane += cryo * self._n_plane * n_tpc
+        # print('Requested to draw plane', plane, 'cryo', cryo)
+        # n_tpc = self._n_tpc * 2 if self._split_wire else self._n_tpc
+        # plane += cryo * self._n_plane * n_tpc
 
-        if self._n_tpc == 2:
+        plane = self._geom.getPlaneID(plane=plane, tpc=0, cryo=cryo)
+        other_planes = self._geom.getOtherPlanes(plane_id=plane)
 
-            array = self._concatenatePlanes(plane)
+        if len(other_planes) == 0:
+            return self._process.getArrayByPlane(plane)
 
-            if self._split_wire:
-                array_2 = self._concatenatePlanes(plane, plane_increase=3)
+        if len(other_planes) == 1:
+            array = self._concatenatePlanes(plane, other_planes[0])
 
-                npad = ((0, int(self._gap)), (0, 0))
-                array = np.pad(array, pad_width=npad, mode='constant', constant_values=0)
+        elif len(other_planes) == 3:
+            array_1 = self._concatenatePlanes(plane, other_planes[1])
+            array_2 = self._concatenatePlanes(other_planes[0], other_planes[2])
 
-                array = np.concatenate((array, array_2), axis=0)
+            # Horizontal concatenation
+            npad = ((0, int(self._gap)), (0, 0))
+            array_1 = np.pad(array_1, pad_width=npad, mode='constant', constant_values=0)
+            array = np.concatenate((array_1, array_2), axis=0)
 
-            # return array
-            return array
+        else:
+            raise Exception(f'{len(other_planes)} additional planes are not supported.')
 
-        return self._process.getArrayByPlane(plane)
+        return array
 
-    def _concatenatePlanes(self, plane, plane_increase=0):
+
+    def _concatenatePlanes(self, right_plane, left_plane):
         '''
         Concatenates planes across TPCs,
         as specified by geometry's _plane_mix
@@ -63,29 +70,26 @@ class wire(dataBase):
         - plane_increase: A number that constanty increases all plane numbers
         '''
 
-        print('\twhich is plane', plane + plane_increase)
+        array_right = self._process.getArrayByPlane(right_plane)
+        array_left  = self._process.getArrayByPlane(left_plane)
 
-        array_right = self._process.getArrayByPlane(plane + plane_increase)
-        for left_plane in self._plane_mix[plane]:
-            left_plane += plane_increase
-            print('\t\twhich is mixed with plane', left_plane)
-            array_left  = self._process.getArrayByPlane(left_plane)
+        if self._geom.flipPlane(left_plane):
+            array_left = np.flip(array_left, axis=1)
 
-            if self._plane_flip[left_plane]:
-                array_left = np.flip(array_left, axis=1)
+        npad = ((0, 0), (0, int(self._gap)))
+        array_right = np.pad(array_right, pad_width=npad, mode='constant', constant_values=0)
 
-            npad = ((0, 0), (0, int(self._gap)))
-            array_right = np.pad(array_right, pad_width=npad, mode='constant', constant_values=0)
+        array = np.concatenate((array_right, array_left), axis=1)
 
-            array_right = np.concatenate((array_right, array_left), axis=1)
+        return array
 
-        return array_right
 
 
 class recoWire(wire):
 
     def __init__(self, geom):
         super(recoWire, self).__init__()
+        self._geom = geom
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
@@ -115,6 +119,7 @@ class rawDigit(wire):
 
     def __init__(self, geom):
         super(rawDigit, self).__init__()
+        self._geom = geom
         self._n_tpc = geom.nTPCs()
         self._n_plane = geom.nPlanes()
         self._gap = geom.cathodeGap()
