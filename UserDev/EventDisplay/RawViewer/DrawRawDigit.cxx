@@ -140,7 +140,7 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
         unsigned int tpc = w_id.TPC;
         unsigned int cryo = w_id.Cryostat;
 
-        std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
+        // std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
 
         if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;
 
