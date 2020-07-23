@@ -101,7 +101,6 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
     }
   }
 
-
   _planeData.clear();
   size_t n_ticks = 0;
 
@@ -129,7 +128,7 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   }
 
   for (auto const &raw_digits : raw_digits_v) {
-    for (auto const &rawdigit : *raw_digits) 
+    for (auto const &rawdigit : *raw_digits)
     {
       unsigned int ch  = rawdigit.Channel();
       float        ped = rawdigit.GetPedestal();
@@ -139,24 +138,24 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
         unsigned int wire = w_id.Wire;
         unsigned int plane = w_id.Plane;
         unsigned int tpc = w_id.TPC;
-        unsigned int cryo = w_id.Cryostat;  
+        unsigned int cryo = w_id.Cryostat;
 
         std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
 
-        if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;  
+        if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;
 
-        if (_geo_service.DetectorName() == "microboone" && ch >= 8254) continue;  
+        if (_geo_service.DetectorName() == "microboone" && ch >= 8254) continue;
 
-        // If a second TPC is present, its planes 0, 1 and 2 are 
-        // stored consecutively to those of the first TPC. 
+        // If a second TPC is present, its planes 0, 1 and 2 are
+        // stored consecutively to those of the first TPC.
         // So we have planes 0, 1, 2, 3, 4, 5.
         plane += tpc * _geo_service.Nplanes();
-        plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();  
+        plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
 
-        int offset = wire * n_ticks;  
+        int offset = wire * n_ticks;
 
         std::vector<float>&          planeRawDigitVec = temp_data_holder[plane];
-        std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;  
+        std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;
 
         float pedestal = 0;
         if (_subtract_pedestal) {
