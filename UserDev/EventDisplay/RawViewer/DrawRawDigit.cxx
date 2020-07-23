@@ -100,11 +100,7 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
       }
     }
   }
-  std::cout << "Here 1 raw_digits_v.size() " << raw_digits_v.size() << std::endl;
-  std::cout << "Here 1 raw_digits_v[0].size() " << (*raw_digits_v[0]).size() << std::endl;
-  std::cout << "Here 1 raw_digits_v[1].size() " << (*raw_digits_v[1]).size() << std::endl;
-  std::cout << "Here 1 raw_digits_v[2].size() " << (*raw_digits_v[2]).size() << std::endl;
-  std::cout << "Here 1 raw_digits_v[3].size() " << (*raw_digits_v[3]).size() << std::endl;
+
 
   _planeData.clear();
   size_t n_ticks = 0;
