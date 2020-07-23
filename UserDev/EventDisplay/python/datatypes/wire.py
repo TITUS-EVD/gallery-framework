@@ -23,19 +23,19 @@ class wire(dataBase):
         Returns the array of values for the selected plane.
         The values are stored in a 2d array, containing the
         wires on axis 0, and the waveform values on axis 1.
-        In the special case in which there are 2 TPCs, the waveform 
+        In the special case in which there are 2 TPCs, the waveform
         are taken from the same plane on both TPCs. The waveform
         on the second TPC is flipped in time, so as to keep the same
         x orientation. The waveforms on the 2 TPCs are then
-        concatenated together on a wire by wire basis. 
-        A padding with zeros is added between waveforms on different 
+        concatenated together on a wire by wire basis.
+        A padding with zeros is added between waveforms on different
         TPCs, to account for a gap between the two cathodes. This gap is
         customizable by changing the geometry value "cathode gap".
         '''
         print('Requested to draw plane', plane, 'cryo', cryo)
         n_tpc = self._n_tpc * 2 if self._split_wire else self._n_tpc
         plane += cryo * self._n_plane * n_tpc
-        
+
         if self._n_tpc == 2:
 
             array = self._concatenatePlanes(plane)
@@ -55,7 +55,7 @@ class wire(dataBase):
 
     def _concatenatePlanes(self, plane, plane_increase=0):
         '''
-        Concatenates planes across TPCs, 
+        Concatenates planes across TPCs,
         as specified by geometry's _plane_mix
 
         arguments:
@@ -145,7 +145,7 @@ class rawDigit(wire):
                     self._process.addInput(p)
             else:
                 self._process.setInput(self._producerName)
-            
+
     def toggleNoiseFilter(self, filterNoise):
         self._process.SetCorrectData(filterNoise) 
 
