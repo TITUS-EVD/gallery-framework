@@ -27,7 +27,7 @@ class viewport(pg.GraphicsLayoutWidget):
   def customMouseDragEvent(self, ev, axis=None):
     '''
     This is a customizaton of ViewBox's mouseDragEvent.
-    The default one is here: 
+    The default one is here:
     http://www.pyqtgraph.org/documentation/_modules/pyqtgraph/graphicsItems/ViewBox/ViewBox.html#ViewBox
     Here we want:
     - Left click should allow to zoom in the dragged rectangle (ViewBox.RectMode)
@@ -72,7 +72,7 @@ class viewport(pg.GraphicsLayoutWidget):
         tr = self._view.mapToView(tr) - self._view.mapToView(Point(0,0))
         x = tr.x() if mask[0] == 1 else None
         y = tr.y() if mask[1] == 1 else None
-        
+
         self._view._resetTarget()
         if x is not None or y is not None:
             self._view.translateBy(x=x, y=y)
@@ -87,7 +87,7 @@ class viewport(pg.GraphicsLayoutWidget):
     self._item = pg.ImageItem(useOpenGL=True)
     # self._item._setPen((0,0,0))
     self._view.addItem(self._item)
-    
+
     self._removed_entries = 0
     self._manual_t0 = 0
     self._showAnodeCathode = False
@@ -172,7 +172,7 @@ class viewport(pg.GraphicsLayoutWidget):
     self._lowerLevel.setMaximumWidth(35)
 
     # The name of the viewport with appropriate tooltip
-    name = 'View ' 
+    name = 'View '
     name += self._geometry.viewNames()[plane]
     name += ', Cryo '
     name += str(cryostat)
@@ -229,7 +229,7 @@ class viewport(pg.GraphicsLayoutWidget):
 
   def toggleLogo(self,logoBool):
     '''
-    Toggles the experiment's 
+    Toggles the experiment's
     logo on and off
     '''
 
@@ -253,7 +253,7 @@ class viewport(pg.GraphicsLayoutWidget):
   def restoreDefaults(self):
     level_lower = self._geometry.getLevels(self._plane)[0]
     level_upper = self._geometry.getLevels(self._plane)[1]
-    
+
     if self._drawingRawDigits:
         level_lower += self._geometry.getPedestal(self._plane)
         level_upper += self._geometry.getPedestal(self._plane)
@@ -291,15 +291,6 @@ class viewport(pg.GraphicsLayoutWidget):
 
   def showAnodeCathode(self,showAC):
     self._showAnodeCathode = showAC
-    # if self._line_a in self.scene().items():
-    #     self.scene().removeItem(self._line_a)
-    # if self._line_c in self.scene().items():
-    #     self.scene().removeItem(self._line_c)
-
-    # if self._line_a_2 in self.scene().items():
-    #     self.scene().removeItem(self._line_a_2)
-    # if self._line_c_2 in self.scene().items():
-    #     self.scene().removeItem(self._line_c_2)
 
     for l in self._cathode_lines:
         if l in self.scene().items():
@@ -319,20 +310,6 @@ class viewport(pg.GraphicsLayoutWidget):
     Blue line = cathode
     '''
 
-    # x_pos = 20
-    # y_pos = 400
-    # x_scale = 2
-    # y_scale = -17
-    # self._tpcText = QtGui.QGraphicsSimpleTextItem("TPC 0, Plane 0")
-    # self._tpcText.setBrush(pg.mkColor(255,255,255))
-    # # xScale = 0.015* width
-    # # yScale = - 0.5* height
-    # self._tpcText.setPos(x_pos, y_pos)
-    # self._tpcText.scale(x_scale, y_scale)
-    # self._tpcText.font().setPixelSize(15)
-    # self._view.addItem(self._tpcText)
-
-
     if not self._showAnodeCathode:
       return
 
@@ -344,7 +321,7 @@ class viewport(pg.GraphicsLayoutWidget):
         plane_x_ref = self._geometry.getGeometryCore().Plane(0).GetCenter().X()
         plane_x = self._geometry.getGeometryCore().Plane(self._plane).GetCenter().X()
         delta_plane = abs(plane_x - plane_x_ref)
-        
+
         offset = self._geometry.triggerOffset() * self._geometry.time2cm() - delta_plane
 
         x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
@@ -415,7 +392,7 @@ class viewport(pg.GraphicsLayoutWidget):
         final_slice = np.r_[slice_right, slice_left]
 
         self._removed_entries = n_removable_entries
-        
+
         data = np.delete(data, final_slice, axis=1)
         self.drawPlane(data)
 
@@ -444,7 +421,7 @@ class viewport(pg.GraphicsLayoutWidget):
     for i in range(self._geometry.nTPCs() * self._geometry.nCryos(), 0, -1):
         if self.q.y() > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
             offset = -i * (self._geometry.tRange() + self._geometry.cathodeGap())
-            break 
+            break
 
     if (pg.Qt.QT_LIB == 'PyQt4'):
       message= QtCore.QString()
@@ -479,27 +456,15 @@ class viewport(pg.GraphicsLayoutWidget):
         message += ", T: "
         message += str(int(self.q.y()+offset))
 
-    # print (message)
     max_trange = self._geometry.tRange() * self._geometry.nTPCs()
 
-    # if self._geometry.nTPCs() == 2: 
-    #     max_trange *= 2
 
     if self.q.x() > 0 and self.q.x() < self._geometry.wRange(self._plane):
       if self.q.y() > 0 and self.q.y() < max_trange:
         self._statusBar.showMessage(message)
 
   def mouseClicked(self, event):
-    # print self
-    # print event
-    # print event.pos()
-    # Get the Mouse position and print it:
-    # print "Image position:", self.q.x()
-    # use this method to try drawing rectangles
-    # self.drawRect()
-    # pdi.plot()
-    # For this function, a click should get the wire that is
-    # being hovered over and draw it at the bottom
+
     if event.modifiers() == QtCore.Qt.ShiftModifier:
       if event.pos() is not  None:
         self.processPoint(self._lastPos)
@@ -614,28 +579,6 @@ class viewport(pg.GraphicsLayoutWidget):
     self._xBarText.font().setPixelSize(15)
     self._view.addItem(self._xBarText)
 
-    # # Now do the y Bar
-    # width = 0.01*(xMax - xMin)
-    # height = 0.1*(yMax - yMin)
-    # xLoc = xMin + 0.1*(xMax - xMin)
-    # yLoc = yMin + 0.1*(yMax - yMin)
-    # if self._yBar in self._view.addedItems:
-    #   self._view.removeItem(self._yBar)
-    #   self._view.removeItem(self._yBarText)
-
-    # self._yBar = QtGui.QGraphicsRectItem(xLoc,yLoc,width,height)
-    # self._yBar.setBrush(pg.mkColor(0,0,0))
-    # self._view.addItem(self._yBar)
-
-    # # Add the text:
-    # self._yBarText = QtGui.QGraphicsSimpleTextItem(xString)
-    # xScale = 0.015* width
-    # yScale = - 0.5* height
-    # self._yBarText.setPos(xLoc,yLoc)
-    # self._yBarText.scale(xScale,yScale)
-    # self._yBarText.setRotation(90)
-    # self._yBarText.font().setPixelSize(15)
-    # self._view.addItem(self._yBarText)
 
   def plane(self):
     return self._plane
@@ -679,8 +622,8 @@ class viewport(pg.GraphicsLayoutWidget):
     for tpc in range(1, self._geometry.nTPCs()):
 
         x_tpc = tpc * self._geometry.tRange()              # Place it at the end of one TPC
-        x_tpc += (tpc - 1) * self._geometry.cathodeGap()   # Add the gap accumulated previously 
-        x_tpc += self._geometry.cathodeGap() / 2           # Add half the gap between the 2 TPCs 
+        x_tpc += (tpc - 1) * self._geometry.cathodeGap()   # Add the gap accumulated previously
+        x_tpc += self._geometry.cathodeGap() / 2           # Add half the gap between the 2 TPCs
         x_tpc -= tpc * self._removed_entries               # Remove potentially removed entries to unite the cathodes
 
         # Draw the line and append it
@@ -698,30 +641,16 @@ class viewport(pg.GraphicsLayoutWidget):
         line.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
         line.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
         # Remove half a pixel (line_width/2), that would otherwise cover half a time tick
-        # line.setRect(0 + line_width/2, 
-        #              x_tpc - self._geometry.cathodeGap() / 2 + line_width/2, 
-        #              max_wire - line_width/2, 
+        # line.setRect(0 + line_width/2,
+        #              x_tpc - self._geometry.cathodeGap() / 2 + line_width/2,
+        #              max_wire - line_width/2,
         #              self._geometry.cathodeGap() - line_width/2)
-        line.setRect(max_wire / 2 - self._geometry.cathodeGap() / 2 + line_width/2, 
+        line.setRect(max_wire / 2 - self._geometry.cathodeGap() / 2 + line_width/2,
                      0 + line_width/2, 
-                     self._geometry.cathodeGap(), 
+                     self._geometry.cathodeGap(),
                      self._geometry.tRange() * 2 + self._geometry.cathodeGap()  - line_width/2)
         self._view.addItem(line)
         self._tpc_div_lines.append(line)
-
-
-
-    # self._line_tpc_div = QtGui.QGraphicsRectItem()
-    # self._line_tpc_div.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
-    # self._line_tpc_div.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
-    # self._line_tpc_div.setRect(0, x_tpc - self._geometry.cathodeGap() / 2, max_wire, self._geometry.cathodeGap())
-
-    # # self._line_tpc_div = QtGui.QGraphicsLineItem()
-    # # self._line_tpc_div.setLine(0, x_tpc, max_wire, x_tpc)
-    # # self._line_tpc_div.setPen(pg.mkPen(color='r', width=self._geometry.cathodeGap()))
-
-
-    # self._view.addItem(self._line_tpc_div)
 
 
 
@@ -802,13 +731,13 @@ class viewport(pg.GraphicsLayoutWidget):
     self._path = QtGui.QPainterPath()
     self._path.addPolygon(self._polygon)
     self._polyGraphicsItem.setPath(self._path)
-    
+
 
   # Lovingly stolen from wikipedia, this is not my algorithm
   def get_line(self, start, end):
     """Bresenham's Line Algorithm
     Produces a list of tuples from start and end
- 
+
     >>> points1 = get_line((0, 0), (3, 4))
     >>> points2 = get_line((3, 4), (0, 0))
     >>> assert(set(points1) == set(points2))
@@ -822,30 +751,30 @@ class viewport(pg.GraphicsLayoutWidget):
     x2, y2 = end
     dx = x2 - x1
     dy = y2 - y1
- 
+
     # Determine how steep the line is
     is_steep = abs(dy) > abs(dx)
- 
+
     # Rotate line
     if is_steep:
         x1, y1 = y1, x1
         x2, y2 = y2, x2
- 
+
     # Swap start and end points if necessary and store swap state
     swapped = False
     if x1 > x2:
         x1, x2 = x2, x1
         y1, y2 = y2, y1
         swapped = True
- 
+
     # Recalculate differentials
     dx = x2 - x1
     dy = y2 - y1
- 
+
     # Calculate error
     error = int(dx / 2.0)
     ystep = 1 if y1 < y2 else -1
- 
+
     # Iterate over bounding box generating points between start and end
     y = y1
     points = []
@@ -856,7 +785,7 @@ class viewport(pg.GraphicsLayoutWidget):
         if error < 0:
             y += ystep
             error += dx
- 
+
     # Reverse the list if the coordinates were swapped
     if swapped:
         points.reverse()
