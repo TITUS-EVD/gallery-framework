@@ -4,7 +4,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
 
-from gui import livegui
+from gui import evdgui
 import argparse
 import sys
 import signal
@@ -27,15 +27,6 @@ except:
     print ('Did not find ICARUS services.')
     pass
 
-geometryCore    = services.ServiceManager('Geometry')
-detProperties   = services.ServiceManager('DetectorProperties')
-detClocks       = services.ServiceManager('DetectorClocks')
-lar_properties  = services.ServiceManager('LArProperties')
-
-# This is to allow key commands to work when focus is on a box
-
-
-
 
 def sigintHandler(*args):
     """Handler for the SIGINT signal."""
@@ -45,8 +36,12 @@ def sigintHandler(*args):
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Python based event display for live data.')
+    parser = argparse.ArgumentParser(description='TITUS event display.')
     geom = parser.add_mutually_exclusive_group()
+
+    #
+    # Detector
+    #
     geom.add_argument('-A', '-a', '--argoneut',
                       action='store_true',
                       help="Run with the argoneut geometry")
@@ -59,15 +54,43 @@ def main():
     geom.add_argument('-S', '-s', '--sbnd',
                       action='store_true',
                       help="Run with the SBND Geometry")
+    geom.add_argument('-S3', '-s3', '--sbnd3',
+                      action='store_true',
+                      help="Run with the SBND Geometry with 3 drift windows")
     geom.add_argument('-I', '-i', '--icarus',
                       action='store_true',
                       help="Run with the ICARUS Geometry")
     geom.add_argument('-L', '-l', '--lariat',
                       action='store_true',
                       help="Run with the lariat geometry")
+
+    #
+    # Fhicl configuration
+    #
+    parser.add_argument('--config',
+                        dest="config_path",
+                        help="Configuration file path (must define `services` or host serviceTable below)")
+    parser.add_argument('--table',
+                        dest="service_table",
+                        help="Name of the FHiCL table where all services are configured")
+    parser.add_argument('-sw', '--split_wire',
+                        action='store_true',
+                        help="Use split wire geometry")
+
+    #
+    # Input file
+    #
     parser.add_argument('file', nargs='*', help="Optional input file to use")
 
     args = parser.parse_args()
+
+    if args.config_path is not None:
+        services.ServiceManager.setConfiguration(args.config_path, args.service_table)
+
+    geometryCore    = services.ServiceManager('Geometry')
+    detProperties   = services.ServiceManager('DetectorProperties')
+    detClocks       = services.ServiceManager('DetectorClocks')
+    lar_properties  = services.ServiceManager('LArProperties')
 
     app = QtGui.QApplication(sys.argv)
 
@@ -80,13 +103,19 @@ def main():
         exit()
         geom = geometry.microboonetruncated()
     elif args.lariat:
-        print('TITUS Live is not available for Lariat.')
+        print('TITUS Live is not available for LArIAT.')
         exit()
         geom = geometry.lariat()
     elif args.sbnd:
         geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+    elif args.sbnd3:
+        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+        geom._tRange = 7500
+        geom._triggerOffset = 2500
+        geom._readoutWindowSize = 7500
+        geom.recalculateOffsets()
     elif args.icarus:
-        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties)
+        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties,args.split_wire)
     else:
         print('TITUS Live is not available for ArgoNeuT.')
         exit()
@@ -98,7 +127,7 @@ def main():
     manager.setInputFiles(args.file)
 
 
-    thisgui = livegui(geom, manager, app, live=True)
+    thisgui = evdgui(geom, manager, app)
     # manager.goToEvent(0)
 
     signal.signal(signal.SIGINT, sigintHandler)
@@ -112,3 +141,10 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
+

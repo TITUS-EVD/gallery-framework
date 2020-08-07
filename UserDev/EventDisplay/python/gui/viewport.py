@@ -52,10 +52,10 @@ class viewport(pg.GraphicsLayoutWidget):
     ## Scale or translate based on mouse button
     if ev.button() & (QtCore.Qt.LeftButton | QtCore.Qt.MidButton):
         # RectMode: Zoom in the dragged rectangle
-        print('Left-Mid button')
-        print('self._view.state[\'mouseMode\']', self._view.state['mouseMode'])
+        # print('Left-Mid button')
+        # print('self._view.state[\'mouseMode\']', self._view.state['mouseMode'])
         # if self._view.state['mouseMode'] == ViewBox.RectMode:
-        print('mouse mode is RectMode')
+        # print('mouse mode is RectMode')
         if ev.isFinish():  ## This is the final move in the drag; change the view scale now
             self._view.rbScaleBox.hide()
             ax = QtCore.QRectF(Point(ev.buttonDownPos(ev.button())), Point(pos))

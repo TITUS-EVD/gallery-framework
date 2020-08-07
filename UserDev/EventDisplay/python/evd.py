@@ -36,7 +36,7 @@ def sigintHandler(*args):
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Python based event display.')
+    parser = argparse.ArgumentParser(description='TITUS event display.')
     geom = parser.add_mutually_exclusive_group()
 
     #
