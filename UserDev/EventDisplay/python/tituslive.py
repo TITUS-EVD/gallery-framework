@@ -18,13 +18,11 @@ from evdmanager import geometry, live_evd_manager_2D
 try:
     import SBNDservices as services
 except:
-    print ('Did not find SBND services.')
     pass
 
 try:
     import ICARUSservices as services
 except:
-    print ('Did not find ICARUS services.')
     pass
 
 
@@ -73,9 +71,9 @@ def main():
     parser.add_argument('--table',
                         dest="service_table",
                         help="Name of the FHiCL table where all services are configured")
-    parser.add_argument('-sw', '--split_wire',
+    parser.add_argument('-nosw', '--no_split_wire',
                         action='store_true',
-                        help="Use split wire geometry")
+                        help="Do not use split wire geometry (you also need to pass the right FHiCL)")
 
     #
     # Input file
@@ -115,7 +113,7 @@ def main():
         geom._readoutWindowSize = 7500
         geom.recalculateOffsets()
     elif args.icarus:
-        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties,args.split_wire)
+        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties,args.no_split_wire)
     else:
         print('TITUS Live is not available for ArgoNeuT.')
         exit()
