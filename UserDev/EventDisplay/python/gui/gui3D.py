@@ -29,7 +29,7 @@ class ConnectedSpinBox(QtGui.QSpinBox):
 
 
 # Import the class that manages the view windows
-from viewport3D import viewport3D
+from .viewport3D import viewport3D
 
 class view_manager3D(QtCore.QObject):
   """This class manages a collection of viewports"""
