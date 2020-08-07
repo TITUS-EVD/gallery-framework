@@ -471,9 +471,9 @@ class sbnd(geometry):
         }
 
         self._planeid_to_other_planes = {
-            0: (4),
-            1: (3),
-            2: (5)
+            0: [4],
+            1: [3],
+            2: [5]
         }
 
     def opdetToTPC(self, ch):
@@ -573,13 +573,13 @@ class icarus(geometry):
         }
 
         self._planeid_to_other_planes = {
-            0: (3, 6, 9),
-            1: (4, 8, 11),
-            2: (5, 7, 10),
+            0: [3, 6, 9],
+            1: [4, 8, 11],
+            2: [5, 7, 10],
 
-            12: (15, 18, 21),
-            13: (16, 20, 23),
-            14: (17, 19, 22),
+            12: [15, 18, 21],
+            13: [16, 20, 23],
+            14: [17, 19, 22],
         }
 
         if split_wire:
