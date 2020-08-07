@@ -54,7 +54,6 @@ class product(object):
 
     def parse(self):
         tokens=self._name.split('_')
-        print("Parsing product, tokens:",tokens)
         # Name goes as object_producer_stage
         self._producer=tokens[-3]
         self._instance=tokens[-2]
@@ -173,7 +172,6 @@ class evd_manager_base(manager, QtCore.QObject):
             _product = prod._typeName
 
 
-            print("Product:",_product,", name:",key.GetName())
 
 
 
@@ -460,8 +458,6 @@ class evd_manager_2D(evd_manager_base):
         if name not in self._keyTable[stage]:
             return None
 
-        print("Returning: keyTable:",name,", stage:",stage,", val:",self._keyTable[stage][name])
-
         return self._keyTable[stage][name]
 
     def get_default_products(self, name, stage=None):
@@ -535,7 +531,6 @@ class evd_manager_2D(evd_manager_base):
             else:
                 producer = self._keyTable[stage]['raw::RawDigit'][0].fullName()
 
-            print ('rawdigit, producer', producer)
             self._wireDrawer.setProducer(producer)
             self._processer.add_process("raw::RawDigit", self._wireDrawer._process)
             self._wireDrawer.toggleNoiseFilter(self.filterNoise)

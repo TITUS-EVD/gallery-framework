@@ -18,13 +18,11 @@ from evdmanager import geometry, evd_manager_2D
 try:
     import SBNDservices as services
 except:
-    print ('Did not find SBND services.')
     pass
 
 try:
     import ICARUSservices as services
 except:
-    print ('Did not find ICARUS services.')
     pass
 
 
