@@ -167,6 +167,10 @@ class live_evd_manager_2D(evd_manager_base):
         if stage is None:
             stage = 'all'
 
+        if stage not in self._keyTable:
+            print("No data available to draw")
+            return
+
         if product == 'wire':
             if 'recob::Wire' not in self._keyTable[stage]:
                 print("No wire data available to draw")
@@ -184,7 +188,7 @@ class live_evd_manager_2D(evd_manager_base):
                             self._keyTable[stage]['recob::Wire'][3].fullName()]
             else:
                 producer = self._keyTable[stage]['recob::Wire'][0].fullName()
-                
+
             # self._wireDrawer.setProducer(self._keyTable[stage]['recob::Wire'][0].fullName())
             self._wireDrawer.setProducer(producer)
             self._processer.add_process("recob::Wire",self._wireDrawer._process)
@@ -235,6 +239,10 @@ class live_evd_manager_2D(evd_manager_base):
 
         if stage is None:
             stage = 'all'
+
+        if stage not in self._keyTable:
+            print("No data available to draw")
+            return
 
         if product == 'opdetwaveform':
 
