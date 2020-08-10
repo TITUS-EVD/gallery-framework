@@ -17,7 +17,7 @@ class live_evd_manager_2D(evd_manager_base):
 
     # truthLabelChanged = QtCore.pyqtSignal(str)
     filterNoise = False
-    
+
     '''
     Class to handle the 2D specific aspects of viewer
     '''
@@ -127,6 +127,9 @@ class live_evd_manager_2D(evd_manager_base):
         if stage is None:
             stage = 'all'
 
+        if stage not in self._keyTable:
+            return None
+
         if name not in self._keyTable[stage]:
             return None
 
@@ -134,12 +137,15 @@ class live_evd_manager_2D(evd_manager_base):
 
     def get_default_products(self, name, stage=None):
         '''
-        Returns only the products that will be 
+        Returns only the products that will be
         drawn by default, unless the user decides what to see
         in the dropdown menu
         '''
         if stage is None:
             stage = 'all'
+
+        if stage not in self._keyTable:
+            return None
 
         if name not in self._keyTable[stage]:
             return None

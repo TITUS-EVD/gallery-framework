@@ -4,7 +4,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
 
-from gui import evdgui
+from gui import livegui
 import argparse
 import sys
 import signal
@@ -76,6 +76,13 @@ def main():
                         help="Do not use split wire geometry (you also need to pass the right FHiCL)")
 
     #
+    # File dir
+    #
+    parser.add_argument('-fd', '--file_directory',
+                        help="The directory where to look for new files",
+                        required=True)
+
+    #
     # Input file
     #
     parser.add_argument('file', nargs='*', help="Optional input file to use")
@@ -124,8 +131,7 @@ def main():
     manager = live_evd_manager_2D(geom)
     manager.setInputFiles(args.file)
 
-
-    thisgui = evdgui(geom, manager, app)
+    thisgui = livegui(geom, manager, app, args.file_directory)
     # manager.goToEvent(0)
 
     signal.signal(signal.SIGINT, sigintHandler)
