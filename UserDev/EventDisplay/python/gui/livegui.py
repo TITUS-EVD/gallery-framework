@@ -20,7 +20,7 @@ class livegui(gui):
         self._timer = QtCore.QTimer()
         self._timer.timeout.connect(self.eventTimeout)
         self._minEventUpdateTime = 30.0 # Seconds
-        self._minFileUpdateTime = 3.0 # Minutes
+        self._minFileUpdateTime = 180 # Seconds
 
         self._file_handler = FileHandler(filedir=file_dir,
                                          ev_manager=self._event_manager,
