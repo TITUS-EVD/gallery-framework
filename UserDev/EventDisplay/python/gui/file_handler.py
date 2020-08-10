@@ -29,6 +29,9 @@ class FileHandler():
         self._do_check = do_check
         self._hours_alert = hours_alert
 
+        self._first_time = True
+        self._current_file = ''
+
         self._timer = QtCore.QTimer()
         self._timer.setInterval(self._delay * 1000)
         self._timer.timeout.connect(self._callback)
@@ -72,6 +75,9 @@ class FileHandler():
 
         if self._do_check:
             self._start_timer()
+            if self._first_time:
+                self._callback()
+                self._first_time = False
 
         return self._do_check
 
@@ -85,10 +91,16 @@ class FileHandler():
             print(f'No files available in {self._filedir}!')
             return
 
-        print("Switching to file ", files[-1])
-        self._event_manager.setInputFile(files[-1])
+        if files[-1] == self._current_file:
+            print('No new file to draw.')
+            return
 
-        self._check_time(files[-1])
+        self._current_file = files[-1]
+
+        print("Switching to file ", self._current_file)
+        self._event_manager.setInputFile(self._current_file)
+
+        self._check_time(self._current_file)
 
     def _get_files(self):
         '''

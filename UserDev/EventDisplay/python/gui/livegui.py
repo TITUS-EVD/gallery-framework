@@ -270,15 +270,12 @@ class livegui(gui):
 
 
     def drawableProductsChanged(self):
-        # self.removeItem(self._eastLayout)
-        self._eastWidget.close()
-        east = self.getEastLayout()
-        self.slave.addWidget(east)
+        # self._eastWidget.close()
+        # east = self.getEastLayout()
+        # self.slave.addWidget(east)
         self.update()
-        # self.repaint()
+        self.repaint()
 
-        # self._eastLayout.setVisible(False)
-        # self._eastLayout.setVisible(True)
 
     def wireChoiceWorker(self, status, activeProducers=None):
 
