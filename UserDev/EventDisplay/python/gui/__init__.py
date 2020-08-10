@@ -1,6 +1,9 @@
 from .gui import gui, view_manager
 from .evdgui import evdgui
-    
+from .livegui import livegui
+from .boxes import *
+from .file_handler import FileHandler
+
 from .viewport import viewport
 try:
     import pyqtgraph.opengl as gl

@@ -455,6 +455,9 @@ class evd_manager_2D(evd_manager_base):
         if stage is None:
             stage = 'all'
 
+        if stage not in self._keyTable:
+            return None
+
         if name not in self._keyTable[stage]:
             return None
 
@@ -468,6 +471,9 @@ class evd_manager_2D(evd_manager_base):
         '''
         if stage is None:
             stage = 'all'
+
+        if stage not in self._keyTable:
+            return None
 
         if name not in self._keyTable[stage]:
             return None

@@ -1,7 +1,7 @@
 from gui import gui
 from pyqtgraph.Qt import QtGui, QtCore
 from .boxes import *
-
+from .file_handler import FileHandler
 
 class livegui(gui):
 
@@ -11,33 +11,59 @@ class livegui(gui):
     Live GUI
     """
 
-    def __init__(self, geometry, manager=None, app=None, live=False):
+    def __init__(self, geometry, manager=None, app=None, file_dir='./'):
         super(livegui, self).__init__(geometry)
         if manager is None:
             manager = live_evd_manager_2D(geometry)
         super(livegui, self).initManager(manager)
-        
-        self._live = live
-        self._timer = QtCore.QTimer()
-        self._timer.timeout.connect(self.eventTimeoutTest)
-        self._minEventUpdateTime = 30.0
-        self._minFileUpdateTime = 3
 
-        self.initUI()
+        self._timer = QtCore.QTimer()
+        self._timer.timeout.connect(self.eventTimeout)
+        self._minEventUpdateTime = 30.0 # Seconds
+        self._minFileUpdateTime = 3.0 # Minutes
+
+        self._file_handler = FileHandler(filedir=file_dir,
+                                         ev_manager=self._event_manager,
+                                         delay=self._minFileUpdateTime)
+
         self._stage = None
         self._event_manager.fileChanged.connect(self.drawableProductsChanged)
         self._event_manager.eventChanged.connect(self.update)
-        # self._event_manager.truthLabelChanged.connect(self.updateMessageBar)
 
         self._app = app
 
-    def eventTimeoutTest(self):
+        # File Updater
+        self._autoFileLabel = QtGui.QLabel("File Update OFF")
+        self._autoFileLabel.setStyleSheet("color: red;")
+        self._fileUpdateDelayLabel = QtGui.QLabel("Delay (m):")
+        self._fileUpdateDelayEntry = QtGui.QLineEdit(str(self._file_handler.get_delay() / 60))
+        self._fileUpdateDelayEntry.returnPressed.connect(self.fileUpdateEntryHandler)
+        self._fileUpdateDelayEntry.setMaximumWidth(45)
+        self._fileUpdatePauseButton = QtGui.QPushButton("START")
+        self._fileUpdatePauseButton.clicked.connect(self.fileUpdateButtonHandler)
+
+        # Event Updater
+        self._autoRunLabel = QtGui.QLabel("Event Update OFF")
+        self._autoRunLabel.setStyleSheet("color: red;")
+        self._eventUpdateDelayLabel = QtGui.QLabel("Delay (s):")
+        self._eventUpdateDelayEntry = QtGui.QLineEdit("45")
+        self._eventUpdateDelayEntry.returnPressed.connect(self.eventUpdateEntryHandler)
+        self._eventUpdateDelayEntry.setMaximumWidth(45)
+        self._eventUpdatePauseButton = QtGui.QPushButton("START")
+        self._eventUpdatePauseButton.clicked.connect(self.eventUpdateButtonHandler)
+
+        self.initUI()
+
+
+    def eventTimeout(self):
         self._event_manager.next()
 
     # override the initUI function to change things:
     def initUI(self):
         super(livegui, self).initUI()
-        # Change the name of the labels for lariat:
+
+        self._file_handler.connect_message_bar(self._messageBar)
+
         self.update()
 
     # This function sets up the eastern widget
@@ -45,9 +71,10 @@ class livegui(gui):
         super(livegui, self).getEastLayout()
 
 
-        self._title1 = QtGui.QLabel("TITUS Live")
+        self._title1 = QtGui.QLabel("TITUS <i>Live</i>")
         self._title1a = QtGui.QLabel("The event display")
         self._title1b = QtGui.QLabel("for SBN @ Fermilab")
+        self._title1c = QtGui.QLabel("Version " + self.get_git_version())
         geoName = self._geometry.name()
         self._title2 = QtGui.QLabel('Detector: '+geoName.upper())
         font = self._title1.font()
@@ -64,6 +91,7 @@ class livegui(gui):
         self._eastLayout.addWidget(self._title1)
         self._eastLayout.addWidget(self._title1a)
         self._eastLayout.addWidget(self._title1b)
+        self._eastLayout.addWidget(self._title1c)
         self._eastLayout.addWidget(self._title2)
         self._eastLayout.addStretch(1)
 
@@ -99,7 +127,6 @@ class livegui(gui):
         self._wireLayout.addWidget(self._wireButton)
         self._wireLayout.addWidget(self._wireChoice)
 
-
         # Draw Raw Digit
         self._rawDigitButton = QtGui.QRadioButton("Raw Digit")
         self._rawDigitButton.clicked.connect(self.wireChoiceWorker)
@@ -111,7 +138,7 @@ class livegui(gui):
         self._rawDigitLayout.addWidget(self._rawDigitButton)
         self._rawDigitLayout.addWidget(self._rawDigitChoice)
 
-        # Draw Wires:
+        # Draw Optical Waveforms:
         self._opdetWvfButton = QtGui.QRadioButton("OpDetWaveform")
         self._opdetWvfButton.clicked.connect(self.opdetWvfChoiceWorker)
         self._wireButtonGroup.addButton(self._opdetWvfButton)
@@ -153,22 +180,20 @@ class livegui(gui):
             self._eastLayout.addWidget(thisBox)
         self._eastLayout.addStretch(2)
 
-        # This label tells the user that the event switching is on
-        self._autoRunLabel = QtGui.QLabel("Event Update OFF")
-        # This label is showing the delay between event updates
-        self._eventUpdateDelayLabel = QtGui.QLabel("Delay (s):")
-        self._eventUpdateDelayEntry = QtGui.QLineEdit("45")
-        self._eventUpdateDelayEntry.returnPressed.connect(self.eventUpdateEntryHandler)
-        self._eventUpdateDelayEntry.setMaximumWidth(45)
-        self._eventUpdatePauseButton = QtGui.QPushButton("START")
-        self._eventUpdatePauseButton.clicked.connect(self.eventUpdateButtonHandler)
+        # Add the auto file switch stuff:
+        self._eastLayout.addWidget(self._autoFileLabel)
+        autoFileLayout = QtGui.QHBoxLayout()
+        autoFileLayout.addWidget(self._fileUpdateDelayLabel)
+        autoFileLayout.addWidget(self._fileUpdateDelayEntry)
+        self._eastLayout.addLayout(autoFileLayout)
+        self._eastLayout.addWidget(self._fileUpdatePauseButton)
+        self._eastLayout.addStretch(1)
 
         # Add the auto event switch stuff:
         self._eastLayout.addWidget(self._autoRunLabel)
         autoDelayLayout = QtGui.QHBoxLayout()
         autoDelayLayout.addWidget(self._eventUpdateDelayLabel)
         autoDelayLayout.addWidget(self._eventUpdateDelayEntry)
-        # add it to the widget:
         self._eastLayout.addLayout(autoDelayLayout)
         self._eastLayout.addWidget(self._eventUpdatePauseButton)
         self._eastLayout.addStretch(1)
@@ -176,7 +201,38 @@ class livegui(gui):
         self._eastWidget.setLayout(self._eastLayout)
         self._eastWidget.setMaximumWidth(190)
         self._eastWidget.setMinimumWidth(140)
+
         return self._eastWidget
+
+
+    def fileUpdateEntryHandler(self):
+        try:
+            delay = float(self._fileUpdateDelayEntry.text())
+        except Exception as e:
+            delay = self._minFileUpdateTime
+            self._eventUpdateDelayEntry.setText(str(delay))
+            self._file_handler.set_delay(delay * 60)
+            return
+
+        if delay < self._minFileUpdateTime:
+            delay = self._minFileUpdateTime
+            self._fileUpdateDelayEntry.setText(str(delay))
+        self._file_handler.set_delay(delay * 60)
+
+
+
+    def fileUpdateButtonHandler(self):
+
+        checking = self._file_handler.change_status()
+
+        if checking:
+            self._fileUpdatePauseButton.setText("PAUSE")
+            self._autoFileLabel.setText("File Update ON")
+            self._autoFileLabel.setStyleSheet("color: black;")
+        else:
+            self._fileUpdatePauseButton.setText("START")
+            self._autoFileLabel.setText("File Update OFF")
+            self._autoFileLabel.setStyleSheet("color: red;")
 
 
     def eventUpdateEntryHandler(self):
@@ -196,7 +252,8 @@ class livegui(gui):
         if self._timer.isActive():
             self._timer.stop()
             self._eventUpdatePauseButton.setText("START")
-            self._autoRunLabel.setText("Event update OFF")
+            self._autoRunLabel.setText("Event Update OFF")
+            self._autoRunLabel.setStyleSheet("color: red;")
         else:
             try:
                 delay = float(self._eventUpdateDelayEntry.text())
@@ -208,8 +265,8 @@ class livegui(gui):
             self._eventUpdatePauseButton.setText("PAUSE")
             self._timer.setInterval(delay*1000)
             self._timer.start()
-            self._autoRunLabel.setText("Event update ON")
-            self.eventUpdate.emit(True)
+            self._autoRunLabel.setText("Event Update ON")
+            self._autoRunLabel.setStyleSheet("color: black;")
 
 
     def drawableProductsChanged(self):
@@ -218,6 +275,7 @@ class livegui(gui):
         east = self.getEastLayout()
         self.slave.addWidget(east)
         self.update()
+        # self.repaint()
 
         # self._eastLayout.setVisible(False)
         # self._eastLayout.setVisible(True)
@@ -241,7 +299,7 @@ class livegui(gui):
         if sender == self._opdetWvfButton:
             self._event_manager.toggleOpDetWvf('opdetwaveform', stage=self._stage)
         self._view_manager.drawOpDetWvf(self._event_manager)
-        
+
 
     def stageSelectHandler(self, _str):
         self._stage = _str
@@ -249,7 +307,6 @@ class livegui(gui):
             self._stage = None
         for box in self._listOfRecoBoxes:
             box.selectStage(_str)
-        # print str
 
     def noiseFilterWorker(self):
         if self._noiseFilterBox.isChecked():
@@ -259,14 +316,6 @@ class livegui(gui):
 
         self._view_manager.drawPlanes(self._event_manager)
 
-    # def truthDrawBoxWorker(self):
-    #     if self._truthDrawBox.isChecked():
-    #         self._event_manager.toggleTruth(True)
-    #     else:
-    #         self._event_manager.toggleTruth(False)
-
-    #     self._event_manager.drawFresh()
-    #     # gui.py defines the message bar and handler, connect it to this:
 
     def splitTracksWorker(self):
         if self._spliTracksOption.isChecked():
@@ -301,14 +350,14 @@ class livegui(gui):
 
         if self._view_manager.drawingRawDigits():
             self._event_manager.toggleWires('rawdigit',
-                                            stage=self._stage, 
+                                            stage=self._stage,
                                             subtract_pedestal=self._subtract_pedestal)
 
             self._view_manager.drawPlanes(self._event_manager)
 
     def specialHandles(self, name, visibility):
         '''
-        Here we handle all cases specific to 
+        Here we handle all cases specific to
         the product we are drawing
         '''
         if name == 'MCTrack':
