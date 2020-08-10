@@ -15,6 +15,7 @@ class geoBase(object):
         self._nTPCs = 1
         self._nCryos = 1
         self._nPlanes = 2
+        self._split_wire = False
         self._view_names = ['U', 'V', 'Y']
         self._tRange = 1600
         self._wRange = [240, 240]
@@ -80,6 +81,9 @@ class geoBase(object):
 
     def nPlanes(self):
         return self._nPlanes
+
+    def splitWire(self):
+        return self._split_wire
 
     def viewNames(self):
         return self._view_names
@@ -189,6 +193,26 @@ class geoBase(object):
 
     def getLArProperties(self):
         return self._lar_properties
+
+    def getPlaneID(self, plane, tpc, cryo):
+        if (plane, tpc, cryo) not in self._planeid_map:
+            raise Exception (f'{plane}, {tpc}, {cryo} not available.')
+        return self._planeid_map[(plane, tpc, cryo)]
+
+    def getOtherPlanes(self, plane_id):
+        if plane_id not in self._planeid_to_other_planes:
+            raise Exception (f'{plane_id} not available.')
+        return self._planeid_to_other_planes[plane_id]
+
+    def flipPlane(self, plane_id):
+        if plane_id > len(self._plane_flip):
+            raise Exception (f'{plane_id} not available.')
+        return self._plane_flip[plane_id]
+
+    def shiftPlane(self, plane_id):
+        if plane_id > len(self._plane_shift):
+            raise Exception (f'{plane_id} not available.')
+        return self._plane_shift[plane_id]
 
 
 class geometry(geoBase):
@@ -372,6 +396,7 @@ class sbnd(geometry):
         self._view_names = ['U', 'V', 'Y']
         self._plane_mix = {0: [4], 1: [3], 2: [5]}
         self._plane_flip = [False, False, False, True, True, True]
+        self._plane_shift = [False, False, False, False, False, False]
 
         self._name = "sbnd"
         self._logo = self._path + "/logos/SBND-color.png"
@@ -429,6 +454,28 @@ class sbnd(geometry):
                 * self.time2cm()
                 - self.planeOriginX(v) )
 
+        self._planeid_map = {
+            # [plane, tpc, cryo]: titus_plane_id
+            (0, 0, 0): 0,
+            (1, 0, 0): 1,
+            (2, 0, 0): 2,
+            (0, 1, 0): 3,
+            (1, 1, 0): 4,
+            (2, 1, 0): 5,
+            (0, 0, 1): 6,
+            (1, 0, 1): 7,
+            (2, 0, 1): 8,
+            (0, 1, 1): 9,
+            (1, 1, 1): 10,
+            (2, 1, 1): 11
+        }
+
+        self._planeid_to_other_planes = {
+            0: (4),
+            1: (3),
+            2: (5)
+        }
+
     def opdetToTPC(self, ch):
         if (self._opdet_x[ch] < 0): 
             return 0
@@ -439,7 +486,7 @@ class sbnd(geometry):
 class icarus(geometry): 
 
 
-    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None):
+    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None, split_wire=False):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()
@@ -496,6 +543,69 @@ class icarus(geometry):
             #     self.triggerOffset()
             #     * self.time2cm()
             #     - self.planeOriginX(v) )
+
+        self._planeid_map = {
+            # [plane, tpc, cryo]: titus_plane_id
+            (0, 0, 0): 0,
+            (1, 0, 0): 1,
+            (2, 0, 0): 2,
+            (0, 1, 0): 3,
+            (1, 1, 0): 4,
+            (2, 1, 0): 5,
+            (0, 2, 0): 6,
+            (1, 2, 0): 7,
+            (2, 2, 0): 8,
+            (0, 3, 0): 9,
+            (1, 3, 0): 10,
+            (2, 3, 0): 11,
+            (0, 0, 1): 12,
+            (1, 0, 1): 13,
+            (2, 0, 1): 14,
+            (0, 1, 1): 15,
+            (1, 1, 1): 16,
+            (2, 1, 1): 17,
+            (0, 2, 1): 18,
+            (1, 2, 1): 19,
+            (2, 2, 1): 20,
+            (0, 3, 1): 21,
+            (1, 3, 1): 22,
+            (2, 3, 1): 23
+        }
+
+        self._planeid_to_other_planes = {
+            0: (3, 6, 9),
+            1: (4, 8, 11),
+            2: (5, 7, 10),
+
+            12: (15, 18, 21),
+            13: (16, 20, 23),
+            14: (17, 19, 22),
+        }
+
+        if split_wire:
+            self._split_wire = True
+            self._nTPCs = int(self._nTPCs / 2)
+            self._plane_mix = {0: [6], 1: [8], 2: [7], 12: [18], 13: [20], 14: [19]}
+            self._plane_flip = [False, False, False, # TPC 0
+                                False, False, False, # TPC 1
+                                True, True, True,    # TPC 2
+                                True, True, True,    # TPC 3
+                                False, False, False, # TPC 4
+                                False, False, False, # TPC 5
+                                True, True, True,    # TPC 6
+                                True, True, True]    # TPC 7
+            self._plane_shift = [False, False, False, # TPC 0
+                                True, True, True,     # TPC 1
+                                False, False, False,    # TPC 2
+                                True, True, True,    # TPC 3
+                                False, False, False, # TPC 4
+                                True, True, True, # TPC 5
+                                False, False, False,    # TPC 6
+                                True, True, True]    # TPC 7
+
+
+            for v in range(0, len(self._wRange)):
+                self._wRange[v] = self._wRange[v] * 2 + self._cathodeGap
 
     def opdetToTPC(self, ch):
         if (self._opdet_x[ch] < -100): 

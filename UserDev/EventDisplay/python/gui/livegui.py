@@ -1,37 +1,28 @@
 from gui import gui
 from pyqtgraph.Qt import QtGui, QtCore
 from .boxes import *
-import os, subprocess
 
-def get_git_version():
-    '''
-    Returns the git version of the repository this file is in.
 
-    Returns a string with the version and a number in parenthesis showing
-    the number of commits after that version (if any)
-    '''
-    version = subprocess.check_output(["git", "describe", "--tags"], cwd=os.path.dirname(__file__))
-    version = version.strip()
-    version = version.decode('ascii')
-    version = version.split('-')
-    if len(version) > 1:
-        return version[0] + ' (' + version[1] + ')'
-    else:
-        return version[0]
-
-class evdgui(gui):
+class livegui(gui):
 
     """
     Inherit the basic gui to extend it
-    override the gui to give the display special features:
+    override the gui to give the display special features.
+    Live GUI
     """
 
     def __init__(self, geometry, manager=None, app=None, live=False):
-        super(evdgui, self).__init__(geometry)
+        super(livegui, self).__init__(geometry)
         if manager is None:
-            manager = evd_manager(geometry)
-        super(evdgui, self).initManager(manager)
+            manager = live_evd_manager_2D(geometry)
+        super(livegui, self).initManager(manager)
+        
         self._live = live
+        self._timer = QtCore.QTimer()
+        self._timer.timeout.connect(self.eventTimeoutTest)
+        self._minEventUpdateTime = 30.0
+        self._minFileUpdateTime = 3
+
         self.initUI()
         self._stage = None
         self._event_manager.fileChanged.connect(self.drawableProductsChanged)
@@ -40,21 +31,25 @@ class evdgui(gui):
 
         self._app = app
 
+    def eventTimeoutTest(self):
+        self._event_manager.next()
+
     # override the initUI function to change things:
     def initUI(self):
-        super(evdgui, self).initUI()
+        super(livegui, self).initUI()
         # Change the name of the labels for lariat:
         self.update()
 
     # This function sets up the eastern widget
     def getEastLayout(self):
-        # This function just makes a dummy eastern layout to use.
-        self._title1 = QtGui.QLabel("TITUS")
+        super(livegui, self).getEastLayout()
+
+
+        self._title1 = QtGui.QLabel("TITUS Live")
         self._title1a = QtGui.QLabel("The event display")
         self._title1b = QtGui.QLabel("for SBN @ Fermilab")
-        self._title1c = QtGui.QLabel("Version " + get_git_version())
         geoName = self._geometry.name()
-        self._title2 = QtGui.QLabel('Detector: ' + geoName.upper())
+        self._title2 = QtGui.QLabel('Detector: '+geoName.upper())
         font = self._title1.font()
         font.setBold(True)
         self._title1.setFont(font)
@@ -69,7 +64,6 @@ class evdgui(gui):
         self._eastLayout.addWidget(self._title1)
         self._eastLayout.addWidget(self._title1a)
         self._eastLayout.addWidget(self._title1b)
-        self._eastLayout.addWidget(self._title1c)
         self._eastLayout.addWidget(self._title2)
         self._eastLayout.addStretch(1)
 
@@ -144,12 +138,6 @@ class evdgui(gui):
             self._noiseFilterBox.stateChanged.connect(self.noiseFilterWorker)
             self._eastLayout.addWidget(self._noiseFilterBox)
 
-        # # Set a box for mcTruth Info
-        # self._truthDrawBox = QtGui.QCheckBox("MC Truth")
-        # self._truthDrawBox.stateChanged.connect(self.truthDrawBoxWorker)
-        # self._eastLayout.addWidget(self._truthDrawBox)
-
-
         # Now we get the list of items that are drawable:
         drawableProducts = self._event_manager.getDrawableProducts()
         # print drawableProducts
@@ -165,10 +153,64 @@ class evdgui(gui):
             self._eastLayout.addWidget(thisBox)
         self._eastLayout.addStretch(2)
 
+        # This label tells the user that the event switching is on
+        self._autoRunLabel = QtGui.QLabel("Event Update OFF")
+        # This label is showing the delay between event updates
+        self._eventUpdateDelayLabel = QtGui.QLabel("Delay (s):")
+        self._eventUpdateDelayEntry = QtGui.QLineEdit("45")
+        self._eventUpdateDelayEntry.returnPressed.connect(self.eventUpdateEntryHandler)
+        self._eventUpdateDelayEntry.setMaximumWidth(45)
+        self._eventUpdatePauseButton = QtGui.QPushButton("START")
+        self._eventUpdatePauseButton.clicked.connect(self.eventUpdateButtonHandler)
+
+        # Add the auto event switch stuff:
+        self._eastLayout.addWidget(self._autoRunLabel)
+        autoDelayLayout = QtGui.QHBoxLayout()
+        autoDelayLayout.addWidget(self._eventUpdateDelayLabel)
+        autoDelayLayout.addWidget(self._eventUpdateDelayEntry)
+        # add it to the widget:
+        self._eastLayout.addLayout(autoDelayLayout)
+        self._eastLayout.addWidget(self._eventUpdatePauseButton)
+        self._eastLayout.addStretch(1)
+
         self._eastWidget.setLayout(self._eastLayout)
         self._eastWidget.setMaximumWidth(190)
         self._eastWidget.setMinimumWidth(140)
         return self._eastWidget
+
+
+    def eventUpdateEntryHandler(self):
+        try:
+            delay = float(self._eventUpdateDelayEntry.text())
+        except Exception as e:
+            delay = self._minEventUpdateTime
+            self._eventUpdateDelayEntry.setText(str(delay))
+            return
+        if delay < self._minEventUpdateTime:
+            delay = self._minEventUpdateTime
+            self._eventUpdateDelayEntry.setText(str(delay))
+            return
+
+
+    def eventUpdateButtonHandler(self):
+        if self._timer.isActive():
+            self._timer.stop()
+            self._eventUpdatePauseButton.setText("START")
+            self._autoRunLabel.setText("Event update OFF")
+        else:
+            try:
+                delay = float(self._eventUpdateDelayEntry.text())
+            except Exception as e:
+                delay = self._minEventUpdateTime
+            if delay < self._minEventUpdateTime:
+                delay = self._minEventUpdateTime
+            self._eventUpdateDelayEntry.setText(str(delay))
+            self._eventUpdatePauseButton.setText("PAUSE")
+            self._timer.setInterval(delay*1000)
+            self._timer.start()
+            self._autoRunLabel.setText("Event update ON")
+            self.eventUpdate.emit(True)
+
 
     def drawableProductsChanged(self):
         # self.removeItem(self._eastLayout)

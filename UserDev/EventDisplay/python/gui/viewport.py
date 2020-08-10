@@ -1,6 +1,8 @@
 
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
+from pyqtgraph import ViewBox, Point
+from pyqtgraph import functions as fn
 import numpy as np
 import math
 
@@ -22,6 +24,61 @@ class viewport(pg.GraphicsLayoutWidget):
 
   drawHitsRequested = QtCore.pyqtSignal(int, int)
 
+  def customMouseDragEvent(self, ev, axis=None):
+    '''
+    This is a customizaton of ViewBox's mouseDragEvent.
+    The default one is here: 
+    http://www.pyqtgraph.org/documentation/_modules/pyqtgraph/graphicsItems/ViewBox/ViewBox.html#ViewBox
+    Here we want:
+    - Left click should allow to zoom in the dragged rectangle (ViewBox.RectMode)
+    - Right click should allow to move the pic (ViewBox.PanMode)
+    '''
+    ## if axis is specified, event will only affect that axis.
+    ev.accept()  ## we accept all buttons
+
+    pos = ev.pos()
+    lastPos = ev.lastPos()
+    dif = pos - lastPos
+    dif = dif * -1
+
+    ## Ignore axes if mouse is disabled
+    mouseEnabled = np.array(self._view.state['mouseEnabled'], dtype=np.float)
+    mask = mouseEnabled.copy()
+    if axis is not None:
+        mask[1-axis] = 0.0
+
+    self._view.state['mouseMode'] = ViewBox.RectMode
+
+    ## Scale or translate based on mouse button
+    if ev.button() & (QtCore.Qt.LeftButton | QtCore.Qt.MidButton):
+        # RectMode: Zoom in the dragged rectangle
+        print('Left-Mid button')
+        print('self._view.state[\'mouseMode\']', self._view.state['mouseMode'])
+        # if self._view.state['mouseMode'] == ViewBox.RectMode:
+        print('mouse mode is RectMode')
+        if ev.isFinish():  ## This is the final move in the drag; change the view scale now
+            self._view.rbScaleBox.hide()
+            ax = QtCore.QRectF(Point(ev.buttonDownPos(ev.button())), Point(pos))
+            ax = self._view.childGroup.mapRectFromParent(ax)
+            self._view.showAxRect(ax)
+            self._view.axHistoryPointer += 1
+            self._view.axHistory = self._view.axHistory[:self._view.axHistoryPointer] + [ax]
+        else:
+            ## update shape of scale box
+            self._view.updateScaleBox(ev.buttonDownPos(), ev.pos())
+    elif ev.button() & QtCore.Qt.RightButton:
+        # Translation
+        tr = dif*mask
+        tr = self._view.mapToView(tr) - self._view.mapToView(Point(0,0))
+        x = tr.x() if mask[0] == 1 else None
+        y = tr.y() if mask[1] == 1 else None
+        
+        self._view._resetTarget()
+        if x is not None or y is not None:
+            self._view.translateBy(x=x, y=y)
+        self._view.sigRangeChangedManually.emit(self._view.state['mouseEnabled'])
+
+
   def __init__(self, geometry, plane=-1, cryostat=0, tpc=0):
     super(viewport, self).__init__(border=None)
     # add a view box, which is a widget that allows an image to be shown
@@ -39,7 +96,9 @@ class viewport(pg.GraphicsLayoutWidget):
     self._cathode_lines = []
     self._tpc_div_lines = []
 
-    
+    # Overriding the default mouseDragEvent
+    self._view.mouseDragEvent = self.customMouseDragEvent
+
     # connect the scene to click events, used to get wires
     self.scene().sigMouseClicked.connect(self.mouseClicked)
     # connect the views to mouse move events, used to update the info box at the bottom
@@ -632,6 +691,24 @@ class viewport(pg.GraphicsLayoutWidget):
         line.setRect(0 + line_width/2, x_tpc - self._geometry.cathodeGap() / 2 + line_width/2, max_wire - line_width/2, self._geometry.cathodeGap() - line_width/2)
         self._view.addItem(line)
         self._tpc_div_lines.append(line)
+
+    if self._geometry.splitWire():
+        # Draw the line and append it
+        line = QtGui.QGraphicsRectItem()
+        line.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
+        line.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
+        # Remove half a pixel (line_width/2), that would otherwise cover half a time tick
+        # line.setRect(0 + line_width/2, 
+        #              x_tpc - self._geometry.cathodeGap() / 2 + line_width/2, 
+        #              max_wire - line_width/2, 
+        #              self._geometry.cathodeGap() - line_width/2)
+        line.setRect(max_wire / 2 - self._geometry.cathodeGap() / 2 + line_width/2, 
+                     0 + line_width/2, 
+                     self._geometry.cathodeGap(), 
+                     self._geometry.tRange() * 2 + self._geometry.cathodeGap()  - line_width/2)
+        self._view.addItem(line)
+        self._tpc_div_lines.append(line)
+
 
 
     # self._line_tpc_div = QtGui.QGraphicsRectItem()

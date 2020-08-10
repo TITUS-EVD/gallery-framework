@@ -102,7 +102,14 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   }
 
   _planeData.clear();
-  size_t n_ticks = raw_digits_v[0]->front().ADCs().size();
+  size_t n_ticks = 0;
+
+  for (auto r : raw_digits_v) {
+    if ((*r).size()) {
+      n_ticks = r->front().ADCs().size();
+      break;
+    }
+  }
 
   // if (_geo_service.DetectorName() == "microboone") {
   //   _noise_filter.set_n_time_ticks(n_ticks);
@@ -121,39 +128,43 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   }
 
   for (auto const &raw_digits : raw_digits_v) {
-    for (auto const &rawdigit : *raw_digits) 
+    for (auto const &rawdigit : *raw_digits)
     {
       unsigned int ch  = rawdigit.Channel();
       float        ped = rawdigit.GetPedestal();
 
       std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
-      unsigned int wire = widVec[0].Wire;
-      unsigned int plane = widVec[0].Plane;
-      unsigned int tpc = widVec[0].TPC;
-      unsigned int cryo = widVec[0].Cryostat;
+      for (geo::WireID w_id : widVec) {
+        unsigned int wire = w_id.Wire;
+        unsigned int plane = w_id.Plane;
+        unsigned int tpc = w_id.TPC;
+        unsigned int cryo = w_id.Cryostat;
 
-      if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;
+        // std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
 
-      if (_geo_service.DetectorName() == "microboone" && ch >= 8254) continue;
+        if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;
 
-      // If a second TPC is present, its planes 0, 1 and 2 are 
-      // stored consecutively to those of the first TPC. 
-      // So we have planes 0, 1, 2, 3, 4, 5.
-      plane += tpc * _geo_service.Nplanes();
-      plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+        if (_geo_service.DetectorName() == "microboone" && ch >= 8254) continue;
 
-      int offset = wire * n_ticks;
+        // If a second TPC is present, its planes 0, 1 and 2 are
+        // stored consecutively to those of the first TPC.
+        // So we have planes 0, 1, 2, 3, 4, 5.
+        plane += tpc * _geo_service.Nplanes();
+        plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
 
-      std::vector<float>&          planeRawDigitVec = temp_data_holder[plane];
-      std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;
+        int offset = wire * n_ticks;
 
-      float pedestal = 0;
-      if (_subtract_pedestal) {
-        pedestal = ped;
-      }
-      // Copy with pedestal subtraction
-      for(const auto& adcVal : rawdigit.ADCs()) {
-        *startItr++ = adcVal - pedestal;
+        std::vector<float>&          planeRawDigitVec = temp_data_holder[plane];
+        std::vector<float>::iterator startItr         = planeRawDigitVec.begin() + offset;
+
+        float pedestal = 0;
+        if (_subtract_pedestal) {
+          pedestal = ped;
+        }
+        // Copy with pedestal subtraction
+        for(const auto& adcVal : rawdigit.ADCs()) {
+          *startItr++ = adcVal - pedestal;
+        }
       }
     }
   }

@@ -30,30 +30,44 @@ class hit(recoBase):
         self._brush = (0, 0, 0)
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._n_tpcs = geom.nTPCs()
+        self._split_wire = geom.splitWire()
+        self._geom = geom
         self.init()
 
     def drawObjects(self, view_manager):
 
         geom = view_manager._geometry
+
+        # Loop over all the viewports
         for view in view_manager.getViewPorts():
-            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
-            # print('view.plane()', view.plane(), 'view.cryostat()', view.cryostat(), 'geom.nPlanes()', geom.nPlanes(), 'thisPlane', thisPlane)
+
+            # Get the plane_id
+            thisPlane = geom.getPlaneID(plane=view.plane(), tpc=0, cryo=view.cryostat())
+
+            # Also get all the other planes
+            additional_planes = geom.getOtherPlanes(plane_id=thisPlane)
+
             for i in range(0, self._n_planes): self._drawnObjects.append([])
+
             # First get the hit information:
             hits = self._process.getDataByPlane(thisPlane)
 
             self.drawHitList(view, hits, thisPlane, geom)
 
-            # In case of 2 TPCs, also draw the hits on
-            # the other plane, but flipping the time
-            if geom.nTPCs() == 2:
-                for left_plane in geom.planeMix()[thisPlane]:
-                    hits = self._process.getDataByPlane(left_plane)
-                    self.drawHitList(view, hits, left_plane, geom)
+            # Draw the additional planes, if any
+            for plane_id in additional_planes:
+                hits = self._process.getDataByPlane(plane_id)
+                self.drawHitList(view=view,
+                                 hits=hits,
+                                 thisPlane=plane_id,
+                                 geom=geom,
+                                 flip=geom.flipPlane(plane_id),
+                                 shift=geom.shiftPlane(plane_id))
 
-    def drawHitList(self, view, hits, thisPlane, geom):
+
+    def drawHitList(self, view, hits, thisPlane, geom, flip=False, shift=False):
         if len(hits) == 0:
-            return 
+            return
         for i in range(len(hits)):
             hit = hits[i]
 
@@ -62,27 +76,23 @@ class hit(recoBase):
             width = 1
             height = hit.rms()
 
-            location = hit.tpc()
-
-            # Flip the time if odd tpc
-            if hit.tpc() % 2 == 1:
+            if flip:
+                # Flip the time
                 time = geom.tRange() - time
 
-            # Shift up to the appropriate view
-            time = time + location * geom.tRange()
+                # Shift up to the appropriate view
+                time = time + geom.tRange()
 
-            # Add the ad-hoc gap between TPCs
-            time = time + location * geom.cathodeGap()
+                # Add the ad-hoc gap between TPCs
+                time = time + geom.cathodeGap()
 
-            # Draws a rectangle at (x,y,xlength, ylength)
-            # r = QtGui.QGraphicsRectItem(wire, 
-            #                             time, 
-            #                             width, 
-            #                             height)
+            if shift:
+                offset = (geom.wRange(view.plane()) - geom.cathodeGap()) / 2. + geom.cathodeGap()
+                wire = wire + offset
 
-            r = hitBox(wire, 
-                       time, 
-                       width, 
+            r = hitBox(wire,
+                       time,
+                       width,
                        height)
 
             opacity = int(128 * hit.charge() / self._process.maxCharge(thisPlane)) + 127
@@ -97,16 +107,15 @@ class hit(recoBase):
             # r.setBrush((0,0,0,opacity))
 
             r.setToolTip(self.genToolTip(hit))
-           
+
             self._drawnObjects[thisPlane].append(r)
             view._view.addItem(r)
 
     def genToolTip(self, hit):
         return 'Time: {time:0.1f}\nRMS: {rms:0.1f}\nIntegral: {integral:0.1f}'.format(
-            time=hit.time(), 
-            rms=hit.rms(), 
+            time=hit.time(),
+            rms=hit.rms(),
             integral=hit.charge())
 
     def getHitsOnWire(self, plane, wire):
         return self._process.getHitsOnWirePlane(wire,plane)
-        

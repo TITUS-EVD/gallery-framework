@@ -132,7 +132,7 @@ class boxCollection(QtCore.QObject):
         if self.sender() == None:
             self.highlightChange.emit()
 
-    def drawHits(self, view, cluster, geom):
+    def drawHits(self, view, cluster, geom, flip=False, shift=False):
         for i in range(len(cluster)):
             hit = cluster[i]
 
@@ -141,17 +141,36 @@ class boxCollection(QtCore.QObject):
             width = 1
             height = hit.rms()
 
-            location = hit.tpc()
-
-            # Flip the time if odd tpc
-            if hit.tpc() % 2 == 1:
+            if flip:
+                # Flip the time
                 time = geom.tRange() - time
 
-            # Shift up to the appropriate view
-            time = time + location * geom.tRange()
+                # Shift up to the appropriate view
+                time = time + geom.tRange()
 
-            # Add the ad-hoc gap between TPCs
-            time = time + location * geom.cathodeGap()
+                # Add the ad-hoc gap between TPCs
+                time = time + geom.cathodeGap()
+
+            if shift:
+                offset = (geom.wRange(view.plane()) - geom.cathodeGap()) / 2. + geom.cathodeGap()
+                wire = wire + offset
+
+            # wire = hit.wire()
+            # time = hit.time() + geom.timeOffsetTicks(view.plane())
+            # width = 1
+            # height = hit.rms()
+
+            # location = hit.tpc()
+
+            # # Flip the time if odd tpc
+            # if hit.tpc() % 2 == 1:
+            #     time = geom.tRange() - time
+
+            # # Shift up to the appropriate view
+            # time = time + location * geom.tRange()
+
+            # # Add the ad-hoc gap between TPCs
+            # time = time + location * geom.cathodeGap()
 
             # Draws a rectangle at (x,y,xlength, ylength)
             r = connectedBox(wire, time, width, height)

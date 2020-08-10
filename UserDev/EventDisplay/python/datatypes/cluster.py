@@ -3,6 +3,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 from datatypes.connectedObjects import connectedBox, connectedCircle, boxCollection
 from ROOT import evd, vector
 import pyqtgraph as pg
+from itertools import cycle
 
 
 class cluster(recoBase):
@@ -19,19 +20,20 @@ class cluster(recoBase):
         self._listOfClusters = []
 
         # Defining the cluster colors:
-        self._clusterColors = [
+        self._colors = [
             (0, 147, 147),  # dark teal
-            (0, 0, 252),   # bright blue
+            (0, 0, 252),    # bright blue
             (156, 0, 156),  # purple
             (255, 0, 255),  # pink
-            (255, 0, 0),  # red
-            (175, 0, 0),  # red/brown
+            (255, 0, 0),    # red
+            (175, 0, 0),    # red/brown
             (252, 127, 0),  # orange
-            (102, 51, 0),  # brown
-            (127, 127, 127),  # dark gray
-            (210, 210, 210),  # gray
-            (100, 253, 0)  # bright green
+            (102, 51, 0),   # brown
+            (127, 127, 127),# dark gray
+            (210, 210, 210),# gray
+            (100, 253, 0)   # bright green
         ]
+        self._clusterColors = cycle(self._colors)
 
     # this is the function that actually draws the cluster.
     def drawObjects(self, view_manager):
@@ -39,9 +41,12 @@ class cluster(recoBase):
         geom = view_manager._geometry
 
         for view in view_manager.getViewPorts():
-    
-            # get the plane
-            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+
+            # Get the plane_id
+            thisPlane = geom.getPlaneID(plane=view.plane(), tpc=0, cryo=view.cryostat())
+
+            # Also get all the other planes
+            additional_planes = geom.getOtherPlanes(plane_id=thisPlane)
 
             # extend the list of clusters
             for i in range(0, self._n_planes): self._listOfClusters.append([])
@@ -49,43 +54,43 @@ class cluster(recoBase):
             clusters = self._process.getDataByPlane(thisPlane)
             self.drawClusterList(view, clusters, thisPlane, geom)
 
-            # In case of 2 TPCs, also draw the hits on
-            # the other plane, but flipping the time
-            if geom.nTPCs() == 2:
-                for left_plane in geom.planeMix()[thisPlane]:
-                    print('left_plane', left_plane)
-                    clusters = self._process.getDataByPlane(left_plane)
-                    self.drawClusterList(view, clusters, left_plane, geom)
+            # Draw the additional planes, if any
+            for plane_id in additional_planes:
+                clusters = self._process.getDataByPlane(plane_id)
+                self.drawClusterList(view=view,
+                                     clusters=clusters,
+                                     thisPlane=plane_id,
+                                     geom=geom,
+                                     flip=geom.flipPlane(plane_id),
+                                     shift=geom.shiftPlane(plane_id))
 
 
-    def drawClusterList(self, view, clusters, thisPlane, geom):
-            colorIndex = 0
-            for i in range(len(clusters)):
-                cluster = clusters[i]
+
+    def drawClusterList(self, view, clusters, thisPlane, geom, flip=False, shift=False):
+
+            for cluster in clusters:
                 # Now make the cluster
                 cluster_box_coll = boxCollection()
-                cluster_box_coll.setColor(self._clusterColors[colorIndex])
+                cluster_box_coll.setColor(next(self._clusterColors))
                 cluster_box_coll.setPlane(thisPlane)
 
                 # Keep track of the cluster for drawing management
                 self._listOfClusters[thisPlane].append(cluster_box_coll)
 
                 # draw the hits in this cluster:
-                cluster_box_coll.drawHits(view, cluster, geom)
-
-                colorIndex += 1
-                if colorIndex >= len(self._clusterColors):
-                    colorIndex = 0
+                cluster_box_coll.drawHits(view, cluster, geom, flip, shift)
 
 
     def clearDrawnObjects(self, view_manager):
         geom = view_manager._geometry
         for view in view_manager.getViewPorts():
-            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            # thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            thisPlane = geom.getPlaneID(plane=view.plane(), tpc=0, cryo=view.cryostat())
             for cluster in self._listOfClusters[thisPlane]:
                 cluster.clearHits(view)
-            for left_plane in view_manager._geometry.planeMix()[thisPlane]:
-                for cluster in self._listOfClusters[left_plane]:
+
+            for plane in geom.getOtherPlanes(plane_id=thisPlane):
+                for cluster in self._listOfClusters[plane]:
                     cluster.clearHits(view)
 
         # clear the list:

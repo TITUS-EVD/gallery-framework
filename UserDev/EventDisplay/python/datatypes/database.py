@@ -67,6 +67,7 @@ class recoBase(dataBase):
         geom = view_manager._geometry
         for view in view_manager.getViewPorts():
             thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            thisPlane = geom.getPlaneID(plane=view.plane(), tpc=0, cryo=view.cryostat())
             if len(self._drawnObjects) > thisPlane:
                 for item in self._drawnObjects[thisPlane]:
                     view._view.removeItem(item)
