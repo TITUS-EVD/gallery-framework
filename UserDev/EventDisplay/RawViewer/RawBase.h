@@ -2,7 +2,7 @@
  * \file RawBase.h
  *
  * \ingroup RawViewer
- * 
+ *
  * \brief Class def header for a class RawBase
  *
  * @author cadams
@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "larcorealg/Geometry/GeometryCore.h"
-#include "lardataalg/DetectorInfo/DetectorProperties.h"
+#include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 
 
 
@@ -50,7 +50,7 @@ namespace evd {
     // RawBase();
 
     /// Default constructor
-    RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
+    RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties);
 
     /// Default destructor
     virtual ~RawBase();
@@ -102,8 +102,8 @@ namespace evd {
 
     std::vector<float> _pedestals;
 
-    const geo::GeometryCore&           _geo_service;
-    const detinfo::DetectorProperties& _det_prop;
+    const geo::GeometryCore&               _geo_service;
+    const detinfo::DetectorPropertiesData& _det_prop;
 
     std::string _producer; ///< The producer tag (if only one)
     std::vector<std::string> _producers; ///< The list of producer tags (if multiples)
@@ -113,5 +113,5 @@ namespace evd {
 } // evd
 
 #endif
-/** @} */ // end of doxygen group 
+/** @} */ // end of doxygen group
 

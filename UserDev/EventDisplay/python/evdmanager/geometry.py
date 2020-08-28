@@ -317,24 +317,30 @@ class geometry(geoBase):
         print ('Configuring geometry from services.')
 
         self._geometryCore = geometryCore
-        self._detectorProperties = detProperties
         self._detectorClocks = detClocks.DataForJob()
+        self._detectorProperties = detProperties.DataFor(self._detectorClocks)
+
+        print("Number of Time samples:",self._detectorProperties.NumberTimeSamples())
         self._lar_properties = lar_properties
 
         self._halfwidth = geometryCore.DetHalfWidth()
         self._halfheight = geometryCore.DetHalfHeight()
         self._length = geometryCore.DetLength()
-        self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
+        #self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
+        self._time2Cm = self._detectorClocks.TPCClock().TickPeriod() * self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature())
         self._wire2Cm = geometryCore.WirePitch()
-        self._samplingRate = detProperties.SamplingRate()
+        self._samplingRate = self._detectorClocks.TPCClock().TickPeriod() * 1000. #detProperties.SamplingRate()
         self._aspectRatio = self._wire2Cm / self._time2Cm
         self._nViews = geometryCore.Nviews() * geometryCore.NTPC() * geometryCore.Ncryostats()
         self._nPlanes = geometryCore.Nplanes()
         self._nTPCs = int(geometryCore.NTPC())
         self._nCryos = int(geometryCore.Ncryostats())
-        self._tRange = detProperties.NumberTimeSamples()
-        self._readoutWindowSize = detProperties.NumberTimeSamples()
-        self._triggerOffset = detProperties.TriggerOffset()
+        self._tRange = self._detectorProperties.NumberTimeSamples()
+        self._readoutWindowSize = self._detectorProperties.NumberTimeSamples()
+        #self._triggerOffset = detProperties.TriggerOffset()
+        self._triggerOffset = self._detectorClocks.TPCClock().Ticks(self._detectorClocks.TriggerOffsetTPC() * -1.)
+
+        print("ICARUS configure, time2Cm:",self._time2Cm,", triggerOffset:",self._triggerOffset,", #Time:",self._tRange,", sample rate:",self._samplingRate)
 
         self._wRange = []
         self._offset = []

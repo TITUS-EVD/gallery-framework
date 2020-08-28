@@ -22,7 +22,7 @@
 #include "gallery/Event.h"
 
 #include "larcorealg/Geometry/GeometryCore.h"
-#include "lardataalg/DetectorInfo/DetectorProperties.h"
+#include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 #include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
 #include "lardataobj/RawData/OpDetWaveform.h"
@@ -49,9 +49,9 @@ namespace evd {
   public:
 
     /// Default constructor
-    DrawOpDetWaveform(const geo::GeometryCore& geometry,
-                      const detinfo::DetectorProperties& detectorProperties,
-                      const detinfo::DetectorClocksData& detectorClocks);
+    DrawOpDetWaveform(const geo::GeometryCore&               geometry,
+                      const detinfo::DetectorPropertiesData& detectorProperties,
+                      const detinfo::DetectorClocksData&     detectorClocks);
 
     /// Default destructor
     virtual ~DrawOpDetWaveform(){}
@@ -99,9 +99,9 @@ namespace evd {
     // sets up the _wvf_data data object
     void initDataHolder();
 
-    const geo::GeometryCore&           _geo_service;
-    const detinfo::DetectorProperties& _det_prop;
-    const detinfo::DetectorClocksData& _det_clocks;
+    const geo::GeometryCore&               _geo_service;
+    const detinfo::DetectorPropertiesData& _det_prop;
+    const detinfo::DetectorClocksData&     _det_clocks;
 
 
 

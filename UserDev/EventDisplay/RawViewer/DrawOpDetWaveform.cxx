@@ -8,9 +8,9 @@
 
 namespace evd {
 
-DrawOpDetWaveform::DrawOpDetWaveform(const geo::GeometryCore& geometry,
-                                     const detinfo::DetectorProperties& detectorProperties,
-                                     const detinfo::DetectorClocksData& detectorClocks) :
+DrawOpDetWaveform::DrawOpDetWaveform(const geo::GeometryCore&               geometry,
+                                     const detinfo::DetectorPropertiesData& detectorProperties,
+                                     const detinfo::DetectorClocksData&     detectorClocks) :
   _geo_service(geometry),
   _det_prop(detectorProperties),
   _det_clocks(detectorClocks)
