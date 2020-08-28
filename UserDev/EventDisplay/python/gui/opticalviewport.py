@@ -33,14 +33,14 @@ class opticalviewport(QtGui.QWidget):
 
     self._flash_time_view = flash_time_view(self._geometry)
     self._totalLayout.addWidget(self._flash_time_view)
-    self._time_window = pg.LinearRegionItem(values=[0,10], orientation=pg.LinearRegionItem.Vertical)
+    self._time_window = pg.LinearRegionItem(values=[0,10], orientation=pg.LinearRegionItem.Vertical) 
     self._time_window.sigRegionChangeFinished.connect(self.time_range_worker)
     self._flash_time_view.connectTimeWindow(self._time_window)
     for p in self._pmts:
         p.set_time_range(self._time_window.getRegion())
 
     self.add_button_layout()
-
+    
     self._wf_view.setMaximumHeight(200)
     self._wf_view.setMinimumHeight(200)
 
@@ -58,16 +58,16 @@ class opticalviewport(QtGui.QWidget):
 
     self._tpc_all_button = QtGui.QRadioButton("All Cryos and TPCs")
     self._tpc_all_button.setToolTip("Shows all TPCs.")
-    self._tpc_all_button.clicked.connect(self.viewSelectionWorker)
+    self._tpc_all_button.clicked.connect(self.viewSelectionWorker) 
 
     self._tpc_buttons = []
     for cryo in range(self._geometry.nCryos()):
         for tpc in range(self._geometry.nTPCs()):
             tpc_button = QtGui.QRadioButton("Cryo "+str(cryo)+", TPC "+str(tpc))
             tpc_button.setToolTip("Shows only Cryo "+str(cryo)+", TPC "+str(tpc))
-            tpc_button.clicked.connect(self.viewSelectionWorker)
+            tpc_button.clicked.connect(self.viewSelectionWorker) 
             self._tpc_buttons.append(tpc_button)
-
+    
     self._buttonLayout = QtGui.QHBoxLayout()
 
     self._buttonLayout.addWidget(self._tpc_all_button)
@@ -91,7 +91,7 @@ class opticalviewport(QtGui.QWidget):
     # self._time_range.minValueChanged.connect(self.time_range_worker)
     # self._time_range.maxValueChanged.connect(self.time_range_worker)
     # self._time_range.startValueChanged.connect(self.time_range_worker)
-    # self._time_range.endValueChanged.connect(self.time_range_worker)
+    # self._time_range.endValueChanged.connect(self.time_range_worker)    
     # self._time_range_layout.addWidget(self._time_range)
 
     # for p in self._pmts:
@@ -140,7 +140,7 @@ class opticalviewport(QtGui.QWidget):
 
         this_scale = pg.GradientEditorItem(orientation='right')
         self._opdet_views[tpc].addItem(this_scale, 0, 1)
-
+    
         these_pmts = pmts(self._geometry, tpc=tpc, pmtscale=this_scale)
         opdet_plot.addItem(these_pmts)
         these_pmts.sigClicked.connect(self.pmtClickWorker)
@@ -232,10 +232,10 @@ class opticalviewport(QtGui.QWidget):
 _bordercol_ = {
     'pmt'        : (255,255,255,255),
     'barepmt'    : (0,0,255,255),
-    'arapucaT1'  : (34,139,34),
-    'arapucaT2'  : (34,139,34),
-    'xarapuca'   : (34,139,34),
-    'xarapucaT1' : (34,139,34),
+    'arapucaT1'  : (34,139,34), 
+    'arapucaT2'  : (34,139,34), 
+    'xarapuca'   : (34,139,34), 
+    'xarapucaT1' : (34,139,34), 
     'xarapucaT2' : (34,139,34)
 }
 
@@ -256,7 +256,7 @@ class pmts(pg.ScatterPlotItem):
 
     self._n_objects = len(self._opdet_circles)
 
-    self._start_time = 0
+    self._start_time = 0 
     self._end_time = 10
 
     self._flashes = None # The flashes to be displayed
@@ -278,12 +278,12 @@ class pmts(pg.ScatterPlotItem):
     brush = (0,0,0,0)
 
     loop_max = len(opdets_x)
-    if pe is not None:
-        loop_max = len(pe)
+    if pe is not None: 
+        loop_max = len(pe) 
 
     if max_pe == 0:
         max_pe = 1
-
+    
     for d in range(0, loop_max):
         if opdets_name[d] in names:
             # print ('d', d, 'self._tpc', self._tpc, 'self._geom.opdetToTPC(d)', self._geom.opdetToTPC(d))
@@ -293,11 +293,11 @@ class pmts(pg.ScatterPlotItem):
 
                 # print(f'OpCh{d}: [{opdets_x[d]}, {opdets_y[d]}, {opdets_z[d]}]')
 
-                self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
-                                            'size'   : diameter,
-                                            'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2},
-                                            'brush'  : brush,
-                                            'symbol' : 'o',
+                self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]), 
+                                            'size'   : diameter, 
+                                            'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2}, 
+                                            'brush'  : brush, 
+                                            'symbol' : 'o', 
                                             'data'   : {'id': d, 'highlight': False}})
     self._opdets_name = opdets_name
     self._opdets_x = opdets_x
@@ -352,15 +352,15 @@ class pmts(pg.ScatterPlotItem):
         self._statusBar.showMessage(message)
 
   def set_time_range(self, time_range):
-    self._start_time = time_range[0]
-    self._end_time = time_range[1]
+    self._start_time = time_range[0] 
+    self._end_time = time_range[1] 
     self.drawFlashes(self._flashes)
-
+    
 
   def drawFlashes(self, flashes):
 
     if flashes is None:
-        return
+        return 
 
     if len(flashes) == 0:
         return
@@ -406,7 +406,7 @@ class arapucas(pg.ScatterPlotItem):
 
     self._n_objects = len(self._opdet_circles)
 
-    self._start_time = 0
+    self._start_time = 0 
     self._end_time = 10
 
     self._flashes = None # The flashes to be displayed
@@ -428,23 +428,23 @@ class arapucas(pg.ScatterPlotItem):
     brush = (0,0,0,0)
 
     loop_max = len(opdets_x)
-    if pe is not None:
-        loop_max = len(pe)
+    if pe is not None: 
+        loop_max = len(pe) 
 
     if max_pe == 0:
         max_pe = 1
-
+    
     for d in range(0, loop_max):
         if opdets_name[d] in names:
             if self._geom.opdetToTPC(d) == self._tpc:
                 if pe is not None:
                     brush = self._pmtscale.colorMap().map(pe[d]/max_pe)
 
-                self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
-                                            'size'   : size,
-                                            'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2},
-                                            'brush'  : brush,
-                                            'symbol' : 's',
+                self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]), 
+                                            'size'   : size, 
+                                            'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2}, 
+                                            'brush'  : brush, 
+                                            'symbol' : 's', 
                                             'data'   : {'id': d, 'highlight': False}})
     self._opdets_name = opdets_name
     self._opdets_x = opdets_x
@@ -499,15 +499,15 @@ class arapucas(pg.ScatterPlotItem):
         self._statusBar.showMessage(message)
 
   def set_time_range(self, time_range):
-    self._start_time = time_range[0]
-    self._end_time = time_range[1]
+    self._start_time = time_range[0] 
+    self._end_time = time_range[1] 
     self.drawFlashes(self._flashes)
-
+    
 
   def drawFlashes(self, flashes):
 
     if flashes is None:
-        return
+        return 
 
     if len(flashes) == 0:
         return
@@ -544,17 +544,17 @@ class arapucas(pg.ScatterPlotItem):
 #     size = 6
 
 #     brush = (0,0,0,0)
-
+    
 #     self._opdet_circles = []
 
 #     for d in range(0, len(opdets_x)):
 #         if opdets_name[d] in names:
 #             if (opdets_x[d] < 0 and tpc == 0) or (opdets_x[d] > 0 and tpc == 1):
-#                 self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
-#                                             'size'   : size,
-#                                             'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2},
-#                                             'brush'  : brush,
-#                                             'symbol' : 's',
+#                 self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]), 
+#                                             'size'   : size, 
+#                                             'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2}, 
+#                                             'brush'  : brush, 
+#                                             'symbol' : 's', 
 #                                             'data'   : {'id': d, 'highlight': False}})
 
 #     self.setAcceptHoverEvents(True)
@@ -621,7 +621,7 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
     self._wf_plot = pg.PlotItem(name="OpDetWaveform")
     self._wf_plot.setLabel(axis='left', text='ADC')
     self._wf_plot.setLabel(axis='bottom', text='Time [us]')
-    # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical)
+    # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical) 
     # self._wf_plot.addItem(self._wf_linear_region)
     self.addItem(self._wf_plot)
 
@@ -639,7 +639,7 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
   #   for d in range(0, len(opdets_x)):
   #       # print('Adding opdet', opdets_x[d], opdets_y[d], diameter, diameter)
   #       self._opdet_circles.append(QtGui.QGraphicsEllipseItem(opdets_z[d], opdets_y[d], diameter, diameter))
-
+        
   #       if opdets_name[d] == 'pmt':
   #           self._opdet_circles[d].setPen(pg.mkPen('r'))
   #       if opdets_name[d] == 'barepmt':
@@ -650,8 +650,6 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
 
 
   def drawOpDetWvf(self, data, offset=100):
-
-    print("Optical data:",data)
 
     self._data = data
 
@@ -740,12 +738,16 @@ class flash_time_view(pg.GraphicsLayoutWidget):
     t_max = np.max(times)
     n_bins = int(t_max - t_min)
 
+    if len(flashes) == 1:
+        t_min -= 100
+        t_max += 100
+        n_bins = 200
+
     data_y, data_x = np.histogram(times, bins=np.linspace(t_min, t_max, n_bins))
 
     self._time_plot.plot(x=data_x, y=data_y, stepMode=True, fillLevel=0, brush=(0,0,255,150))
     self._time_plot.addItem(self._time_window)
 
     self._time_plot.autoRange()
-
 
 

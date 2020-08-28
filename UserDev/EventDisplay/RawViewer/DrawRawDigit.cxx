@@ -100,9 +100,6 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
       }
     }
   }
-  std::cout << "Here 1 raw_digits_v.size() " << raw_digits_v.size() << std::endl;
-  for(size_t idx = 0; idx < raw_digits_v.size(); idx++)
-    std::cout << "Here " << idx << " v.size() " << (*raw_digits_v[idx]).size() << std::endl;
 
   _planeData.clear();
   size_t n_ticks = 0;
@@ -143,7 +140,7 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
         unsigned int tpc = w_id.TPC;
         unsigned int cryo = w_id.Cryostat;
 
-        std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
+        // std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
 
         if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;
 

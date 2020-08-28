@@ -1,7 +1,23 @@
 from gui import gui
 from pyqtgraph.Qt import QtGui, QtCore
 from .boxes import *
+import os, subprocess
 
+def get_git_version():
+    '''
+    Returns the git version of the repository this file is in.
+
+    Returns a string with the version and a number in parenthesis showing
+    the number of commits after that version (if any)
+    '''
+    version = subprocess.check_output(["git", "describe", "--tags"], cwd=os.path.dirname(__file__))
+    version = version.strip()
+    version = version.decode('ascii')
+    version = version.split('-')
+    if len(version) > 1:
+        return version[0] + ' (' + version[1] + ')'
+    else:
+        return version[0]
 
 class evdgui(gui):
 
@@ -36,8 +52,9 @@ class evdgui(gui):
         self._title1 = QtGui.QLabel("TITUS")
         self._title1a = QtGui.QLabel("The event display")
         self._title1b = QtGui.QLabel("for SBN @ Fermilab")
+        self._title1c = QtGui.QLabel("Version " + get_git_version())
         geoName = self._geometry.name()
-        self._title2 = QtGui.QLabel('Detector: '+geoName.upper())
+        self._title2 = QtGui.QLabel('Detector: ' + geoName.upper())
         font = self._title1.font()
         font.setBold(True)
         self._title1.setFont(font)
@@ -52,6 +69,7 @@ class evdgui(gui):
         self._eastLayout.addWidget(self._title1)
         self._eastLayout.addWidget(self._title1a)
         self._eastLayout.addWidget(self._title1b)
+        self._eastLayout.addWidget(self._title1c)
         self._eastLayout.addWidget(self._title2)
         self._eastLayout.addStretch(1)
 

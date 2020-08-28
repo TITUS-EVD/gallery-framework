@@ -52,40 +52,45 @@ bool DrawOpflash::analyze(gallery::Event *ev) {
         = ev -> getValidHandle<std::vector <recob::OpFlash> >(opflash_tag);
 
   // Retrieve the ophits to infer the plane the opflash belongs to
-  art::InputTag assn_tag(_producer);
-  art::FindMany<recob::OpHit> flash_to_hits(opflashHandle, *ev, assn_tag);
+  try {
+    art::InputTag assn_tag(_producer);
+    art::FindMany<recob::OpHit> flash_to_hits(opflashHandle, *ev, assn_tag);
 
-  size_t total_plane_number = _geo_service.NTPC() * _geo_service.Ncryostats();
+    size_t total_plane_number = _geo_service.NTPC() * _geo_service.Ncryostats();
 
-  for (unsigned int p = 0; p < total_plane_number; p++) {
-    _extraDataByPlane[p].clear();
-    _extraDataByPlane[p].reserve(opflashHandle -> size());
-  }
-
-  // Populate the shower vector:
-  size_t index = 0;
-  for (auto & opf : *opflashHandle) {
-    std::vector<recob::OpHit const*> ophits;
-    flash_to_hits.get(index, ophits);
-    int opch = 0;
-    if (ophits.size() > 0) {
-      opch = ophits.at(0)->OpChannel();
+    for (unsigned int p = 0; p < total_plane_number; p++) {
+      _extraDataByPlane[p].clear();
+      _extraDataByPlane[p].reserve(opflashHandle -> size());
     }
 
-    Opflash2D this_flash;
-    this_flash._y = opf.YCenter();
-    this_flash._z = opf.ZCenter();
-    this_flash._time = opf.AbsTime();
-    this_flash._y_width = opf.YWidth();
-    this_flash._z_width = opf.ZWidth();
-    this_flash._time_width = opf.TimeWidth();
-    this_flash._total_pe = opf.TotalPE();
-    this_flash._opdet_pe = opf.PEs();
-    this_flash._plane = find_plane(opch);
+    // Populate the shower vector:
+    size_t index = 0;
+    for (auto & opf : *opflashHandle) {
+      std::vector<recob::OpHit const*> ophits;
+      flash_to_hits.get(index, ophits);
+      int opch = 0;
+      if (ophits.size() > 0) {
+        opch = ophits.at(0)->OpChannel();
+      }
 
-    _extraDataByPlane[this_flash._plane].push_back(this_flash);
+      Opflash2D this_flash;
+      this_flash._y = opf.YCenter();
+      this_flash._z = opf.ZCenter();
+      this_flash._time = opf.AbsTime();
+      this_flash._y_width = opf.YWidth();
+      this_flash._z_width = opf.ZWidth();
+      this_flash._time_width = opf.TimeWidth();
+      this_flash._total_pe = opf.TotalPE();
+      this_flash._opdet_pe = opf.PEs();
+      this_flash._plane = find_plane(opch);
 
-    index++;
+      _extraDataByPlane[this_flash._plane].push_back(this_flash);
+
+      index++;
+    }
+
+  } catch (...) {
+    std::cout << "Failed to retrieve flashes from file." << std::endl;
   }
 
   return true;

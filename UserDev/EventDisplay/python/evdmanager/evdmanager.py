@@ -172,6 +172,9 @@ class evd_manager_base(manager, QtCore.QObject):
             _product = prod._typeName
 
 
+
+
+
             # Add the product to the "all" list and
             # also to it's stage list:
 
@@ -225,7 +228,7 @@ class evd_manager_base(manager, QtCore.QObject):
                 return
             # Next, verify it is a root file:
             if not file.endswith(".root"):
-                print("ERROR: must supply a root file.")
+                print("\033[91m ERROR: must supply a root file. \033[0m")
                 continue
 
             # Finally, ping the file to see what is available to draw
@@ -455,8 +458,6 @@ class evd_manager_2D(evd_manager_base):
         if name not in self._keyTable[stage]:
             return None
 
-        print("Returning: keyTable:",name,", stage:",stage,", val:",self._keyTable[stage][name])
-
         return self._keyTable[stage][name]
 
     def get_default_products(self, name, stage=None):
@@ -530,7 +531,6 @@ class evd_manager_2D(evd_manager_base):
             else:
                 producer = self._keyTable[stage]['raw::RawDigit'][0].fullName()
 
-            print ('rawdigit, producer', producer)
             self._wireDrawer.setProducer(producer)
             self._processer.add_process("raw::RawDigit", self._wireDrawer._process)
             self._wireDrawer.toggleNoiseFilter(self.filterNoise)
@@ -557,15 +557,12 @@ class evd_manager_2D(evd_manager_base):
         if stage is None:
             stage = 'all'
 
-        print("toggleOpDetWvf product:",product)
         if product == 'opdetwaveform':
 
             if 'raw::OpDetWaveform' not in self._keyTable[stage]:
                 print("No OpDetWaveform data available to draw")
                 self._drawWires = False
                 return
-
-            print("keyTable:",self._keyTable[stage]['raw::OpDetWaveform'][0].fullName())
             self._drawOpDetWvf = True
             self._opDetWvfDrawer = datatypes.opdetwaveform(self._geom)
             self._opDetWvfDrawer.setProducer(self._keyTable[stage]['raw::OpDetWaveform'][0].fullName())
