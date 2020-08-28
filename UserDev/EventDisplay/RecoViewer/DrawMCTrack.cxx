@@ -13,7 +13,7 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsi
   for (unsigned int i = 0; i < track.size(); i++) {
     // project a point into 2D:
     try {
-      auto point = geo_helper.Point_3Dto2D(track[i].X(), track[i].Y(), track[i].Z(), 
+      auto point = geo_helper.Point_3Dto2D(track[i].X(), track[i].Y(), track[i].Z(),
                                            plane, tpc, cryostat);
       // auto point = geoHelper->Point_3Dto2D(track[i].X(), track[i].Y(),
       //                                      track[i].Z(), plane);
@@ -29,10 +29,10 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsi
   return result;
 }
 
-DrawMCTrack::DrawMCTrack(const geo::GeometryCore& geometry, 
+DrawMCTrack::DrawMCTrack(const geo::GeometryCore& geometry,
                          const detinfo::DetectorProperties& detectorProperties,
-                         const detinfo::DetectorClocks& detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks) 
+                         const detinfo::DetectorClocksData& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawMCTrack";
   _fout = 0;
@@ -107,14 +107,14 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
       tr._tpc = track_tpc;
       tr._cryo = track_cryo;
 
-      // Figure out the track time in elec clock 
+      // Figure out the track time in elec clock
       // (still need to subtract trigger time)
       tr._time = _det_clock.G4ToElecTime(track.Start().T());
 
       tr._process = track.Process();
       tr._energy = track.Start().E();
 
-      // Find out in what TPC we are 
+      // Find out in what TPC we are
       // (based on the first point of the track)
       for (auto step : track) {
         geo::Point_t loc = geo::Point_t(step.X(), step.Y(), step.Z());

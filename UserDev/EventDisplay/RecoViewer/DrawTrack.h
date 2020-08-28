@@ -57,9 +57,9 @@ class DrawTrack : public galleryfmwk::ana_base, public RecoBase<Track2D> {
 
 public:
   /// Default constructor
-  DrawTrack(const geo::GeometryCore& geometry, 
+  DrawTrack(const geo::GeometryCore& geometry,
             const detinfo::DetectorProperties& detectorProperties,
-            const detinfo::DetectorClocks& detectorClocks);
+            const detinfo::DetectorClocksData& detectorClocks);
 
   /// Default destructor
   ~DrawTrack();
@@ -72,7 +72,7 @@ public:
 
 private:
   Track2D getTrack2D(recob::Track track, unsigned int plane, unsigned int tpc = 0, unsigned int cryostat = 0);
-  
+
   size_t _total_plane_number;
 };
 

@@ -37,8 +37,8 @@ class geoBase(object):
         self._logoscale = 1.0
         self._triggerOffset = 60
         self._readoutWindowSize = 2408
-        self._planeOriginX = [-0.2, -0.6] 
-        self._planeOriginXTicks = [-0.2/0.4, -0.6/0.4] 
+        self._planeOriginX = [-0.2, -0.6]
+        self._planeOriginXTicks = [-0.2/0.4, -0.6/0.4]
         self._readoutPadding = 0
         self._timeOffsetTicks = 0
         self._timeOffsetCm = 0
@@ -60,7 +60,7 @@ class geoBase(object):
 
     def name(self):
         return self._name
-        
+
     def halfwidth(self):
        return self._halfwidth
 
@@ -147,7 +147,7 @@ class geoBase(object):
 
     def triggerOffset(self):
         return self._triggerOffset
-    
+
     def planeOriginX(self, plane):
         return self._planeOriginX[plane]
 
@@ -255,11 +255,11 @@ class geometry(geoBase):
         '''
         This is the default configuration
         that uses the singleton implemetation of
-        the Geometry and GeometryHelper 
+        the Geometry and GeometryHelper
         '''
         self._halfwidth = larutil.Geometry.GetME().DetHalfWidth()
         self._halfheight = larutil.Geometry.GetME().DetHalfHeight()
-        self._length = larutil.Geometry.GetME().DetLength()      
+        self._length = larutil.Geometry.GetME().DetLength()
         self._time2Cm = larutil.GeometryHelper.GetME().TimeToCm()
         self._wire2Cm = larutil.GeometryHelper.GetME().WireToCm()
         self._samplingRate = larutil.DetectorProperties.GetME().SamplingRate()
@@ -286,24 +286,24 @@ class geometry(geoBase):
 
     def configure(self, geometryCore, detProperties, detClocks, lar_properties):
         '''
-        This is a new implementation that 
-        uses LArSoft services to get the 
+        This is a new implementation that
+        uses LArSoft services to get the
         GeometryCore and DetectorProperties
         '''
         if geometryCore is None or detProperties is None or detClocks is None:
             self.configure()
-            return 
+            return
 
         print ('Configuring geometry from services.')
 
         self._geometryCore = geometryCore
         self._detectorProperties = detProperties
-        self._detectorClocks = detClocks
+        self._detectorClocks = detClocks.DataForJob()
         self._lar_properties = lar_properties
 
         self._halfwidth = geometryCore.DetHalfWidth()
         self._halfheight = geometryCore.DetHalfHeight()
-        self._length = geometryCore.DetLength()      
+        self._length = geometryCore.DetLength()
         self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
         self._wire2Cm = geometryCore.WirePitch()
         self._samplingRate = detProperties.SamplingRate()
@@ -358,7 +358,7 @@ class geometry(geoBase):
         else:
             return self._colorScheme[colormaptype][plane]
 
-class sbnd(geometry): 
+class sbnd(geometry):
 
 
     def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None):
@@ -385,12 +385,12 @@ class sbnd(geometry):
         self._logoscale = 0.13
         from .mapping import sbnd_opdet_map
         self._opdet_radius = 6
-        self._opdet_name = sbnd_opdet_map 
+        self._opdet_name = sbnd_opdet_map
         self._tRange = 3000 #7500
-        self._triggerOffset = 0 #2500 
+        self._triggerOffset = 0 #2500
         self._readoutWindowSize = 3000 #7500
-        self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6] 
-        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6]
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm]
         self._cathodeGap = 8.5 / self._time2Cm # 5.3 cm   # 100
 
         color_scheme = [(
@@ -434,13 +434,13 @@ class sbnd(geometry):
                 - self.planeOriginX(v) )
 
     def opdetToTPC(self, ch):
-        if (self._opdet_x[ch] < 0): 
+        if (self._opdet_x[ch] < 0):
             return 0
         else:
             return 1
 
 
-class icarus(geometry): 
+class icarus(geometry):
 
 
     def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None, split_wire=False):
@@ -450,7 +450,7 @@ class icarus(geometry):
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
         self._pedestals = [0, 0, 0, 0, 0, 0]
-        self._levels = [(-80, 0), (-10, 100), (-10, 100), (-80, 0), (-10, 100), (-10, 100)]
+        self._levels = [(-10, 10), (-10, 10), (-10, 10), (-10, 10), (-10, 10), (-10, 10)]
         self._view_names = ['H', 'U', 'V']
         # self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
         self._plane_mix = {0: [3], 1: [5], 2: [4], 6: [9], 7: [11], 8: [10]}
@@ -466,19 +466,19 @@ class icarus(geometry):
         # self._tRange = 7500
         # self._triggerOffset = 2500
         # self._readoutWindowSize = 7500
-        self._planeOriginX = [0.0, -0.3, -0.6, 
-                              0.0, -0.3, -0.6, 
-                              0.0, -0.3, -0.6, 
-                              0.0, -0.3, -0.6] 
-        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 
-                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 
-                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 
-                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        self._planeOriginX = [0.0, -0.3, -0.6,
+                              0.0, -0.3, -0.6,
+                              0.0, -0.3, -0.6,
+                              0.0, -0.3, -0.6]
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm,
+                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm,
+                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm,
+                                   0.0, -0.3/self._time2Cm, -0.6/self._time2Cm]
         self._cathodeGap = 6 / self._time2Cm # 5.3 cm   # 100
 
         color_scheme = [(
-            {'ticks': [(1, (255, 255, 255, 255)),
-                       (0, (0, 0, 0, 255))],
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
              'mode': 'rgb'})]
         color_scheme.append(
             {'ticks': [(0, (255, 255, 255, 255)),
@@ -518,10 +518,10 @@ class icarus(geometry):
                 self._wRange[v] = self._wRange[v] * 2 + self._cathodeGap
 
     def opdetToTPC(self, ch):
-        if (self._opdet_x[ch] < -100): 
+        if (self._opdet_x[ch] < -100):
             return 0
         elif (self._opdet_x[ch] > -100 and self._opdet_x[ch] < 0):
-            return 1 
+            return 1
         elif (self._opdet_x[ch] > 0 and self._opdet_x[ch] < 100):
             return 2
         else:
@@ -549,8 +549,8 @@ class microboone(geometry):
         self._tRange = 9600
         self._triggerOffset = 3200
         self._readoutWindowSize = 9600
-        self._planeOriginX = [0.0, -0.3, -0.6] 
-        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        self._planeOriginX = [0.0, -0.3, -0.6]
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm]
         # remove = larutil.DetectorProperties.GetME().TriggerOffset() \
         #           * larutil.GeometryHelper.GetME().TimeToCm()
         # self._offset[:] = [x - remove for x in self._offset]
@@ -571,11 +571,11 @@ class microboonetruncated(microboone):
     def __init__(self):
         super(microboonetruncated, self).__init__()
 
-        # The truncated readouts change the trigger offset and 
+        # The truncated readouts change the trigger offset and
         self._tRange = 9600
         self._triggerOffset = 3200
-        self._planeOriginX = [0.3, -0.3, -0.6] 
-        self._planeOriginXTicks = [0.3/self.time2cm(), -0.3/self.time2cm(), -0.6/self.time2cm()] 
+        self._planeOriginX = [0.3, -0.3, -0.6]
+        self._planeOriginXTicks = [0.3/self.time2cm(), -0.3/self.time2cm(), -0.6/self.time2cm()]
         self._readoutWindowSize = 9600
         self._readoutPadding = 2400
         self._offset = []
@@ -605,7 +605,7 @@ class argoneut(geometry):
 
         self._tRange = 1800
         self._triggerOffset = 60
-        self._planeOriginX = [-0.2, -0.6] 
+        self._planeOriginX = [-0.2, -0.6]
         self._readoutWindowSize = 2048
 
         self._offset = []
@@ -656,14 +656,14 @@ class lariat(geometry):
         # Make default color schemes here:
         self._defaultColorScheme = [
             {'ticks': [(0, (30, 30, 255, 255)),
-                       (0.33333, (0, 255, 255, 255)), 
-                       (0.66666, (255,255,100,255)), 
-                       (1, (255, 0, 0, 255))], 
+                       (0.33333, (0, 255, 255, 255)),
+                       (0.66666, (255,255,100,255)),
+                       (1, (255, 0, 0, 255))],
              'mode': 'rgb'}]
         self._defaultColorScheme.append(
             {'ticks': [(0, (30, 30, 255, 255)),
-                       (0.33333, (0, 255, 255, 255)), 
-                       (0.66666, (255,255,100,255)), 
-                       (1, (255, 0, 0, 255))], 
+                       (0.33333, (0, 255, 255, 255)),
+                       (0.66666, (255,255,100,255)),
+                       (1, (255, 0, 0, 255))],
              'mode': 'rgb'})
 

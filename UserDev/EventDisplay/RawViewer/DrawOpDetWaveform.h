@@ -2,7 +2,7 @@
  * \file DrawOpDetWaveform.h
  *
  * \ingroup EventViewer
- * 
+ *
  * \brief Class def header for a class DrawOpDetWaveform
  *
  * @author Marco Del Tutto
@@ -23,7 +23,7 @@
 
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorProperties.h"
-#include "lardataalg/DetectorInfo/DetectorClocks.h"
+#include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
 #include "lardataobj/RawData/OpDetWaveform.h"
 
@@ -45,28 +45,28 @@ namespace evd {
      User custom analysis class made by SHELL_USER_NAME
    */
   class DrawOpDetWaveform : public galleryfmwk::ana_base {
-  
+
   public:
 
     /// Default constructor
-    DrawOpDetWaveform(const geo::GeometryCore& geometry, 
+    DrawOpDetWaveform(const geo::GeometryCore& geometry,
                       const detinfo::DetectorProperties& detectorProperties,
-                      const detinfo::DetectorClocks& detectorClocks);
+                      const detinfo::DetectorClocksData& detectorClocks);
 
     /// Default destructor
     virtual ~DrawOpDetWaveform(){}
 
     /** IMPLEMENT in DrawOpDetWaveform.cc!
         Initialization method to be called before the analysis event loop.
-    */ 
+    */
     virtual bool initialize();
 
-    /** IMPLEMENT in DrawOpDetWaveform.cc! 
-        Analyze a data event-by-event  
+    /** IMPLEMENT in DrawOpDetWaveform.cc!
+        Analyze a data event-by-event
     */
     virtual bool analyze(gallery::Event * event);
 
-    /** IMPLEMENT in DrawOpDetWaveform.cc! 
+    /** IMPLEMENT in DrawOpDetWaveform.cc!
         Finalize method to be called after all events processed.
     */
     virtual bool finalize();
@@ -101,7 +101,7 @@ namespace evd {
 
     const geo::GeometryCore&           _geo_service;
     const detinfo::DetectorProperties& _det_prop;
-    const detinfo::DetectorClocks&     _det_clocks;
+    const detinfo::DetectorClocksData& _det_clocks;
 
 
 
@@ -111,4 +111,4 @@ namespace evd {
 
 
 
-/** @} */ // end of doxygen group 
+/** @} */ // end of doxygen group

@@ -77,9 +77,9 @@ class DrawHit : public galleryfmwk::ana_base, public RecoBase<Hit2D> {
 public:
 
     /// Default constructor
-    DrawHit(const geo::GeometryCore& geometry, 
+    DrawHit(const geo::GeometryCore& geometry,
             const detinfo::DetectorProperties& detectorProperties,
-            const detinfo::DetectorClocks& detectorClocks);
+            const detinfo::DetectorClocksData& detectorClocks);
 
     /// Default destructor
     // ~DrawHit(){}

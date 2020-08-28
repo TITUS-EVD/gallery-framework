@@ -6,9 +6,9 @@
 namespace evd {
 
 
-DrawShower::DrawShower(const geo::GeometryCore& geometry, 
+DrawShower::DrawShower(const geo::GeometryCore& geometry,
                        const detinfo::DetectorProperties& detectorProperties,
-                       const detinfo::DetectorClocks& detectorClocks) :
+                       const detinfo::DetectorClocksData& detectorClocks) :
     RecoBase<Shower2D>(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawShower";
@@ -76,10 +76,10 @@ bool DrawShower::analyze(gallery::Event * ev) {
 
 
     for (unsigned int p = 0; p < _geo_service.Nplanes(shower_tpc); p++) {
-          
+
       int plane = p + shower_tpc * _geo_service.Nplanes();
-      plane += shower_cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
-          
+      plane += shower_cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+
       auto sh = getShower2d(shower, p, shower_tpc, shower_cryo);
       sh._tpc = shower_tpc;
       sh._cryo = shower_cryo;

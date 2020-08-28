@@ -6,7 +6,7 @@
 namespace evd {
 
 Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
-  
+
   Track2D result;
   result._track.reserve(track.NumberTrajectoryPoints());
 
@@ -32,9 +32,9 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned i
   return result;
 }
 
-DrawTrack::DrawTrack(const geo::GeometryCore& geometry, 
+DrawTrack::DrawTrack(const geo::GeometryCore& geometry,
                      const detinfo::DetectorProperties& detectorProperties,
-                     const detinfo::DetectorClocks& detectorClocks) :
+                     const detinfo::DetectorClocksData& detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawTrack";
@@ -102,10 +102,10 @@ bool DrawTrack::analyze(gallery::Event *ev) {
     }
 
     for (unsigned int p = 0; p < _geo_service.Nplanes(track_tpc); p++) {
-          
+
       int plane = p + track_tpc * _geo_service.Nplanes();
-      plane += track_cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
-          
+      plane += track_cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+
       auto tr = getTrack2D(track, p, track_tpc, track_cryo);
       tr._tpc = track_tpc;
       tr._cryo = track_cryo;

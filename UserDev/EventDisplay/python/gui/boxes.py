@@ -47,7 +47,7 @@ class waveformBox(QtGui.QWidget):
 
         self._box.setMenu(self._toolmenu)
         self._box.setPopupMode(QtGui.QToolButton.InstantPopup)
-        
+
         # This is the widget itself, so set it up
         self._layout = QtGui.QHBoxLayout()
         # self._layout.addWidget(self._label)

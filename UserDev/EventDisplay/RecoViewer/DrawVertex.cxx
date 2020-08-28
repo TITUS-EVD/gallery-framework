@@ -5,10 +5,10 @@
 
 namespace evd {
 
-DrawVertex::DrawVertex(const geo::GeometryCore& geometry, 
+DrawVertex::DrawVertex(const geo::GeometryCore& geometry,
                        const detinfo::DetectorProperties& detectorProperties,
-                       const detinfo::DetectorClocks& detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks) 
+                       const detinfo::DetectorClocksData& detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawVertex";
   _fout = 0;

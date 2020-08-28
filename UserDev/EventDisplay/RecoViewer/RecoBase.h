@@ -30,7 +30,7 @@ typedef _object PyObject;
 
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorProperties.h"
-#include "lardataalg/DetectorInfo/DetectorClocks.h"
+#include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
 #include "LArUtil/SimpleGeometryHelper.h"
 
@@ -48,9 +48,9 @@ class RecoBase {
 public:
 
   /// Default constructor
-  RecoBase(const geo::GeometryCore& geometry, 
+  RecoBase(const geo::GeometryCore& geometry,
            const detinfo::DetectorProperties& detectorProperties,
-           const detinfo::DetectorClocks& detectorClocks);
+           const detinfo::DetectorClocksData& detectorClocks);
 
   /// Default destructor
   virtual ~RecoBase() {}
@@ -63,7 +63,7 @@ public:
   /// Returns the data on the selected plane
   const std::vector<DATA_TYPE> & getDataByPlane(size_t p);
   // PyObject * getDataByPlane(size_t p);
-  
+
   /// Returns a vector of data, what is stored depends on the implementation
   const std::vector<DATA_TYPE> & getExtraData(size_t p);
 
@@ -80,7 +80,7 @@ protected:
 
   const geo::GeometryCore&           _geo_service;
   const detinfo::DetectorProperties& _det_prop;
-  const detinfo::DetectorClocks&     _det_clock;
+  const detinfo::DetectorClocksData& _det_clock;
 
   std::string _producer;
 
@@ -101,9 +101,9 @@ protected:
 
 
 template <class DATA_TYPE>
-RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry, 
+RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry,
                                const detinfo::DetectorProperties& detectorProperties,
-                               const detinfo::DetectorClocks& detectorClocks) :
+                               const detinfo::DetectorClocksData& detectorClocks) :
   _geo_service(geometry),
   _det_prop(detectorProperties),
   _det_clock(detectorClocks)
@@ -111,7 +111,7 @@ RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry,
   // geoService = larutil::Geometry::GetME();
   // geoHelper = larutil::GeometryHelper::GetME();
   // detProp = larutil::DetectorProperties::GetME();
-  
+
   // Set up default values of the _wire and _time range
   int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   _wireRange.resize(total_plane_number);

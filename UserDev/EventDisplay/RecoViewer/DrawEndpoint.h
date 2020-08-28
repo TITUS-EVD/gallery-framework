@@ -55,9 +55,9 @@ class DrawEndpoint : public galleryfmwk::ana_base, public RecoBase<Endpoint2D> {
 public:
 
   /// Default constructor
-  DrawEndpoint(const geo::GeometryCore& geometry, 
+  DrawEndpoint(const geo::GeometryCore& geometry,
                const detinfo::DetectorProperties& detectorProperties,
-               const detinfo::DetectorClocks& detectorClocks);
+               const detinfo::DetectorClocksData& detectorClocks);
 
   // / Default destructor
   // virtual ~DrawEndpoint();

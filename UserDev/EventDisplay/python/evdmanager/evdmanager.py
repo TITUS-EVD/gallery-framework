@@ -54,7 +54,6 @@ class product(object):
 
     def parse(self):
         tokens=self._name.split('_')
-        print("Parsing product, tokens:",tokens)
         # Name goes as object_producer_stage
         self._producer=tokens[-3]
         self._instance=tokens[-2]
@@ -171,10 +170,6 @@ class evd_manager_base(manager, QtCore.QObject):
             #     print "NuMu name is " +  str(prod.fullName())
             #     print "NuMu type name is " + str(prod.typeName())
             _product = prod._typeName
-
-
-            print("Product:",_product,", name:",key.GetName())
-
 
 
             # Add the product to the "all" list and
@@ -562,12 +557,15 @@ class evd_manager_2D(evd_manager_base):
         if stage is None:
             stage = 'all'
 
+        print("toggleOpDetWvf product:",product)
         if product == 'opdetwaveform':
 
             if 'raw::OpDetWaveform' not in self._keyTable[stage]:
                 print("No OpDetWaveform data available to draw")
                 self._drawWires = False
                 return
+
+            print("keyTable:",self._keyTable[stage]['raw::OpDetWaveform'][0].fullName())
             self._drawOpDetWvf = True
             self._opDetWvfDrawer = datatypes.opdetwaveform(self._geom)
             self._opDetWvfDrawer.setProducer(self._keyTable[stage]['raw::OpDetWaveform'][0].fullName())

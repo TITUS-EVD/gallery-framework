@@ -10,7 +10,7 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(
 
   larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
 
-  
+
   NumuSelection2D result;
 
   // Vertex
@@ -60,9 +60,9 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(
   return result;
 }
 
-DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore& geometry, 
+DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore& geometry,
                                      const detinfo::DetectorProperties& detectorProperties,
-                                     const detinfo::DetectorClocks& detectorClocks) :
+                                     const detinfo::DetectorClocksData& detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawNumuSelection";

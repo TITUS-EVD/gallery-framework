@@ -48,17 +48,17 @@ protected:
   int _pdg;             // pdg number
   float _time = -9999;  // track time
   float _energy = -9999;// Track energy
-  std::string _process; // Start G4 process 
-  int _tpc;             // TPC ID where the track starts 
+  std::string _process; // Start G4 process
+  int _tpc;             // TPC ID where the track starts
 };
 
 class DrawMCTrack : public galleryfmwk::ana_base, public RecoBase<MCTrack2D> {
 
 public:
   /// Default constructor
-  DrawMCTrack(const geo::GeometryCore& geometry, 
+  DrawMCTrack(const geo::GeometryCore& geometry,
               const detinfo::DetectorProperties& detectorProperties,
-              const detinfo::DetectorClocks& detectorClocks);
+              const detinfo::DetectorClocksData& detectorClocks);
 
   /// Default destructor
   ~DrawMCTrack();
