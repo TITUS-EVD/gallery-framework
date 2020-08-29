@@ -1,6 +1,7 @@
 
 import ROOT
-from ROOT import larutil, galleryfmwk
+#from ROOT import larutil, galleryfmwk
+from ROOT import galleryfmwk
 import numpy as np
 
 import os
