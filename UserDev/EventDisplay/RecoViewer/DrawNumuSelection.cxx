@@ -8,7 +8,7 @@ namespace evd {
 NumuSelection2D DrawNumuSelection::getNumuSelection2D(
     recob::Vertex vtx, std::vector<recob::Track> tracks, unsigned int plane) {
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
 
   NumuSelection2D result;
@@ -60,9 +60,9 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(
   return result;
 }
 
-DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore& geometry,
-                                     const detinfo::DetectorProperties& detectorProperties,
-                                     const detinfo::DetectorClocksData& detectorClocks) :
+DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore&               geometry,
+                                     const detinfo::DetectorPropertiesData& detectorProperties,
+                                     const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawNumuSelection";

@@ -10,7 +10,7 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned i
   Track2D result;
   result._track.reserve(track.NumberTrajectoryPoints());
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
   for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:
@@ -32,9 +32,9 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned i
   return result;
 }
 
-DrawTrack::DrawTrack(const geo::GeometryCore& geometry,
-                     const detinfo::DetectorProperties& detectorProperties,
-                     const detinfo::DetectorClocksData& detectorClocks) :
+DrawTrack::DrawTrack(const geo::GeometryCore&               geometry,
+                     const detinfo::DetectorPropertiesData& detectorProperties,
+                     const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawTrack";

@@ -7,9 +7,9 @@
 namespace evd {
 
 
-DrawSpacepoint::DrawSpacepoint(const geo::GeometryCore& geometry,
-                               const detinfo::DetectorProperties& detectorProperties,
-                               const detinfo::DetectorClocksData& detectorClocks) :
+DrawSpacepoint::DrawSpacepoint(const geo::GeometryCore&               geometry,
+                               const detinfo::DetectorPropertiesData& detectorProperties,
+                               const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawSpacepoint";
@@ -27,7 +27,7 @@ bool DrawSpacepoint::initialize() {
 
 bool DrawSpacepoint::analyze(gallery::Event * ev) {
   size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
 
 

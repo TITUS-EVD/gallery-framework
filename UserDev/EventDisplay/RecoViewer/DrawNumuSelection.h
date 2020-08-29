@@ -55,9 +55,9 @@ class DrawNumuSelection : public galleryfmwk::ana_base, public RecoBase<NumuSele
 
 public:
   /// Default constructor
-  DrawNumuSelection(const geo::GeometryCore& geometry,
-                    const detinfo::DetectorProperties& detectorProperties,
-                    const detinfo::DetectorClocksData& detectorClocks);
+  DrawNumuSelection(const geo::GeometryCore&               geometry,
+                    const detinfo::DetectorPropertiesData& detectorProperties,
+                    const detinfo::DetectorClocksData&     detectorClocks);
 
   /// Default destructor
   ~DrawNumuSelection();

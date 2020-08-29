@@ -6,9 +6,9 @@
 namespace evd {
 
 
-DrawShower::DrawShower(const geo::GeometryCore& geometry,
-                       const detinfo::DetectorProperties& detectorProperties,
-                       const detinfo::DetectorClocksData& detectorClocks) :
+DrawShower::DrawShower(const geo::GeometryCore&               geometry,
+                       const detinfo::DetectorPropertiesData& detectorProperties,
+                       const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase<Shower2D>(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawShower";
@@ -108,7 +108,7 @@ bool DrawShower::finalize() {
 
 Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
   Shower2D result;
   result._is_good = false;

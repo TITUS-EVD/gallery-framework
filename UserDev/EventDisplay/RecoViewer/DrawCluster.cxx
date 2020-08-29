@@ -5,9 +5,9 @@
 
 namespace evd {
 
-DrawCluster::DrawCluster(const geo::GeometryCore& geometry,
-                         const detinfo::DetectorProperties& detectorProperties,
-                         const detinfo::DetectorClocksData& detectorClocks) :
+DrawCluster::DrawCluster(const geo::GeometryCore&               geometry,
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawCluster";

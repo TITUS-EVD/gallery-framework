@@ -29,7 +29,7 @@ typedef _object PyObject;
 // #include "LArUtil/DetectorProperties.h"
 
 #include "larcorealg/Geometry/GeometryCore.h"
-#include "lardataalg/DetectorInfo/DetectorProperties.h"
+#include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 #include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
 #include "LArUtil/SimpleGeometryHelper.h"
@@ -48,9 +48,9 @@ class RecoBase {
 public:
 
   /// Default constructor
-  RecoBase(const geo::GeometryCore& geometry,
-           const detinfo::DetectorProperties& detectorProperties,
-           const detinfo::DetectorClocksData& detectorClocks);
+  RecoBase(const geo::GeometryCore&               geometry,
+           const detinfo::DetectorPropertiesData& detectorProperties,
+           const detinfo::DetectorClocksData&     detectorClocks);
 
   /// Default destructor
   virtual ~RecoBase() {}
@@ -78,9 +78,9 @@ protected:
   // const larutil::GeometryHelper * geoHelper;
   // const larutil::DetectorProperties * detProp;
 
-  const geo::GeometryCore&           _geo_service;
-  const detinfo::DetectorProperties& _det_prop;
-  const detinfo::DetectorClocksData& _det_clock;
+  const geo::GeometryCore&               _geo_service;
+  const detinfo::DetectorPropertiesData& _det_prop;
+  const detinfo::DetectorClocksData&     _det_clock;
 
   std::string _producer;
 
@@ -101,9 +101,9 @@ protected:
 
 
 template <class DATA_TYPE>
-RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore& geometry,
-                               const detinfo::DetectorProperties& detectorProperties,
-                               const detinfo::DetectorClocksData& detectorClocks) :
+RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore&               geometry,
+                               const detinfo::DetectorPropertiesData& detectorProperties,
+                               const detinfo::DetectorClocksData&     detectorClocks) :
   _geo_service(geometry),
   _det_prop(detectorProperties),
   _det_clock(detectorClocks)

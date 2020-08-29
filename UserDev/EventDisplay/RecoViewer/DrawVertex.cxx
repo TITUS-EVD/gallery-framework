@@ -5,9 +5,9 @@
 
 namespace evd {
 
-DrawVertex::DrawVertex(const geo::GeometryCore& geometry,
-                       const detinfo::DetectorProperties& detectorProperties,
-                       const detinfo::DetectorClocksData& detectorClocks) :
+DrawVertex::DrawVertex(const geo::GeometryCore&               geometry,
+                       const detinfo::DetectorPropertiesData& detectorProperties,
+                       const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawVertex";
@@ -33,7 +33,7 @@ bool DrawVertex::initialize() {
 
 bool DrawVertex::analyze(gallery::Event * ev) {
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
   size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 

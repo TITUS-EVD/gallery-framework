@@ -63,9 +63,9 @@ class DrawOpflash : public galleryfmwk::ana_base, public RecoBase<Opflash2D> {
 
 public:
   /// Default constructor
-  DrawOpflash(const geo::GeometryCore& geometry,
-              const detinfo::DetectorProperties& detectorProperties,
-              const detinfo::DetectorClocksData& detectorClocks);
+  DrawOpflash(const geo::GeometryCore&               geometry,
+              const detinfo::DetectorPropertiesData& detectorProperties,
+              const detinfo::DetectorClocksData&     detectorClocks);
 
   /// Default destructor
   ~DrawOpflash();

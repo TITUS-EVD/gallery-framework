@@ -6,9 +6,9 @@
 namespace evd {
 
 
-DrawOpflash::DrawOpflash(const geo::GeometryCore& geometry,
-                         const detinfo::DetectorProperties& detectorProperties,
-                         const detinfo::DetectorClocksData& detectorClocks) :
+DrawOpflash::DrawOpflash(const geo::GeometryCore&               geometry,
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawOpflash";

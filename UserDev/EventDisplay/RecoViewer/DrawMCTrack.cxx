@@ -6,7 +6,7 @@
 namespace evd {
 
 MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
   MCTrack2D result;
   // auto geoHelper = larutil::GeometryHelper::GetME();
   result._track.reserve(track.size());
@@ -29,9 +29,9 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsi
   return result;
 }
 
-DrawMCTrack::DrawMCTrack(const geo::GeometryCore& geometry,
-                         const detinfo::DetectorProperties& detectorProperties,
-                         const detinfo::DetectorClocksData& detectorClocks) :
+DrawMCTrack::DrawMCTrack(const geo::GeometryCore&               geometry,
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawMCTrack";
