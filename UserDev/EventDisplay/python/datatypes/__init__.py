@@ -1,5 +1,6 @@
 from datatypes.database import dataBase, recoBase
 from datatypes.drawableItems import drawableItems
+from datatypes.drawableItems import drawableItemsLive
 # from hit import hit
 # from cluster import cluster
 # from shower import shower

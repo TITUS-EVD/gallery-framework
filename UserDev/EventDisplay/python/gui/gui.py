@@ -1,4 +1,5 @@
 import sys, signal, datetime
+import os, subprocess
 import argparse
 # import collections
 from pyqtgraph.Qt import QtGui, QtCore
@@ -1159,5 +1160,21 @@ class gui(QtGui.QWidget):
     else:
       pixmapImage = super(gui, self).grab()
       pixmapImage.save(f[0],"PNG")
+
+  def get_git_version(self):
+    '''
+    Returns the git version of the repository this file is in.
+
+    Returns a string with the version and a number in parenthesis showing
+    the number of commits after that version (if any)
+    '''
+    version = subprocess.check_output(["git", "describe", "--tags"], cwd=os.path.dirname(__file__))
+    version = version.strip()
+    version = version.decode('ascii')
+    version = version.split('-')
+    if len(version) > 1:
+      return version[0] + ' (' + version[1] + ')'
+    else:
+      return version[0]
 
 

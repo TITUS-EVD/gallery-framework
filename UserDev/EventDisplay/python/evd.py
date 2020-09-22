@@ -34,7 +34,7 @@ def sigintHandler(*args):
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Python based event display.')
+    parser = argparse.ArgumentParser(description='TITUS event display.')
     geom = parser.add_mutually_exclusive_group()
 
     #
@@ -71,9 +71,9 @@ def main():
     parser.add_argument('--table',
                         dest="service_table",
                         help="Name of the FHiCL table where all services are configured")
-    parser.add_argument('-sw', '--split_wire',
+    parser.add_argument('-nosw', '--no_split_wire',
                         action='store_true',
-                        help="Use split wire geometry")
+                        help="Do not use split wire geometry (you also need to pass the right FHiCL)")
 
     #
     # Input file
@@ -111,7 +111,7 @@ def main():
         geom._readoutWindowSize = 7500
         geom.recalculateOffsets()
     elif args.icarus:
-        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties,args.split_wire)
+        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties,args.no_split_wire)
     else:
         geom = geometry.argoneut()
 

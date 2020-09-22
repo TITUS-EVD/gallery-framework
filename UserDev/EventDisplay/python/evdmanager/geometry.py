@@ -493,7 +493,7 @@ class sbnd(geometry):
 class icarus(geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None, split_wire=False):
+    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None, no_split_wire=False):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()
@@ -589,7 +589,7 @@ class icarus(geometry):
             14: [17, 19, 22],
         }
 
-        if split_wire:
+        if not no_split_wire:
             self._split_wire = True
             self._nTPCs = int(self._nTPCs / 2)
             self._plane_mix = {0: [6], 1: [8], 2: [7], 12: [18], 13: [20], 14: [19]}
