@@ -8,27 +8,29 @@
 
 namespace evd {
 
-DrawOpDetWaveform::DrawOpDetWaveform(const geo::GeometryCore& geometry, 
-                                     const detinfo::DetectorProperties& detectorProperties, 
-                                     const detinfo::DetectorClocks& detectorClocks) :
+DrawOpDetWaveform::DrawOpDetWaveform(const geo::GeometryCore&               geometry,
+                                     const detinfo::DetectorPropertiesData& detectorProperties,
+                                     const detinfo::DetectorClocksData&     detectorClocks) :
   _geo_service(geometry),
   _det_prop(detectorProperties),
   _det_clocks(detectorClocks)
 {
   _name = "DrawOpDetWaveform";
   _producer = "opdaq";
-  
+
   _import_array();
 }
 
 
 bool DrawOpDetWaveform::initialize() {
 
-  initDataHolder();
-
   _tick_period = _det_clocks.OpticalClock().TickPeriod();
   _n_op_channels = _geo_service.NOpDets();
   _n_time_ticks = _det_clocks.OpticalClock().FrameTicks() * _n_frames;
+
+  std::cout << "DrawOpDetWaveform::initialize - tick_period: " << _tick_period << " # chan: " << _n_op_channels << ", time ticks: " << _n_time_ticks << std::endl;
+
+  initDataHolder();
 
   return true;
 }
@@ -38,6 +40,8 @@ bool DrawOpDetWaveform::analyze(gallery::Event * ev) {
   art::InputTag op_wvf_tag(_producer);
   auto const & op_wvfs
     = ev -> getValidHandle<std::vector <raw::OpDetWaveform> >(op_wvf_tag);
+
+  std::cout << "OpDetWaveform analyze, op_wvfs size: " << op_wvfs->size() << std::endl;
 
 
   _wvf_data.clear();
@@ -53,6 +57,14 @@ bool DrawOpDetWaveform::analyze(gallery::Event * ev) {
     size_t time_in_ticks = (time + _time_offset) / _tick_period;
 
     int offset = ch * _n_time_ticks;
+
+    std::cout << "  - channel: " << ch << ", time: " << time << ", time_in_ticks: " << time_in_ticks << ", offset: " << offset << std::endl;
+
+    if (ch >= 360)
+    {
+        std::cout << "  ==> ch: " << ch << " continuing" << std::endl;
+        continue;
+    }
 
     size_t i = 0;
     for (short adc : op_wvf) {
@@ -76,6 +88,7 @@ void DrawOpDetWaveform::initDataHolder() {
   // so a tick period of 0.002 mu s
   // int n_op_channels = 600;
   float default_value = -9999.;
+  std::cout << "initializing, # channels: " << _n_op_channels << ", ticks: " << _n_time_ticks << " def: " << default_value << std::endl;
   _wvf_data.clear();
   _wvf_data.resize(_n_op_channels * _n_time_ticks, default_value);
   // for (size_t i = 0; i < n_op_channels; i++) {
@@ -99,6 +112,8 @@ PyObject * DrawOpDetWaveform::getArray() {
     dims[0] = _n_op_channels;
     dims[1] = _n_time_ticks;
     int data_type = NPY_FLOAT;
+
+    std::cout << "Returning array, dims: " << dims[0] << ", " << dims[1] << ", n_dim: " << n_dim << ", data_type: " << data_type << std::endl;
 
     return (PyObject *) PyArray_FromDimsAndData(n_dim, dims, data_type, (char*) & ((_wvf_data)[0]) );
   }

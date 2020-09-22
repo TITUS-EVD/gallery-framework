@@ -85,10 +85,14 @@ def main():
     if args.config_path is not None:
         services.ServiceManager.setConfiguration(args.config_path, args.service_table)
 
-    geometryCore    = services.ServiceManager('Geometry')
-    detProperties   = services.ServiceManager('DetectorProperties')
     detClocks       = services.ServiceManager('DetectorClocks')
+    detProperties   = services.ServiceManager('DetectorProperties')
+    geometryCore    = services.ServiceManager('Geometry')
     lar_properties  = services.ServiceManager('LArProperties')
+
+    detPropData = detProperties.DataFor(detClocks.DataForJob())
+
+    print("NumberTimeSamples:",detPropData.NumberTimeSamples())
 
     app = QtGui.QApplication(sys.argv)
 

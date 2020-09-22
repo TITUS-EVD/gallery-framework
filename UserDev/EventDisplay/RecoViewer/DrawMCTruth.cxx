@@ -5,10 +5,10 @@
 
 namespace evd {
 
-DrawMCTruth::DrawMCTruth(const geo::GeometryCore& geometry, 
-                         const detinfo::DetectorProperties& detectorProperties,
-                         const detinfo::DetectorClocks& detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks) 
+DrawMCTruth::DrawMCTruth(const geo::GeometryCore&               geometry,
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const detinfo::DetectorClocksData&     detectorClocks) :
+    RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawMCTruth";
   _fout = 0;
@@ -38,8 +38,8 @@ bool DrawMCTruth::analyze(gallery::Event *ev) {
 
     mct._nu_pdg = truth.GetNeutrino().Nu().PdgCode();
     mct._nu_energy = truth.GetNeutrino().Nu().E();
-    std::vector<double> vtx = {truth.GetNeutrino().Nu().Vx(), 
-                               truth.GetNeutrino().Nu().Vy(), 
+    std::vector<double> vtx = {truth.GetNeutrino().Nu().Vx(),
+                               truth.GetNeutrino().Nu().Vy(),
                                truth.GetNeutrino().Nu().Vz()};
     mct._vertex = vtx;
     mct._nu_pdg = truth.GetNeutrino().Nu().PdgCode();
@@ -63,7 +63,7 @@ bool DrawMCTruth::analyze(gallery::Event *ev) {
 
   }
 
-  
+
 
   return true;
 }
@@ -75,6 +75,6 @@ bool DrawMCTruth::finalize() {
 
 DrawMCTruth::~DrawMCTruth() {}
 
-} 
+}
 
 #endif

@@ -7,9 +7,12 @@ namespace larutil {
 
 // SimpleGeometryHelper* SimpleGeometryHelper::_me = 0;
 
-SimpleGeometryHelper::SimpleGeometryHelper(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+SimpleGeometryHelper::SimpleGeometryHelper(const geo::GeometryCore&               geometry,
+                                           const detinfo::DetectorPropertiesData& detectorProperties,
+                                           const detinfo::DetectorClocksData&     detectorClocks) :
   geom(geometry),
-  detp(detectorProperties) 
+  detp(detectorProperties),
+  clocks(detectorClocks)
 {
   Reconfigure();
 }
@@ -25,7 +28,7 @@ void SimpleGeometryHelper::Reconfigure()
 
 
   fWireToCm = geom.WirePitch(0, 1, 0);
-  fTimeToCm = detp.SamplingRate() / 1000.0 * detp.DriftVelocity(detp.Efield(), detp.Temperature());
+  fTimeToCm = sampling_rate(clocks) * detp.DriftVelocity(detp.Efield(), detp.Temperature());
 }
 
 
@@ -60,7 +63,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // before the actual spill.
   // So, it moves the "0" farther away from the actual
   // time and is an addition)
-  returnPoint.t += detp.TriggerOffset() * fTimeToCm;
+  returnPoint.t += trigger_offset(clocks) * fTimeToCm;
   // std::cout << "trigger offset, plane " << plane
   //           << ": " << detp.TriggerOffset() * fTimeToCm << std::endl;
   //
@@ -765,8 +768,8 @@ double SimpleGeometryHelper::PerpendicularDistance(const Point2D& pt,
 bool SimpleGeometryHelper::Point_isInTPC(const TVector3 & pointIn3D) const {
 
   // Check against the 3 coordinates:
-  if (pointIn3D.X() > geom.DetHalfWidth() + detp.TriggerOffset() * TimeToCm()
-      || pointIn3D.X() < - geom.DetHalfWidth() - detp.TriggerOffset() * TimeToCm())
+  if (pointIn3D.X() > geom.DetHalfWidth() + trigger_offset(clocks) * TimeToCm()
+      || pointIn3D.X() < - geom.DetHalfWidth() - trigger_offset(clocks) * TimeToCm())
   {
     return false;
   }
@@ -987,7 +990,7 @@ int SimpleGeometryHelper::GetXYZ(const Point2D *p0, const Point2D *p1, Double_t*
   pos[0] = plane_center.X();
   pos[1] = plane_center.Y();
   pos[2] = plane_center.Z();
-  Double_t x = (p0->t) - detp.TriggerOffset() * fTimeToCm + pos[0];
+  Double_t x = (p0->t) - trigger_offset(clocks) * fTimeToCm + pos[0];
   double yz[2];
 
   GetYZ(p0, p1, yz);
@@ -1056,14 +1059,14 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
     // if y out of bounds
     if ( (y < -geom.DetHalfHeight()) or (y> geom.DetHalfHeight()) )
       return false;
-    
+
     // if z out of bounds
     if ( (z < 0) or (z > geom.DetLength()) )
       return false;
-    
+
     return true;
   }
-  
+
   bool SimpleGeometryHelper::Contained(const double& x, const double& y, const double& z) const {
 
     // if x out of bounds
@@ -1080,7 +1083,7 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
 
     return true;
   }
-  
+
 
 } // larutil
 

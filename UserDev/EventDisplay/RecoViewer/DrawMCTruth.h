@@ -60,9 +60,9 @@ class DrawMCTruth : public galleryfmwk::ana_base, public RecoBase<MCTruth> {
 
 public:
   /// Default constructor
-  DrawMCTruth(const geo::GeometryCore& geometry, 
-              const detinfo::DetectorProperties& detectorProperties,
-              const detinfo::DetectorClocks& detectorClocks);
+  DrawMCTruth(const geo::GeometryCore&               geometry,
+              const detinfo::DetectorPropertiesData& detectorProperties,
+              const detinfo::DetectorClocksData&     detectorClocks);
 
   /// Default destructor
   ~DrawMCTruth();

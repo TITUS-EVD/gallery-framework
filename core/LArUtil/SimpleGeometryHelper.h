@@ -25,6 +25,7 @@
 
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorProperties.h"
+#include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
 #include "GeometryHelper.h"
 
@@ -33,12 +34,14 @@ namespace larutil {
 class SimpleGeometryHelper  {
 
 public:
-    
+
     /**
      * @brief Constructor
      * @details Constructor is private.  To access this class, get a pointer using the SimpleGeometryHelper::GetME() function
      */
-    SimpleGeometryHelper(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties);
+    SimpleGeometryHelper(const geo::GeometryCore&               geometry,
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const detinfo::DetectorClocksData&     detectorClocks);
 
     /// Default destructor
     ~SimpleGeometryHelper() {}
@@ -489,7 +492,7 @@ public:
      * @return boolean: true -> contained
      */
     bool ContainedYZ(const double& y, const double& z) const;
-    
+
     /**
      * @brief return whether a point is contained in the TPC boundaries as defined by Geometry.h
      * @return boolean: true -> contained
@@ -499,8 +502,9 @@ public:
 private:
 
     // services to be used
-    const geo::GeometryCore           & geom;
-    const detinfo::DetectorProperties & detp;
+    const geo::GeometryCore               & geom;
+    const detinfo::DetectorPropertiesData & detp;
+    const detinfo::DetectorClocksData     & clocks;
 
     float fTimeToCm;
     float fWireToCm;

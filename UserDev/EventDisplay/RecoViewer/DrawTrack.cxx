@@ -6,11 +6,11 @@
 namespace evd {
 
 Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
-  
+
   Track2D result;
   result._track.reserve(track.NumberTrajectoryPoints());
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
   for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:
@@ -32,9 +32,9 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane, unsigned i
   return result;
 }
 
-DrawTrack::DrawTrack(const geo::GeometryCore& geometry, 
-                     const detinfo::DetectorProperties& detectorProperties,
-                     const detinfo::DetectorClocks& detectorClocks) :
+DrawTrack::DrawTrack(const geo::GeometryCore&               geometry,
+                     const detinfo::DetectorPropertiesData& detectorProperties,
+                     const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawTrack";
@@ -102,10 +102,10 @@ bool DrawTrack::analyze(gallery::Event *ev) {
     }
 
     for (unsigned int p = 0; p < _geo_service.Nplanes(track_tpc); p++) {
-          
+
       int plane = p + track_tpc * _geo_service.Nplanes();
-      plane += track_cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
-          
+      plane += track_cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+
       auto tr = getTrack2D(track, p, track_tpc, track_cryo);
       tr._tpc = track_tpc;
       tr._cryo = track_cryo;

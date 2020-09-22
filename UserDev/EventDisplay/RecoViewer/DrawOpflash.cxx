@@ -6,9 +6,9 @@
 namespace evd {
 
 
-DrawOpflash::DrawOpflash(const geo::GeometryCore& geometry, 
-                         const detinfo::DetectorProperties& detectorProperties,
-                         const detinfo::DetectorClocks& detectorClocks) :
+DrawOpflash::DrawOpflash(const geo::GeometryCore&               geometry,
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawOpflash";
@@ -109,7 +109,7 @@ int DrawOpflash::find_plane(int opch) {
   if (_geo_service.DetectorName() == "sbndv1") {
     if (xyz.X() < 0) return 0;
     if (xyz.X() > 0) return 1;
-  } 
+  }
   return 0;
 
 }

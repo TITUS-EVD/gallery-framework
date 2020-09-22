@@ -5,9 +5,9 @@
 
 namespace evd {
 
-DrawCluster::DrawCluster(const geo::GeometryCore& geometry, 
-                         const detinfo::DetectorProperties& detectorProperties,
-                         const detinfo::DetectorClocks& detectorClocks) :
+DrawCluster::DrawCluster(const geo::GeometryCore&               geometry,
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
   _name = "DrawCluster";
@@ -117,13 +117,13 @@ bool DrawCluster::analyze(gallery::Event * ev) {
     unsigned int plane = cluster.Plane().Plane;
     unsigned int tpc = cluster.Plane().TPC;
     unsigned int cryo = cluster.Plane().Cryostat;
-    
-    // If a second TPC is present, its planes 0, 1 and 2 are 
-    // stored consecutively to those of the first TPC. 
+
+    // If a second TPC is present, its planes 0, 1 and 2 are
+    // stored consecutively to those of the first TPC.
     // So we have planes 0, 1, 2, 3, 4, 5.
     // view = plane + tpc * (geoService->Nplanes() / geoService->NTPC());
     plane += tpc * _geo_service.Nplanes();
-    plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC(); 
+    plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
 
     // Make a new cluster in the data:
     _dataByPlane.at(plane).push_back(Cluster2D());
@@ -154,14 +154,14 @@ bool DrawCluster::analyze(gallery::Event * ev) {
       // Same as above, but for the hit view. Usually hits are in the same
       // plane as the cluster they belong too, although is a particle
       // has been matched across TPCs, the cluster plane is the plane
-      // that contains the majority of hits, and the hits are 
+      // that contains the majority of hits, and the hits are
       // on two planes, one per TPC.
       unsigned int hit_plane = hit->WireID().Plane;
       unsigned int hit_tpc = hit->WireID().TPC;
       unsigned int hit_cryo = hit->WireID().Cryostat;
 
-      // If a second TPC is present, its planes 0, 1 and 2 are 
-      // stored consecutively to those of the first TPC. 
+      // If a second TPC is present, its planes 0, 1 and 2 are
+      // stored consecutively to those of the first TPC.
       // So we have planes 0, 1, 2, 3, 4, 5.
       hit_plane += hit_tpc * _geo_service.Nplanes();
       hit_plane += hit_cryo * _geo_service.Nplanes() * _geo_service.NTPC();

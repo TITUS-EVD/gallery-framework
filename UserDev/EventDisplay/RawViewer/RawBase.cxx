@@ -6,9 +6,9 @@
 namespace evd {
 
 
-RawBase::RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+RawBase::RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties) :
   _geo_service(geometry),
-  _det_prop(detectorProperties) 
+  _det_prop(detectorProperties)
 {
   _import_array();
 }
@@ -38,8 +38,8 @@ const std::vector<float> & RawBase::getDataByPlane(unsigned int p) const {
 }
 
 bool RawBase::fileExists(std::string s){
-  struct stat buffer;   
-  return (stat (s.c_str(), &buffer) == 0); 
+  struct stat buffer;
+  return (stat (s.c_str(), &buffer) == 0);
 }
 
 PyObject * RawBase::getArrayByPlane(unsigned int p) {

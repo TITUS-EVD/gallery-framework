@@ -1,6 +1,7 @@
 
 import ROOT
-from ROOT import larutil, galleryfmwk
+#from ROOT import larutil, galleryfmwk
+from ROOT import galleryfmwk
 import numpy as np
 
 import os
@@ -317,24 +318,26 @@ class geometry(geoBase):
         print ('Configuring geometry from services.')
 
         self._geometryCore = geometryCore
-        self._detectorProperties = detProperties
-        self._detectorClocks = detClocks
+        self._detectorClocks = detClocks.DataForJob()
+        self._detectorProperties = detProperties.DataFor(self._detectorClocks)
         self._lar_properties = lar_properties
 
         self._halfwidth = geometryCore.DetHalfWidth()
         self._halfheight = geometryCore.DetHalfHeight()
         self._length = geometryCore.DetLength()
-        self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
+        #self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
+        self._time2Cm = self._detectorClocks.TPCClock().TickPeriod() * self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature())
         self._wire2Cm = geometryCore.WirePitch()
-        self._samplingRate = detProperties.SamplingRate()
+        self._samplingRate = self._detectorClocks.TPCClock().TickPeriod() * 1000. #detProperties.SamplingRate()
         self._aspectRatio = self._wire2Cm / self._time2Cm
         self._nViews = geometryCore.Nviews() * geometryCore.NTPC() * geometryCore.Ncryostats()
         self._nPlanes = geometryCore.Nplanes()
         self._nTPCs = int(geometryCore.NTPC())
         self._nCryos = int(geometryCore.Ncryostats())
-        self._tRange = detProperties.NumberTimeSamples()
-        self._readoutWindowSize = detProperties.NumberTimeSamples()
-        self._triggerOffset = detProperties.TriggerOffset()
+        self._tRange = self._detectorProperties.NumberTimeSamples()
+        self._readoutWindowSize = self._detectorProperties.NumberTimeSamples()
+        #self._triggerOffset = detProperties.TriggerOffset()
+        self._triggerOffset = self._detectorClocks.TPCClock().Ticks(self._detectorClocks.TriggerOffsetTPC() * -1.)
 
         self._wRange = []
         self._offset = []
@@ -357,6 +360,7 @@ class geometry(geoBase):
                 self._opdet_name.append('arapuca')
             else:
                 self._opdet_name.append('unknown')
+
             # print ('opch', opch, 'shape', geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName())
             # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
 
@@ -411,7 +415,7 @@ class sbnd(geometry):
         self._triggerOffset = 0 #2500
         self._readoutWindowSize = 3000 #7500
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6]
-        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm] 
+        self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm]
         self._cathodeGap = 8.5 / self._time2Cm # 5.3 cm   # 100
 
         color_scheme = [(
@@ -493,7 +497,7 @@ class icarus(geometry):
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
         self._pedestals = [0, 0, 0, 0, 0, 0]
-        self._levels = [(-80, 0), (-10, 100), (-10, 100), (-80, 0), (-10, 100), (-10, 100)]
+        self._levels = [(-10, 10), (-10, 10), (-10, 10), (-10, 10), (-10, 10), (-10, 10)]
         self._view_names = ['H', 'U', 'V']
         # self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
         self._plane_mix = {0: [3], 1: [5], 2: [4], 6: [9], 7: [11], 8: [10]}
@@ -520,8 +524,8 @@ class icarus(geometry):
         self._cathodeGap = 6 / self._time2Cm # 5.3 cm   # 100
 
         color_scheme = [(
-            {'ticks': [(1, (255, 255, 255, 255)),
-                       (0, (0, 0, 0, 255))],
+            {'ticks': [(0, (255, 255, 255, 255)),
+                       (1, (0, 0, 0, 255))],
              'mode': 'rgb'})]
         color_scheme.append(
             {'ticks': [(0, (255, 255, 255, 255)),
@@ -608,10 +612,10 @@ class icarus(geometry):
                 self._wRange[v] = self._wRange[v] * 2 + self._cathodeGap
 
     def opdetToTPC(self, ch):
-        if (self._opdet_x[ch] < -100): 
+        if (self._opdet_x[ch] < -100):
             return 0
         elif (self._opdet_x[ch] > -100 and self._opdet_x[ch] < 0):
-            return 1 
+            return 1
         elif (self._opdet_x[ch] > 0 and self._opdet_x[ch] < 100):
             return 2
         else:

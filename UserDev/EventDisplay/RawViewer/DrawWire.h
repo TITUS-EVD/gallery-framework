@@ -2,7 +2,7 @@
  * \file DrawWire.h
  *
  * \ingroup EventViewer
- * 
+ *
  * \brief Class def header for a class DrawWire
  *
  * @author cadams
@@ -34,26 +34,26 @@ namespace evd {
      User custom analysis class made by SHELL_USER_NAME
    */
   class DrawWire : public galleryfmwk::ana_base, public RawBase{
-  
+
   public:
 
     /// Default constructor
-    DrawWire(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& DetectorProperties);
+    DrawWire(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& DetectorProperties);
 
     /// Default destructor
     virtual ~DrawWire(){}
 
     /** IMPLEMENT in DrawWire.cc!
         Initialization method to be called before the analysis event loop.
-    */ 
+    */
     virtual bool initialize();
 
-    /** IMPLEMENT in DrawWire.cc! 
-        Analyze a data event-by-event  
+    /** IMPLEMENT in DrawWire.cc!
+        Analyze a data event-by-event
     */
     virtual bool analyze(gallery::Event * event);
 
-    /** IMPLEMENT in DrawWire.cc! 
+    /** IMPLEMENT in DrawWire.cc!
         Finalize method to be called after all events processed.
     */
     virtual bool finalize();
@@ -71,11 +71,11 @@ namespace evd {
 #endif
 
 //**************************************************************************
-// 
+//
 // For Analysis framework documentation, read Manual.pdf here:
 //
 // http://microboone-docdb.fnal.gov:8080/cgi-bin/ShowDocument?docid=3183
 //
 //**************************************************************************
 
-/** @} */ // end of doxygen group 
+/** @} */ // end of doxygen group

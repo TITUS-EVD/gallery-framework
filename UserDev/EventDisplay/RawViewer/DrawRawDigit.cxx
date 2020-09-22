@@ -5,7 +5,7 @@
 
 namespace evd {
 
-DrawRawDigit::DrawRawDigit(const geo::GeometryCore& geometry, const detinfo::DetectorProperties& detectorProperties) :
+DrawRawDigit::DrawRawDigit(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties) :
   RawBase(geometry, detectorProperties)
 {
   _name = "DrawRawDigit";

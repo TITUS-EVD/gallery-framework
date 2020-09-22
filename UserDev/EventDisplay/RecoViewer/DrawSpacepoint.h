@@ -35,9 +35,9 @@ namespace evd {
 public:
 
     /// Default constructor
-    DrawSpacepoint(const geo::GeometryCore& geometry, 
-                   const detinfo::DetectorProperties& detectorProperties,
-                   const detinfo::DetectorClocks& detectorClocks);
+    DrawSpacepoint(const geo::GeometryCore&               geometry,
+                   const detinfo::DetectorPropertiesData& detectorProperties,
+                   const detinfo::DetectorClocksData&     detectorClocks);
 
     /// Default destructor
     ~DrawSpacepoint();
