@@ -41,7 +41,7 @@ class opticalviewport(QtGui.QWidget):
         p.set_time_range(self._time_window.getRegion())
 
     self.add_button_layout()
-    
+
     self._wf_view.setMaximumHeight(200)
     self._wf_view.setMinimumHeight(200)
 
@@ -57,23 +57,42 @@ class opticalviewport(QtGui.QWidget):
 
   def add_button_layout(self):
 
+    self._bg1 = QtGui.QButtonGroup(self)
     self._tpc_all_button = QtGui.QRadioButton("All Cryos and TPCs")
     self._tpc_all_button.setToolTip("Shows all TPCs.")
-    self._tpc_all_button.clicked.connect(self.viewSelectionWorker) 
+    self._tpc_all_button.clicked.connect(self.viewSelectionWorker)
+    self._bg1.addButton(self._tpc_all_button)
 
     self._tpc_buttons = []
     for cryo in range(self._geometry.nCryos()):
         for tpc in range(self._geometry.nTPCs()):
             tpc_button = QtGui.QRadioButton("Cryo "+str(cryo)+", TPC "+str(tpc))
             tpc_button.setToolTip("Shows only Cryo "+str(cryo)+", TPC "+str(tpc))
-            tpc_button.clicked.connect(self.viewSelectionWorker) 
+            tpc_button.clicked.connect(self.viewSelectionWorker)
+            self._bg1.addButton(tpc_button)
             self._tpc_buttons.append(tpc_button)
-    
+
     self._buttonLayout = QtGui.QHBoxLayout()
 
     self._buttonLayout.addWidget(self._tpc_all_button)
     for item in self._tpc_buttons:
         self._buttonLayout.addWidget(item)
+
+
+    self._bg2 = QtGui.QButtonGroup(self)
+    txt = QtGui.QLabel("Show:")
+    self._show_raw_btn = QtGui.QRadioButton("Raw Data")
+    self._show_raw_btn.clicked.connect(self._raw_flash_switch_worker)
+    self._show_raw_btn.setChecked(True)
+    self._bg2.addButton(self._show_raw_btn)
+    self._show_flash_btn = QtGui.QRadioButton("Flashes")
+    self._show_flash_btn.clicked.connect(self._raw_flash_switch_worker)
+    self._bg2.addButton(self._show_flash_btn)
+
+    self._raw_flash_btn_layout = QtGui.QHBoxLayout()
+    self._raw_flash_btn_layout.addWidget(txt)
+    self._raw_flash_btn_layout.addWidget(self._show_raw_btn)
+    self._raw_flash_btn_layout.addWidget(self._show_flash_btn)
 
 
     # self._time_range_layout = QtGui.QHBoxLayout()
@@ -92,13 +111,14 @@ class opticalviewport(QtGui.QWidget):
     # self._time_range.minValueChanged.connect(self.time_range_worker)
     # self._time_range.maxValueChanged.connect(self.time_range_worker)
     # self._time_range.startValueChanged.connect(self.time_range_worker)
-    # self._time_range.endValueChanged.connect(self.time_range_worker)    
+    # self._time_range.endValueChanged.connect(self.time_range_worker)
     # self._time_range_layout.addWidget(self._time_range)
 
     # for p in self._pmts:
     #     p.set_time_range(self._time_range.getRange())
 
     self._totalLayout.addLayout(self._buttonLayout)
+    self._totalLayout.addLayout(self._raw_flash_btn_layout)
     # self._totalLayout.addLayout(self._time_range_layout)
     # self._totalLayout.addWidget(self._time_range_title)
     # self._totalLayout.addWidget(self._time_range)
@@ -118,6 +138,13 @@ class opticalviewport(QtGui.QWidget):
         if self.sender() == self._tpc_buttons[i]:
             self._wf_view.setVisible(True)
             self._opdet_views[i].setVisible(True)
+
+  def _raw_flash_switch_worker(self):
+    if self.sender() == self._show_raw_btn:
+        self._show_raw = True
+    else:
+        self._show_raw = False
+
 
   def time_range_worker(self):
     # for p in self._pmts:
