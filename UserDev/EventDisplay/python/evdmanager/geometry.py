@@ -355,9 +355,9 @@ class geometry(geoBase):
             self._opdet_z.append(xyz.Z())
             shape_name = geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName()
             if shape_name == 'TGeoSphere':
-                self._opdet_name.append('pmt')
+                self._opdet_name.append('pmt_coated')
             elif shape_name == 'TGeoBBox':
-                self._opdet_name.append('arapuca')
+                self._opdet_name.append('xarapuca_vis')
             else:
                 self._opdet_name.append('unknown')
 
