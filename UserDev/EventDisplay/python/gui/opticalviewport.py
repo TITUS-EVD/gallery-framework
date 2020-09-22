@@ -175,7 +175,7 @@ class opticalviewport(QtGui.QWidget):
         these_pmts.sigClicked.connect(self.pmtClickWorker)
         these_pmts.scene().sigMouseMoved.connect(these_pmts.onMove)
 
-        these_arapucas = Arapucas(self._geometry, tpc=tpc)
+        these_arapucas = Arapucas(self._geometry, tpc=tpc, pmtscale=this_scale)
         opdet_plot.addItem(these_arapucas)
         these_arapucas.sigClicked.connect(self.arapucaClickWorker)
         these_arapucas.scene().sigMouseMoved.connect(these_arapucas.onMove)
@@ -306,21 +306,21 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
 
     self._data = data
 
-    opdets_name = self._geometry.opdetName()
+    # opdets_name = self._geometry.opdetName()
 
-    data_x = np.linspace(-1250, 2500, len(data[0]))
+    # data_x = np.linspace(-1250, 2500, len(data[0]))
 
-    counter = 0
-    for ch in range(0, len(opdets_name)):
-        name = opdets_name[ch]
+    # counter = 0
+    # for ch in range(0, len(opdets_name)):
+    #     name = opdets_name[ch]
 
-        if name == 'pmt':
-            data_y = data[ch]
-            data_y = data_y + counter * offset
-            # self._wf_plot.plot(x=data_x, y=data_y)
-            counter += 1
-            if counter > 7:
-                break
+    #     if name == 'pmt':
+    #         data_y = data[ch]
+    #         data_y = data_y + counter * offset
+    #         # self._wf_plot.plot(x=data_x, y=data_y)
+    #         counter += 1
+    #         if counter > 7:
+    #             break
 
     self._wf_plot.autoRange()
 
