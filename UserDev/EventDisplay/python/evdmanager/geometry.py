@@ -364,6 +364,7 @@ class geometry(geoBase):
                 self._opdet_name.append('arapuca')
             else:
                 self._opdet_name.append('unknown')
+
             # print ('opch', opch, 'shape', geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName())
             # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
 

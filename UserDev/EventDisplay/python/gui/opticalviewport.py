@@ -230,13 +230,10 @@ class opticalviewport(QtGui.QWidget):
 
 
 _bordercol_ = {
-    'pmt'        : (255,255,255,255),
-    'barepmt'    : (0,0,255,255),
-    'arapucaT1'  : (34,139,34), 
-    'arapucaT2'  : (34,139,34), 
-    'xarapuca'   : (34,139,34), 
-    'xarapucaT1' : (34,139,34), 
-    'xarapucaT2' : (34,139,34)
+    'pmt_coated'    : (255,255,255,255),
+    'pmt_uncoated'  : (0,0,255,255),
+    'xarapuca_vuv'  : (34,139,34),
+    'xarapuca_vis'  : (34,139,34),
 }
 
 class pmts(pg.ScatterPlotItem):
@@ -273,7 +270,7 @@ class pmts(pg.ScatterPlotItem):
     opdets_name = self._geom.opdetName()
     diameter = self._geom.opdetRadius() * 2
 
-    names = ['pmt', 'barepmt']
+    names = ['pmt_coated', 'pmt_uncoated']
 
     brush = (0,0,0,0)
 
@@ -423,7 +420,7 @@ class arapucas(pg.ScatterPlotItem):
     opdets_name = self._geom.opdetName()
     size = 6
 
-    names = ['arapucaT1', 'arapucaT2', 'xarapuca', 'xarapucaT1', 'xarapucaT2']
+    names = ['xarapuca_vis', 'xarapuca_vuv', 'xarapuca', 'xarapucaT1', 'xarapucaT2']
 
     brush = (0,0,0,0)
 
