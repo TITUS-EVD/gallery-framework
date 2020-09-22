@@ -84,6 +84,7 @@ class opticalviewport(QtGui.QWidget):
     self._show_raw_btn = QtGui.QRadioButton("Raw Data")
     self._show_raw_btn.clicked.connect(self._raw_flash_switch_worker)
     self._show_raw_btn.setChecked(True)
+    self._show_raw = True
     self._bg2.addButton(self._show_raw_btn)
     self._show_flash_btn = QtGui.QRadioButton("Flashes")
     self._show_flash_btn.clicked.connect(self._raw_flash_switch_worker)
@@ -168,7 +169,7 @@ class opticalviewport(QtGui.QWidget):
 
         this_scale = pg.GradientEditorItem(orientation='right')
         self._opdet_views[tpc].addItem(this_scale, 0, 1)
-    
+
         these_pmts = Pmts(self._geometry, tpc=tpc, pmtscale=this_scale)
         opdet_plot.addItem(these_pmts)
         these_pmts.sigClicked.connect(self.pmtClickWorker)
@@ -187,6 +188,10 @@ class opticalviewport(QtGui.QWidget):
 
   def drawOpDetWvf(self, data):
     self._wf_view.drawOpDetWvf(data)
+
+    if self._show_raw:
+        for p in self._pmts:
+            p.show_raw_data(data)
 
 
   def setFlashesForPlane(self, p, flashes):
@@ -269,7 +274,7 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
     self._wf_plot = pg.PlotItem(name="OpDetWaveform")
     self._wf_plot.setLabel(axis='left', text='ADC')
     self._wf_plot.setLabel(axis='bottom', text='Time [us]')
-    # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical) 
+    # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical)
     # self._wf_plot.addItem(self._wf_linear_region)
     self.addItem(self._wf_plot)
 
@@ -287,7 +292,7 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
   #   for d in range(0, len(opdets_x)):
   #       # print('Adding opdet', opdets_x[d], opdets_y[d], diameter, diameter)
   #       self._opdet_circles.append(QtGui.QGraphicsEllipseItem(opdets_z[d], opdets_y[d], diameter, diameter))
-        
+
   #       if opdets_name[d] == 'pmt':
   #           self._opdet_circles[d].setPen(pg.mkPen('r'))
   #       if opdets_name[d] == 'barepmt':

@@ -1,4 +1,5 @@
 import pyqtgraph as pg
+import numpy as np
 
 _bordercol_ = {
     'pmt_coated'    : (255,255,255,255),
@@ -150,6 +151,28 @@ class OpticalElements(pg.ScatterPlotItem):
     self.addPoints(self._opdet_circles)
 
     # print ('Displaying', n_drawn_flashes, 'flashes.')
+
+  def show_raw_data(self, data):
+    self._data = data
+
+    pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
+
+    for element in self._opdet_circles:
+        ch = element['data']['id']
+        data_y = self._data[ch]
+
+        # Remove the dafault values from the entries to be plotted
+        default_value_indexes = np.where(data_y == self._geom.opdetDefaultValue())
+        data_y = np.delete(data_y, default_value_indexes)
+
+        amplitude = data_y.max() - data_y.min()
+
+        pe_per_opdet[ch] = amplitude
+
+    max_pe = np.max(pe_per_opdet)
+    self._opdet_circles = self.get_opdet_circles(pe_per_opdet, max_pe)
+    self.clear()
+    self.addPoints(self._opdet_circles)
 
 
 
