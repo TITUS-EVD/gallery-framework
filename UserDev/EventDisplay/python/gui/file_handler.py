@@ -36,6 +36,8 @@ class FileHandler():
         self._timer.setInterval(self._delay * 1000)
         self._timer.timeout.connect(self._callback)
 
+        self._callback()
+
         if self._do_check:
             self._start_timer()
 

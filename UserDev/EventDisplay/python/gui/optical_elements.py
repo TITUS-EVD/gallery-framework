@@ -4,6 +4,8 @@ import numpy as np
 _bordercol_ = {
     'pmt_coated'    : (255,255,255,255),
     'pmt_uncoated'  : (0,0,255,255),
+    'arapuca_vuv'  : (34,139,34),
+    'arapuca_vis'  : (34,139,34),
     'xarapuca_vuv'  : (34,139,34),
     'xarapuca_vis'  : (34,139,34),
 }
@@ -20,9 +22,10 @@ class OpticalElements(pg.ScatterPlotItem):
     self._tpc = tpc
     self._pmtscale = pmtscale
 
-    self._names = ['pmt_coated', 'pmt_uncoated']
-    self._size = 10
-    self._symbol = 'o'
+    # self._names = ['pmt_coated', 'pmt_uncoated']
+    # self._size = 10
+    # self._symbol = 'o'
+    # self._line_width = 2
 
     self._start_time = 0
     self._end_time = 10
@@ -60,14 +63,16 @@ class OpticalElements(pg.ScatterPlotItem):
                 if pe is not None:
                     brush = self._pmtscale.colorMap().map(pe[d]/max_pe)
 
-                # print(f'OpCh{d}: [{opdets_x[d]}, {opdets_y[d]}, {opdets_z[d]}]')
+                # print(f'{self._names}  OpCh{d}: [{opdets_x[d]}, {opdets_y[d]}, {opdets_z[d]}]')
 
                 self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
                                             'size'   : self._size,
-                                            'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2},
+                                            'pen'    : {'color': _bordercol_[opdets_name[d]],
+                                                        'width': self._line_width},
                                             'brush'  : brush,
                                             'symbol' : self._symbol,
-                                            'data'   : {'id': d, 'highlight': False}})
+                                            'data'   : {'id': d,
+                                                        'highlight': False}})
     self._opdets_name = opdets_name
     self._opdets_x = opdets_x
     self._opdets_y = opdets_y
@@ -161,11 +166,17 @@ class OpticalElements(pg.ScatterPlotItem):
         ch = element['data']['id']
         data_y = self._data[ch]
 
+        if len(data_y) == 0:
+            continue
+
         # Remove the dafault values from the entries to be plotted
         default_value_indexes = np.where(data_y == self._geom.opdetDefaultValue())
         data_y = np.delete(data_y, default_value_indexes)
 
-        amplitude = data_y.max() - data_y.min()
+        try:
+            amplitude = data_y.max() - data_y.min()
+        except:
+            continue
 
         pe_per_opdet[ch] = amplitude
 
@@ -186,8 +197,9 @@ class Pmts(OpticalElements):
   def __init__(self, geom, tpc=0, pmtscale=None):
 
     self._names = ['pmt_coated', 'pmt_uncoated']
-    self._size = 6
+    self._size = 10
     self._symbol = 'o'
+    self._line_width = 2
     super(Pmts, self).__init__(geom, tpc, pmtscale)
 
 
@@ -198,7 +210,8 @@ class Arapucas(OpticalElements):
   '''
   def __init__(self, geom, tpc=0, pmtscale=None):
 
-    self._names = ['pmt_coated', 'pmt_uncoated']
+    self._names = ['xarapuca_vuv', 'xarapuca_vis', 'arapuca_vuv', 'arapuca_vis']
     self._size = 6
     self._symbol = 's'
+    self._line_width = 1
     super(Arapucas, self).__init__(geom, tpc, pmtscale)

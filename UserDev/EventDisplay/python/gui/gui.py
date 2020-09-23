@@ -515,6 +515,7 @@ class gui(QtGui.QWidget):
     self._subrunLabel.setText(subrunLabel)
     
     self._view_manager.drawPlanes(self._event_manager)
+    self._view_manager.drawOpDetWvf(self._event_manager)
     self.autoRangeWorker()
 
   # This function prepares the buttons such as prev, next, etc and returns a layout
@@ -1110,6 +1111,7 @@ class gui(QtGui.QWidget):
 
     # ask the view manager to draw the planes:
     self._view_manager.drawPlanes(self._event_manager)
+    self._view_manager.drawOpDetWvf(self._event_manager)
 
 
     self.setGeometry(0, 0, 2400/2, 1600/2)
