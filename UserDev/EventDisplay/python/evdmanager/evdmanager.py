@@ -328,7 +328,7 @@ class evd_manager_base(manager, QtCore.QObject):
                     while event != self._data_manager.eventEntry():
                         self._data_manager.next()
         else:
-            print("Selected event is too high")
+            print(f"Selected event is too high. You have requested event {event}, but there is a maximum of {self._n_entries}.")
             return
 
         self.setEvent(self._data_manager.eventEntry())
