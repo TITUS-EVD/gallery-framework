@@ -25,6 +25,7 @@ class OpticalElements(pg.ScatterPlotItem):
     # self._names = ['pmt_coated', 'pmt_uncoated']
     # self._size = 10
     # self._symbol = 'o'
+    # self._line_width = 2
 
     self._start_time = 0
     self._end_time = 10
@@ -66,10 +67,12 @@ class OpticalElements(pg.ScatterPlotItem):
 
                 self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
                                             'size'   : self._size,
-                                            'pen'    : {'color': _bordercol_[opdets_name[d]], 'width': 2},
+                                            'pen'    : {'color': _bordercol_[opdets_name[d]],
+                                                        'width': self._line_width},
                                             'brush'  : brush,
                                             'symbol' : self._symbol,
-                                            'data'   : {'id': d, 'highlight': False}})
+                                            'data'   : {'id': d,
+                                                        'highlight': False}})
     self._opdets_name = opdets_name
     self._opdets_x = opdets_x
     self._opdets_y = opdets_y
@@ -196,6 +199,7 @@ class Pmts(OpticalElements):
     self._names = ['pmt_coated', 'pmt_uncoated']
     self._size = 10
     self._symbol = 'o'
+    self._line_width = 2
     super(Pmts, self).__init__(geom, tpc, pmtscale)
 
 
@@ -209,4 +213,5 @@ class Arapucas(OpticalElements):
     self._names = ['xarapuca_vuv', 'xarapuca_vis', 'arapuca_vuv', 'arapuca_vis']
     self._size = 6
     self._symbol = 's'
+    self._line_width = 1
     super(Arapucas, self).__init__(geom, tpc, pmtscale)

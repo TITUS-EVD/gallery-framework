@@ -5,7 +5,7 @@ import numpy as np
 import math
 
 from .qrangeslider import QRangeSlider
-from .optical_elements import Pmts, Arapucas
+from .optical_elements import Pmts, Arapucas, _bordercol_
 
 class opticalviewport(QtGui.QWidget):
   def __init__(self, geometry, plane=-1):
@@ -34,7 +34,7 @@ class opticalviewport(QtGui.QWidget):
 
     self._flash_time_view = flash_time_view(self._geometry)
     self._totalLayout.addWidget(self._flash_time_view)
-    self._time_window = pg.LinearRegionItem(values=[0,10], orientation=pg.LinearRegionItem.Vertical) 
+    self._time_window = pg.LinearRegionItem(values=[0,10], orientation=pg.LinearRegionItem.Vertical)
     self._time_window.sigRegionChangeFinished.connect(self.time_range_worker)
     self._flash_time_view.connectTimeWindow(self._time_window)
     for p in self._pmts:
@@ -190,8 +190,9 @@ class opticalviewport(QtGui.QWidget):
     self._wf_view.drawOpDetWvf(data)
 
     if self._show_raw:
-        for p in self._pmts:
+        for p, a in zip(self._pmts, self._arapucas):
             p.show_raw_data(data)
+            a.show_raw_data(data)
 
 
   def setFlashesForPlane(self, p, flashes):
@@ -245,9 +246,9 @@ class opticalviewport(QtGui.QWidget):
 
   def arapucaClickWorker(self, plot, points):
     for p in self._last_clicked_arapucas:
-      p.setPen('g', width=2)
+      p.setPen(_bordercol_['arapuca_vuv'], width=1)
     for p in points:
-      p.setPen('r', width=4)
+      p.setPen('g', width=2)
       self._selected_ch = p.data()['id']
 
     self._last_clicked_arapucas = points
