@@ -28,7 +28,7 @@ bool DrawOpDetWaveform::initialize() {
   _n_op_channels = _geo_service.NOpDets();
   _n_time_ticks = _det_clocks.OpticalClock().FrameTicks() * _n_frames;
 
-  std::cout << "DrawOpDetWaveform::initialize - tick_period: " << _tick_period << " # chan: " << _n_op_channels << ", time ticks: " << _n_time_ticks << std::endl;
+  std::cout << "DrawOpDetWaveform::initialize - n_frames: " << _n_frames << " tick_period: " << _tick_period << " # chan: " << _n_op_channels << ", time ticks: " << _n_time_ticks << std::endl;
 
   initDataHolder();
 
@@ -43,6 +43,19 @@ bool DrawOpDetWaveform::analyze(gallery::Event * ev) {
 
   std::cout << "OpDetWaveform analyze, op_wvfs size: " << op_wvfs->size() << std::endl;
 
+  int n_ticks;
+  for (auto const& op_wvf : *op_wvfs) {
+    n_ticks = op_wvf.size();
+    break;
+  }
+  std::cout << "Waveform lenght: " << n_ticks << ", in us: " << n_ticks * _tick_period << std::endl;
+
+  // if (n_ticks != _n_time_ticks) {
+  //   std::cout << "I see your waveform has " << n_ticks << " time ticks," << std::endl;
+  //   std::cout << "but from the optical clock service it should have " << _n_time_ticks << std::endl;
+  //   std::cout << "I will continue assuming " << n_ticks << std::endl;
+  //   _n_time_ticks = n_ticks;
+  // }
 
   _wvf_data.clear();
   initDataHolder();
@@ -58,11 +71,11 @@ bool DrawOpDetWaveform::analyze(gallery::Event * ev) {
 
     int offset = ch * _n_time_ticks;
 
-    std::cout << "  - channel: " << ch << ", time: " << time << ", time_in_ticks: " << time_in_ticks << ", offset: " << offset << std::endl;
+    // std::cout << "  - channel: " << ch << ", time: " << time << ", time_in_ticks: " << time_in_ticks << ", offset: " << offset << std::endl;
 
     if (ch >= 360)
     {
-        std::cout << "  ==> ch: " << ch << " continuing" << std::endl;
+        // std::cout << "  ==> ch: " << ch << " continuing" << std::endl;
         continue;
     }
 
