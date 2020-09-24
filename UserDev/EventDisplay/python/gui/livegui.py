@@ -11,7 +11,7 @@ class livegui(gui):
     Live GUI
     """
 
-    def __init__(self, geometry, manager=None, app=None, file_dir='./'):
+    def __init__(self, geometry, manager=None, app=None, file_dir='./', search_pattern='*.root'):
         super(livegui, self).__init__(geometry)
         if manager is None:
             manager = live_evd_manager_2D(geometry)
@@ -23,6 +23,7 @@ class livegui(gui):
         self._minFileUpdateTime = 180 # Seconds
 
         self._file_handler = FileHandler(filedir=file_dir,
+                                         search_pattern=search_pattern,
                                          ev_manager=self._event_manager,
                                          delay=self._minFileUpdateTime)
 

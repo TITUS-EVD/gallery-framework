@@ -9,6 +9,7 @@ class FileHandler():
 
     def __init__(self,
                  filedir,
+                 search_pattern,
                  ev_manager,
                  delay=180,
                  do_check=False,
@@ -16,6 +17,7 @@ class FileHandler():
         '''
 
         - filedir: the directory where to look for files
+        - search_pattern: the pattern used to reach for files
         - ev_manager: the ene=vent manager
         - delay: the delay for checking new files (seconds)
         - do_check: checks for new files
@@ -23,6 +25,7 @@ class FileHandler():
         '''
 
         self._filedir = filedir
+        self._search_pattern = search_pattern
         self._event_manager = ev_manager
         self._message_bar = None
         self._delay = delay
@@ -108,7 +111,7 @@ class FileHandler():
         '''
         Gets all the files in dir _filedir in order of creation (latest last)
         '''
-        files = list(filter(os.path.isfile, glob.glob(self._filedir + "/*")))
+        files = list(filter(os.path.isfile, glob.glob(self._filedir + '/' + self._search_pattern)))
         files.sort(key=lambda x: os.path.getmtime(x))
         return files
 

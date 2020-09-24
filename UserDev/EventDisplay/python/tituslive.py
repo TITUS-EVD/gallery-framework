@@ -76,11 +76,16 @@ def main():
                         help="Do not use split wire geometry (you also need to pass the right FHiCL)")
 
     #
-    # File dir
+    # File dir and search pattern
     #
-    parser.add_argument('-fd', '--file_directory',
+    parser.add_argument('-fd', '--file-directory',
                         help="The directory where to look for new files",
                         required=True)
+    parser.add_argument('-sp', '--search-pattern',
+                        help="The serach pattern used to find files",
+                        default='*-decoded.root',
+                        type=str,
+                        required=False)
 
     #
     # Input file
@@ -131,7 +136,7 @@ def main():
     manager = live_evd_manager_2D(geom)
     manager.setInputFiles(args.file)
 
-    thisgui = livegui(geom, manager, app, args.file_directory)
+    thisgui = livegui(geom, manager, app, args.file_directory, args.search_pattern)
     # manager.goToEvent(0)
 
     signal.signal(signal.SIGINT, sigintHandler)
