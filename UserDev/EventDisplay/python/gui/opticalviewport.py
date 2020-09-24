@@ -333,7 +333,9 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
 
     self._wf_plot.clear()
 
-    data_x = np.linspace(-1250, 2500, len(self._data[0]))
+    # n_time_ticks = self._geometry.getDetectorClocks().OpticalClock().FrameTicks() * self._geometry.nOpticalFrames()
+    data_x = np.arange(len(self._data[ch]))
+    # data_x = np.linspace(-1250, 2500, len(self._data[0]))
     data_y = self._data[ch]
 
     # Remove the dafault values from the entries to be plotted
@@ -360,7 +362,7 @@ class flash_time_view(pg.GraphicsLayoutWidget):
 
     self._time_plot = pg.PlotItem(name="OpFlash Times")
     self._time_plot.setLabel(axis='left', text='Flashes')
-    self._time_plot.setLabel(axis='bottom', text='Time [us]')
+    self._time_plot.setLabel(axis='bottom', text='Ticks')
 
     self.addItem(self._time_plot)
 
