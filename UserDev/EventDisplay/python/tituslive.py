@@ -83,7 +83,7 @@ def main():
                         required=True)
     parser.add_argument('-sp', '--search-pattern',
                         help="The serach pattern used to find files",
-                        default='*-decoded.root',
+                        default='*decoded.root',
                         type=str,
                         required=False)
 
