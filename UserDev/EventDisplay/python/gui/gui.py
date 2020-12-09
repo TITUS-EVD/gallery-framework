@@ -531,18 +531,18 @@ class gui(QtGui.QWidget):
     self._eventLabel = QtGui.QLabel("Event: 0")
     self._subrunLabel = QtGui.QLabel("Subrun: 0")
 
-    # Jump to the next event
-    self._nextButton = QtGui.QPushButton("Next")
-    self._nextButton.clicked.connect(self._event_manager.next)
-    self._nextButton.setToolTip("Move to the next event.")
     # Go to the previous event
     self._prevButton = QtGui.QPushButton("Previous")
     self._prevButton.clicked.connect(self._event_manager.prev)
     self._prevButton.setToolTip("Move to the previous event.")
-    # Pack Next and Previous in a horizontal layout
-    self._nextPreviousLayout = QtGui.QHBoxLayout()
-    self._nextPreviousLayout.addWidget(self._nextButton)
-    self._nextPreviousLayout.addWidget(self._prevButton)
+    # Jump to the next event
+    self._nextButton = QtGui.QPushButton("Next")
+    self._nextButton.clicked.connect(self._event_manager.next)
+    self._nextButton.setToolTip("Move to the next event.")
+    # Pack Previous and Next in a horizontal layout
+    self._previousNextLayout = QtGui.QHBoxLayout()
+    self._previousNextLayout.addWidget(self._prevButton)
+    self._previousNextLayout.addWidget(self._nextButton)
 
     # Select a file to use
     self._fileSelectButton = QtGui.QPushButton("Select File")
@@ -564,9 +564,9 @@ class gui(QtGui.QWidget):
     self._eventControlBox.addWidget(self._eventLabel)
     self._eventControlBox.addWidget(self._runLabel)
     self._eventControlBox.addWidget(self._subrunLabel)
-    # self._eventControlBox.addWidget(self._nextButton)
     # self._eventControlBox.addWidget(self._prevButton)
-    self._eventControlBox.addLayout(self._nextPreviousLayout)
+    # self._eventControlBox.addWidget(self._nextButton)
+    self._eventControlBox.addLayout(self._previousNextLayout)
     self._eventControlBox.addWidget(self._fileSelectButton)
 
     return self._eventControlBox
@@ -1121,11 +1121,11 @@ class gui(QtGui.QWidget):
     self._view_manager.setRangeToMax()
 
   def keyPressEvent(self,e):
-    if e.key() == QtCore.Qt.Key_N:
-      self._event_manager.next()
-      return
     if e.key() == QtCore.Qt.Key_P:
       self._event_manager.prev()
+      return
+    if e.key() == QtCore.Qt.Key_N:
+      self._event_manager.next()
       return
     if e.key() == QtCore.Qt.Key_C:
       # print "C was pressed"

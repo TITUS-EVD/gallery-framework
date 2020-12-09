@@ -173,15 +173,15 @@ class gui3D(QtGui.QWidget):
     self._eventLabel = QtGui.QLabel("Ev.: 0")
     self._subrunLabel = QtGui.QLabel("Subrun: 0")
 
+    # Go to the previous event
+    self._prevButton = QtGui.QPushButton("Previous")
+    self._prevButton.clicked.connect(self._event_manager.prev)
+    self._prevButton.setToolTip("Move to the previous event.")
     # Jump to the next event
     self._nextButton = QtGui.QPushButton("Next")
     # self._nextButton.setStyleSheet("background-color: red")
     self._nextButton.clicked.connect(self._event_manager.next)
     self._nextButton.setToolTip("Move to the next event.")
-    # Go to the previous event
-    self._prevButton = QtGui.QPushButton("Previous")
-    self._prevButton.clicked.connect(self._event_manager.prev)
-    self._prevButton.setToolTip("Move to the previous event.")
     # Select a file to use
     self._fileSelectButton = QtGui.QPushButton("Select File")
     self._fileSelectButton.clicked.connect(self._event_manager.selectFile)
@@ -202,8 +202,8 @@ class gui3D(QtGui.QWidget):
     self._eventControlBox.addWidget(self._eventLabel)
     self._eventControlBox.addWidget(self._runLabel)
     self._eventControlBox.addWidget(self._subrunLabel)
-    self._eventControlBox.addWidget(self._nextButton)
     self._eventControlBox.addWidget(self._prevButton)
+    self._eventControlBox.addWidget(self._nextButton)
     self._eventControlBox.addWidget(self._fileSelectButton)
 
     return self._eventControlBox
@@ -495,11 +495,11 @@ class gui3D(QtGui.QWidget):
     self._view_manager.setRangeToMax()
 
   def keyPressEvent(self,e):
-    if e.key() == QtCore.Qt.Key_N:
-      self._event_manager.next()
-      return
     if e.key() == QtCore.Qt.Key_P:
       self._event_manager.prev()
+      return
+    if e.key() == QtCore.Qt.Key_N:
+      self._event_manager.next()
       return
     if e.key() == QtCore.Qt.Key_C:
       # print "C was pressed"
