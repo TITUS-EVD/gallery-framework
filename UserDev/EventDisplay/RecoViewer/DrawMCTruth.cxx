@@ -21,11 +21,11 @@ bool DrawMCTruth::initialize() {
 
 bool DrawMCTruth::analyze(gallery::Event *ev) {
 
-
-
   art::InputTag truth_tag(_producer);
   auto const &truthHandle =
       ev->getValidHandle<std::vector<simb::MCTruth>>(truth_tag);
+
+  _data.clear();
 
   for (auto &truth : *truthHandle) {
 
@@ -33,30 +33,40 @@ bool DrawMCTruth::analyze(gallery::Event *ev) {
 
     mct._origin = truth.Origin();
 
-    // Continue if not neutrino origin
-    if (truth.Origin() != 1) continue;
+    if (truth.Origin() == 1) {
+      // Neutrino Origin
+      mct._nu_pdg = truth.GetNeutrino().Nu().PdgCode();
+      mct._nu_energy = truth.GetNeutrino().Nu().E();
+      std::vector<double> vtx = {truth.GetNeutrino().Nu().Vx(),
+                                 truth.GetNeutrino().Nu().Vy(),
+                                 truth.GetNeutrino().Nu().Vz()};
+      mct._vertex = vtx;
+      mct._nu_pdg = truth.GetNeutrino().Nu().PdgCode();
+      mct._int_mode = truth.GetNeutrino().Mode();
 
-    mct._nu_pdg = truth.GetNeutrino().Nu().PdgCode();
-    mct._nu_energy = truth.GetNeutrino().Nu().E();
-    std::vector<double> vtx = {truth.GetNeutrino().Nu().Vx(),
-                               truth.GetNeutrino().Nu().Vy(),
-                               truth.GetNeutrino().Nu().Vz()};
-    mct._vertex = vtx;
-    mct._nu_pdg = truth.GetNeutrino().Nu().PdgCode();
-    mct._int_mode = truth.GetNeutrino().Mode();
 
+      std::vector<int> pdgs;
+      std::vector<float> energies;
 
-    std::vector<int> pdgs;
-    std::vector<float> energies;
-
-    for (int i = 0; i < truth.NParticles(); i++) {
-      auto mcp = truth.GetParticle(i);
-      if (mcp.StatusCode() != 1) continue;
-      pdgs.push_back(mcp.PdgCode());
-      energies.push_back(mcp.E());
+      for (int i = 0; i < truth.NParticles(); i++) {
+        auto mcp = truth.GetParticle(i);
+        if (mcp.StatusCode() != 1) continue;
+        pdgs.push_back(mcp.PdgCode());
+        energies.push_back(mcp.E());
+      }
+      mct._finalstate_pdg = pdgs;
+      mct._finalstate_energy = energies;
+    } else if (truth.Origin() == 4) {
+      // Single Particle Origin
+      for (int i = 0; i < truth.NParticles(); i++) {
+        auto mcp = truth.GetParticle(i);
+        if (mcp.StatusCode() != 1) continue;
+        mct._nu_pdg = mcp.PdgCode();
+        mct._nu_energy = mcp.E();
+        std::vector<double> vtx = {mcp.Vx(), mcp.Vy(), mcp.Vz()};
+        mct._vertex = vtx;
+      }
     }
-    mct._finalstate_pdg = pdgs;
-    mct._finalstate_energy = energies;
 
 
     _data.push_back(mct);

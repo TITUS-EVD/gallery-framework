@@ -44,7 +44,7 @@ class mctruth(recoBase):
         # 1000180400 : "Ar"
         # }.get(info.target_pdg())
 
-        return inneut + " + " 
+        return inneut + " + "
 
     def drawObjects(self, view_manager):
         geom = view_manager._geometry
@@ -55,7 +55,7 @@ class mctruth(recoBase):
         if len(mcts) == 0:
             return
 
-        # Only the first neutrin ofor now
+        # Only the first neutrino for now
         mct = mcts[0]
 
         vertex = mct.vertex()
@@ -65,13 +65,14 @@ class mctruth(recoBase):
 
             offset = geom.offset(view.plane())
 
-            geo_helper = larutil.SimpleGeometryHelper(geom.getGeometryCore(), 
-                                                      geom.getDetectorProperties())
+            geo_helper = larutil.SimpleGeometryHelper(geom.getGeometryCore(),
+                                                      geom.getDetectorProperties(),
+                                                      geom.getDetectorClocks())
 
-            vertexPoint = geo_helper.Point_3Dto2D(vertex, view.plane(), 
-                                                          view.tpc(), 
+            vertexPoint = geo_helper.Point_3Dto2D(vertex, view.plane(),
+                                                          view.tpc(),
                                                           view.cryostat())
-            
+
             points = self.makeCross(vertexPoint.w/geom.wire2cm(),
                                     (vertexPoint.t + offset )/geom.time2cm(),
                                     shortDistX=0.05/geom.wire2cm(),
@@ -110,7 +111,9 @@ class mctruth(recoBase):
         elif mct.origin() == 3:
             message += f'Supernovae Event'
         elif mct.origin() == 4:
-            message += f'Single Particle Generation'
+            # message += f'Single Particle Generation'
+            message += f'Single particle. PDG: {mct.nu_pdg()}, Energy: {mct.nu_energy():.3} GeV.'
+
 
 
         mb.showMessage(message)

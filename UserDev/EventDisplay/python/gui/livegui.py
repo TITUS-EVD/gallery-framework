@@ -20,7 +20,7 @@ class livegui(gui):
         self._timer = QtCore.QTimer()
         self._timer.timeout.connect(self.eventTimeout)
         self._minEventUpdateTime = 30.0 # Seconds
-        self._minFileUpdateTime = 180 # Seconds
+        self._minFileUpdateTime = 60 # Seconds
 
         self._file_handler = FileHandler(filedir=file_dir,
                                          search_pattern=search_pattern,
@@ -215,8 +215,9 @@ class livegui(gui):
             self._file_handler.set_delay(delay * 60)
             return
 
-        if delay < self._minFileUpdateTime:
-            delay = self._minFileUpdateTime
+        if delay < self._minFileUpdateTime / 60:
+            delay = self._minFileUpdateTime / 60
+            print('Cannot set delay to a value smaller than', self._minFileUpdateTime, ' s.')
             self._fileUpdateDelayEntry.setText(str(delay))
         self._file_handler.set_delay(delay * 60)
 

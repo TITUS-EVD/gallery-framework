@@ -51,7 +51,12 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  returnPoint.w = geom.WireCoordinate(_3D_position[1], _3D_position[2], geo::PlaneID(cryo, tpc, plane)) * fWireToCm;
+  // returnPoint.w = geom.WireCoordinate(_3D_position[1], _3D_position[2], geo::PlaneID(cryo, tpc, plane)) * fWireToCm;
+  geo::Point_t loc(_3D_position[0],_3D_position[1], _3D_position[2]);
+  //  std::cout << "====== cryo: " << cryo << ", tpc: " << tpc << ", plane: " << plane << ", Position: " << _3D_position[0] << "," << _3D_position[1] << "," << _3D_position[2];
+  const geo::PlaneGeo& planeGeo = geom.Plane(plane, tpc, cryo);
+  returnPoint.w = planeGeo.WireCoordinate(loc) * fWireToCm;
+
   // std::cout << "wire is " << returnPoint.w << " (cm)" << std::endl;
 
   // The time position is the X coordinate, corrected for
@@ -70,7 +75,8 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   //Get the origin point of this plane:
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
-  auto vtx = geom.Plane(plane, 0, cryo).GetCenter();
+  // auto vtx = geom.Plane(plane, 0, cryo).GetCenter();
+  auto vtx = planeGeo.GetCenter();
   // auto vtx = geom.Plane(plane).GetCenter();
   planeOrigin[0] = vtx.X();
   planeOrigin[1] = vtx.Y();
