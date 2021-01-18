@@ -69,18 +69,6 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
 
   size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
-
-  art::InputTag truth_tag("generator");
-  auto const &truthHandle =
-      ev->getValidHandle<std::vector<simb::MCTruth>>(truth_tag);
-  for (auto &truth : *truthHandle) {
-    // std::cout << "Neutrino energy: " << truth.GetNeutrino().Nu().E() << std::endl;
-    for (int i = 0; i < truth.NParticles(); i++) {
-      auto mcp = truth.GetParticle(i);
-      // std::cout << "<Truth> PDG: " << mcp.PdgCode() << ", E: " << mcp.E() << ", M: " << mcp.Mass() << std::endl;
-    }
-  }
-
   // get a handle to the tracks
   art::InputTag tracks_tag(_producer);
   auto const &trackHandle =
@@ -119,7 +107,7 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
       for (auto step : track) {
         geo::Point_t loc = geo::Point_t(step.X(), step.Y(), step.Z());
         geo::TPCID tpc_id = _geo_service.PositionToTPCID(loc);
-        if (tpc_id.TPC != -1) {
+        if (tpc_id.TPC > 0) {
           tr._tpc = tpc_id.TPC;
           break;
         }

@@ -39,8 +39,8 @@ class polyLine(QtGui.QGraphicsPathItem):
         self.update()
 
     # def shape(self):
-    #     # return self.path() 
-    #     s = QtGui.QPainterPathStroker()    
+    #     # return self.path()
+    #     s = QtGui.QPainterPathStroker()
     #     s.setWidth(30)
     #     s.setCapStyle(QtCore.Qt.RoundCap)
     #     path = s.createStroke(self.path())
@@ -71,18 +71,19 @@ class track(recoBase):
             #   # get the showers from the process:
             # self._drawnObjects.append([])
             for i in range(0, self._n_planes): self._drawnObjects.append([])
-            thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            # thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            thisPlane = view.plane() + 2 * view.cryostat() * geom.nPlanes() * geom.nTPCs()
 
             tracks = self._process.getDataByPlane(thisPlane)
             offset = geom.offset(view.plane()) / geom.time2cm()
 
-            # print ('Drawing tracks for plane', view.plane())
+            print ('Drawing tracks for plane', view.plane())
             self.drawTracks(view, tracks, offset, view.plane(), geom)
 
             if geom.nTPCs() == 2:
                 for left_plane in geom.planeMix()[thisPlane]:
                     tracks = self._process.getDataByPlane(left_plane)
-                    # print ('Drawing tracks for plane', left_plane)
+                    print ('Drawing tracks for plane', left_plane)
                     self.drawTracks(view, tracks, offset, left_plane, geom, (255, 128, 0))
 
 
@@ -99,7 +100,7 @@ class track(recoBase):
             points = []
 
             location = track.tpc()
-            # print ('  location is', location)
+            print ('  location is', location)
 
             # Remeber - everything is in cm, but the display is in
             # wire/time!
@@ -118,7 +119,7 @@ class track(recoBase):
                 y += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
                 y += location * (geom.tRange() + geom.cathodeGap())
                 y -= location * 185
-  
+
 
                 points.append(QtCore.QPointF(x, y))
 
@@ -130,7 +131,7 @@ class track(recoBase):
             # polyLine.draw(view._view)
 
             thisPoly.setToolTip('Temp')
-            
+
             view._view.addItem(thisPoly)
 
             self._drawnObjects[plane].append(thisPoly)
@@ -181,7 +182,7 @@ try:
                 view.addItem(line)
                 self._drawnObjects.append(line)
 
-    
+
 
 except:
     pass

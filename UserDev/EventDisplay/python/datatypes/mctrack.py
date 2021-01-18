@@ -46,7 +46,7 @@ class mctrack(recoBase):
                 if len(points) == 0:
                     continue
 
-                
+
 
                 #print ('MCTrack pdg', track.pdg())
 
@@ -116,7 +116,7 @@ try:
                 view.addItem(line)
                 self._drawnObjects.append(line)
 
-    
+
     # # Just be stupid and try to draw something:
     # cylinderPoints = gl.MeshData.cylinder(2,50,radius=[0,1],length=1)
     # cylinder = gl.GLMeshItem(meshdata=cylinderPoints,drawEdges=False,shader='shaded', glOptions='opaque')
