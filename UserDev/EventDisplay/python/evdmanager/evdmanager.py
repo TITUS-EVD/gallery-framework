@@ -199,6 +199,8 @@ class evd_manager_base(manager, QtCore.QObject):
 
         self._keyTable.update(lookUpTable)
 
+        f.Close()
+
         return
 
     def setInputFile(self, file):
@@ -243,6 +245,7 @@ class evd_manager_base(manager, QtCore.QObject):
             _rf = ROOT.TFile(_f)
             _tree = _rf.Get("Events")
             self._n_entries += _tree.GetEntries()
+            _rf.Close()
 
         # Create an instance of the data manager:
         if _file_list.size() > 0:
