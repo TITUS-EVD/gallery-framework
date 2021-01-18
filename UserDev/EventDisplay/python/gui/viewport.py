@@ -30,8 +30,8 @@ class viewport(pg.GraphicsLayoutWidget):
     The default one is here:
     http://www.pyqtgraph.org/documentation/_modules/pyqtgraph/graphicsItems/ViewBox/ViewBox.html#ViewBox
     Here we want:
-    - Left click should allow to zoom in the dragged rectangle (ViewBox.RectMode)
-    - Right click should allow to move the pic (ViewBox.PanMode)
+    - Right click should allow to zoom in the dragged rectangle (ViewBox.RectMode)
+    - Left click should allow to move the pic (ViewBox.PanMode)
     '''
     ## if axis is specified, event will only affect that axis.
     ev.accept()  ## we accept all buttons
@@ -49,8 +49,8 @@ class viewport(pg.GraphicsLayoutWidget):
 
     self._view.state['mouseMode'] = ViewBox.RectMode
 
-    ## Scale or translate based on mouse button
-    if ev.button() & (QtCore.Qt.LeftButton | QtCore.Qt.MidButton):
+    ## Scale with drag and drop a square done with right button
+    if ev.button() & (QtCore.Qt.RightButton):
         # RectMode: Zoom in the dragged rectangle
         # print('Left-Mid button')
         # print('self._view.state[\'mouseMode\']', self._view.state['mouseMode'])
@@ -66,8 +66,8 @@ class viewport(pg.GraphicsLayoutWidget):
         else:
             ## update shape of scale box
             self._view.updateScaleBox(ev.buttonDownPos(), ev.pos())
-    elif ev.button() & QtCore.Qt.RightButton:
-        # Translation
+    # Translation done with left or mid button
+    elif ev.button() & (QtCore.Qt.LeftButton | QtCore.Qt.MidButton):
         tr = dif*mask
         tr = self._view.mapToView(tr) - self._view.mapToView(Point(0,0))
         x = tr.x() if mask[0] == 1 else None
@@ -326,6 +326,16 @@ class viewport(pg.GraphicsLayoutWidget):
 
         x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
         x_anode   = offset/self._geometry.time2cm()
+        print('x_cathode', x_cathode)
+        print('x_anode', x_anode)
+        print('self._geometry.halfwidth()', self._geometry.halfwidth())
+        print('self._geometry.time2cm()', self._geometry.time2cm())
+        print('offset', offset)
+        print('self._geometry.triggerOffset()', self._geometry.triggerOffset())
+        print('delta_plane', delta_plane)
+        detprop = self._geometry.getDetectorProperties()
+        dv = detprop.DriftVelocity(detprop.Efield(), detprop.Temperature())
+        print('dv', dv)
 
         # If we are changing the t0, shift the anode and cathode position
         x_cathode += self._manual_t0
