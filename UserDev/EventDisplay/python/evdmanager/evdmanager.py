@@ -206,7 +206,6 @@ class evd_manager_base(manager, QtCore.QObject):
                     'subrun': ev_aux.subRun(),
                     'event': ev_aux.event(),
                 })
-            print('i =', i, ':', self._run_list[-1])
 
 
         # prepare a dictionary of data products
