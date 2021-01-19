@@ -132,10 +132,17 @@ class evd_manager_base(manager, QtCore.QObject):
         self._opDetWvfDrawer = None
         # self._truthDrawer = None
 
+        # A list that will contain a dictionary with run, subrun, event keys
         self._run_list = []
 
 
     def getAvailableRuns(self):
+        '''
+        Getter for the available runs
+
+        Returns:
+            list: A list of all available runs
+        '''
         out = []
         for item in self._run_list:
             if item['run'] in out:
@@ -145,6 +152,12 @@ class evd_manager_base(manager, QtCore.QObject):
         return out
 
     def getAvailableSubruns(self):
+        '''
+        Getter for the available subruns
+
+        Returns:
+            list: A list of all available subruns
+        '''
         out = []
         for item in self._run_list:
             if item['subrun'] in out:
@@ -154,6 +167,12 @@ class evd_manager_base(manager, QtCore.QObject):
         return out
 
     def getAvailableEvents(self):
+        '''
+        Getter for the available events
+
+        Returns:
+            list: A list of all available events
+        '''
         out = []
         for item in self._run_list:
             if item['event'] in out:
@@ -176,6 +195,7 @@ class evd_manager_base(manager, QtCore.QObject):
         e = f.Get("Events")
 
 
+        # Get all the (run, subrun, event) IDs
         self._run_list = []
         ev_aux_b = e.GetBranch("EventAuxiliary")
         for i in range(ev_aux_b.GetEntries()):
