@@ -132,6 +132,55 @@ class evd_manager_base(manager, QtCore.QObject):
         self._opDetWvfDrawer = None
         # self._truthDrawer = None
 
+        # A list that will contain a dictionary with run, subrun, event keys
+        self._run_list = []
+
+
+    def getAvailableRuns(self):
+        '''
+        Getter for the available runs
+
+        Returns:
+            list: A list of all available runs
+        '''
+        out = []
+        for item in self._run_list:
+            if item['run'] in out:
+                continue
+            else:
+                out.append(item['run'])
+        return out
+
+    def getAvailableSubruns(self):
+        '''
+        Getter for the available subruns
+
+        Returns:
+            list: A list of all available subruns
+        '''
+        out = []
+        for item in self._run_list:
+            if item['subrun'] in out:
+                continue
+            else:
+                out.append(item['subrun'])
+        return out
+
+    def getAvailableEvents(self):
+        '''
+        Getter for the available events
+
+        Returns:
+            list: A list of all available events
+        '''
+        out = []
+        for item in self._run_list:
+            if item['event'] in out:
+                continue
+            else:
+                out.append(item['event'])
+        return out
+
 
     def pingFile(self, file):
         """
@@ -143,8 +192,21 @@ class evd_manager_base(manager, QtCore.QObject):
 
         # Open the file
         f = TFile(file)
-        # Use the larlite_id_tree to find out how many entries are in the file:
-        e=f.Get("Events")
+        e = f.Get("Events")
+
+
+        # Get all the (run, subrun, event) IDs
+        self._run_list = []
+        ev_aux_b = e.GetBranch("EventAuxiliary")
+        for i in range(ev_aux_b.GetEntries()):
+            ev_aux_b.GetEntry(i)
+            ev_aux = e.EventAuxiliary
+            self._run_list.append({
+                    'run': ev_aux.run(),
+                    'subrun': ev_aux.subRun(),
+                    'event': ev_aux.event(),
+                })
+
 
         # prepare a dictionary of data products
         lookUpTable = dict()
@@ -313,8 +375,18 @@ class evd_manager_base(manager, QtCore.QObject):
             self._processer.process_event(self._data_manager)
             self._lastProcessed = self._event
 
-    def goToEvent(self, event, force=False):
+    def goToEvent(self, event, subrun=None, run=None, force=False):
         # Gallery events don't offer random access
+
+        # if rubrun and run are specified, then we are dealing with real (event, subrun, run)
+        # not an event index as usual. So first of all go from (event, subrun, run) to event index
+        if subrun is not None and run is not None:
+            try:
+                item = {'run': run, 'subrun': subrun, 'event': event}
+            except:
+                print('This combination does not exist:', item)
+                return
+            event = self._run_list.index(item)
 
 
         # Loop through until the event is gotten:

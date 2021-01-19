@@ -513,7 +513,7 @@ class gui(QtGui.QWidget):
     self._runLabel.setText(runLabel)
     subrunLabel = "Subrun: " + str(self._event_manager.subrun())
     self._subrunLabel.setText(subrunLabel)
-    
+
     self._view_manager.drawPlanes(self._event_manager)
     self._view_manager.drawOpDetWvf(self._event_manager)
     self.autoRangeWorker()
@@ -531,6 +531,14 @@ class gui(QtGui.QWidget):
     self._eventLabel = QtGui.QLabel("Event: 0")
     self._subrunLabel = QtGui.QLabel("Subrun: 0")
 
+    # Add 3 line to edit for run, subrun, event
+    self._runEntry = QtGui.QLineEdit("run")
+    self._subrunEntry = QtGui.QLineEdit("subrun")
+    self._eventEntry = QtGui.QLineEdit("event")
+    self.setupEventRunSubrun()
+    self._goButton = QtGui.QPushButton("Go")
+    self._goButton.clicked.connect(self.goToEventRunSubrunWorker)
+
     # Go to the previous event
     self._prevButton = QtGui.QPushButton("Previous")
     self._prevButton.clicked.connect(self._event_manager.prev)
@@ -547,7 +555,7 @@ class gui(QtGui.QWidget):
     # Select a file to use
     self._fileSelectButton = QtGui.QPushButton("Select File")
     self._fileSelectButton.clicked.connect(self._event_manager.selectFile)
-    
+
     # pack the buttons into a box
     self._eventControlBox = QtGui.QVBoxLayout()
 
@@ -555,12 +563,22 @@ class gui(QtGui.QWidget):
     self._eventGrid = QtGui.QHBoxLayout()
     self._eventGrid.addWidget(self._goToLabel)
     self._eventGrid.addWidget(self._larliteEventEntry)
+
+    # Add 3 line edit for run, subrun, event
+    self._eventRunSubrunGrid = QtGui.QHBoxLayout()
+    self._eventRunSubrunGrid.addWidget(self._runEntry)
+    self._eventRunSubrunGrid.addWidget(self._subrunEntry)
+    self._eventRunSubrunGrid.addWidget(self._eventEntry)
+    self._eventRunSubrunGrid.addWidget(self._goButton)
+
+
     # Another horizontal box for the run/subrun
     # self._runSubRunGrid = QtGui.QHBoxLayout()
     # self._runSubRunGrid.addWidget(self._eventLabel)
     # self._runSubRunGrid.addWidget(self._runLabel)
     # Pack it all together
     self._eventControlBox.addLayout(self._eventGrid)
+    self._eventControlBox.addLayout(self._eventRunSubrunGrid)
     self._eventControlBox.addWidget(self._eventLabel)
     self._eventControlBox.addWidget(self._runLabel)
     self._eventControlBox.addWidget(self._subrunLabel)
@@ -570,7 +588,7 @@ class gui(QtGui.QWidget):
     self._eventControlBox.addWidget(self._fileSelectButton)
 
     return self._eventControlBox
-  
+
 
   # this function helps pass the entry of the line edit item to the event control
   def goToEventWorker(self):
@@ -582,13 +600,60 @@ class gui(QtGui.QWidget):
       return
     self._event_manager.goToEvent(event)
 
+  def goToEventRunSubrunWorker(self):
+    try:
+      run = int(self._runEntry.text())
+      subrun = int(self._subrunEntry.text())
+      event = int(self._eventEntry.text())
+    except:
+      print("Error, must enter an integer")
+      self._larliteEventEntry.setText(str(self._event_manager.event()))
+      self._runEntry.setText("run")
+      self._subrunEntry.setText("subrun")
+      self._eventEntry.setText("event")
+      return
+    self._event_manager.goToEvent(event, subrun, run)
+
+  def setupEventRunSubrun(self):
+    self._runEntry.setMinimumWidth(40)
+    self._subrunEntry.setMinimumWidth(40)
+    self._eventEntry.setMinimumWidth(40)
+    runs = self._event_manager.getAvailableRuns()
+    subruns = self._event_manager.getAvailableSubruns()
+    events = self._event_manager.getAvailableEvents()
+
+    if len(runs) == 1:
+      self._runEntry.setText(str(runs[0]))
+      self._runEntry.setDisabled(True)
+    else:
+      tooltip_text = 'Available runs: '
+      tooltip_text += ', '.join(map(str, runs))
+      self._runEntry.setToolTip(tooltip_text)
+
+    if len(subruns) == 1:
+      self._subrunEntry.setText(str(subruns[0]))
+      self._subrunEntry.setDisabled(True)
+    else:
+      tooltip_text = 'Available subruns: '
+      tooltip_text += ', '.join(map(str, subruns))
+      self._subrunEntry.setToolTip(tooltip_text)
+
+    if len(events) == 1:
+      self._eventEntry.setText(str(events[0]))
+      self._eventEntry.setDisabled(True)
+    else:
+      tooltip_text = 'Available events: '
+      tooltip_text += ', '.join(map(str, events))
+      self._eventEntry.setToolTip(tooltip_text)
+
+
   # This function prepares the range controlling options and returns a layout
   def getDrawingControlButtons(self):
 
     self._grayScale = QtGui.QCheckBox("Grayscale")
     self._grayScale.setToolTip("Changes the color map to grayscale.")
     self._grayScale.setTristate(False)
-    self._grayScale.stateChanged.connect(self.changeColorMapWorker) 
+    self._grayScale.stateChanged.connect(self.changeColorMapWorker)
 
     # Button to set range to max
     self._maxRangeButton = QtGui.QPushButton("Max Range")
@@ -599,7 +664,7 @@ class gui(QtGui.QWidget):
     self._autoRangeBox = QtGui.QCheckBox("AutoRange")
     self._autoRangeBox.setToolTip("Set the range of the viewers to the regions of interest")
     self._autoRangeBox.setTristate(False)
-    self._autoRangeBox.stateChanged.connect(self.autoRangeWorker)  
+    self._autoRangeBox.stateChanged.connect(self.autoRangeWorker)
 
     self._lockAspectRatio = QtGui.QCheckBox("Lock A.R.")
     self._lockAspectRatio.setToolTip("Lock the aspect ratio to 1:1")
