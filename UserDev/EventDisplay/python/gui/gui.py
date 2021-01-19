@@ -628,7 +628,6 @@ class gui(QtGui.QWidget):
     else:
       tooltip_text = 'Available runs: '
       tooltip_text += ', '.join(map(str, runs))
-      print(tooltip_text)
       self._runEntry.setToolTip(tooltip_text)
 
     if len(subruns) == 1:
@@ -637,7 +636,6 @@ class gui(QtGui.QWidget):
     else:
       tooltip_text = 'Available subruns: '
       tooltip_text += ', '.join(map(str, subruns))
-      print(tooltip_text)
       self._subrunEntry.setToolTip(tooltip_text)
 
     if len(events) == 1:
@@ -646,7 +644,6 @@ class gui(QtGui.QWidget):
     else:
       tooltip_text = 'Available events: '
       tooltip_text += ', '.join(map(str, events))
-      print(tooltip_text)
       self._eventEntry.setToolTip(tooltip_text)
 
 
