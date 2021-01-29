@@ -22,7 +22,7 @@ class VerticalLabel(QtGui.QLabel):
 
 class viewport(pg.GraphicsLayoutWidget):
 
-  drawHitsRequested = QtCore.pyqtSignal(int, int)
+  drawHitsRequested = QtCore.pyqtSignal(int, int, int)
 
   def customMouseDragEvent(self, ev, axis=None):
     '''
@@ -505,7 +505,7 @@ class viewport(pg.GraphicsLayoutWidget):
         self._wdf(wireData=self._wireData, wire=wire, plane=self._plane , tpc=tpc, cryo=self._cryostat, drawer=self)
 
     # Make a request to draw the hits from this wire:
-    self.drawHitsRequested.emit(self._plane,wire)
+    self.drawHitsRequested.emit(self._plane, wire, tpc)
 
 
   def connectWireDrawingFunction(self,func):

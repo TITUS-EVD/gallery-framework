@@ -32,7 +32,7 @@ class VerticalLabel(QtGui.QLabel):
 class view_manager(QtCore.QObject):
   """This class manages a collection of viewports"""
 
-  drawHitsRequested = QtCore.pyqtSignal(int, int)
+  drawHitsRequested = QtCore.pyqtSignal(int, int, int)
 
   def __init__(self, geometry):
     super(view_manager, self).__init__()
@@ -138,14 +138,14 @@ class view_manager(QtCore.QObject):
     for view in self._drawerList.values():
       view.clearPoints()
 
-  def hitOnWireHandler(self,plane,wire):
+  def hitOnWireHandler(self, plane, wire, tpc):
     if not self._wireDrawer.isVisible():
       return
     # Simply pass the info on to who ever is listening
     # (hint: it's the manager)
     for hit in self._plottedHits:
       self._wirePlot.removeItem(hit)
-    self.drawHitsRequested.emit(plane,wire)
+    self.drawHitsRequested.emit(plane, wire, tpc)
 
   def getDrawListWidget(self):
 

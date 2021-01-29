@@ -671,17 +671,18 @@ class evd_manager_2D(evd_manager_base):
         else:
             return False
 
-    def drawHitsOnWire(self, plane, wire):
+    def drawHitsOnWire(self, plane, wire, tpc):
         if not 'Hit' in self._drawnClasses:
             return
         else:
-            # Get the hits:
-            hits = self._drawnClasses['Hit'].getHitsOnWire(plane, wire)
-            self._view_manager.drawHitsOnPlot(hits)
+            # Get the right plane number
+            this_plane = plane
+            if tpc == 1:
+                this_plane = self._geom.planeMix()[plane][0]
 
-            if self._geom.nTPCs() == 2:
-                hits = self._drawnClasses['Hit'].getHitsOnWire(plane + self._geom.nPlanes(), wire)
-                self._view_manager.drawHitsOnPlot(hits, flip=True)
+            # Get the hits:
+            hits = self._drawnClasses['Hit'].getHitsOnWire(this_plane, wire)
+            self._view_manager.drawHitsOnPlot(hits)
 
 
 try:
