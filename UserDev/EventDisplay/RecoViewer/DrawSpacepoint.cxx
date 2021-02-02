@@ -25,7 +25,7 @@ bool DrawSpacepoint::initialize() {
   return true;
 }
 
-bool DrawSpacepoint::analyze(gallery::Event * ev) {
+bool DrawSpacepoint::analyze(const gallery::Event & ev) {
   size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
@@ -34,7 +34,7 @@ bool DrawSpacepoint::analyze(gallery::Event * ev) {
   // get a handle to the tracks
   art::InputTag sps_tag(_producer);
   auto const & spacepointHandle
-        = ev -> getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
+        = ev.getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
 
   // geoHelper = larutil::GeometryHelper::GetME();
 

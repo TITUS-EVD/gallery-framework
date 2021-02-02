@@ -27,7 +27,7 @@ bool DrawOpflash::initialize() {
   return true;
 }
 
-bool DrawOpflash::analyze(gallery::Event *ev) {
+bool DrawOpflash::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -49,12 +49,12 @@ bool DrawOpflash::analyze(gallery::Event *ev) {
 
   art::InputTag opflash_tag(_producer);
   auto const & opflashHandle
-        = ev -> getValidHandle<std::vector <recob::OpFlash> >(opflash_tag);
+        = ev.getValidHandle<std::vector <recob::OpFlash> >(opflash_tag);
 
   // Retrieve the ophits to infer the plane the opflash belongs to
   try {
     art::InputTag assn_tag(_producer);
-    art::FindMany<recob::OpHit> flash_to_hits(opflashHandle, *ev, assn_tag);
+    art::FindMany<recob::OpHit> flash_to_hits(opflashHandle, ev, assn_tag);
 
     size_t total_plane_number = _geo_service.NTPC() * _geo_service.Ncryostats();
 

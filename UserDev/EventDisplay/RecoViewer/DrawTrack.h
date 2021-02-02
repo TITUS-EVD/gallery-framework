@@ -66,7 +66,7 @@ public:
 
   virtual bool initialize();
 
-  virtual bool analyze(gallery::Event *event);
+  virtual bool analyze(const gallery::Event &event);
 
   virtual bool finalize();
 

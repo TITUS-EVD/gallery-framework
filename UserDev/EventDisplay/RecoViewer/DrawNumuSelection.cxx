@@ -79,7 +79,7 @@ bool DrawNumuSelection::initialize() {
   return true;
 }
 
-bool DrawNumuSelection::analyze(gallery::Event *ev) {
+bool DrawNumuSelection::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -108,7 +108,7 @@ bool DrawNumuSelection::analyze(gallery::Event *ev) {
   tracks.clear();
 
   auto const &assoc_handle =
-      ev->getValidHandle<art::Assns<recob::Vertex, recob::Track>>(_producer);
+      ev.getValidHandle<art::Assns<recob::Vertex, recob::Track>>(_producer);
 
   if (assoc_handle->size() == 0)
     return true; // no selected neutrino in this event

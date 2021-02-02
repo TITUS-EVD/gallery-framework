@@ -52,7 +52,7 @@ bool DrawTrack::initialize() {
   return true;
 }
 
-bool DrawTrack::analyze(gallery::Event *ev) {
+bool DrawTrack::analyze(const gallery::Event &ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -74,7 +74,7 @@ bool DrawTrack::analyze(gallery::Event *ev) {
   // get a handle to the tracks
   art::InputTag tracks_tag(_producer);
   auto const &trackHandle =
-      ev->getValidHandle<std::vector<recob::Track>>(tracks_tag);
+      ev.getValidHandle<std::vector<recob::Track>>(tracks_tag);
 
   // Clear out the data but reserve some space for the tracks
   for (unsigned int p = 0; p < _total_plane_number; p++) {
@@ -88,7 +88,7 @@ bool DrawTrack::analyze(gallery::Event *ev) {
 
   // Retrieve the hits to infer the TPC the track belongs to
   art::InputTag assn_tag(_producer);
-  art::FindMany<recob::Hit> track_to_hits(trackHandle, *ev, assn_tag);
+  art::FindMany<recob::Hit> track_to_hits(trackHandle, ev, assn_tag);
 
   // Populate the track vector:
   size_t index = 0;

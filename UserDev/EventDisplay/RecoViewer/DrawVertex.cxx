@@ -31,7 +31,7 @@ bool DrawVertex::initialize() {
 
 }
 
-bool DrawVertex::analyze(gallery::Event * ev) {
+bool DrawVertex::analyze(const gallery::Event & ev) {
 
   larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
@@ -39,7 +39,7 @@ bool DrawVertex::analyze(gallery::Event * ev) {
 
   art::InputTag vertex_tag(_producer);
   auto const & vertexHandle
-        = ev -> getValidHandle<std::vector <recob::Vertex> >(vertex_tag);
+        = ev.getValidHandle<std::vector <recob::Vertex> >(vertex_tag);
 
 
 
