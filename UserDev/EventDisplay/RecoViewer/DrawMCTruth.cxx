@@ -19,11 +19,11 @@ bool DrawMCTruth::initialize() {
   return true;
 }
 
-bool DrawMCTruth::analyze(gallery::Event *ev) {
+bool DrawMCTruth::analyze(const gallery::Event & ev) {
 
   art::InputTag truth_tag(_producer);
   auto const &truthHandle =
-      ev->getValidHandle<std::vector<simb::MCTruth>>(truth_tag);
+      ev.getValidHandle<std::vector<simb::MCTruth>>(truth_tag);
 
   _data.clear();
 

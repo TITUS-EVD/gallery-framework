@@ -1,4 +1,9 @@
+import os
+
 from pyqtgraph.Qt import QtCore
+
+from ROOT import gallery
+from ROOT import TFile
 
 try:
   from event import manager, event
@@ -8,10 +13,8 @@ except ImportError:
   from evdmanager.evdmanager import evd_manager_base
 
 import datatypes
-from ROOT import gallery
-import os
-from ROOT import TFile
-import ROOT
+
+# import ROOT
 
 class live_evd_manager_2D(evd_manager_base):
 
@@ -40,7 +43,7 @@ class live_evd_manager_2D(evd_manager_base):
             self._drawnClasses[informal_type].setProducer(product.fullName())
             self.processEvent(True)
             self._drawnClasses[informal_type].clearDrawnObjects(self._view_manager)
-            if informal_type == 'MCTrack' or informal_type == 'Track': 
+            if informal_type == 'MCTrack' or informal_type == 'Track':
                 self._drawnClasses[informal_type].drawObjects(self._view_manager, self._gui._tracksOnBothTPCs)
             else:
                 self._drawnClasses[informal_type].drawObjects(self._view_manager)
@@ -70,7 +73,7 @@ class live_evd_manager_2D(evd_manager_base):
             self._drawnClasses.update({informal_type: drawingClass})
             # Need to process the event
             self.processEvent(True)
-            if informal_type == 'MCTrack' or informal_type == 'Track': 
+            if informal_type == 'MCTrack' or informal_type == 'Track':
                 drawingClass.drawObjects(self._view_manager, self._gui._tracksOnBothTPCs)
             else:
                 drawingClass.drawObjects(self._view_manager)

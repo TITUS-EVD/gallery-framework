@@ -29,7 +29,7 @@ class livegui(gui):
 
         self._stage = None
         self._event_manager.fileChanged.connect(self.drawableProductsChanged)
-        self._event_manager.eventChanged.connect(self.update)
+        self._event_manager.eventChanged.connect(self.update_event_labels)
 
         self._app = app
 
@@ -275,7 +275,7 @@ class livegui(gui):
         # self._eastWidget.close()
         # east = self.getEastLayout()
         # self.slave.addWidget(east)
-        self.update()
+        # self.update()
         self.repaint()
 
 

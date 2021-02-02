@@ -25,7 +25,7 @@ bool DrawHit::initialize() {
   return true;
 }
 
-bool DrawHit::analyze(gallery::Event* ev) {
+bool DrawHit::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -49,7 +49,7 @@ bool DrawHit::analyze(gallery::Event* ev) {
 
   art::InputTag hits_tag(_producer);
   auto const & hitHandle
-        = ev -> getValidHandle<std::vector <recob::Hit> >(hits_tag);
+        = ev.getValidHandle<std::vector <recob::Hit> >(hits_tag);
 
 
   // Clear out the hit data but reserve some space for the hits

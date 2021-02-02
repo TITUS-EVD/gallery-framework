@@ -33,7 +33,7 @@ bool DrawCluster::initialize() {
   return true;
 }
 
-bool DrawCluster::analyze(gallery::Event * ev) {
+bool DrawCluster::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -71,7 +71,7 @@ bool DrawCluster::analyze(gallery::Event * ev) {
   // Get all of the clusters from the event:
   art::InputTag clusters_tag(_producer);
   auto const & clusters
-    = ev -> getValidHandle<std::vector <recob::Cluster> >(clusters_tag);
+    = ev.getValidHandle<std::vector <recob::Cluster> >(clusters_tag);
 
   if (clusters->size() == 0) {
     std::cout << "No clusters found." << std::endl;
@@ -83,7 +83,7 @@ bool DrawCluster::analyze(gallery::Event * ev) {
 
   art::InputTag assn_tag(_producer);
 
-  art::FindMany<recob::Hit> hits_for_cluster(clusters, *ev, assn_tag);
+  art::FindMany<recob::Hit> hits_for_cluster(clusters, ev, assn_tag);
 
 
 

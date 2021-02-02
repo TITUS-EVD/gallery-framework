@@ -35,11 +35,11 @@ bool DrawOpDetWaveform::initialize() {
   return true;
 }
 
-bool DrawOpDetWaveform::analyze(gallery::Event * ev) {
+bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
 
   art::InputTag op_wvf_tag(_producer);
   auto const & op_wvfs
-    = ev -> getValidHandle<std::vector <raw::OpDetWaveform> >(op_wvf_tag);
+    = ev.getValidHandle<std::vector <raw::OpDetWaveform> >(op_wvf_tag);
 
   std::cout << "OpDetWaveform analyze, op_wvfs size: " << op_wvfs->size() << std::endl;
 

@@ -27,7 +27,7 @@ bool DrawShower::initialize() {
 
 }
 
-bool DrawShower::analyze(gallery::Event * ev) {
+bool DrawShower::analyze(const gallery::Event & ev) {
 
   size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
@@ -35,7 +35,7 @@ bool DrawShower::analyze(gallery::Event * ev) {
   // get a handle to the showers
   art::InputTag shower_tag(_producer);
   auto const & showerHandle
-    = ev -> getValidHandle<std::vector <recob::Shower> >(shower_tag);
+    = ev.getValidHandle<std::vector <recob::Shower> >(shower_tag);
 
 
   if (showerHandle -> size() == 0) {
@@ -47,7 +47,7 @@ bool DrawShower::analyze(gallery::Event * ev) {
 
   // Retrieve the hits to infer the TPC the track belongs to
   art::InputTag assn_tag(_producer);
-  art::FindMany<recob::Hit> shower_to_hits(showerHandle, *ev, assn_tag);
+  art::FindMany<recob::Hit> shower_to_hits(showerHandle, ev, assn_tag);
 
 
   // Clear out the hit data but reserve some space for the showers

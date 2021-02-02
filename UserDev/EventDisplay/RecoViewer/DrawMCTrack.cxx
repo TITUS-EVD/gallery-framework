@@ -48,7 +48,7 @@ bool DrawMCTrack::initialize() {
   return true;
 }
 
-bool DrawMCTrack::analyze(gallery::Event *ev) {
+bool DrawMCTrack::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -72,7 +72,7 @@ bool DrawMCTrack::analyze(gallery::Event *ev) {
   // get a handle to the tracks
   art::InputTag tracks_tag(_producer);
   auto const &trackHandle =
-      ev->getValidHandle<std::vector<sim::MCTrack>>(tracks_tag);
+      ev.getValidHandle<std::vector<sim::MCTrack>>(tracks_tag);
 
   // Clear out the data but reserve some space for the tracks
   for (unsigned int p = 0; p < total_plane_number; p++) {

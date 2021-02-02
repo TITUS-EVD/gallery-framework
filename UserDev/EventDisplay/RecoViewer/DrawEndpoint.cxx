@@ -29,7 +29,7 @@ bool DrawEndpoint::initialize() {
   return true;
 }
 
-bool DrawEndpoint::analyze(gallery::Event * ev) {
+bool DrawEndpoint::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -57,7 +57,7 @@ bool DrawEndpoint::analyze(gallery::Event * ev) {
 
   art::InputTag end2d_tag(_producer);
   auto const & end2dHandle
-        = ev -> getValidHandle<std::vector <recob::EndPoint2D> >(end2d_tag);
+        = ev.getValidHandle<std::vector <recob::EndPoint2D> >(end2d_tag);
 
 
 
