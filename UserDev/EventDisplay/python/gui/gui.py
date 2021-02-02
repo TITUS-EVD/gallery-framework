@@ -342,7 +342,7 @@ class view_manager(QtCore.QObject):
     if event_manager.hasOpDetWvfData():
       self._opt_view.drawOpDetWvf(event_manager.getOpDetWvf())
 
- 
+
   def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None):
     # Need to draw a wire on the wire view
     # Don't bother if the view isn't active:
@@ -495,7 +495,7 @@ class gui(QtGui.QWidget):
     self._view_manager.drawHitsRequested.connect(self._event_manager.drawHitsOnWire)
 
   def closeEvent(self, event):
-    self.quit()  
+    self.quit()
 
   def quit(self):
     # if self._running:
@@ -503,8 +503,10 @@ class gui(QtGui.QWidget):
     QtCore.QCoreApplication.instance().quit()
 
 
-  def update(self):
-    # set the text boxes correctly:
+  def update_event_labels(self):
+    '''
+    Sets the text boxes correctly
+    '''
     self._larliteEventEntry.setText(str(self._event_manager.internalEvent()))
 
     eventLabel = "Event: " + str(self._event_manager.event())
@@ -513,6 +515,12 @@ class gui(QtGui.QWidget):
     self._runLabel.setText(runLabel)
     subrunLabel = "Subrun: " + str(self._event_manager.subrun())
     self._subrunLabel.setText(subrunLabel)
+    self.setupEventRunSubrun()
+
+
+  def update(self):
+    # set the text boxes correctly:
+    self.update_event_labels()
 
     self._view_manager.drawPlanes(self._event_manager)
     self._view_manager.drawOpDetWvf(self._event_manager)

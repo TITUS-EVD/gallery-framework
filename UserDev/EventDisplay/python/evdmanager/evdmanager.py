@@ -1,4 +1,13 @@
+import os
+
 from pyqtgraph.Qt import QtCore
+
+from ROOT import gallery
+from ROOT import TFile
+from ROOT import vector as ROOTvector
+from ROOT import string as ROOTstring
+
+# from memory_profiler import profile
 
 try:
   from event import manager, event
@@ -6,11 +15,6 @@ except ImportError:
   from evdmanager.event import manager, event
 
 import datatypes
-from ROOT import gallery
-import os
-from ROOT import TFile
-import ROOT
-
 
 
 class product(object):
@@ -72,11 +76,13 @@ class processer(object):
         self._ana_units = dict()
         pass
 
+    # @profile
     def process_event(self, gallery_event):
         # print "Running ... "
         for key in self._ana_units:
-            # print "Processing " + key
+            # print('Processing', key)
             self._ana_units[key].analyze(gallery_event)
+            # print('Size of anaunit after processing', asizeof.asized(self._ana_units[key], detail=2).format())
 
     def add_process(self, data_product, ana_unit):
         if data_product in self._ana_units:
@@ -95,7 +101,14 @@ class processer(object):
         else:
             return None
 
-    def reset():
+    def get_n_processes(self):
+        return len(self._ana_units)
+
+    def remove_all_processes(self):
+        for data_product in self._ana_units.copy():
+            self._ana_units.pop(data_product)
+
+    def reset(self):
         self._ana_units = dict()
 
 class evd_manager_base(manager, QtCore.QObject):
@@ -269,17 +282,18 @@ class evd_manager_base(manager, QtCore.QObject):
         f = [file, ]
         self.setInputFiles(f)
 
+    # @profile
     def setInputFiles(self, files):
 
         # reset the storage manager and process
         if self._data_manager is not None:
+            del self._data_manager
             self._data_manager = None
-        # self._process.reset()
 
         if files == None:
             return
 
-        _file_list = ROOT.vector(ROOT.string)()
+        _file_list = ROOTvector(ROOTstring)()
 
         for file in files:
             # First, check that the file exists:
@@ -304,20 +318,23 @@ class evd_manager_base(manager, QtCore.QObject):
 
         # Have to figure out number of events available
         for _f in _file_list:
-            _rf = ROOT.TFile(_f)
+            _rf = TFile(_f)
             _tree = _rf.Get("Events")
             self._n_entries += _tree.GetEntries()
             _rf.Close()
+
 
         # Create an instance of the data manager:
         if _file_list.size() > 0:
             self._data_manager = gallery.Event(_file_list)
 
-
         # Open the manager
         self._lastProcessed = -1
+
         self.goToEvent(0)
+
         self.fileChanged.emit()
+
 
     def getStages(self):
         return self._keyTable.keys()

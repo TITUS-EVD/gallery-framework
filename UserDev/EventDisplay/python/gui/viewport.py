@@ -656,7 +656,7 @@ class viewport(pg.GraphicsLayoutWidget):
         #              max_wire - line_width/2,
         #              self._geometry.cathodeGap() - line_width/2)
         line.setRect(max_wire / 2 - self._geometry.cathodeGap() / 2 + line_width/2,
-                     0 + line_width/2, 
+                     0 + line_width/2,
                      self._geometry.cathodeGap(),
                      self._geometry.tRange() * 2 + self._geometry.cathodeGap()  - line_width/2)
         self._view.addItem(line)
