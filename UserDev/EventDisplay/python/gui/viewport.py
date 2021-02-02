@@ -495,6 +495,13 @@ class viewport(pg.GraphicsLayoutWidget):
     self.show_waveform(wire=wire, tpc=tpc)
 
   def show_waveform(self, wire, tpc):
+    '''
+    Shows the waveform on the wire drawer.
+
+    Args:
+        wire (int): The wire number
+        tpc (int): The TPC number where the wire belongs to
+    '''
 
     if self._item.image is not None:
       # get the data from the plot:
@@ -502,7 +509,16 @@ class viewport(pg.GraphicsLayoutWidget):
       if wire < len(data):
         self._wireData = data[wire]
         self._wireData = self._wireData[self._first_entry:self._last_entry]
-        self._wdf(wireData=self._wireData, wire=wire, plane=self._plane , tpc=tpc, cryo=self._cryostat, drawer=self)
+
+        # Here we want to display the real plane number, not the view.
+        # So, make sure that if you are in an odd TPC we display the right number.
+        plane = self._plane
+        if tpc %2 != 0:
+            if self._plane == 0:
+                plane = 1
+            elif self._plane == 1:
+                plane = 0
+        self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc, cryo=self._cryostat, drawer=self)
 
     # Make a request to draw the hits from this wire:
     self.drawHitsRequested.emit(self._plane, wire, tpc)
