@@ -49,7 +49,7 @@ bool DrawRawDigit::initialize() {
   return true;
 }
 
-bool DrawRawDigit::analyze(gallery::Event *ev) {
+bool DrawRawDigit::analyze(const gallery::Event &ev) {
   //
   // Do your event-by-event analysis here. This function is called for
   // each event in the loop. You have "storage" pointer which contains
@@ -78,13 +78,13 @@ bool DrawRawDigit::analyze(gallery::Event *ev) {
   if (_producer != "") {
     std::cout << "Drawing RawDigits using producer " << _producer << std::endl;
     art::InputTag wires_tag(_producer);
-    auto const & raw_digits = ev->getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
+    auto const & raw_digits = ev.getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
     raw_digits_v.push_back(raw_digits);
   } else {
     for (auto p : _producers) {
       std::cout << "Drawing RawDigits using producer " << p << std::endl;
       art::InputTag wires_tag(p);
-      auto const & raw_digits = ev->getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
+      auto const & raw_digits = ev.getValidHandle<std::vector<raw::RawDigit>>(wires_tag);
       raw_digits_v.push_back(raw_digits);
     }
   }

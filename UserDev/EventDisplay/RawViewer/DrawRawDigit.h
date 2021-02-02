@@ -52,7 +52,7 @@ public:
     /** IMPLEMENT in DrawRawDigit.cc!
         Analyze a data event-by-event
     */
-    virtual bool analyze(gallery::Event * event);
+    virtual bool analyze(const gallery::Event &event);
 
     /** IMPLEMENT in DrawRawDigit.cc!
         Finalize method to be called after all events processed.

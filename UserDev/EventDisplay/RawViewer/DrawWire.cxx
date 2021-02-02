@@ -47,7 +47,7 @@ bool DrawWire::initialize() {
 
 }
 
-bool DrawWire::analyze(gallery::Event * ev) {
+bool DrawWire::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -79,13 +79,13 @@ bool DrawWire::analyze(gallery::Event * ev) {
   if (_producer != "") {
     std::cout << "Drawing Wires using producer " << _producer << std::endl;
     art::InputTag wires_tag(_producer);
-    auto const & wires = ev->getValidHandle<std::vector<recob::Wire>>(wires_tag);
+    auto const & wires = ev.getValidHandle<std::vector<recob::Wire>>(wires_tag);
     wire_v.push_back(wires);
   } else {
     for (auto p : _producers) {
       std::cout << "Drawing Wires using producer " << p << std::endl;
       art::InputTag wires_tag(p);
-      auto const & wires = ev->getValidHandle<std::vector<recob::Wire>>(wires_tag);
+      auto const & wires = ev.getValidHandle<std::vector<recob::Wire>>(wires_tag);
       wire_v.push_back(wires);
     }
   }
