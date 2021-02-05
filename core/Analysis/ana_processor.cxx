@@ -178,7 +178,9 @@ bool ana_processor::process_event() {
 
 }
 
-bool ana_processor::run(unsigned int nevents) {
+bool ana_processor::run(unsigned int nevents, unsigned int nskip) {
+
+
 
   int nfiles = _input_files.size();
 
@@ -196,9 +198,6 @@ bool ana_processor::run(unsigned int nevents) {
     return false;
   }
 
-  char _buf[200];
-  sprintf(_buf, "Processing %d events from entry %d...", nevents, 0);
-  Message::send(msg::kNORMAL, __FUNCTION__, _buf);
 
   int ten_percent_ctr = 0;
 
@@ -210,6 +209,20 @@ bool ana_processor::run(unsigned int nevents) {
       nevents = -1;
     }
   }
+
+
+  if (nskip){
+      if (nfiles == 1 && nskip < _event -> numberOfEventsInFile()){
+          _event -> goToEntry(nskip);
+      }
+      else{
+          nskip = 0;
+      }
+  }
+
+  char _buf[200];
+  sprintf(_buf, "Processing %d events from entry %d...", nevents, nskip);
+  Message::send(msg::kNORMAL, __FUNCTION__, _buf);
 
   while (status && _event->fileEntry() < nfiles) {
 
@@ -229,6 +242,7 @@ bool ana_processor::run(unsigned int nevents) {
       break;
     }
 
+    if (_event -> atEnd()) break;
 
     _event->next();
 

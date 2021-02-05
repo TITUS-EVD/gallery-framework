@@ -75,10 +75,12 @@ protected:
     float wire_position(float x, float y, float z, int projection_id);
     float tick_position(float x, float time_offset, int projection_id);
 
-    int n_ticks_per_chamber = 2700;
-    int n_cathode_ticks = 000;
+    int n_ticks_per_chamber = 2500;
+    int n_cathode_ticks = 110;
     int compression = 5;
-    int tick_offset = 00;
+    int tick_offset = 2500;
+
+    int total_ticks = -1;
 
     // int _max_tick;
 

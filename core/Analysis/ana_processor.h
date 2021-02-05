@@ -60,7 +60,7 @@ public:
   bool get_ana_status(ana_base* ptr) const;
 
   /// A method to run a batch process
-  bool run(unsigned int nevents = 0);
+  bool run(unsigned int nevents = 0, unsigned int nskip = 0);
 
   /// A method to process just one event.
   bool process_event();

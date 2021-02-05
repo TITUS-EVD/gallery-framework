@@ -31,7 +31,7 @@ export GALLERY_FMWK_USERDEVDIR
 #
 # Define directories to be compile upon a global "make"...
 #
-SUBDIRS :=  example
+SUBDIRS :=  example SuperaLight
 
 #####################################################################################
 #

@@ -34,7 +34,8 @@ SuperaModuleBase::SuperaModuleBase() {
 //
 // fWireStartVtx.at(i).resize(_geo_service->Nwires(plane, tpc));
     _base_image_meta_2D.resize(3);
-    float total_ticks = 2*n_ticks_per_chamber + n_cathode_ticks;
+    // Set the total ticks per image:
+    total_ticks = 2*n_ticks_per_chamber + n_cathode_ticks;
     for (size_t plane = 0; plane < 3; plane ++){
         // For the first dimension, x, we need the number of wires:
         int n_wires = _geo_service->Nwires(plane, 0);
@@ -92,7 +93,7 @@ int SuperaModuleBase::column(int channel) {
 int SuperaModuleBase::row(int tick, int channel) {
   if (channel >= 5638) {
     // In this scenario, we need the row to come out highe
-    return 2*n_ticks_per_chamber - (tick - tick_offset) - 1;
+    return total_ticks - (tick - tick_offset) - 1;
   } else {
     return tick - tick_offset;
   }

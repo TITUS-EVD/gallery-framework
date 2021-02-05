@@ -56,9 +56,12 @@ void SBNDWire::slice(gallery::Event* ev, larcv3::IOManager & io) {
       auto ROI = *iROI;
       for (auto tick = ROI.begin_index(); tick < ROI.end_index(); tick ++){
 
+        // CHeck that this tick is strictly within  the TPC active window
         if (tick < tick_offset || tick > tick_offset + n_ticks_per_chamber)
           continue;
         // std::cout << "tick is " << tick << std::endl;
+
+        // Convert the tick to the image coordinate:
         int this_row = row(tick, channel) / compression;
         coords[1] = this_row; coords[0] = this_column;
         float val = ROI[tick] / (1.0*compression);

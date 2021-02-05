@@ -38,7 +38,7 @@ def process_files(file_list):
     # Attach an analysis unit ... here we use a base class which do
     my_proc.add_process(supera_light)
 
-    my_proc.run(2)
+    my_proc.run(24, 5)
 
     # # Open the output file and find out how many events were processed:
     # f = larcv.IOManager()

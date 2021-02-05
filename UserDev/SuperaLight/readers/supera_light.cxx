@@ -25,7 +25,7 @@ bool supera_light::initialize() {
   raw_digit.initialize();
   wire.initialize();
   cluster.initialize();
-  
+
   return true;
 }
 

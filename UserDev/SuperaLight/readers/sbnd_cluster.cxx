@@ -199,8 +199,13 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
         std::cout << "(x, y, z): (" << ide.x << ", " << ide.y << ", " << ide.z << ")\n";
         auto index = _base_image_meta_3D.position_to_index(pos_3d);
         _3d_clusters.writeable_voxel_set(larcv_particle_id).add(larcv3::Voxel(index, ide.energy));
-        std::cout << " Current size, index: " << _3d_clusters.voxel_set(0).size()
-                  << ", " << index << std::endl;
+        if (ide.x > 13.3 && ide.x < 13.4){
+            std::cout << " Current size, index: " << _3d_clusters.voxel_set(0).size()
+                      << ", " << index << std::endl;
+            std::cout << "  X coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.x, 0) << "\n";
+            std::cout << "  Y coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.y, 1) << "\n";
+            std::cout << "  Y coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.z, 2) << "\n";
+        }
 
         int tick = row(tdc, ch.Channel());
 
