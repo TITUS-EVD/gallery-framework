@@ -16,18 +16,20 @@ SuperaModuleBase::SuperaModuleBase() {
 
     // Use GeoService to build the meta information:
 
-    auto fDetLength     = _geo_service->DetLength(0);
-    auto fDetHalfWidth  = _geo_service->DetHalfWidth(0);
-    auto fDetHalfHeight = _geo_service->DetHalfHeight(0);
+    // auto fDetLength     = _geo_service->DetLength(0);
+    // auto fDetHalfWidth  = _geo_service->DetHalfWidth(0); // 2x for sbnd dual drift
+    // auto fDetHalfHeight = _geo_service->DetHalfHeight(0);
 
     // In 3D, using z = length, y = height, x = width
 
     // _base_image_meta_2D
     // void set_dimension(size_t axis, double image_size, size_t number_of_voxels, double origin = 0);
 
-    _base_image_meta_3D.set_dimension(0, 2*fDetHalfWidth,  size_t(2*fDetHalfWidth));
-    _base_image_meta_3D.set_dimension(1, 2*fDetHalfHeight, size_t(2*fDetHalfHeight));
-    _base_image_meta_3D.set_dimension(2, fDetLength,       size_t(2*fDetLength));
+    _base_image_meta_3D.set_dimension(0, 400,  400, -200); // X goes -200 to 200
+    _base_image_meta_3D.set_dimension(1, 400, 400, -200);
+    _base_image_meta_3D.set_dimension(2, 500, 500, 0 );
+
+    std::cout << "3d meta: " << _base_image_meta_3D.dump() << std::endl;
 
 // int plane = i % (_geo_service->Nplanes(0));
 // int tpc = int(i/_geo_service->Nplanes(0));
@@ -39,7 +41,7 @@ SuperaModuleBase::SuperaModuleBase() {
     for (size_t plane = 0; plane < 3; plane ++){
         // For the first dimension, x, we need the number of wires:
         int n_wires = _geo_service->Nwires(plane, 0);
-        _base_image_meta_2D[plane].set_dimension(0, 0.3*_geo_service->Nwires(plane), _geo_service->Nwires(plane));
+        _base_image_meta_2D[plane].set_dimension(0, 0.3*n_wires, n_wires);
         _base_image_meta_2D[plane].set_dimension(1, 0.078*total_ticks, total_ticks/compression );
         _base_image_meta_2D[plane].set_projection_id(plane);
     }
@@ -111,57 +113,57 @@ float SuperaModuleBase::wire_position(float x, float y, float z, int projection_
       return -999.;
     }
 }
-float SuperaModuleBase::tick_position(float x, float time_offset, int projection_id){
-    // Convert an x coordinate to a tick position
-
-    // First, convert the tick into the plane with the drift velocity:
-    // (Add an offset for the distance between planes)
-    float tick = x / larutil::GeometryHelper::GetME()->TimeToCm();
-
-    if (x > 0){
-      tick -= 7;
-      if (projection_id == 0){
-        tick -= 0.48;
-      }
-      if (projection_id == 1){
-        tick -= -3.035;
-      }
-      if (projection_id == 2){
-        tick -= 3.646;
-      }
-    }
-    else{
-      if (projection_id == 0){
-        tick += -3.035;
-      }
-      if (projection_id == 1){
-        tick += 0.48;
-      }
-      if (projection_id == 2){
-        tick += 3.646;
-      }
-    }
-
-
-
-    // if there is a time offset, add it:
-    if(time_offset != 0){
-      tick += time_offset;
-    }
-
-
-    // if (x < 0){
-
-    // }
-
-    // Accomodate the central x=0 position:
-    tick += n_ticks_per_chamber;
-
-    // Apply compression:
-    tick /= compression;
-
-    return tick;
-}
+// float SuperaModuleBase::tick_position(float x, float time_offset, int projection_id){
+//     // Convert an x coordinate to a tick position
+//
+//     // First, convert the tick into the plane with the drift velocity:
+//     // (Add an offset for the distance between planes)
+//     float tick = x / larutil::GeometryHelper::GetME()->TimeToCm();
+//
+//     if (x > 0){
+//       tick -= 7;
+//       if (projection_id == 0){
+//         tick -= 0.48;
+//       }
+//       if (projection_id == 1){
+//         tick -= -3.035;
+//       }
+//       if (projection_id == 2){
+//         tick -= 3.646;
+//       }
+//     }
+//     else{
+//       if (projection_id == 0){
+//         tick += -3.035;
+//       }
+//       if (projection_id == 1){
+//         tick += 0.48;
+//       }
+//       if (projection_id == 2){
+//         tick += 3.646;
+//       }
+//     }
+//
+//
+//
+//     // if there is a time offset, add it:
+//     if(time_offset != 0){
+//       tick += time_offset;
+//     }
+//
+//
+//     // if (x < 0){
+//
+//     // }
+//
+//     // Accomodate the central x=0 position:
+//     tick += n_ticks_per_chamber;
+//
+//     // Apply compression:
+//     tick /= compression;
+//
+//     return tick;
+// }
 
 
 }

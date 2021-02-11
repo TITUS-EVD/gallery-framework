@@ -31,6 +31,13 @@ void SBNDCluster::build_particle_map(gallery::Event* ev, larcv3::IOManager & io)
   _particle_to_trackID.clear();
   _trackID_to_particle.clear();
 
+  // Using raw MC Particles now
+
+  // std::string producer = "largeant";
+  // art::InputTag tag(producer);
+  // auto const& mcparticles = ev->getValidHandle<std::vector<simb::MCParticle> >(tag);
+
+
   // Get the MCtracks and MCShowers
 
   std::string producer = "mcreco";
@@ -41,12 +48,68 @@ void SBNDCluster::build_particle_map(gallery::Event* ev, larcv3::IOManager & io)
   // Get the EventParticle from larcv3:
   auto & event_part = io.get_data<larcv3::EventParticle>("sbndseg");
 
+
+
+  // unsigned int id = 0;
+  //
+  // for (auto& particle : *mcparticles) {
+  //   std::cout << "Looking at particle with ID " << particle.TrackId()
+  //             << " and PDG " << particle.PdgCode()
+  //             << ", parent is " << particle.Mother()
+  //             // << " with PDG " << particle.Mother().PdgCode()
+  //             << "\n";
+  //
+  //   larcv3::Particle part;
+  //
+  //   part.id(id);
+  //   part.mcst_index(          particle.TrackId());
+  //
+  //   part.track_id(            particle.TrackId());
+  //   part.pdg_code(            particle.PdgCode());
+  //   // part.nu_interaction_type( particle.Origin());
+  //   part.creation_process(    particle.Process());
+  //
+  //   part.parent_track_id(     particle.Mother());
+  //   // part.parent_pdg_code(     particle.Mother().PdgCode());
+  //   // part.ancestor_track_id(   particle.AncestorTrackID());
+  //   // part.ancestor_pdg_code(   particle.AncestorPdgCode());
+  //   //
+  //   part.first_step( particle.Vx(0),
+  //                    particle.Vy(0),
+  //                    particle.Vz(0),
+  //                    particle.T(0) );
+  //
+  //   part.last_step( particle.EndX(),
+  //                    particle.EndY(),
+  //                    particle.EndZ(),
+  //                    particle.EndT() );
+  //
+  //   part.energy_init(particle.E(0));
+  //   part.momentum(   particle.Px(0),
+  //                    particle.Py(0),
+  //                    particle.Pz(0));
+  //
+  //   _particle_to_trackID.push_back(std::vector<int>());
+  //   _particle_to_trackID.back().push_back(particle.TrackId());
+  //   _trackID_to_particle[particle.TrackId()] = id;
+  //
+  //   event_part.emplace_back(std::move(part));
+  //   id++;
+  // }
+
+
+
   // std::cout << "Number of mctracks : " << mctracks->size() << std::endl;
   // std::cout << "Number of mcshowers: " << mcshowers->size() << std::endl;
 
   unsigned int id = 0;
 
   for (auto& track : *mctracks) {
+    // std::cout << "Looking at track with ID " << track.TrackID()
+    //           << " and PDG " << track.PdgCode()
+    //           << ", parent is " << track.AncestorTrackID()
+    //           << " with PDG " << track.AncestorPdgCode() << "\n";
+
     larcv3::Particle part;
 
     part.id(id);
@@ -82,6 +145,10 @@ void SBNDCluster::build_particle_map(gallery::Event* ev, larcv3::IOManager & io)
 
   for (auto& shower : *mcshowers) {
     larcv3::Particle part;
+    // std::cout << "Looking at shower with ID " << shower.TrackID()
+    //           << " and PDG " << shower.PdgCode()
+    //           << ", parent is " << shower.AncestorTrackID()
+    //           << " with PDG " << shower.AncestorPdgCode() << "\n";
 
     part.id(id);
     part.mcst_index(          shower.TrackID());
@@ -152,11 +219,11 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
     cluster2dSet.meta(_base_image_meta_2D.at(i));
     i++;
   }
-
-  std::cout << "number of clusters per projection:" << std::endl;
-  std::cout << _clusters_by_projection[0].size() << std::endl;
-  std::cout << _clusters_by_projection[1].size() << std::endl;
-  std::cout << _clusters_by_projection[2].size() << std::endl;
+  //
+  // std::cout << "number of clusters per projection:" << std::endl;
+  // std::cout << _clusters_by_projection[0].size() << std::endl;
+  // std::cout << _clusters_by_projection[1].size() << std::endl;
+  // std::cout << _clusters_by_projection[2].size() << std::endl;
 
 
   // larcv3::ClusterVoxel3D clusters3d;
@@ -167,25 +234,36 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
   std::vector<size_t> coord_2d; coord_2d.resize(2);
   std::vector<double> pos_3d; pos_3d.resize(3);
 
+  float min_tdc = 999; float max_tdc = -9999;
+
   for (auto& ch : *simch) {
     int this_column = column(ch.Channel());
     int this_projection_id = projection_id(ch.Channel());
+
 
     for (auto& TDCIDE : ch.TDCIDEMap()) {
       auto& tdc = TDCIDE.first;
       auto& ides = TDCIDE.second;
 
+
+
+      if (tdc < min_tdc) min_tdc = tdc;
+      if (tdc > max_tdc) max_tdc = tdc;
+
+      if (tdc < tick_offset || tdc > tick_offset + n_ticks_per_chamber){
+        continue;
+      }
+
       for (auto& ide : ides) {
 
-        if (tdc < tick_offset || tdc > tick_offset + n_ticks_per_chamber){
-          continue;
-        }
+        // std::cout << " Track ID is  " << ide.trackID << std::endl;
+
         if (ide.trackID == -1){
           continue;
         }
 
         // Add this ide to the proper particle in 3D:
-        int this_particle = ide.trackID;
+        int this_particle = abs(ide.trackID);
         int larcv_particle_id;
 
         if (_trackID_to_particle.find(this_particle) !=
@@ -196,18 +274,20 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
         }
 
         pos_3d[0] = ide.x; pos_3d[1] = ide.y; pos_3d[2] = ide.z;
-        std::cout << "(x, y, z): (" << ide.x << ", " << ide.y << ", " << ide.z << ")\n";
         auto index = _base_image_meta_3D.position_to_index(pos_3d);
         _3d_clusters.writeable_voxel_set(larcv_particle_id).add(larcv3::Voxel(index, ide.energy));
-        if (ide.x > 13.3 && ide.x < 13.4){
-            std::cout << " Current size, index: " << _3d_clusters.voxel_set(0).size()
-                      << ", " << index << std::endl;
-            std::cout << "  X coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.x, 0) << "\n";
-            std::cout << "  Y coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.y, 1) << "\n";
-            std::cout << "  Y coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.z, 2) << "\n";
-        }
-
-        int tick = row(tdc, ch.Channel());
+        // if (ide.x > 65.5 && ide.x < 66.6){
+        //     std::cout << " Current location,  size, index: "
+        //               << "(" << ide.x << ", " << ide.y << ", " << ide.z << "), "
+        //               << _3d_clusters.voxel_set(0).size()
+        //               << ", " << index << std::endl;
+        //     std::cout << "  X coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.x, 0) << "\n";
+        //     std::cout << "  Y coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.y, 1) << "\n";
+        //     std::cout << "  Z coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.z, 2) << "\n";
+        // }
+        if (ch.Channel() >= 5638) std::cout << "\nInput TDC " << tdc << std::endl;
+        int tick = row(tdc + tick_offset, ch.Channel()) / compression;
+        if (ch.Channel() >= 5638) std::cout << "Output Tick " << tick << std::endl;
 
         // if (fabs(ide.x - 182.073) < 0.01) {
         //   std::cout << "(plane " << projection_id(ch.Channel()) << ") "
@@ -234,6 +314,9 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
   }
 
   event_cluster3d.emplace(std::move(_3d_clusters));
+
+  std::cout << "min_tdc: " << min_tdc << std::endl;
+  std::cout << "max_tdc: " << max_tdc << std::endl;
 
   // event_cluster3d->set(clusters3d, voxel_meta);
   //   std::cout << ch.TDCIDEMap().size() << std::endl;
