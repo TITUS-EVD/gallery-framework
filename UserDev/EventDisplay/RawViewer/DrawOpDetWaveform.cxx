@@ -120,15 +120,18 @@ PyObject * DrawOpDetWaveform::getArray() {
 
   try {
     // Convert the wire data to numpy arrays:
-    int n_dim = 2;
-    int * dims = new int[n_dim];
-    dims[0] = _n_op_channels;
-    dims[1] = _n_time_ticks;
-    int data_type = NPY_FLOAT;
+    // int n_dim = 2;
+    // int * dims = new int[n_dim];
+    // int dims[2];
+    const npy_intp dims[2] = {_n_op_channels, _n_time_ticks};
+    // dims[0] = _n_op_channels;
+    // dims[1] = _n_time_ticks;
+    // int data_type = NPY_FLOAT;
 
-    std::cout << "Returning array, dims: " << dims[0] << ", " << dims[1] << ", n_dim: " << n_dim << ", data_type: " << data_type << std::endl;
+    // std::cout << "Returning array, dims: " << dims[0] << ", " << dims[1] << ", n_dim: " << n_dim << ", data_type: " << data_type << std::endl;
 
-    return (PyObject *) PyArray_FromDimsAndData(n_dim, dims, data_type, (char*) & ((_wvf_data)[0]) );
+    // return (PyObject *) PyArray_FromDimsAndData(n_dim, dims, data_type, (char*) & ((_wvf_data)[0]) );
+    return (PyObject *) PyArray_SimpleNewFromData(2, dims, NPY_FLOAT, _wvf_data.data());
   }
   catch ( ... ) {
     std::cerr << "WARNING: CANNOT GET OP DET WAVEFORM.\n";

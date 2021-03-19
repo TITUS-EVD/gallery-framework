@@ -53,14 +53,15 @@ PyObject * RawBase::getArrayByPlane(unsigned int p) {
   else {
     try {
       // Convert the wire data to numpy arrays:
-      int n_dim = 2;
-      int * dims = new int[n_dim];
-      dims[0] = _x_dimensions.at(p);
-      dims[1] = _y_dimensions.at(p);
-      int data_type = NPY_FLOAT; //PyArray_FLOAT;
+      // int n_dim = 2;
+      // int * dims = new int[n_dim];
+      const npy_intp dims[2] = {_x_dimensions.at(p), _y_dimensions.at(p)};
+      // dims[0] = _x_dimensions.at(p);
+      // dims[1] = _y_dimensions.at(p);
+      // int data_type = NPY_FLOAT; //PyArray_FLOAT;
 
-      return (PyObject *) PyArray_FromDimsAndData(n_dim, dims, data_type, (char*) & ((_planeData.at(p))[0]) );
-      // return (PyObject *) PyArray_SimpleNewFromData(n_dim, dims, NPY_FLOAT, _planeData[p].data());
+      // return (PyObject *) PyArray_SimpleNewFromData(n_dim, dims, data_type, (char*) & ((_planeData.at(p))[0]) );
+      return (PyObject *) PyArray_SimpleNewFromData(2, dims, NPY_FLOAT, _planeData[p].data());
     }
     catch ( ... ) {
       std::cerr << "WARNING:  REQUEST FOR PLANE FOR WHICH THERE IS NOT WIRE DATA.\n";
