@@ -204,6 +204,8 @@ class evd_manager_base(manager, QtCore.QObject):
         # what data products are available
 
         # Open the file
+        print(file)
+        print(type(file))
         f = TFile(file)
         e = f.Get("Events")
 
@@ -318,6 +320,7 @@ class evd_manager_base(manager, QtCore.QObject):
 
         # Have to figure out number of events available
         for _f in _file_list:
+            _f = str(_f)
             _rf = TFile(_f)
             _tree = _rf.Get("Events")
             self._n_entries += _tree.GetEntries()
