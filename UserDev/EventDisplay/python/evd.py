@@ -55,6 +55,9 @@ def main():
     geom.add_argument('-S3', '-s3', '--sbnd3',
                       action='store_true',
                       help="Run with the SBND Geometry with 3 drift windows")
+    geom.add_argument('-S1', '-s1', '--sbnd1',
+                      action='store_true',
+                      help="Run with the SBND Geometry with 1 drift window")
     geom.add_argument('-I', '-i', '--icarus',
                       action='store_true',
                       help="Run with the ICARUS Geometry")
@@ -110,6 +113,11 @@ def main():
         geom._triggerOffset = 2500
         geom._readoutWindowSize = 7500
         geom.recalculateOffsets()
+    elif args.sbnd1:
+        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+        geom._tRange = 3000
+        geom._triggerOffset = 0
+        geom._readoutWindowSize = 3000
     elif args.icarus:
         geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties,args.no_split_wire)
     else:

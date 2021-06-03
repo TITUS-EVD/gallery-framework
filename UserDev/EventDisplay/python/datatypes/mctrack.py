@@ -29,6 +29,8 @@ class mctrack(recoBase):
                 points = []
                 # Remeber - everything is in cm, but the display is in
                 # wire/time!
+                if len(track.track()) > 0:
+                    print('MCTrack', i, 'start:', track.track()[0].first, track.track()[0].second)
                 for pair in track.track():
                     x = pair.first / geom.wire2cm()
                     y = pair.second / geom.time2cm() + offset

@@ -364,7 +364,7 @@ class view_manager(QtCore.QObject):
       self.plotFFT()
 
       # Store the viewport that just draw this
-      # as we might need it to increase and 
+      # as we might need it to increase and
       # decrease the displayed wire
       self._current_wire_drawer = drawer
       self._current_wire = wire

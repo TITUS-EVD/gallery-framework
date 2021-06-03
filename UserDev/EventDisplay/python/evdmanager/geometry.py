@@ -336,7 +336,7 @@ class geometry(geoBase):
         self._nCryos = int(geometryCore.Ncryostats())
         self._tRange = self._detectorProperties.NumberTimeSamples()
         self._readoutWindowSize = self._detectorProperties.NumberTimeSamples()
-        #self._triggerOffset = detProperties.TriggerOffset()
+        # self._triggerOffset = self._detectorClocks.TriggerOffsetTPC()
         self._triggerOffset = self._detectorClocks.TPCClock().Ticks(self._detectorClocks.TriggerOffsetTPC() * -1.)
 
         self._wRange = []
@@ -363,6 +363,11 @@ class geometry(geoBase):
 
             # print ('opch', opch, 'shape', geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName())
             # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
+
+        print('Configured with:')
+        print('\tTrigger Offset TPC:', self._triggerOffset)
+        print('\tTime Range:', self._tRange)
+        print('\tReadout Window Size:', self._readoutWindowSize)
 
     def recalculateOffsets(self):
         self._offset = []
@@ -411,9 +416,9 @@ class sbnd(geometry):
         from .mapping import sbnd_opdet_map
         self._opdet_radius = 6
         self._opdet_name = sbnd_opdet_map
-        self._tRange = 3000 #7500
-        self._triggerOffset = 0 #2500
-        self._readoutWindowSize = 3000 #7500
+        # self._tRange = 3000 #7500
+        # self._triggerOffset = 0 #2500
+        # self._readoutWindowSize = 3000 #7500
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6]
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm]
         self._cathodeGap = 8.5 / self._time2Cm # 5.3 cm   # 100
