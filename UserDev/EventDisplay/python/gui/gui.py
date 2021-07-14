@@ -380,7 +380,7 @@ class view_manager(QtCore.QObject):
       return
 
     offset = self._geometry.timeOffsetTicks(hits[0].plane())
-    
+
     for i in range(len(hits)):
       hit = hits[i]
 
@@ -388,20 +388,11 @@ class view_manager(QtCore.QObject):
       end_time   = hit.end_time() + offset
       delta      = hit.end_time() - hit.start_time() + 1
       peak_time  = hit.peak_time() + offset
-    
-      # In case of 2 TPCs, also draw the hits on
-      # the other plane, but flipping the time
-      # if flip:
-      #   start_time = self._geometry.tRange() - start_time
-      #   end_time   = self._geometry.tRange() - end_time  
-      #   peak_time  = self._geometry.tRange() - peak_time 
 
-      xPts = np.linspace(start_time, end_time, delta)
+      xPts = np.linspace(start_time, end_time, int(delta))
       yPts = hit.peak_amplitude() * np.exp( - 0.5 * (xPts - peak_time)**2 / hit.rms()**2  )
-      # self._plottedHits.append(self._wirePlot.plot(xPts,yPts))
       self._plottedHits.append(self._wirePlot.plot(xPts,yPts,pen=pg.mkPen((255,0,0,200),width=2)))
 
-      # self._wirePlot.remove
 
 
   def plotFFT(self):

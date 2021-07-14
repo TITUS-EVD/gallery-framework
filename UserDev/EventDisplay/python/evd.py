@@ -95,7 +95,6 @@ def main():
 
     detPropData = detProperties.DataFor(detClocks.DataForJob())
 
-    print("NumberTimeSamples:",detPropData.NumberTimeSamples())
 
     app = QtGui.QApplication(sys.argv)
 

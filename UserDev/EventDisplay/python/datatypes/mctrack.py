@@ -34,12 +34,16 @@ class mctrack(recoBase):
                 for pair in track.track():
                     x = pair.first / geom.wire2cm()
                     y = pair.second / geom.time2cm() + offset
-                    y += track.tpc() * (geom.tRange() - geom.triggerOffset())
+                    print('bare original', x, pair.second, geom.time2cm())
+                    print('original', x, y - offset)
+                    print('original w/ offset', x, y)
+                    # y += track.tpc() * (geom.tRange() - geom.triggerOffset())
 
-                    if geom.nTPCs() == 2 and on_both_tpcs:
-                        cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
-                        if y > cathode_time:
-                            y += geom.tRange() - geom.triggerOffset()
+                    # if geom.nTPCs() == 2 and on_both_tpcs:
+                    #     cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
+                    #     if y > cathode_time:
+                    #         y += geom.tRange() - geom.triggerOffset()
+                    print('converted', x, y)
 
                     points.append(QtCore.QPointF(x, y))
 

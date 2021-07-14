@@ -76,6 +76,10 @@ class hit(recoBase):
             width = 1
             height = hit.rms()
 
+            # Override for SBND commissioning fasthit finder
+            if 'fasthit' in self._producerName:
+                height = hit.end_time() - hit.start_time() + 1
+
             if flip:
                 # Flip the time
                 time = geom.tRange() - time

@@ -96,12 +96,13 @@ class mctruth(recoBase):
         tooltip = str()
 
         if mct.origin() == 1:
-            pdg = pdg_to_name[mct.nu_pdg()]
-            mode = mode_to_name[mct.int_mode()]
+            pdg = pdg_to_name.get(mct.nu_pdg(), mct.nu_pdg())
+            mode = mode_to_name.get(mct.int_mode(), mct.int_mode())
             message += f'PDG: {mct.nu_pdg()}, Neutrino Energy: {mct.nu_energy():.3} GeV, mode: {mode}'
 
             fs_pdgs = mct.finalstate_pdg()
             fs_enes = mct.finalstate_energy()
+            tooltip += f'Vertex: x = {vertex[0]:.2f}, y = {vertex[1]:.2f}, z = {vertex[2]:.2f}\n\n'
             tooltip += 'Final State Particles'
             for p, e in zip(fs_pdgs, fs_enes):
                 tooltip += f'\n  PDG: {p}, Energy: {e:.3} GeV'
@@ -112,7 +113,16 @@ class mctruth(recoBase):
             message += f'Supernovae Event'
         elif mct.origin() == 4:
             # message += f'Single Particle Generation'
-            message += f'Single particle. PDG: {mct.nu_pdg()}, Energy: {mct.nu_energy():.3} GeV.'
+            if len(mct.finalstate_pdg()) == 1:
+                message += f'Single particle. PDG: {mct.nu_pdg()}, Energy: {mct.nu_energy():.3} GeV.'
+            else:
+                message += f'Particle Gun Generation with {len(mct.finalstate_pdg())} particles'
+
+                fs_pdgs = mct.finalstate_pdg()
+                fs_enes = mct.finalstate_energy()
+                tooltip += 'All Particles:'
+                for p, e in zip(fs_pdgs, fs_enes):
+                    tooltip += f'\n  PDG: {p}, Energy: {e:.3} GeV'
 
 
 

@@ -365,9 +365,13 @@ class geometry(geoBase):
             # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
 
         print('Configured with:')
-        print('\tTrigger Offset TPC:', self._triggerOffset)
-        print('\tTime Range:', self._tRange)
-        print('\tReadout Window Size:', self._readoutWindowSize)
+        print('Trigger Offset TCP:     ', self._triggerOffset)
+        print('Time Range:             ', self._tRange)
+        print('Readout Window Size:    ', self._readoutWindowSize)
+        print('Tick Period:            ', self._detectorClocks.TPCClock().TickPeriod())
+        print('Drift Velocity:         ', self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature()))
+        print('Time To Cm:             ', self._time2Cm)
+        print('')
 
     def recalculateOffsets(self):
         self._offset = []

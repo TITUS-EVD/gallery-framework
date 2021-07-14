@@ -28,7 +28,7 @@ void SimpleGeometryHelper::Reconfigure()
 
 
   fWireToCm = geom.WirePitch(0, 1, 0);
-  fTimeToCm = sampling_rate(clocks) * detp.DriftVelocity(detp.Efield(), detp.Temperature());
+  fTimeToCm = sampling_rate(clocks) / 1.e3 * detp.DriftVelocity(detp.Efield(), detp.Temperature());
 }
 
 
@@ -69,8 +69,10 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // So, it moves the "0" farther away from the actual
   // time and is an addition)
   returnPoint.t += trigger_offset(clocks) * fTimeToCm;
-  // std::cout << "trigger offset, plane " << plane
-  //           << ": " << detp.TriggerOffset() * fTimeToCm << std::endl;
+  std::cout << "trigger offset, plane " << plane
+            << ": " << trigger_offset(clocks)
+            << ": " << trigger_offset(clocks) * fTimeToCm << std::endl;
+  std::cout << "fTimeToCm " << fTimeToCm << ", fWireToCm " << fWireToCm << plane;
   //
   //Get the origin point of this plane:
   Double_t planeOrigin[3];
@@ -92,8 +94,8 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // in centimeters)
   returnPoint.t -= planeOrigin[0];
 
-// std::cout << "origin offset, plane " << plane
-//             << ": " << planeOrigin[0] << std::endl;
+  std::cout << "origin offset, plane " << plane
+            << ": " << planeOrigin[0] << std::endl;
 
   // Set the plane of the Point2D:
   returnPoint.plane = plane;

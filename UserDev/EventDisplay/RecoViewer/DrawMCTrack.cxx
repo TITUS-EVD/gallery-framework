@@ -17,6 +17,10 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsi
                                            plane, tpc, cryostat);
       // auto point = geoHelper->Point_3Dto2D(track[i].X(), track[i].Y(),
       //                                      track[i].Z(), plane);
+      if (i == 0) {
+        std::cout << "3D track: " << track[i].X() << " " << track[i].Y() << " " << track[i].Z() << std::endl;
+        std::cout << "2D track: " << point.w << " " << point.t << std::endl;
+      }
       result._track.push_back(std::make_pair(point.w, point.t));
     } catch (...) {
       continue;
