@@ -12,14 +12,18 @@ public:
   double w; // wire distance in cm
   double t; // time distance in cm (drift distance)
   unsigned char plane; // plane 0, 1, 2
+  unsigned char tpc; // plane 0, 1, 2
+  unsigned char cryo; // plane 0, 1, 2
 
   PxPoint() {
     Clear();
     //        std::cout<< "This is the default point ctor." << std::endl;
   }
 
-  PxPoint(unsigned char pp, double ww, double tt) {
+  PxPoint(unsigned char pp, double ww, double tt, unsigned char ttpc=0, unsigned char ccryo=0) {
     plane = pp;
+    tpc = ttpc;
+    cryo = ccryo;
     w = ww;
     t = tt;
   }
@@ -27,6 +31,8 @@ public:
   void Clear()
   {
     plane = 0;
+    tpc   = 0;
+    cryo  = 0;
     w     = 0;
     t     = 0;
   }
