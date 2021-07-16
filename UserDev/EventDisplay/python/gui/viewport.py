@@ -369,13 +369,6 @@ class viewport(pg.GraphicsLayoutWidget):
         self._cathode_lines.append(line)
         self._view.addItem(line)
 
-        # temp
-        line = QtGui.QGraphicsLineItem()
-        line.setLine(0, 3000, max_wire, 3000)
-        line.setPen(pg.mkPen(143, 255, 31, width=2))
-        self._cathode_lines.append(line)
-        self._view.addItem(line)
-
         # Construct the anode line and append it
         line = QtGui.QGraphicsLineItem()
         line.setLine(0, x_anode, max_wire, x_anode)
