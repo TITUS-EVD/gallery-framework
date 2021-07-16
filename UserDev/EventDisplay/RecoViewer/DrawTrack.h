@@ -42,13 +42,21 @@ public:
 
   const std::vector<std::pair<float, float>> &track() { return _track; }
   const std::vector<std::pair<float, float>> &direction() { return _track; }
-  const unsigned int &tpc() { return _tpc; }
-  const unsigned int &cryo() { return _cryo; }
+  const std::vector<unsigned int> &tpc() { return _tpc; }
+  const std::vector<unsigned int> &cryo() { return _cryo; }
+  const double &length() { return _length; }
+  const float &chi2() { return _chi2; }
+  const double &theta() { return _theta; }
+  const double &phi() { return _phi; }
 
 protected:
-  std::vector<std::pair<float, float>> _track;
-  unsigned int _tpc = 0;
-  unsigned int _cryo = 0;
+  std::vector<std::pair<float, float>> _track; ///< Trajectory points
+  std::vector<unsigned int> _tpc; ///< TPC of each trajectory point
+  std::vector<unsigned int> _cryo; ///< Cryo of each trajectory point
+  double _length;
+  float _chi2;
+  double _theta;
+  double _phi;
 };
 
 // typedef std::vector<std::pair<float, float> > Track2D;
@@ -71,7 +79,7 @@ public:
   virtual bool finalize();
 
 private:
-  Track2D getTrack2D(recob::Track track, unsigned int plane, unsigned int tpc = 0, unsigned int cryostat = 0);
+  Track2D getTrack2D(recob::Track track, unsigned int plane);
 
   size_t _total_plane_number;
 };
