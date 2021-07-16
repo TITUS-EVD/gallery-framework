@@ -407,7 +407,8 @@ class sbnd(geometry):
         self._levels = [(-80, 0), (-10, 100), (-10, 200)]
 
         self._view_names = ['U', 'V', 'Y']
-        self._plane_mix = {0: [4], 1: [3], 2: [5]}
+        # self._plane_mix = {0: [4], 1: [3], 2: [5]}
+        self._plane_mix = {0: [3], 1: [4], 2: [5]}
         self._plane_flip = [False, False, False, True, True, True]
         self._plane_shift = [False, False, False, False, False, False]
 
@@ -464,8 +465,8 @@ class sbnd(geometry):
 
             self._offset.append(
                 self.triggerOffset()
-                * self.time2cm()
-                - self.planeOriginX(v) )
+                * self.time2cm())
+                # - self.planeOriginX(v) )
 
         self._planeid_map = {
             # [plane, tpc, cryo]: titus_plane_id
@@ -484,8 +485,8 @@ class sbnd(geometry):
         }
 
         self._planeid_to_other_planes = {
-            0: [4],
-            1: [3],
+            0: [3],
+            1: [4],
             2: [5]
         }
 
