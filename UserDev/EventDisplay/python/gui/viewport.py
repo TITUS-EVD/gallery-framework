@@ -394,11 +394,11 @@ class viewport(pg.GraphicsLayoutWidget):
 
         start_removal = self._geometry.tRange() - n_removable_entries
         end_removal = self._geometry.tRange()
-        slice_right = slice(start_removal, end_removal)
+        slice_right = slice(int(start_removal), int(end_removal))
 
         start_removal = self._geometry.tRange() + self._geometry.cathodeGap()
         end_removal = start_removal + n_removable_entries
-        slice_left = slice(start_removal, end_removal)
+        slice_left = slice(int(start_removal), int(end_removal))
 
         final_slice = np.r_[slice_right, slice_left]
 

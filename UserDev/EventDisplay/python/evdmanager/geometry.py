@@ -426,7 +426,7 @@ class sbnd(geometry):
         # self._readoutWindowSize = 3000 #7500
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6]
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm]
-        self._cathodeGap = 8.5 / self._time2Cm # 5.3 cm   # 100
+        self._cathodeGap = 5.3 / self._time2Cm
 
         color_scheme = [(
             {'ticks': [(1, (255, 255, 255, 255)),
