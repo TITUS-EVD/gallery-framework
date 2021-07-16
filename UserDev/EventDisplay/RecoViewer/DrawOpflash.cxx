@@ -29,24 +29,6 @@ bool DrawOpflash::initialize() {
 
 bool DrawOpflash::analyze(const gallery::Event & ev) {
 
-  //
-  // Do your event-by-event analysis here. This function is called for
-  // each event in the loop. You have "storage" pointer which contains
-  // event-wise data. To see what is available, check the "Manual.pdf":
-  //
-  // http://microboone-docdb.fnal.gov:8080/cgi-bin/ShowDocument?docid=3183
-  //
-  // Or you can refer to Base/DataFormatConstants.hh for available data type
-  // enum values. Here is one example of getting PMT waveform collection.
-  //
-  // event_fifo* my_pmtfifo_v = (event_fifo*)(storage->get_data(DATA::PMFIFO));
-  //
-  // if( event_fifo )
-  //
-  //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
-  //
-
-
   art::InputTag opflash_tag(_producer);
   auto const & opflashHandle
         = ev.getValidHandle<std::vector <recob::OpFlash> >(opflash_tag);
@@ -63,7 +45,6 @@ bool DrawOpflash::analyze(const gallery::Event & ev) {
       _extraDataByPlane[p].reserve(opflashHandle -> size());
     }
 
-    // Populate the shower vector:
     size_t index = 0;
     for (auto & opf : *opflashHandle) {
       std::vector<recob::OpHit const*> ophits;
@@ -100,13 +81,13 @@ bool DrawOpflash::analyze(const gallery::Event & ev) {
 int DrawOpflash::find_plane(int opch) {
 
   auto xyz = _geo_service.OpDetGeoFromOpChannel(opch).GetCenter();
-  if (_geo_service.DetectorName() == "icarus") {
+  if (_geo_service.DetectorName().find("icarus") != std::string::npos) {
     if (xyz.X() < -300) return 0;
     if (xyz.X() < 0 && xyz.X() > -300) return 1;
     if (xyz.X() > 0 && xyz.X() < -300) return 2;
     if (xyz.X() > 300) return 3;
   }
-  if (_geo_service.DetectorName() == "sbndv1") {
+  if (_geo_service.DetectorName().find("sbnd") != std::string::npos) {
     if (xyz.X() < 0) return 0;
     if (xyz.X() > 0) return 1;
   }
@@ -116,19 +97,6 @@ int DrawOpflash::find_plane(int opch) {
 
 bool DrawOpflash::finalize() {
 
-  // This function is called at the end of event loop.
-  // Do all variable finalization you wish to do here.
-  // If you need, you can store your ROOT class instance in the output
-  // file. You have an access to the output file through "_fout" pointer.
-  //
-  // Say you made a histogram pointer h1 to store. You can do this:
-  //
-  // if(_fout) { _fout->cd(); h1->Write(); }
-  //
-  // else
-  //   print(MSG::ERROR,__FUNCTION__,"Did not find an output file pointer!!!
-  //   File not opened?");
-  //
   return true;
 }
 
