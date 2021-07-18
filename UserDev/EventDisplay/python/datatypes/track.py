@@ -68,23 +68,56 @@ class track(recoBase):
         geom = view_manager._geometry
 
         for view in view_manager.getViewPorts():
-            #   # get the showers from the process:
-            # self._drawnObjects.append([])
-            for i in range(0, self._n_planes): self._drawnObjects.append([])
-            # thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
-            thisPlane = view.plane() + 2 * view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            # #   # get the showers from the process:
+            # # self._drawnObjects.append([])
+            # for i in range(0, self._n_planes): self._drawnObjects.append([])
+            # # thisPlane = view.plane() + view.cryostat() * geom.nPlanes() * geom.nTPCs()
+            # # thisPlane = view.plane() + 2 * view.cryostat() * geom.nPlanes() * geom.nTPCs()
 
-            tracks = self._process.getDataByPlane(thisPlane)
-            offset = geom.offset(view.plane()) / geom.time2cm()
+            # tracks = self._process.getDataByPlane(thisPlane)
+            # # offset = geom.offset(view.plane()) / geom.time2cm()
 
-            print ('Drawing tracks for plane', view.plane())
-            self.drawTracks(view, tracks, offset, view.plane(), geom)
+            # print ('Drawing tracks for plane', view.plane())
+            # self.drawTracks(view, tracks, offset, view.plane(), geom)
 
-            if geom.nTPCs() == 2:
-                for left_plane in geom.planeMix()[thisPlane]:
-                    tracks = self._process.getDataByPlane(left_plane)
-                    print ('Drawing tracks for plane', left_plane)
-                    self.drawTracks(view, tracks, offset, left_plane, geom, (255, 128, 0))
+            # if geom.nTPCs() == 2:
+            #     for left_plane in geom.planeMix()[thisPlane]:
+            #         tracks = self._process.getDataByPlane(left_plane)
+            #         print ('Drawing tracks for plane', left_plane)
+            #         self.drawTracks(view, tracks, offset, left_plane, geom, (255, 128, 0))
+
+            self._drawnObjects.append([])
+            tracks = self._process.getDataByPlane(view.plane())
+
+            for i in range(len(tracks)):
+                track = tracks[i]
+                # construct a polygon for this track:
+                points = []
+                # Remeber - everything is in cm, but the display is in
+                # wire/time!
+                for i, pair in enumerate(track.track()):
+                    x = pair.first / geom.wire2cm()
+                    y = pair.second / geom.time2cm()
+
+                    # If odd TPC, shit this piece of the track up
+                    if track.tpc()[i] % 2:
+                        y += 2 * geom.triggerOffset()
+                        y += geom.cathodeGap()
+
+                    points.append(QtCore.QPointF(x, y))
+
+                if len(points) == 0:
+                    continue
+
+                color = (130,0,0) # red
+
+                thisPoly = polyLine(points, color)
+
+                thisPoly.setToolTip(f'Length: {track.length():.2f};  Theta: {track.theta():.2f};  Phi: {track.phi():.2f}')
+
+                view._view.addItem(thisPoly)
+
+                self._drawnObjects[view.plane()].append(thisPoly)
 
 
     def drawTracks(self, view, tracks, offset, plane, geom, color=(130,0,0)):
@@ -100,7 +133,6 @@ class track(recoBase):
             points = []
 
             location = track.tpc()
-            print ('  location is', location)
 
             # Remeber - everything is in cm, but the display is in
             # wire/time!

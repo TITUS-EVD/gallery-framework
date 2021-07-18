@@ -318,24 +318,25 @@ class viewport(pg.GraphicsLayoutWidget):
     for tpc in range(0, int(self._geometry.nTPCs())):
 
         # Take into account the distance between planes
-        plane_x_ref = self._geometry.getGeometryCore().Plane(0).GetCenter().X()
-        plane_x = self._geometry.getGeometryCore().Plane(self._plane).GetCenter().X()
-        delta_plane = abs(plane_x - plane_x_ref)
+        # plane_x_ref = self._geometry.getGeometryCore().Plane(0).GetCenter().X()
+        # plane_x = self._geometry.getGeometryCore().Plane(self._plane).GetCenter().X()
+        # delta_plane = abs(plane_x - plane_x_ref)
 
-        offset = self._geometry.triggerOffset() * self._geometry.time2cm() - delta_plane
+        offset = self._geometry.triggerOffset() * self._geometry.time2cm() # - delta_plane
 
         x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
         x_anode   = offset/self._geometry.time2cm()
-        print('x_cathode', x_cathode)
-        print('x_anode', x_anode)
-        print('self._geometry.halfwidth()', self._geometry.halfwidth())
-        print('self._geometry.time2cm()', self._geometry.time2cm())
-        print('offset', offset)
-        print('self._geometry.triggerOffset()', self._geometry.triggerOffset())
-        print('delta_plane', delta_plane)
-        detprop = self._geometry.getDetectorProperties()
-        dv = detprop.DriftVelocity(detprop.Efield(), detprop.Temperature())
-        print('dv', dv)
+        # print('x_cathode', x_cathode)
+        # print('x_anode', x_anode)
+        # print('self._geometry.halfwidth()', self._geometry.halfwidth())
+        # print('self._geometry.time2cm()', self._geometry.time2cm())
+        # print('offset', offset)
+        # print('self._geometry.triggerOffset()', self._geometry.triggerOffset())
+
+        # print('delta_plane', delta_plane)
+        # detprop = self._geometry.getDetectorProperties()
+        # dv = detprop.DriftVelocity(detprop.Efield(), detprop.Temperature())
+        # print('dv', dv)
 
         # If we are changing the t0, shift the anode and cathode position
         x_cathode += self._manual_t0
@@ -393,11 +394,11 @@ class viewport(pg.GraphicsLayoutWidget):
 
         start_removal = self._geometry.tRange() - n_removable_entries
         end_removal = self._geometry.tRange()
-        slice_right = slice(start_removal, end_removal)
+        slice_right = slice(int(start_removal), int(end_removal))
 
         start_removal = self._geometry.tRange() + self._geometry.cathodeGap()
         end_removal = start_removal + n_removable_entries
-        slice_left = slice(start_removal, end_removal)
+        slice_left = slice(int(start_removal), int(end_removal))
 
         final_slice = np.r_[slice_right, slice_left]
 

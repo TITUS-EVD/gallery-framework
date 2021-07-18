@@ -58,14 +58,17 @@ bool DrawMCTruth::analyze(const gallery::Event & ev) {
       mct._finalstate_energy = energies;
     } else if (truth.Origin() == 4) {
       // Single Particle Origin
+      // Save the single particles in the finalstate pdgs and energies
+      std::vector<int> pdgs;
+      std::vector<float> energies;
       for (int i = 0; i < truth.NParticles(); i++) {
         auto mcp = truth.GetParticle(i);
         if (mcp.StatusCode() != 1) continue;
-        mct._nu_pdg = mcp.PdgCode();
-        mct._nu_energy = mcp.E();
-        std::vector<double> vtx = {mcp.Vx(), mcp.Vy(), mcp.Vz()};
-        mct._vertex = vtx;
+        pdgs.push_back(mcp.PdgCode());
+        energies.push_back(mcp.E());
       }
+      mct._finalstate_pdg = pdgs;
+      mct._finalstate_energy = energies;
     }
 
 

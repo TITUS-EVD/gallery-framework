@@ -18,10 +18,8 @@ class mctrack(recoBase):
         geom = view_manager._geometry
 
         for view in view_manager.getViewPorts():
-            #   # get the showers from the process:
             self._drawnObjects.append([])
             tracks = self._process.getDataByPlane(view.plane())
-            offset = geom.offset(view.plane()) / geom.time2cm()
 
             for i in range(len(tracks)):
                 track = tracks[i]
@@ -29,26 +27,19 @@ class mctrack(recoBase):
                 points = []
                 # Remeber - everything is in cm, but the display is in
                 # wire/time!
-                if len(track.track()) > 0:
-                    print('MCTrack', i, 'start:', track.track()[0].first, track.track()[0].second)
-                for pair in track.track():
+                for i, pair in enumerate(track.track()):
                     x = pair.first / geom.wire2cm()
-                    y = pair.second / geom.time2cm() + offset
-                    y += track.tpc() * (geom.tRange() - geom.triggerOffset())
+                    y = pair.second / geom.time2cm()
 
-                    if geom.nTPCs() == 2 and on_both_tpcs:
-                        cathode_time = (2 * geom.halfwidth() + geom.offset(view.plane()))/geom.time2cm()
-                        if y > cathode_time:
-                            y += geom.tRange() - geom.triggerOffset()
+                    # If odd TPC, shit this piece of the track up
+                    if track.tpc()[i] % 2:
+                        y += 2 * geom.triggerOffset()
+                        y += geom.cathodeGap()
 
                     points.append(QtCore.QPointF(x, y))
 
-                # self._drawnObjects[view.plane()].append(thisPoly)
-
                 if len(points) == 0:
                     continue
-
-
 
                 #print ('MCTrack pdg', track.pdg())
 
@@ -60,8 +51,8 @@ class mctrack(recoBase):
 
                 thisPoly = polyLine(points, color)
 
-                time = track.time()
-                thisPoly.setToolTip(f'PDG = {track.pdg()}\nTime = {track.time():.4} us\nEnergy = {track.energy()/1e3:.4} GeV\nProcess = {track.process()}')
+                time = track.time() - geom.getDetectorClocks().TriggerTime()
+                thisPoly.setToolTip(f'PDG = {track.pdg()}\nTime = {time:.4} us\nEnergy = {track.energy()/1e3:.4} GeV\nProcess = {track.process()}')
 
                 view._view.addItem(thisPoly)
 

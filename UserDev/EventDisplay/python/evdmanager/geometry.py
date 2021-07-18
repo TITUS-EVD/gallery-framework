@@ -365,9 +365,14 @@ class geometry(geoBase):
             # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
 
         print('Configured with:')
-        print('\tTrigger Offset TPC:', self._triggerOffset)
-        print('\tTime Range:', self._tRange)
-        print('\tReadout Window Size:', self._readoutWindowSize)
+        print('Trigger Offset TCP:     ', self._triggerOffset)
+        print('Time Range:             ', self._tRange)
+        print('Readout Window Size:    ', self._readoutWindowSize)
+        print('Trigger Time            ', self._detectorClocks.TriggerTime())
+        print('Tick Period:            ', self._detectorClocks.TPCClock().TickPeriod())
+        print('Drift Velocity:         ', self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature()))
+        print('Time To Cm:             ', self._time2Cm)
+        print('')
 
     def recalculateOffsets(self):
         self._offset = []
@@ -403,7 +408,8 @@ class sbnd(geometry):
         self._levels = [(-80, 0), (-10, 100), (-10, 200)]
 
         self._view_names = ['U', 'V', 'Y']
-        self._plane_mix = {0: [4], 1: [3], 2: [5]}
+        # self._plane_mix = {0: [4], 1: [3], 2: [5]}
+        self._plane_mix = {0: [3], 1: [4], 2: [5]}
         self._plane_flip = [False, False, False, True, True, True]
         self._plane_shift = [False, False, False, False, False, False]
 
@@ -421,7 +427,7 @@ class sbnd(geometry):
         # self._readoutWindowSize = 3000 #7500
         self._planeOriginX = [0.0, -0.3, -0.6, 0.0, -0.3, -0.6]
         self._planeOriginXTicks = [0.0, -0.3/self._time2Cm, -0.6/self._time2Cm, 0.0, -0.3/self._time2Cm, -0.6/self._time2Cm]
-        self._cathodeGap = 8.5 / self._time2Cm # 5.3 cm   # 100
+        self._cathodeGap = 5.3 / self._time2Cm
 
         color_scheme = [(
             {'ticks': [(1, (255, 255, 255, 255)),
@@ -460,8 +466,8 @@ class sbnd(geometry):
 
             self._offset.append(
                 self.triggerOffset()
-                * self.time2cm()
-                - self.planeOriginX(v) )
+                * self.time2cm())
+                # - self.planeOriginX(v) )
 
         self._planeid_map = {
             # [plane, tpc, cryo]: titus_plane_id
@@ -480,8 +486,8 @@ class sbnd(geometry):
         }
 
         self._planeid_to_other_planes = {
-            0: [4],
-            1: [3],
+            0: [3],
+            1: [4],
             2: [5]
         }
 

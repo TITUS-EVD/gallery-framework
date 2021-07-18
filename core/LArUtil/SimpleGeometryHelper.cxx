@@ -28,36 +28,40 @@ void SimpleGeometryHelper::Reconfigure()
 
 
   fWireToCm = geom.WirePitch(0, 1, 0);
-  fTimeToCm = sampling_rate(clocks) * detp.DriftVelocity(detp.Efield(), detp.Temperature());
+  fTimeToCm = sampling_rate(clocks) / 1.e3 * detp.DriftVelocity(detp.Efield(), detp.Temperature());
 }
 
 
 // The next set of functions is the collection of functions to convert 3D Point to 2D point
 // The first function is maintained, and the rest convert their arguments and call it
-Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
-
-  // Make a check on the plane:
-  if (plane > geom.Nplanes(tpc, cryo)) {
-    throw larutil::LArUtilException(Form("Can't project 3D point to unknown plane %u", plane));
-  }
-
-  // Verify that the point is in the TPC before trying to project:
+Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane, unsigned int tpc_, unsigned int cryo_) const {
 
   //initialize return value
   Point2D returnPoint;
+
+  geo::Point_t loc(_3D_position[0],_3D_position[1], _3D_position[2]);
+
+  // Get the tpc and cryo ids from the 3D point
+  unsigned int tpc = geom.PositionToTPCID(loc).TPC;
+  unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
+
+  // Make a check on the plane:
+  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(cryo) || plane >= geom.Nplanes(tpc, cryo)) {
+    returnPoint.w = -9999;
+    returnPoint.t = -9999;
+    return returnPoint;
+  }
+
+  // Verify that the point is in the TPC before trying to project:
 
   // The wire position can be gotten with Geometry::NearestWire()
   // Convert result to centimeters as part of the unit convention
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  // returnPoint.w = geom.WireCoordinate(_3D_position[1], _3D_position[2], geo::PlaneID(cryo, tpc, plane)) * fWireToCm;
-  geo::Point_t loc(_3D_position[0],_3D_position[1], _3D_position[2]);
-  //  std::cout << "====== cryo: " << cryo << ", tpc: " << tpc << ", plane: " << plane << ", Position: " << _3D_position[0] << "," << _3D_position[1] << "," << _3D_position[2];
   const geo::PlaneGeo& planeGeo = geom.Plane(plane, tpc, cryo);
   returnPoint.w = planeGeo.WireCoordinate(loc) * fWireToCm;
 
-  // std::cout << "wire is " << returnPoint.w << " (cm)" << std::endl;
 
   // The time position is the X coordinate, corrected for
   // trigger offset and the offset of the plane
@@ -69,9 +73,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // So, it moves the "0" farther away from the actual
   // time and is an addition)
   returnPoint.t += trigger_offset(clocks) * fTimeToCm;
-  // std::cout << "trigger offset, plane " << plane
-  //           << ": " << detp.TriggerOffset() * fTimeToCm << std::endl;
-  //
+
   //Get the origin point of this plane:
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
@@ -90,13 +92,12 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // beyond 0 needs to make the time coordinate larger
   // Therefore, subtract the offest (which is already
   // in centimeters)
-  returnPoint.t -= planeOrigin[0];
-
-// std::cout << "origin offset, plane " << plane
-//             << ": " << planeOrigin[0] << std::endl;
+  returnPoint.t += abs(planeOrigin[0]);
 
   // Set the plane of the Point2D:
   returnPoint.plane = plane;
+  returnPoint.tpc = tpc;
+  returnPoint.cryo = cryo;
 
   return returnPoint;
 }

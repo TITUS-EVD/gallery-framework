@@ -5,27 +5,20 @@
 
 namespace evd {
 
-MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
+MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane) {
   larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
   MCTrack2D result;
-  // auto geoHelper = larutil::GeometryHelper::GetME();
   result._track.reserve(track.size());
+
   for (unsigned int i = 0; i < track.size(); i++) {
     // project a point into 2D:
-    try {
-      auto point = geo_helper.Point_3Dto2D(track[i].X(), track[i].Y(), track[i].Z(),
-                                           plane, tpc, cryostat);
-      // auto point = geoHelper->Point_3Dto2D(track[i].X(), track[i].Y(),
-      //                                      track[i].Z(), plane);
+    auto point = geo_helper.Point_3Dto2D(track[i].X(), track[i].Y(), track[i].Z(), plane);
+    if (point.w != -9999) {
       result._track.push_back(std::make_pair(point.w, point.t));
-    } catch (...) {
-      continue;
+      result._tpc.push_back(point.tpc);
+      result._cryo.push_back(point.cryo);
     }
   }
-
-  result._origin = track.Origin();
-  result._pdg = track.PdgCode();
-
   return result;
 }
 
@@ -50,24 +43,7 @@ bool DrawMCTrack::initialize() {
 
 bool DrawMCTrack::analyze(const gallery::Event & ev) {
 
-  //
-  // Do your event-by-event analysis here. This function is called for
-  // each event in the loop. You have "storage" pointer which contains
-  // event-wise data. To see what is available, check the "Manual.pdf":
-  //
-  // http://microboone-docdb.fnal.gov:8080/cgi-bin/ShowDocument?docid=3183
-  //
-  // Or you can refer to Base/DataFormatConstants.hh for available data type
-  // enum values. Here is one example of getting PMT waveform collection.
-  //
-  // event_fifo* my_pmtfifo_v = (event_fifo*)(storage->get_data(DATA::PMFIFO));
-  //
-  // if( event_fifo )
-  //
-  //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
-  //
-
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _geo_service.Nplanes(); // * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   // get a handle to the tracks
   art::InputTag tracks_tag(_producer);
@@ -91,9 +67,7 @@ bool DrawMCTrack::analyze(const gallery::Event & ev) {
   // Populate the track vector:
   for (auto &track : *trackHandle) {
     for (unsigned int p = 0; p < total_plane_number; p++) {
-      auto tr = getMCTrack2D(track, p, track_tpc, track_cryo);
-      tr._tpc = track_tpc;
-      tr._cryo = track_cryo;
+      auto tr = getMCTrack2D(track, p);
 
       // Figure out the track time in elec clock
       // (still need to subtract trigger time)
@@ -102,17 +76,8 @@ bool DrawMCTrack::analyze(const gallery::Event & ev) {
       tr._process = track.Process();
       tr._energy = track.Start().E();
 
-      // Find out in what TPC we are
-      // (based on the first point of the track)
-      for (auto step : track) {
-        geo::Point_t loc = geo::Point_t(step.X(), step.Y(), step.Z());
-        geo::TPCID tpc_id = _geo_service.PositionToTPCID(loc);
-        if (tpc_id.TPC > 0) {
-          tr._tpc = tpc_id.TPC;
-          break;
-        }
-
-      }
+      tr._origin = track.Origin();
+      tr._pdg = track.PdgCode();
 
       _dataByPlane.at(p).push_back(tr);
     }
@@ -123,19 +88,6 @@ bool DrawMCTrack::analyze(const gallery::Event & ev) {
 
 bool DrawMCTrack::finalize() {
 
-  // This function is called at the end of event loop.
-  // Do all variable finalization you wish to do here.
-  // If you need, you can store your ROOT class instance in the output
-  // file. You have an access to the output file through "_fout" pointer.
-  //
-  // Say you made a histogram pointer h1 to store. You can do this:
-  //
-  // if(_fout) { _fout->cd(); h1->Write(); }
-  //
-  // else
-  //   print(MSG::ERROR,__FUNCTION__,"Did not find an output file pointer!!!
-  //   File not opened?");
-  //
   return true;
 }
 
