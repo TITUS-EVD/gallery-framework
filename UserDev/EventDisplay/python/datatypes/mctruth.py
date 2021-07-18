@@ -63,18 +63,14 @@ class mctruth(recoBase):
         for view in view_manager.getViewPorts():
             self._drawnObjects.append([])
 
-            offset = geom.offset(view.plane())
-
             geo_helper = larutil.SimpleGeometryHelper(geom.getGeometryCore(),
                                                       geom.getDetectorProperties(),
                                                       geom.getDetectorClocks())
 
-            vertexPoint = geo_helper.Point_3Dto2D(vertex, view.plane(),
-                                                          view.tpc(),
-                                                          view.cryostat())
+            vertexPoint = geo_helper.Point_3Dto2D(vertex, view.plane())
 
-            points = self.makeCross(vertexPoint.w/geom.wire2cm(),
-                                    (vertexPoint.t + offset )/geom.time2cm(),
+            points = self.makeCross(startX=vertexPoint.w/geom.wire2cm(),
+                                    startY=vertexPoint.t/geom.time2cm(),
                                     shortDistX=0.05/geom.wire2cm(),
                                     longDistX=1.0/geom.wire2cm(),
                                     shortDistY=0.05/geom.time2cm(),
@@ -83,7 +79,7 @@ class mctruth(recoBase):
 
             thisPolyF = QtGui.QPolygonF(points)
             thisPoly = QtGui.QGraphicsPolygonItem(thisPolyF)
-            thisPoly.setBrush(pg.mkColor((200,200,200,200)))
+            thisPoly.setBrush(pg.mkColor((255,255,255,0))) # white
 
             thisPoly.setToolTip('Neutrino Interaction Vertex')
 

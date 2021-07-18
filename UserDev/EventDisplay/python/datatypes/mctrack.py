@@ -51,8 +51,8 @@ class mctrack(recoBase):
 
                 thisPoly = polyLine(points, color)
 
-                time = track.time()
-                thisPoly.setToolTip(f'PDG = {track.pdg()}\nTime = {track.time():.4} us\nEnergy = {track.energy()/1e3:.4} GeV\nProcess = {track.process()}')
+                time = track.time() - geom.getDetectorClocks().TriggerTime()
+                thisPoly.setToolTip(f'PDG = {track.pdg()}\nTime = {time:.4} us\nEnergy = {track.energy()/1e3:.4} GeV\nProcess = {track.process()}')
 
                 view._view.addItem(thisPoly)
 
