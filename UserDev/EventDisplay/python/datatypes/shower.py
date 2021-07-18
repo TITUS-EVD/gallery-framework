@@ -112,7 +112,7 @@ class shower(recoBase):
             i_color = 0
 
             for i in range(len(showers)):
-                
+
                 shower = showers[i]
 
                 if i_color >= len(self._showerColors):
@@ -120,13 +120,13 @@ class shower(recoBase):
 
                 color = self._showerColors[i_color]
 
-                location = shower.tpc()
-                plane_x = geom.getGeometryCore().Plane(view.plane(), shower.tpc(), shower.cryo()).GetCenter().X()
-                plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
-                tpc_view_offset = 0
-                tpc_view_offset -= location * (2 * geom.halfwidth()) / geom.time2cm()
-                tpc_view_offset += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
-                tpc_view_offset += location * (geom.tRange() + geom.cathodeGap())
+                # location = shower.tpc()
+                # plane_x = geom.getGeometryCore().Plane(view.plane(), shower.tpc(), shower.cryo()).GetCenter().X()
+                # plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
+                # tpc_view_offset = 0
+                # tpc_view_offset -= location * (2 * geom.halfwidth()) / geom.time2cm()
+                # tpc_view_offset += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
+                # tpc_view_offset += location * (geom.tRange() + geom.cathodeGap())
 
                 # tpc_view_offset = location * (geom.tRange() + geom.cathodeGap())
 
@@ -134,11 +134,11 @@ class shower(recoBase):
                 points = []
                 # Remember - everything is in cm, but the display is in
                 # wire/time!
-                
-                x = shower.startPoint().w / geom.wire2cm()
-                y = shower.startPoint().t / geom.time2cm() + offset
 
-                y += tpc_view_offset
+                x = shower.startPoint().w / geom.wire2cm()
+                y = shower.startPoint().t / geom.time2cm() #+ offset
+
+                # y += tpc_view_offset
 
                 points.append(QtCore.QPoint(x, y))
                 # next connect the two points at the end of the shower to make
@@ -164,22 +164,22 @@ class shower(recoBase):
 
                 # Scale everything to wire/time:
                 x1 /= geom.wire2cm()
-                y1 /= geom.time2cm() 
+                y1 /= geom.time2cm()
                 x2 /= geom.wire2cm()
-                y2 /= geom.time2cm() 
+                y2 /= geom.time2cm()
 
-                y1 += offset
-                y2 += offset
+                # y1 += offset
+                # y2 += offset
 
-                y1 += tpc_view_offset
-                y2 += tpc_view_offset
+                # y1 += tpc_view_offset
+                # y2 += tpc_view_offset
 
                 points.append(QtCore.QPoint(x1, y1))
                 points.append(QtCore.QPoint(x2, y2))
 
 
                 thisPolyF = QtGui.QPolygonF(points)
-                
+
                 self.shower_poly = QtGui.QGraphicsPolygonItem( thisPolyF )
                 #thisPoly = QtGui.QGraphicsPolygonItem(thisPolyF)
 
@@ -198,7 +198,7 @@ class shower(recoBase):
                 # if view.plane() == 0:
                 #   print "dedx: ", shower.dedx()
 
-            
+
                 i_color += 1
 
 
