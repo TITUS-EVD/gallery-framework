@@ -274,7 +274,7 @@ class optical_waveform_view(pg.GraphicsLayoutWidget):
 
     self._wf_plot = pg.PlotItem(name="OpDetWaveform")
     self._wf_plot.setLabel(axis='left', text='ADC')
-    self._wf_plot.setLabel(axis='bottom', text='Time [us]')
+    self._wf_plot.setLabel(axis='bottom', text='Ticks')
     # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical)
     # self._wf_plot.addItem(self._wf_linear_region)
     self.addItem(self._wf_plot)
@@ -362,7 +362,7 @@ class flash_time_view(pg.GraphicsLayoutWidget):
 
     self._time_plot = pg.PlotItem(name="OpFlash Times")
     self._time_plot.setLabel(axis='left', text='Flashes')
-    self._time_plot.setLabel(axis='bottom', text='Ticks')
+    self._time_plot.setLabel(axis='bottom', text='Time [us]')
 
     self.addItem(self._time_plot)
 
