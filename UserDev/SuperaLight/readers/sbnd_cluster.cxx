@@ -236,6 +236,9 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
 
   float min_tdc = 999; float max_tdc = -9999;
 
+  int cluster_tick_offset = 0;
+  // int cluster_tick_offset = 2210;
+
   for (auto& ch : *simch) {
     int this_column = column(ch.Channel());
     int this_projection_id = projection_id(ch.Channel());
@@ -245,14 +248,14 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
       auto& tdc = TDCIDE.first;
       auto& ides = TDCIDE.second;
 
-
+      // // First, take this tdc and determine if it's in the right window:
+      if (tdc - cluster_tick_offset < tick_offset || tdc - cluster_tick_offset > tick_offset + n_ticks_per_chamber){
+        continue;
+      }
 
       if (tdc < min_tdc) min_tdc = tdc;
       if (tdc > max_tdc) max_tdc = tdc;
 
-      if (tdc < tick_offset || tdc > tick_offset + n_ticks_per_chamber){
-        continue;
-      }
 
       for (auto& ide : ides) {
 
@@ -276,28 +279,22 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
         pos_3d[0] = ide.x; pos_3d[1] = ide.y; pos_3d[2] = ide.z;
         auto index = _base_image_meta_3D.position_to_index(pos_3d);
         _3d_clusters.writeable_voxel_set(larcv_particle_id).add(larcv3::Voxel(index, ide.energy));
-        // if (ide.x > 65.5 && ide.x < 66.6){
-        //     std::cout << " Current location,  size, index: "
-        //               << "(" << ide.x << ", " << ide.y << ", " << ide.z << "), "
-        //               << _3d_clusters.voxel_set(0).size()
-        //               << ", " << index << std::endl;
-        //     std::cout << "  X coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.x, 0) << "\n";
-        //     std::cout << "  Y coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.y, 1) << "\n";
-        //     std::cout << "  Z coordinate: " << _base_image_meta_3D.position_to_coordinate(ide.z, 2) << "\n";
-        // }
-        if (ch.Channel() >= 5638) std::cout << "\nInput TDC " << tdc << std::endl;
-        int tick = row(tdc + tick_offset, ch.Channel()) / compression;
-        if (ch.Channel() >= 5638) std::cout << "Output Tick " << tick << std::endl;
 
-        // if (fabs(ide.x - 182.073) < 0.01) {
-        //   std::cout << "(plane " << projection_id(ch.Channel()) << ") "
-        //             << "X: " << ide.x
-        //             << "\t" << tdc / compression
-        //             << "\t" << tick / compression
-        //             << "\t" << tick_position(ide.x, 0, this_projection_id)
-        //             << "\t" << tick/compression - tick_position(ide.x, 0, this_projection_id)
-        //             << std::endl;
-        // }
+
+        if (ch.Channel() == 6103 || ch.Channel() == 10075){
+            std::cout << "\nChannel " << ch.Channel()
+                      << ", Input TDC " << tdc
+                      << ", track ID: " <<  ide.trackID
+                      << std::endl;
+        }
+        int tick = row(tdc + cluster_tick_offset, ch.Channel()) / compression;
+        if (ch.Channel() == 6103 || ch.Channel() == 10075) {
+            std::cout << "Channel " << ch.Channel()
+                      << ", Output Tick " << tick
+                      << ", track ID: " <<  ide.trackID
+                      << std::endl;
+        }
+
 
 
         // map the tdc to a row:

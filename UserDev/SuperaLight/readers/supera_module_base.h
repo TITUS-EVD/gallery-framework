@@ -77,8 +77,8 @@ protected:
 
     int n_ticks_per_chamber = 2500;
     int n_cathode_ticks = 110;
-    int compression = 5;
-    int tick_offset = 2500;
+    int compression = 1;
+    int tick_offset = 0;
 
     int total_ticks = -1;
 
