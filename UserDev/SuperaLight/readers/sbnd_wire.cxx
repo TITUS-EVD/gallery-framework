@@ -51,6 +51,7 @@ void SBNDWire::slice(gallery::Event* ev, larcv3::IOManager & io) {
     int this_projection_id = projection_id(channel);
     int this_column = column(channel);
 
+    // if (this_column != 905) continue;
 
     for (auto iROI = wire.SignalROI().begin_range();iROI < wire.SignalROI().end_range(); ++iROI) {
       auto ROI = *iROI;
@@ -59,10 +60,12 @@ void SBNDWire::slice(gallery::Event* ev, larcv3::IOManager & io) {
         // CHeck that this tick is strictly within  the TPC active window
         if (tick < tick_offset || tick > tick_offset + n_ticks_per_chamber)
           continue;
-        // std::cout << "tick is " << tick << std::endl;
 
         // Convert the tick to the image coordinate:
         int this_row = row(tick, channel) / compression;
+        // std::cout << "tick is " << tick << " on channel "
+        //           << channel << ", row is " << this_row
+        //           << ", column is " << this_column << std::endl;
         coords[1] = this_row; coords[0] = this_column;
         float val = ROI[tick] / (1.0*compression);
         val += images.at(this_projection_id).pixel(coords);
@@ -76,7 +79,7 @@ void SBNDWire::slice(gallery::Event* ev, larcv3::IOManager & io) {
   // Compress the images with an absolute value threshold:
   for (auto & image : images){
     for (size_t i = 0; i < image.size(); i ++){
-      if (fabs(image.as_vector().at(i)) < _threshold)
+      if (image.as_vector().at(i) < _threshold)
         image.set_pixel(i, 0.0);
     }
   }

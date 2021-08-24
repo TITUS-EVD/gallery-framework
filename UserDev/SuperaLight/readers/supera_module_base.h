@@ -53,7 +53,7 @@ public:
      * does the slicing work.
      *
      */
-    void slice(gallery::Event * ev, larcv3::IOManager & io){};
+    void slice(gallery::Event * ev, larcv3::IOManager & io){}
 
     /**
      * @brief Verbosity setter function for each Modular Algo
@@ -75,12 +75,12 @@ protected:
     float wire_position(float x, float y, float z, int projection_id);
     float tick_position(float x, float time_offset, int projection_id);
 
-    int n_ticks_per_chamber = 2500;
-    int n_cathode_ticks = 110;
-    int compression = 1;
-    int tick_offset = 0;
+    size_t n_ticks_per_chamber = 2560;
+    size_t n_cathode_ticks = 0;
+    size_t compression = 4;
+    size_t tick_offset = 040;
 
-    int total_ticks = -1;
+    size_t total_ticks;
 
     // int _max_tick;
 

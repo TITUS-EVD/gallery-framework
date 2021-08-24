@@ -28,160 +28,161 @@ void SBNDCluster::build_particle_map(gallery::Event* ev, larcv3::IOManager & io)
   // _particle_to_trackID
   // _trackID_to_particle
 
-  _particle_to_trackID.clear();
-  _trackID_to_particle.clear();
-
-  // Using raw MC Particles now
-
+  // // First, we need to get the MC Truth objecst:
+  //
   // std::string producer = "largeant";
   // art::InputTag tag(producer);
   // auto const& mcparticles = ev->getValidHandle<std::vector<simb::MCParticle> >(tag);
 
 
-  // Get the MCtracks and MCShowers
+  _particle_to_trackID.clear();
+  _trackID_to_particle.clear();
 
-  std::string producer = "mcreco";
+  // Using raw MC Particles now
+/*
+  std::string producer = "largeant";
   art::InputTag tag(producer);
-  auto const& mctracks = ev->getValidHandle<std::vector<sim::MCTrack> >(tag);
-  auto const& mcshowers = ev->getValidHandle<std::vector<sim::MCShower> >(tag);
+  auto const& mcparticles = ev->getValidHandle<std::vector<simb::MCParticle> >(tag);
 
   // Get the EventParticle from larcv3:
   auto & event_part = io.get_data<larcv3::EventParticle>("sbndseg");
 
 
-
-  // unsigned int id = 0;
-  //
-  // for (auto& particle : *mcparticles) {
-  //   std::cout << "Looking at particle with ID " << particle.TrackId()
-  //             << " and PDG " << particle.PdgCode()
-  //             << ", parent is " << particle.Mother()
-  //             // << " with PDG " << particle.Mother().PdgCode()
-  //             << "\n";
-  //
-  //   larcv3::Particle part;
-  //
-  //   part.id(id);
-  //   part.mcst_index(          particle.TrackId());
-  //
-  //   part.track_id(            particle.TrackId());
-  //   part.pdg_code(            particle.PdgCode());
-  //   // part.nu_interaction_type( particle.Origin());
-  //   part.creation_process(    particle.Process());
-  //
-  //   part.parent_track_id(     particle.Mother());
-  //   // part.parent_pdg_code(     particle.Mother().PdgCode());
-  //   // part.ancestor_track_id(   particle.AncestorTrackID());
-  //   // part.ancestor_pdg_code(   particle.AncestorPdgCode());
-  //   //
-  //   part.first_step( particle.Vx(0),
-  //                    particle.Vy(0),
-  //                    particle.Vz(0),
-  //                    particle.T(0) );
-  //
-  //   part.last_step( particle.EndX(),
-  //                    particle.EndY(),
-  //                    particle.EndZ(),
-  //                    particle.EndT() );
-  //
-  //   part.energy_init(particle.E(0));
-  //   part.momentum(   particle.Px(0),
-  //                    particle.Py(0),
-  //                    particle.Pz(0));
-  //
-  //   _particle_to_trackID.push_back(std::vector<int>());
-  //   _particle_to_trackID.back().push_back(particle.TrackId());
-  //   _trackID_to_particle[particle.TrackId()] = id;
-  //
-  //   event_part.emplace_back(std::move(part));
-  //   id++;
-  // }
-
-
-
-  // std::cout << "Number of mctracks : " << mctracks->size() << std::endl;
-  // std::cout << "Number of mcshowers: " << mcshowers->size() << std::endl;
-
   unsigned int id = 0;
 
-  for (auto& track : *mctracks) {
-    // std::cout << "Looking at track with ID " << track.TrackID()
-    //           << " and PDG " << track.PdgCode()
-    //           << ", parent is " << track.AncestorTrackID()
-    //           << " with PDG " << track.AncestorPdgCode() << "\n";
+  for (auto& particle : *mcparticles) {
+    // std::cout << "Looking at particle with ID " << particle.TrackId()
+    //           << " and PDG " << particle.PdgCode()
+    //           << ", parent is " << particle.Mother()
+    //           // << " with PDG " << particle.Mother().PdgCode()
+    //           << "\n";
 
     larcv3::Particle part;
 
     part.id(id);
-    part.mcst_index(          track.TrackID());
+    part.mcst_index(          particle.TrackId());
 
-    part.track_id(            track.TrackID());
-    part.pdg_code(            track.PdgCode());
-    part.nu_interaction_type( track.Origin());
-    part.creation_process(    track.Process());
+    part.track_id(            particle.TrackId());
+    part.pdg_code(            particle.PdgCode());
+    // part.nu_interaction_type( particle.Origin());
+    part.creation_process(    particle.Process());
 
-    part.parent_track_id(     track.MotherTrackID());
-    part.parent_pdg_code(     track.MotherPdgCode());
-    part.ancestor_track_id(   track.AncestorTrackID());
-    part.ancestor_pdg_code(   track.AncestorPdgCode());
+    part.parent_track_id(     particle.Mother());
+    // part.parent_pdg_code(     particle.Mother().PdgCode());
+    // part.ancestor_track_id(   particle.AncestorTrackID());
+    // part.ancestor_pdg_code(   particle.AncestorPdgCode());
+    //
+    part.first_step( particle.Vx(0),
+                     particle.Vy(0),
+                     particle.Vz(0),
+                     particle.T(0) );
 
-    part.first_step( track.Start().Position().X(),
-                     track.Start().Position().Y(),
-                     track.Start().Position().Z(),
-                     track.Start().Position().T());
+    part.last_step( particle.EndX(),
+                     particle.EndY(),
+                     particle.EndZ(),
+                     particle.EndT() );
 
-    part.energy_init(track.Start().Momentum().E());
-    part.momentum(   track.Start().Momentum().X(),
-                     track.Start().Momentum().Y(),
-                     track.Start().Momentum().Z());
+    part.energy_init(particle.E(0));
+    part.momentum(   particle.Px(0),
+                     particle.Py(0),
+                     particle.Pz(0));
 
     _particle_to_trackID.push_back(std::vector<int>());
-    _particle_to_trackID.back().push_back(track.TrackID());
-    _trackID_to_particle[track.TrackID()] = id;
+    _particle_to_trackID.back().push_back(particle.TrackId());
+    _trackID_to_particle[particle.TrackId()] = id;
 
     event_part.emplace_back(std::move(part));
     id++;
   }
+*/
 
-  for (auto& shower : *mcshowers) {
-    larcv3::Particle part;
-    // std::cout << "Looking at shower with ID " << shower.TrackID()
-    //           << " and PDG " << shower.PdgCode()
-    //           << ", parent is " << shower.AncestorTrackID()
-    //           << " with PDG " << shower.AncestorPdgCode() << "\n";
+  std::string producer = "mcreco";
+  art::InputTag tag(producer);
+  auto const& mctracks = ev->getValidHandle<std::vector<sim::MCTrack> >(tag);
+  auto const& mcshowers = ev->getValidHandle<std::vector<sim::MCShower> >(tag);
+  // Get the EventParticle from larcv3:
+  auto & event_part = io.get_data<larcv3::EventParticle>("sbndseg");
 
-    part.id(id);
-    part.mcst_index(          shower.TrackID());
+    unsigned int id = 0;
 
-    part.track_id(            shower.TrackID());
-    part.pdg_code(            shower.PdgCode());
-    part.nu_interaction_type( shower.Origin());
-    part.creation_process(    shower.Process());
+    for (auto& track : *mctracks) {
+      // std::cout << "Looking at track with ID " << track.TrackID()
+      //           << " and PDG " << track.PdgCode()
+      //           << ", parent is " << track.AncestorTrackID()
+      //           << " with PDG " << track.AncestorPdgCode() << "\n";
 
-    part.parent_track_id(     shower.MotherTrackID());
-    part.parent_pdg_code(     shower.MotherPdgCode());
-    part.ancestor_track_id(   shower.AncestorTrackID());
-    part.ancestor_pdg_code(   shower.AncestorPdgCode());
+      larcv3::Particle part;
 
-    part.first_step( shower.Start().Position().X(),
-                     shower.Start().Position().Y(),
-                     shower.Start().Position().Z(),
-                     shower.Start().Position().T());
+      part.id(id);
+      part.mcst_index(          track.TrackID());
 
-    part.energy_init(shower.Start().Momentum().E());
-    part.momentum(   shower.Start().Momentum().X(),
-                     shower.Start().Momentum().Y(),
-                     shower.Start().Momentum().Z());
+      part.track_id(            track.TrackID());
+      part.pdg_code(            track.PdgCode());
+      part.nu_interaction_type( track.Origin());
+      part.creation_process(    track.Process());
 
-    _particle_to_trackID.push_back(std::vector<int>());
-    for (auto& daughter_id : shower.DaughterTrackID()) {
-      _particle_to_trackID.back().push_back(daughter_id);
-      _trackID_to_particle[daughter_id] = id;
+      part.parent_track_id(     track.MotherTrackID());
+      part.parent_pdg_code(     track.MotherPdgCode());
+      part.ancestor_track_id(   track.AncestorTrackID());
+      part.ancestor_pdg_code(   track.AncestorPdgCode());
+
+      part.first_step( track.Start().Position().X(),
+                       track.Start().Position().Y(),
+                       track.Start().Position().Z(),
+                       track.Start().Position().T());
+
+      part.energy_init(track.Start().Momentum().E());
+      part.momentum(   track.Start().Momentum().X(),
+                       track.Start().Momentum().Y(),
+                       track.Start().Momentum().Z());
+
+      _particle_to_trackID.push_back(std::vector<int>());
+      _particle_to_trackID.back().push_back(track.TrackID());
+      _trackID_to_particle[track.TrackID()] = id;
+
+      event_part.emplace_back(std::move(part));
+      id++;
     }
 
-    event_part.emplace_back(std::move(part));
-    id++;
-  }
+    for (auto& shower : *mcshowers) {
+      larcv3::Particle part;
+      // std::cout << "Looking at shower with ID " << shower.TrackID()
+      //           << " and PDG " << shower.PdgCode()
+      //           << ", parent is " << shower.AncestorTrackID()
+      //           << " with PDG " << shower.AncestorPdgCode() << "\n";
+
+      part.id(id);
+      part.mcst_index(          shower.TrackID());
+
+      part.track_id(            shower.TrackID());
+      part.pdg_code(            shower.PdgCode());
+      part.nu_interaction_type( shower.Origin());
+      part.creation_process(    shower.Process());
+
+      part.parent_track_id(     shower.MotherTrackID());
+      part.parent_pdg_code(     shower.MotherPdgCode());
+      part.ancestor_track_id(   shower.AncestorTrackID());
+      part.ancestor_pdg_code(   shower.AncestorPdgCode());
+
+      part.first_step( shower.Start().Position().X(),
+                       shower.Start().Position().Y(),
+                       shower.Start().Position().Z(),
+                       shower.Start().Position().T());
+
+      part.energy_init(shower.Start().Momentum().E());
+      part.momentum(   shower.Start().Momentum().X(),
+                       shower.Start().Momentum().Y(),
+                       shower.Start().Momentum().Z());
+
+      _particle_to_trackID.push_back(std::vector<int>());
+      for (auto& daughter_id : shower.DaughterTrackID()) {
+        _particle_to_trackID.back().push_back(daughter_id);
+        _trackID_to_particle[daughter_id] = id;
+      }
+
+      event_part.emplace_back(std::move(part));
+      id++;
+    }
 
   return;
 }
@@ -191,6 +192,9 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
   //  larcv3 particle
 
   build_particle_map(ev, io);
+
+  // std::cout << "_trackID_to_particle map size: " << _trackID_to_particle.size() << std::endl;
+  // std::cout << "_particle_to_trackID vector size: " << _particle_to_trackID.size() << std::endl;
 
 
   // Get the simch data:
@@ -236,30 +240,58 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
 
   float min_tdc = 999; float max_tdc = -9999;
 
-  int cluster_tick_offset = 0;
-  // int cluster_tick_offset = 2210;
+  size_t cluster_tick_offset = 0;
+  // int cluster_tick_offset = 2200 + 69;
 
   for (auto& ch : *simch) {
     int this_column = column(ch.Channel());
     int this_projection_id = projection_id(ch.Channel());
 
+    // if (this_column != 905) continue;
 
     for (auto& TDCIDE : ch.TDCIDEMap()) {
       auto& tdc = TDCIDE.first;
       auto& ides = TDCIDE.second;
 
-      // // First, take this tdc and determine if it's in the right window:
+      // std::cout << "TDC: " << tdc << std::endl;
+
+      // First, we need to figure out if this TDC is valid.
       if (tdc - cluster_tick_offset < tick_offset || tdc - cluster_tick_offset > tick_offset + n_ticks_per_chamber){
         continue;
       }
+
+      int tick = row(tdc  + cluster_tick_offset, ch.Channel()) / compression;
+
+/* FROM SimChannel.h:
+/// List of energy deposits at the same time (on this channel)
+typedef std::pair<unsigned short, std::vector<sim::IDE> > TDCIDE;
+
+ * @brief Energy deposited on a readout channel by simulated tracks
+ *
+ * This class stores the list of all energies deposited on a readout channel.
+ * The number of electrons is stored as well.
+ *
+ * The information is organized by time: it is divided by TDC ticks, and
+ * each TDC tick where some energy was deposited appears in a separate entry,
+ * while the quiet TDC ticks are omitted.
+ * For each TDC, the information is stored as a list of energy deposits;
+ * each deposit comes from a single Geant4 track and stores the location where
+ * the ionization happened according to the simulation (see `sim::IDE` class).
+ *
+ * Note that there can be multiple energy deposit records (that is `sim::IDE`)
+ * for a single track in a single TDC tick.
+ */
+
+
 
       if (tdc < min_tdc) min_tdc = tdc;
       if (tdc > max_tdc) max_tdc = tdc;
 
 
+
+
       for (auto& ide : ides) {
 
-        // std::cout << " Track ID is  " << ide.trackID << std::endl;
 
         if (ide.trackID == -1){
           continue;
@@ -274,26 +306,27 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
           larcv_particle_id = _trackID_to_particle[this_particle];
         } else{
           larcv_particle_id = n_particles;
+          // std::cout << "Failed to find trackID " << ide.trackID << std::endl;
         }
 
         pos_3d[0] = ide.x; pos_3d[1] = ide.y; pos_3d[2] = ide.z;
         auto index = _base_image_meta_3D.position_to_index(pos_3d);
         _3d_clusters.writeable_voxel_set(larcv_particle_id).add(larcv3::Voxel(index, ide.energy));
 
-
-        if (ch.Channel() == 6103 || ch.Channel() == 10075){
-            std::cout << "\nChannel " << ch.Channel()
-                      << ", Input TDC " << tdc
-                      << ", track ID: " <<  ide.trackID
-                      << std::endl;
-        }
-        int tick = row(tdc + cluster_tick_offset, ch.Channel()) / compression;
-        if (ch.Channel() == 6103 || ch.Channel() == 10075) {
-            std::cout << "Channel " << ch.Channel()
-                      << ", Output Tick " << tick
-                      << ", track ID: " <<  ide.trackID
-                      << std::endl;
-        }
+        // //
+        // if (ch.Channel() == 905 || ch.Channel() == 1371){
+        //     std::cout << "\nChannel " << ch.Channel()
+        //               << ", Input TDC " << tdc
+        //               << ", track ID: " <<  ide.trackID
+        //               << " larcv_particle_id: " << larcv_particle_id
+        //               << std::endl;
+        // }
+        // if (ch.Channel() == 905 || ch.Channel() == 1371) {
+        //     std::cout << "Channel " << ch.Channel()
+        //               << ", Output Tick " << tick
+        //               << ", track ID: " <<  ide.trackID
+        //               << std::endl;
+        // }
 
 
 
@@ -311,9 +344,9 @@ void SBNDCluster::slice(gallery::Event* ev, larcv3::IOManager & io) {
   }
 
   event_cluster3d.emplace(std::move(_3d_clusters));
-
-  std::cout << "min_tdc: " << min_tdc << std::endl;
-  std::cout << "max_tdc: " << max_tdc << std::endl;
+  //
+  // std::cout << "min_tdc: " << min_tdc << std::endl;
+  // std::cout << "max_tdc: " << max_tdc << std::endl;
 
   // event_cluster3d->set(clusters3d, voxel_meta);
   //   std::cout << ch.TDCIDEMap().size() << std::endl;

@@ -8,6 +8,10 @@
 
 #include "LArUtil/LArUtilServicesHandler.h"
 
+#define PLANE_0_WIRES 1984
+#define PLANE_1_WIRES 1984
+#define PLANE_2_WIRES 1664
+
 namespace supera {
 SuperaModuleBase::SuperaModuleBase() {
 
@@ -31,10 +35,6 @@ SuperaModuleBase::SuperaModuleBase() {
 
     std::cout << "3d meta: " << _base_image_meta_3D.dump() << std::endl;
 
-// int plane = i % (_geo_service->Nplanes(0));
-// int tpc = int(i/_geo_service->Nplanes(0));
-//
-// fWireStartVtx.at(i).resize(_geo_service->Nwires(plane, tpc));
     _base_image_meta_2D.resize(3);
     // Set the total ticks per image:
     total_ticks = 2*n_ticks_per_chamber + n_cathode_ticks;
@@ -44,6 +44,7 @@ SuperaModuleBase::SuperaModuleBase() {
         _base_image_meta_2D[plane].set_dimension(0, 0.3*n_wires, n_wires);
         _base_image_meta_2D[plane].set_dimension(1, 0.078*total_ticks, total_ticks/compression );
         _base_image_meta_2D[plane].set_projection_id(plane);
+        std::cout << "2d meta: " << _base_image_meta_2D[plane].dump() << std::endl;
     }
 
 
@@ -52,52 +53,51 @@ SuperaModuleBase::SuperaModuleBase() {
 int SuperaModuleBase::projection_id(int channel) {
   // Pretty hacky code here ...
 
-  // In SBND, channels go 0 to 1985 (plane 0), 1986 to 3971, 3972 to 5637
-  // Then repeat on the other side with offset of 5638, for a total
-  // of 11276 channels
+  // In SBND, channels go 0 to 1983 (plane 0), 1984 to 3967, 3968 to 5633
+  // Then repeat on the other side with offset of 5634, for a total
+  // of 11268 channels
 
-  if (channel < 1986)
+  if (channel < PLANE_0_WIRES)
     return 0;
-  else if (channel < 3972)
+  else if (channel < PLANE_0_WIRES + PLANE_1_WIRES)
     return 1;
-  else if (channel < 5638)
+  else if (channel < PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES)
     return 2;
-  else if (channel < 7624)
+  else if (channel < 2*PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES)
     return 0;
-  else if (channel < 9610)
+  else if (channel < 2*PLANE_0_WIRES + 2*PLANE_1_WIRES + PLANE_2_WIRES)
     return 1;
   else
     return 2;
 }
 
 int SuperaModuleBase::column(int channel) {
-  // Pretty hacky code here ...
+    // In SBND, channels go 0 to 1983 (plane 0), 1984 to 3967, 3968 to 5633
+    // Then repeat on the other side with offset of 5634, for a total
+    // of 11268 channels
 
-  // In SBND, channels go 0 to 1985 (plane 0), 1986 to 3971, 3972 to 5637
-  // Then repeat on the other side with offset of 5638, for a total
-  // of 11276 channels
-
-  if (channel < 1986){
+  if (channel < PLANE_0_WIRES){
     return channel;
   }
-  else if (channel < 3972){
-    return channel - 1986;
+  else if (channel < PLANE_0_WIRES + PLANE_1_WIRES){
+    return channel - PLANE_0_WIRES;
   }
-  else if (channel < 5638){
-    return channel - 3972;
+  else if (channel < PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES){
+    return channel - (PLANE_0_WIRES + PLANE_1_WIRES);
   }
-  else if (channel < 7624) {
-    return (channel - 5638);
-  } else if (channel < 9610){
-    return (channel - 7624);
+  else if (channel < 2*PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES) {
+    return (channel - (PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES) );
+  } else if (channel < 2*PLANE_0_WIRES + 2*PLANE_1_WIRES + PLANE_2_WIRES){
+    return (channel - (2*PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES));
   } else {
-    return (channel - 9610);
+    return (channel - (2*PLANE_0_WIRES + 2*PLANE_1_WIRES + PLANE_2_WIRES));
   }
 }
 
 int SuperaModuleBase::row(int tick, int channel) {
-  if (channel >= 5638) {
-    // In this scenario, we need the row to come out highe
+  if (channel >= PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES) {
+    // In this scenario, we need the row to come out higher since it's the inverted
+    // TPC, joined to form an image.
     return total_ticks - (tick - tick_offset) - 1;
   } else {
     return tick - tick_offset;

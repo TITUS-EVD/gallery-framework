@@ -25,6 +25,7 @@
 #include "sbnd_rawdigit.h"
 #include "sbnd_wire.h"
 #include "sbnd_cluster.h"
+#include "sbnd_neutrino.h"
 
 namespace supera {
 
@@ -70,6 +71,7 @@ class supera_light : galleryfmwk::ana_base {
   SBNDRawDigit raw_digit;
   SBNDWire     wire;
   SBNDCluster  cluster;
+  SBNDNeutrino neutrino;
   // std::vector<SuperaModuleBase*> _modules;
 
   larcv3::IOManager _io;

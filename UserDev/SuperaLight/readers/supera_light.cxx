@@ -25,6 +25,7 @@ bool supera_light::initialize() {
   raw_digit.initialize();
   wire.initialize();
   cluster.initialize();
+  neutrino.initialize();
 
   return true;
 }
@@ -51,6 +52,7 @@ bool supera_light::analyze(gallery::Event* ev) {
   raw_digit.slice(ev, _io);
   wire.slice(ev, _io);
   cluster.slice(ev, _io);
+  neutrino.slice(ev, _io);
 
   // Save the event
   _io.set_id(run, subrun, event);

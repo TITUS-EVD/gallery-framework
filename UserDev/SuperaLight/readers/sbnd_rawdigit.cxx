@@ -52,6 +52,7 @@ void SBNDRawDigit::slice(gallery::Event* ev, larcv3::IOManager & io) {
     int this_projection_id = projection_id(channel);
     int this_column = column(channel);
 
+
     // Loop over the digit and compress it:
     for (size_t i_row = tick_offset; i_row < n_ticks_per_chamber + tick_offset; i_row++) {
       int this_row = row(i_row, channel) / compression;
