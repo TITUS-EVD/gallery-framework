@@ -33,7 +33,7 @@ SuperaModuleBase::SuperaModuleBase() {
     _base_image_meta_3D.set_dimension(1, 400, 400, -200);
     _base_image_meta_3D.set_dimension(2, 500, 500, 0 );
 
-    std::cout << "3d meta: " << _base_image_meta_3D.dump() << std::endl;
+    // std::cout << "3d meta: " << _base_image_meta_3D.dump() << std::endl;
 
     _base_image_meta_2D.resize(3);
     // Set the total ticks per image:
@@ -44,7 +44,7 @@ SuperaModuleBase::SuperaModuleBase() {
         _base_image_meta_2D[plane].set_dimension(0, 0.3*n_wires, n_wires);
         _base_image_meta_2D[plane].set_dimension(1, 0.078*total_ticks, total_ticks/compression );
         _base_image_meta_2D[plane].set_projection_id(plane);
-        std::cout << "2d meta: " << _base_image_meta_2D[plane].dump() << std::endl;
+        // std::cout << "2d meta: " << _base_image_meta_2D[plane].dump() << std::endl;
     }
 
 

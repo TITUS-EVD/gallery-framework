@@ -4,6 +4,15 @@ import glob
 import uuid
 import argparse
 
+# Need to have the larcv env on ld library path.
+# Easiest fix is to do it right here.
+import larcv
+
+env_val = os.environ['LD_LIBRARY_PATH']
+env_val = f"{larcv.get_lib_dir()}:" + env_val
+os.environ['LD_LIBRARY_PATH']=env_val
+
+
 from ROOT import gallery, galleryfmwk, larutil
 from ROOT import supera
 
