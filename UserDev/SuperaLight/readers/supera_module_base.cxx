@@ -3,8 +3,8 @@
 
 #include "supera_module_base.h"
 
-#include "LArUtil/Geometry.h"
-#include "LArUtil/GeometryHelper.h"
+// #include "LArUtil/Geometry.h"
+// #include "LArUtil/GeometryHelper.h"
 
 #include "LArUtil/LArUtilServicesHandler.h"
 
@@ -105,16 +105,17 @@ int SuperaModuleBase::row(int tick, int channel) {
 }
 
 float SuperaModuleBase::wire_position(float x, float y, float z, int projection_id){
-    double vtx[3];
-    vtx[0] = x;
-    vtx[1] = y;
-    vtx[2] = z;
-    try{
-      return larutil::Geometry::GetME()->WireCoordinate(vtx, projection_id);
-    }
-    catch(...){
-      return -999.;
-    }
+    // double vtx[3];
+    // vtx[0] = x;
+    // vtx[1] = y;
+    // vtx[2] = z;
+    // try{
+    //   return larutil::Geometry::GetME()->WireCoordinate(vtx, projection_id);
+    // }
+    // catch(...){
+    //   return -999.;
+    // }
+    return 0.0;
 }
 // float SuperaModuleBase::tick_position(float x, float time_offset, int projection_id){
 //     // Convert an x coordinate to a tick position

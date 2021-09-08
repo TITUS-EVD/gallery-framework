@@ -59,9 +59,9 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv3::IOManager & io){
   auto neutrino = mctruth->at(0).GetNeutrino().Nu();
 
   // get the sparse3d objects:
-  auto event_cluster3d = io.get_data<larcv3::EventSparseCluster3D>("sbndneutrino");
-  auto event_cluster2d = io.get_data<larcv3::EventSparseCluster2D>("sbndneutrino");
-  auto event_particle  = io.get_data<larcv3::EventParticle>("sbndneutrino");
+  // auto event_cluster3d = io.get_data<larcv3::EventSparseCluster3D>("sbndneutrino");
+  // auto event_cluster2d = io.get_data<larcv3::EventSparseCluster2D>("sbndneutrino");
+  auto & event_particle  = io.get_data<larcv3::EventParticle>("sbndneutrino");
 
   // Start by extracting the particle information:
   larcv3::Particle neut_info;
@@ -82,7 +82,7 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv3::IOManager & io){
                      neutrino.Pz());
   neut_info.energy_init(neutrino.E());
 
-  event_particle.emplace_back(std::move(neut_info));
+  event_particle.append(neut_info);
 
   for (size_t i = 0; i < truth.NParticles(); i ++){
     larcv3::Particle particle;
@@ -107,7 +107,7 @@ void SBNDNeutrino::neutrino_slice(gallery::Event* ev, larcv3::IOManager & io){
                        larsoft_particle.Pz());
 
     particle.energy_init(larsoft_particle.E());
-    event_particle.emplace_back(std::move(particle));
+    event_particle.append(particle);
   }
 
   //

@@ -21,12 +21,10 @@ bool supera_light::initialize() {
   // for (size_t n = 0; n < _modules.size(); n++) {
   //   _modules[n]->initialize();
   // }
-
   raw_digit.initialize();
   wire.initialize();
   cluster.initialize();
   neutrino.initialize();
-
   return true;
 }
 

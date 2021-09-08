@@ -13,7 +13,7 @@ env_val = f"{larcv.get_lib_dir()}:" + env_val
 os.environ['LD_LIBRARY_PATH']=env_val
 
 
-from ROOT import gallery, galleryfmwk, larutil
+from ROOT import gallery, galleryfmwk
 from ROOT import supera
 
 def process_files(f):
@@ -50,8 +50,6 @@ def main():
     parser.add_argument('--file','-f', help="Input file to use")
 
     args = parser.parse_args()
-
-    larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
 
     process_files(args.file)
     # for _file in glob.glob('/data/sbnd/dl_larsoft/*.root'):
