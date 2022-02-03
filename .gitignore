@@ -1,4 +1,5 @@
 .DS_Store
+*.h5
 *.C
 *.txt
 *.o
