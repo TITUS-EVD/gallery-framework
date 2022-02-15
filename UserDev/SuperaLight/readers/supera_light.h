@@ -66,7 +66,7 @@ class supera_light : galleryfmwk::ana_base {
 
   void set_output_file(std::string outfile);
 
-  std::vector<float> wire_time_from_3D(std::vector<float> position_3d, int plane);
+  std::vector<float> wire_time_from_3D(std::vector<float> position_3d, int plane, int tpc);
 
   /**
  * @brief Add a module to the list of modules that run slicing

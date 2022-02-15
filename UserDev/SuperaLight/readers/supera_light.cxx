@@ -10,34 +10,20 @@
 
 // Larsoft includes:
 #include "lardataobj/RawData/RawDigit.h"
-#include "nusimdata/SimulationBase/MCTruth.h"
-
-// Larsoft includes:
 #include "lardataobj/RecoBase/Wire.h"
-#include "larcv3/core/dataformat/Tensor.h"
-
-// larcv3 includes:
-#include "larcv3/core/dataformat/ImageMeta.h"
-#include "larcv3/core/dataformat/EventTensor.h"
-
-// Larsoft includes:
 #include "lardataobj/MCBase/MCShower.h"
 #include "lardataobj/MCBase/MCTrack.h"
 #include "lardataobj/Simulation/SimChannel.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 
 // larcv3 includes:
-#include "larcv3/core/dataformat/EventParticle.h"
-#include "larcv3/core/dataformat/EventSparseCluster.h"
-
-// Larsoft includes:
-#include "nusimdata/SimulationBase/MCTruth.h"
-
-// larcv3 includes:
+#include "larcv3/core/dataformat/ImageMeta.h"
+#include "larcv3/core/dataformat/EventTensor.h"
 #include "larcv3/core/dataformat/EventParticle.h"
 #include "larcv3/core/dataformat/EventSparseCluster.h"
 #include "larcv3/core/dataformat/EventBBox.h"
 
+// Gallery Framework includes
 #include "LArUtil/Geometry.h"
 #include "LArUtil/SimpleGeometryHelper.h"
 
@@ -295,11 +281,15 @@ void supera_light::slice_neutrino(gallery::Event* ev, larcv3::IOManager & io){
   event_particle.append(neut_info);
 
 
-  larcv3::BBoxCollection3D bbox_set_3d;
+  larcv3::BBoxCollection3D bbox_set_3d(_base_image_meta_3D);
   std::vector<larcv3::BBoxCollection2D> v_bbox_set_2d;
+  v_bbox_set_2d.push_back(larcv3::BBoxCollection2D(_base_image_meta_2D[0]));
+  v_bbox_set_2d.push_back(larcv3::BBoxCollection2D(_base_image_meta_2D[1]));
+  v_bbox_set_2d.push_back(larcv3::BBoxCollection2D(_base_image_meta_2D[2]));
 
   std::vector<float> vertex_3d;
   vertex_3d.resize(3);
+  bool first = false;
   for (size_t i = 0; i < truth.NParticles(); i ++){
     larcv3::Particle particle;
     auto & larsoft_particle = truth.GetParticle(i);
@@ -325,32 +315,62 @@ void supera_light::slice_neutrino(gallery::Event* ev, larcv3::IOManager & io){
     particle.energy_init(larsoft_particle.E());
     event_particle.append(particle);
 
+    if (! first){
 
-    // What's the vertex of this particle?
-    vertex_3d[0] = larsoft_particle.Vx();
-    vertex_3d[1] = larsoft_particle.Vy();
-    vertex_3d[2] = larsoft_particle.Vz();
+        // What's the vertex of this particle?
+        vertex_3d[0] = larsoft_particle.Vx();
+        vertex_3d[1] = larsoft_particle.Vy();
+        vertex_3d[2] = larsoft_particle.Vz();
 
-    // Create a new BBox3D
-    larcv3::BBox3D bb(
-        {larsoft_particle.Vx(), larsoft_particle.Vy(), larsoft_particle.Vz()},
-        {0.0, 0.0, 0.0}
-    );
+        // Create a new BBox3D
+        larcv3::BBox3D bb(
+            {larsoft_particle.Vx(), larsoft_particle.Vy(), larsoft_particle.Vz()},
+            {0.0, 0.0, 0.0}
+        );
 
-    // Add to the collection:
-    bbox_set_3d.append(bb);
+        // Add to the collection:
+        bbox_set_3d.append(bb);
 
+        // for the 2D projections, determine the TPC first:
+        int tpc;
+        if (larsoft_particle.Vx() < 0){
+            tpc = 0;
+        }
+        else{
+            tpc = 1;
+        }
 
-    // Go through all three planes and push this to 2d:
+        // Go through all three planes and push this to 2d:
+        // 3D Location:
+        std::cout << "3D Vertex: " << vertex_3d[0] << ", " << vertex_3d[1] << ", " << vertex_3d[2] << std::endl;
+        for (int plane = 0; plane < 3; plane ++){
+            // int align_tpc = 0;
+            // if (plane == 0 && tpc == 1) align_tpc = 0;
+            // if (plane == 1 && tpc == 0) align_tpc = 1;
+            // Since we flip the TPC, always align with TPC 0
+            auto point_2d = wire_time_from_3D(vertex_3d, plane, tpc);
+            std::cout << "Pre Plane " << plane << ", Point 2d is " << point_2d[0] << ", " << point_2d[1] << std::endl;
+            // point_2d[1] *= 3.225;
+            // point_2d[1] += 1.55;
+            point_2d[0] *= 0.3;
 
-    auto point_2d = wire_time_from_3D(vertex_3d,0);
-    std::cout << "Point 2d is " << point_2d[0] << ", " << point_2d[1] << std::endl;
-    v_bbox_set_2d[0].append(
-        larcv3::BBox2D(
-            {point_2d[0], point_2d[1]},
-            {0.0, 0.0}
-        )
-    );
+            point_2d[0] = fabs(point_2d[0]);
+            // if (tpc == 1){
+            //     // Need to flip the time coordinate to the other side of the view:
+            //     point_2d[1] = total_ticks/compression - point_2d[1];
+            // }
+            std::cout << "-- Post Plane " << plane << ", Point 2d is " << point_2d[0] << ", " << point_2d[1] << std::endl;
+            v_bbox_set_2d[plane].append(
+                larcv3::BBox2D(
+                    {point_2d[0], point_2d[1]},
+                    {0.0, 0.0}
+                )
+            );
+        }
+        first = true;
+
+    }
+
   }
 
   // For each particle, we create a Bbox in 3D and each 2D.
@@ -671,7 +691,7 @@ int supera_light::row(int tick, int channel) {
   }
 }
 
-std::vector<float> supera_light::wire_time_from_3D(std::vector<float> position_3d, int plane){
+std::vector<float> supera_light::wire_time_from_3D(std::vector<float> position_3d, int plane, int tpc){
 
     std::vector<float> return_vals;
     return_vals.resize(2);
@@ -679,14 +699,17 @@ std::vector<float> supera_light::wire_time_from_3D(std::vector<float> position_3
 
     geo::Point_t loc(position_3d[0],position_3d[1], position_3d[2]);
 
-    // Verify that the point is in the TPC before trying to project:
+    // Get the tpc and cryo ids from the 3D point
+    unsigned int _tpc = _geo_service->PositionToTPCID(loc).TPC;
+
+    std::cout << "Provided TPC: " << tpc << " vs " << _tpc << std::endl;
 
     // The wire position can be gotten with Geometry::NearestWire()
     // Convert result to centimeters as part of the unit convention
     // Previously used nearest wire functions, but they are
     // slightly inaccurate
     // If you want the nearest wire, use the nearest wire function!
-    const geo::PlaneGeo& planeGeo = _geo_service->Plane(plane, 0, 0);
+    const geo::PlaneGeo& planeGeo = _geo_service->Plane(plane, tpc, 0);
     return_vals[0] = planeGeo.WireCoordinate(loc);
 
 
@@ -702,12 +725,12 @@ std::vector<float> supera_light::wire_time_from_3D(std::vector<float> position_3
     // returnPoint.t += trigger_offset(clocks)
 
     //Get the origin point of this plane:
-    Double_t planeOrigin[3];
+    // Double_t planeOrigin[3];
     // geom -> PlaneOriginVtx(plane, planeOrigin);
     // auto vtx = geom.Plane(plane, 0, cryo).GetCenter();
-    auto vtx = planeGeo.GetCenter();
+    // auto vtx = planeGeo.GetCenter();
     // auto vtx = geom.Plane(plane).GetCenter();
-    planeOrigin[0] = vtx.X();
+    // planeOrigin[0] = vtx.X();
     // planeOrigin[1] = vtx.Y();
     // planeOrigin[2] = vtx.Z();
     // std::cout << "p " << plane << ", t " << tpc << ", c " << cryo << ": plane center x = " << vtx.X() << std::endl;
@@ -719,7 +742,11 @@ std::vector<float> supera_light::wire_time_from_3D(std::vector<float> position_3
     // beyond 0 needs to make the time coordinate larger
     // Therefore, subtract the offest (which is already
     // in centimeters)
-    return_vals[1] += abs(planeOrigin[0]);
+    // return_vals[1] += abs(planeOrigin[0]);
+    return_vals[1] += 200;
+
+    //  This returns in cm, but I want it in ticks, so divide:
+    // return_vals[1] /= 0.078;
 
 
     return return_vals;
