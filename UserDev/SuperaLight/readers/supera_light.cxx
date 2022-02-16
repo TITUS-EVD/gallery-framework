@@ -355,6 +355,32 @@ void supera_light::slice_neutrino(gallery::Event* ev, larcv3::IOManager & io){
             point_2d[0] *= 0.3;
 
             point_2d[0] = fabs(point_2d[0]);
+
+            // Now, we do some bullshit to account for the fact that the larsoft
+            // offset and the one we're using aren't in perfect agreement.
+            if (point_2d[1] > 200){
+                if (plane == 0){
+                    point_2d[1] -= -0.218;
+                }
+                else if (plane == 1){
+                    point_2d[1] -= -0.318;
+                }
+                else if (plane == 2){
+                    point_2d[1] -= -0.368;
+                }
+            }
+            else if (point_2d[1] < 200){
+                if (plane == 0){
+                    point_2d[1] -= 0.864;
+                }
+                else if (plane == 1){
+                    point_2d[1] -= 0.714;
+                }
+                else if (plane == 2){
+                    point_2d[1] -= 0.574;
+                }
+            }
+
             // if (tpc == 1){
             //     // Need to flip the time coordinate to the other side of the view:
             //     point_2d[1] = total_ticks/compression - point_2d[1];

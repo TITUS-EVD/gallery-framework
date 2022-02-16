@@ -45,10 +45,10 @@ class supera_light : galleryfmwk::ana_base {
   supera_light(
       // const geo::GeometryCore&               geometry,
       // const detinfo::DetectorPropertiesData& detectorProperties,
-      const detinfo::DetectorClocksData&     detectorClocks
+      // const detinfo::DetectorClocksData&     detectorClocks
   ) :
   // _det_prop(detectorProperties),
-  _det_clock(detectorClocks),
+  // _det_clock(detectorClocks),
   _io(larcv3::IOManager::kWRITE) {
       _geo_service = larutil::LArUtilServicesHandler::GetGeometry(_fcl_file_name);
       // auto _det_prop_temp = larutil::LArUtilServicesHandler::GetDetProperties(_fcl_file_name);
@@ -90,7 +90,7 @@ class supera_light : galleryfmwk::ana_base {
 protected:
 
   std::unique_ptr<geo::GeometryCore> _geo_service;
-  detinfo::DetectorClocksData      _det_clock;
+  // detinfo::DetectorClocksData      _det_clock;
 
   int projection_id(int channel);
   int column(int channel);
