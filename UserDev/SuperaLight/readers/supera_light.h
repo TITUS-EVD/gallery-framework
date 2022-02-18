@@ -110,9 +110,9 @@ protected:
   float tick_position(float x, float time_offset, int projection_id);
 
   size_t n_ticks_per_chamber = 2560;
-  size_t n_cathode_ticks = 0;
+  size_t n_cathode_ticks = 50;
   size_t compression = 4;
-  size_t tick_offset = 040;
+  size_t tick_offset = 000;
 
   size_t total_ticks;
 

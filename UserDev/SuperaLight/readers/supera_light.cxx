@@ -344,11 +344,11 @@ void supera_light::slice_neutrino(gallery::Event* ev, larcv3::IOManager & io){
         // 3D Location:
         std::cout << "3D Vertex: " << vertex_3d[0] << ", " << vertex_3d[1] << ", " << vertex_3d[2] << std::endl;
         for (int plane = 0; plane < 3; plane ++){
-            // int align_tpc = 0;
-            // if (plane == 0 && tpc == 1) align_tpc = 0;
-            // if (plane == 1 && tpc == 0) align_tpc = 1;
+            int align_plane = plane;
+            if (plane == 0 && tpc == 1) align_plane = 1;
+            if (plane == 1 && tpc == 1) align_plane = 0;
             // Since we flip the TPC, always align with TPC 0
-            auto point_2d = wire_time_from_3D(vertex_3d, plane, tpc);
+            auto point_2d = wire_time_from_3D(vertex_3d, align_plane, tpc);
             std::cout << "Pre Plane " << plane << ", Point 2d is " << point_2d[0] << ", " << point_2d[1] << std::endl;
             // point_2d[1] *= 3.225;
             // point_2d[1] += 1.55;
@@ -360,24 +360,24 @@ void supera_light::slice_neutrino(gallery::Event* ev, larcv3::IOManager & io){
             // offset and the one we're using aren't in perfect agreement.
             if (point_2d[1] > 200){
                 if (plane == 0){
-                    point_2d[1] -= -0.218;
+                    point_2d[1] -= -1.266;
                 }
                 else if (plane == 1){
-                    point_2d[1] -= -0.318;
+                    point_2d[1] -= -1.766;
                 }
                 else if (plane == 2){
-                    point_2d[1] -= -0.368;
+                    point_2d[1] -= -1.018;
                 }
             }
             else if (point_2d[1] < 200){
                 if (plane == 0){
-                    point_2d[1] -= 0.864;
+                    point_2d[1] -= -1.584;
                 }
                 else if (plane == 1){
-                    point_2d[1] -= 0.714;
+                    point_2d[1] -= -1.834;
                 }
                 else if (plane == 2){
-                    point_2d[1] -= 0.574;
+                    point_2d[1] -= -1.774;
                 }
             }
 
@@ -677,9 +677,9 @@ int supera_light::projection_id(int channel) {
   else if (channel < PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES)
     return 2;
   else if (channel < 2*PLANE_0_WIRES + PLANE_1_WIRES + PLANE_2_WIRES)
-    return 0;
-  else if (channel < 2*PLANE_0_WIRES + 2*PLANE_1_WIRES + PLANE_2_WIRES)
     return 1;
+  else if (channel < 2*PLANE_0_WIRES + 2*PLANE_1_WIRES + PLANE_2_WIRES)
+    return 0;
   else
     return 2;
 }
