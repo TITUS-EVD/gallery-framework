@@ -39,7 +39,7 @@ namespace supera {
    \class supera_light
    User custom analysis class made by SHELL_USER_NAME
  */
-class supera_light : galleryfmwk::ana_base {
+class supera_light : public galleryfmwk::ana_base {
  public:
   /// Default constructor
   supera_light(

@@ -40,7 +40,9 @@ def process_files(f):
     supera_light.set_output_file(out_name)
 
     # Attach an analysis unit ... here we use a base class which do
+
     my_proc.add_process(supera_light)
+    print(f"Beging Processing run.")
 
     my_proc.run()
 
@@ -55,7 +57,7 @@ def main():
     parser.add_argument('--file','-f', help="Input file to use")
 
     args = parser.parse_args()
-
+    print(f"Processing file {args.file}")
     process_files(args.file)
     # for _file in glob.glob('/data/sbnd/dl_larsoft/*.root'):
     #     print _file
