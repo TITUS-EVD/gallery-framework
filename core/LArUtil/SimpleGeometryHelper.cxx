@@ -22,12 +22,12 @@ void SimpleGeometryHelper::Reconfigure()
 {
 
   fNPlanes = geom.Nplanes();
-  vertangle.resize(fNPlanes);
-  for (UInt_t ip = 0; ip < fNPlanes; ip++)
-    vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
+  // vertangle.resize(fNPlanes);
+  // for (UInt_t ip = 0; ip < fNPlanes; ip++)
+  //   vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
 
 
-  fWireToCm = geom.WirePitch(0, 1, 0);
+  fWireToCm = geom.WirePitch(geo::PlaneID(0, 1, 0));
   fTimeToCm = sampling_rate(clocks) / 1.e3 * detp.DriftVelocity(detp.Efield(), detp.Temperature());
 }
 
@@ -46,7 +46,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
 
   // Make a check on the plane:
-  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(cryo) || plane >= geom.Nplanes(tpc, cryo)) {
+  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane >= geom.Nplanes(geo::TPCID(tpc, cryo))) {
     returnPoint.w = -9999;
     returnPoint.t = -9999;
     return returnPoint;
@@ -59,7 +59,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  const geo::PlaneGeo& planeGeo = geom.Plane(plane, tpc, cryo);
+  const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(plane, tpc, cryo));
   returnPoint.w = planeGeo.WireCoordinate(loc) * fWireToCm;
 
 
@@ -407,8 +407,8 @@ double SimpleGeometryHelper::CalculatePitch(UInt_t pl, double phi, double theta)
 
   double pitch = -1.;
 
-  if (geom.View(pl) == geo::View_t::kUnknown ||
-      geom.View(pl) == geo::View_t::k3D) {
+  if (geom.View(geo::PlaneID(0, 0, pl)) == geo::View_t::kUnknown ||
+      geom.View(geo::PlaneID(0, 0, pl)) == geo::View_t::k3D) {
     galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for view %d", geom.View(pl)));
     return pitch;
   }
@@ -421,8 +421,8 @@ double SimpleGeometryHelper::CalculatePitch(UInt_t pl, double phi, double theta)
     double pi = TMath::Pi();
     double fTheta = pi / 2 - theta;
     double fPhi = -(phi + pi / 2);
-    double wirePitch = geom.WirePitch(0, 1, pl);
-    double angleToVert = 0.5 * TMath::Pi() - geom.WireAngleToVertical(geom.View(pl));
+    double wirePitch = geom.WirePitch(geo::PlaneID(0, 1, pl));
+    double angleToVert = 0.5 * TMath::Pi() - geom.WireAngleToVertical(geom.View(geo::PlaneID(0, 0, pl)), geo::TPCID(0, 0));
     double cosgamma = TMath::Abs(TMath::Sin(angleToVert) * TMath::Cos(fTheta)
                                  + TMath::Cos(angleToVert) * TMath::Sin(fTheta) * TMath::Sin(fPhi));
 
@@ -443,8 +443,8 @@ double SimpleGeometryHelper::PitchInView(UInt_t plane, double phi, double theta)
   Double_t wirePitch   = 0.;
   Double_t angleToVert = 0.;
 
-  wirePitch = geom.WirePitch(0, 1, plane);
-  angleToVert = geom.WireAngleToVertical(geom.View(plane)) - 0.5 * TMath::Pi();
+  wirePitch = geom.WirePitch(geo::PlaneID(0, 1, plane));
+  angleToVert = geom.WireAngleToVertical(geom.View(geo::PlaneID(0, 0, plane)), geo::TPCID(0, 0)) - 0.5 * TMath::Pi();
 
   //(sin(angleToVert),std::cos(angleToVert)) is the direction perpendicular to wire
   //fDir.front() is the direction of the track at the beginning of its trajectory
@@ -565,7 +565,7 @@ void SimpleGeometryHelper::SelectPolygonHitList(const std::vector<Hit2D> &inputH
   // Loop over hits and find corner points in the plane view
   // Also fill corner edge points
   std::vector<larutil::Point2D> edges(4, Point2D(plane, 0, 0));
-  double wire_max = geom.Nwires(plane) * fWireToCm;
+  double wire_max = geom.Nwires(geo::PlaneID(0, 0, plane)) * fWireToCm;
   double time_max = (detp.NumberTimeSamples()) * fTimeToCm;
 
   for (size_t index = 0; index < ordered_hits.size(); ++index) {
@@ -852,139 +852,139 @@ std::vector<unsigned int> SimpleGeometryHelper::SelectLocalPointList( const std:
   return returnIndexes;
 }
 
-int SimpleGeometryHelper::Get3DAxisN(const int& iplane0, const int& iplane1,
-                               const double& omega0, const double& omega1,
-                               double& phi, double& theta) const {
+// int SimpleGeometryHelper::Get3DAxisN(const int& iplane0, const int& iplane1,
+//                                const double& omega0, const double& omega1,
+//                                double& phi, double& theta) const {
 
-  // prepare vertical angle information for the various planes
-  std::vector<double> vertangle;
-  vertangle.resize(geom.Nplanes());
-  for (UInt_t ip = 0; ip < geom.Nplanes(); ip++)
-    vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
+//   // prepare vertical angle information for the various planes
+//   std::vector<double> vertangle;
+//   vertangle.resize(geom.Nplanes());
+//   for (UInt_t ip = 0; ip < geom.Nplanes(); ip++)
+//     vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
 
-  // y, z, x coordinates
-  Double_t ln(0), mn(0), nn(0);
-  Double_t phis(0), thetan(0);
+//   // y, z, x coordinates
+//   Double_t ln(0), mn(0), nn(0);
+//   Double_t phis(0), thetan(0);
 
-  // Pretend collection and induction planes.
-  // "Collection" is the plane with the vertical angle equal to zero.
-  // If both are non-zero, collection is the one with the negative angle.
-  UInt_t Cplane = 0, Iplane = 1;
+//   // Pretend collection and induction planes.
+//   // "Collection" is the plane with the vertical angle equal to zero.
+//   // If both are non-zero, collection is the one with the negative angle.
+//   UInt_t Cplane = 0, Iplane = 1;
 
-  // angleC and angleI are the respective angles to vertical in C/I
-  // planes and slopeC, slopeI are the tangents of the track.
-  Double_t angleC, angleI, slopeC, slopeI, omegaC, omegaI;
-  omegaC = galleryfmwk::data::kINVALID_DOUBLE;
-  omegaI = galleryfmwk::data::kINVALID_DOUBLE;
+//   // angleC and angleI are the respective angles to vertical in C/I
+//   // planes and slopeC, slopeI are the tangents of the track.
+//   Double_t angleC, angleI, slopeC, slopeI, omegaC, omegaI;
+//   omegaC = galleryfmwk::data::kINVALID_DOUBLE;
+//   omegaI = galleryfmwk::data::kINVALID_DOUBLE;
 
-  // Don't know how to reconstruct these yet, so exit with error.
-  // In
-  if (omega0 == 0 || omega1 == 0) {
-    phi = 0;
-    theta = -999;
-    return -1;
-  }
+//   // Don't know how to reconstruct these yet, so exit with error.
+//   // In
+//   if (omega0 == 0 || omega1 == 0) {
+//     phi = 0;
+//     theta = -999;
+//     return -1;
+//   }
 
-  //////insert check for existence of planes.
+//   //////insert check for existence of planes.
 
-  //check if backwards going track
-  //Double_t backwards=0;
-  Double_t alt_backwards = 0;
+//   //check if backwards going track
+//   //Double_t backwards=0;
+//   Double_t alt_backwards = 0;
 
-  if (fabs(omega0) > (TMath::Pi() / 2.0) || fabs(omega1) > (TMath::Pi() / 2.0) ) {
-    alt_backwards = 1;
-  }
+//   if (fabs(omega0) > (TMath::Pi() / 2.0) || fabs(omega1) > (TMath::Pi() / 2.0) ) {
+//     alt_backwards = 1;
+//   }
 
-  if (vertangle[iplane0] == 0) {
-    // first plane is at 0 degrees
-    Cplane = iplane0;
-    Iplane = iplane1;
-    omegaC = omega0;
-    omegaI = omega1;
-  }
-  else if (vertangle[iplane1] == 0) {
-    // second plane is at 0 degrees
-    Cplane = iplane1;
-    Iplane = iplane0;
-    omegaC = omega1;
-    omegaI = omega0;
-  }
-  else if (vertangle[iplane0] != 0 && vertangle[iplane1] != 0) {
-    //both planes are at non zero degree - find the one with deg<0
-    if (vertangle[iplane1] < vertangle[iplane0]) {
-      Cplane = iplane1;
-      Iplane = iplane0;
-      omegaC = omega1;
-      omegaI = omega0;
-    }
-    else if (vertangle[iplane1] > vertangle[iplane0]) {
-      Cplane = iplane0;
-      Iplane = iplane1;
-      omegaC = omega0;
-      omegaI = omega1;
-    }
-    else {
-      //throw error - same plane.
-      return -1;
-    }
+//   if (vertangle[iplane0] == 0) {
+//     // first plane is at 0 degrees
+//     Cplane = iplane0;
+//     Iplane = iplane1;
+//     omegaC = omega0;
+//     omegaI = omega1;
+//   }
+//   else if (vertangle[iplane1] == 0) {
+//     // second plane is at 0 degrees
+//     Cplane = iplane1;
+//     Iplane = iplane0;
+//     omegaC = omega1;
+//     omegaI = omega0;
+//   }
+//   else if (vertangle[iplane0] != 0 && vertangle[iplane1] != 0) {
+//     //both planes are at non zero degree - find the one with deg<0
+//     if (vertangle[iplane1] < vertangle[iplane0]) {
+//       Cplane = iplane1;
+//       Iplane = iplane0;
+//       omegaC = omega1;
+//       omegaI = omega0;
+//     }
+//     else if (vertangle[iplane1] > vertangle[iplane0]) {
+//       Cplane = iplane0;
+//       Iplane = iplane1;
+//       omegaC = omega0;
+//       omegaI = omega1;
+//     }
+//     else {
+//       //throw error - same plane.
+//       return -1;
+//     }
 
-  }
+//   }
 
-  slopeC = tan(omegaC);
-  slopeI = tan(omegaI);
-  angleC = vertangle[Cplane];
-  angleI = vertangle[Iplane];
-
-
-  //0 -1 factor depending on if one of the planes is vertical.
-  bool nfact = !(vertangle[Cplane]);
-
-  //ln represents y, omega is 2d angle -- in first 2 quadrants y is positive.
-  if (omegaC < TMath::Pi() && omegaC > 0 )
-    ln = 1;
-  else
-    ln = -1;
-
-  //calculate x and z using y ( ln )
-  mn = (ln / (2 * sin(angleI))) * ((cos(angleI) / (slopeC * cos(angleC))) - (1 / slopeI)
-                                   + nfact * (  cos(angleI) / (cos(angleC) * slopeC) - 1 / slopeI  )     );
-
-  nn = (ln / (2 * cos(angleC))) * ((1 / slopeC) + (1 / slopeI) + nfact * ((1 / slopeC) - (1 / slopeI)));
-
-  // Direction angles
-  if (fabs(omegaC) > 0.01) // catch numeric error values
-  {
-    //phi=atan(ln/nn);
-    phis = asin(ln / TMath::Sqrt(ln * ln + nn * nn));
-
-    if (fabs(slopeC + slopeI) < 0.001)
-      phis = 0;
-    else if ( fabs(omegaI) > 0.01 && (omegaI / fabs(omegaI) == -omegaC / fabs(omegaC) )
-              && ( fabs(omegaC) < 1 * TMath::Pi() / 180 || fabs(omegaC) > 179 * TMath::Pi() / 180 ) ) // angles have
-      phis = (fabs(omegaC) > TMath::Pi() / 2) ? TMath::Pi() : 0;  //angles are
+//   slopeC = tan(omegaC);
+//   slopeI = tan(omegaI);
+//   angleC = vertangle[Cplane];
+//   angleI = vertangle[Iplane];
 
 
-    if (nn < 0 && phis > 0 && !(!alt_backwards && fabs(phis) < TMath::Pi() / 4 ) ) // do not go back if track looks forward and phi is forward
-      phis = (TMath::Pi()) - phis;
-    else if (nn < 0 && phis < 0 && !(!alt_backwards && fabs(phis) < TMath::Pi() / 4 ) )
-      phis = (-TMath::Pi()) - phis;
+//   //0 -1 factor depending on if one of the planes is vertical.
+//   bool nfact = !(vertangle[Cplane]);
+
+//   //ln represents y, omega is 2d angle -- in first 2 quadrants y is positive.
+//   if (omegaC < TMath::Pi() && omegaC > 0 )
+//     ln = 1;
+//   else
+//     ln = -1;
+
+//   //calculate x and z using y ( ln )
+//   mn = (ln / (2 * sin(angleI))) * ((cos(angleI) / (slopeC * cos(angleC))) - (1 / slopeI)
+//                                    + nfact * (  cos(angleI) / (cos(angleC) * slopeC) - 1 / slopeI  )     );
+
+//   nn = (ln / (2 * cos(angleC))) * ((1 / slopeC) + (1 / slopeI) + nfact * ((1 / slopeC) - (1 / slopeI)));
+
+//   // Direction angles
+//   if (fabs(omegaC) > 0.01) // catch numeric error values
+//   {
+//     //phi=atan(ln/nn);
+//     phis = asin(ln / TMath::Sqrt(ln * ln + nn * nn));
+
+//     if (fabs(slopeC + slopeI) < 0.001)
+//       phis = 0;
+//     else if ( fabs(omegaI) > 0.01 && (omegaI / fabs(omegaI) == -omegaC / fabs(omegaC) )
+//               && ( fabs(omegaC) < 1 * TMath::Pi() / 180 || fabs(omegaC) > 179 * TMath::Pi() / 180 ) ) // angles have
+//       phis = (fabs(omegaC) > TMath::Pi() / 2) ? TMath::Pi() : 0;  //angles are
 
 
-    phi = phis;
+//     if (nn < 0 && phis > 0 && !(!alt_backwards && fabs(phis) < TMath::Pi() / 4 ) ) // do not go back if track looks forward and phi is forward
+//       phis = (TMath::Pi()) - phis;
+//     else if (nn < 0 && phis < 0 && !(!alt_backwards && fabs(phis) < TMath::Pi() / 4 ) )
+//       phis = (-TMath::Pi()) - phis;
 
-  }
-  //If plane2 (collection), phi = 2d angle (omegaC in this case)
-  else
-  {
-    phis = omegaC;
-    phi = omegaC;
-  }
 
-  thetan = -asin ( mn / (sqrt(pow(ln, 2) + pow(mn, 2) + pow(nn, 2)) ) ) ;
-  theta = thetan;
+//     phi = phis;
 
-  return 0;
-}
+//   }
+//   //If plane2 (collection), phi = 2d angle (omegaC in this case)
+//   else
+//   {
+//     phis = omegaC;
+//     phi = omegaC;
+//   }
+
+//   thetan = -asin ( mn / (sqrt(pow(ln, 2) + pow(mn, 2) + pow(nn, 2)) ) ) ;
+//   theta = thetan;
+
+//   return 0;
+// }
 
 
 int SimpleGeometryHelper::GetXYZ(const Point2D *p0, const Point2D *p1, Double_t* xyz) const
@@ -993,7 +993,7 @@ int SimpleGeometryHelper::GetXYZ(const Point2D *p0, const Point2D *p1, Double_t*
   Double_t pos[3] = {0.};
   // geom.PlaneOriginVtx(p0->plane, pos);
   int tpc = 0;
-  auto plane_center = geom.Plane(p0->plane, tpc).GetCenter();
+  auto plane_center = geom.Plane(geo::PlaneID(0, tpc, p0->plane)).GetCenter();
   pos[0] = plane_center.X();
   pos[1] = plane_center.Y();
   pos[2] = plane_center.Z();
@@ -1026,12 +1026,12 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
               << "\033[93mWarning ends...\033[00m" << std::endl;
     z0 = 0;
   }
-  else if (z0 >= (int)(geom.Nwires(p0->plane))) {
+  else if (z0 >= (int)(geom.Nwires(geo::PlaneID(0, 0, p0->plane)))) {
     std::cout << "\033[93mWarning\033[00m \033[95m<<SimpleGeometryHelper::GetYZ>>\033[00m" << std::endl
-              << " 2D wire position " << p0->w << " [cm] exceeds max wire number " << (geom.Nwires(p0->plane) - 1) << std::endl
+              << " 2D wire position " << p0->w << " [cm] exceeds max wire number " << (geom.Nwires(geo::PlaneID(0, 0, p0->plane)) - 1) << std::endl
               << " Forcing it to the max wire number..." << std::endl
               << "\033[93mWarning ends...\033[00m" << std::endl;
-    z0 = geom.Nwires(p0->plane) - 1;
+    z0 = geom.Nwires(geo::PlaneID(0, 0, p0->plane)) - 1;
   }
   if (z1 < 0) {
     std::cout << "\033[93mWarning\033[00m \033[95m<<SimpleGeometryHelper::GetYZ>>\033[00m" << std::endl
@@ -1040,16 +1040,16 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
               << "\033[93mWarning ends...\033[00m" << std::endl;
     z1 = 0;
   }
-  if (z1 >= (int)(geom.Nwires(p1->plane))) {
+  if (z1 >= (int)(geom.Nwires(geo::PlaneID(0, 0, p1->plane)))) {
     std::cout << "\033[93mWarning\033[00m \033[95m<<SimpleGeometryHelper::GetYZ>>\033[00m" << std::endl
-              << " 2D wire position " << p1->w << " [cm] exceeds max wire number " << (geom.Nwires(p0->plane) - 1) << std::endl
+              << " 2D wire position " << p1->w << " [cm] exceeds max wire number " << (geom.Nwires(geo::PlaneID(0, 0, p0->plane)) - 1) << std::endl
               << " Forcing it to the max wire number..." << std::endl
               << "\033[93mWarning ends...\033[00m" << std::endl;
-    z1 = geom.Nwires(p1->plane) - 1;
+    z1 = geom.Nwires(geo::PlaneID(0, 0, p1->plane)) - 1;
   }
 
-  UInt_t chan1 = geom.PlaneWireToChannel(p0->plane, z0);
-  UInt_t chan2 = geom.PlaneWireToChannel(p1->plane, z1);
+  UInt_t chan1 = geom.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
+  UInt_t chan2 = geom.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
 
   if (! geom.ChannelsIntersect(chan1, chan2, y, z) )
     return -1;

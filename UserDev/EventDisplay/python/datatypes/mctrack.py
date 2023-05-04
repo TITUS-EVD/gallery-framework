@@ -31,7 +31,7 @@ class mctrack(recoBase):
                     x = pair.first / geom.wire2cm()
                     y = pair.second / geom.time2cm()
 
-                    # If odd TPC, shit this piece of the track up
+                    # If odd TPC, shift this piece of the track up
                     if track.tpc()[i] % 2:
                         y += 2 * geom.triggerOffset()
                         y += geom.cathodeGap()

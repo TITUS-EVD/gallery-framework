@@ -74,8 +74,7 @@ bool DrawShower::analyze(const gallery::Event & ev) {
       shower_cryo = hits.at(0)->WireID().Cryostat;
     }
 
-
-    for (unsigned int p = 0; p < _geo_service.Nplanes(shower_tpc); p++) {
+    for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(shower_cryo, shower_tpc)); p++) {
 
       int plane = p + shower_tpc * _geo_service.Nplanes();
       plane += shower_cryo * _geo_service.Nplanes() * _geo_service.NTPC();

@@ -292,7 +292,7 @@ class geometry(geoBase):
         self._wRange = []
         self._offset = []
         for v in range(0, self._nViews):
-            self._wRange.append(larutil.Geometry.GetME().Nwires(v))
+            self._wRange.append(larutil.Geometry.GetME().Nwires(ROOT.geo.PlaneID(0, 0, v)))
 
         self._opdet_x = []
         self._opdet_y = []
@@ -342,7 +342,7 @@ class geometry(geoBase):
         self._wRange = []
         self._offset = []
         for v in range(0, self._nViews):
-            self._wRange.append(geometryCore.Nwires(v))
+            self._wRange.append(geometryCore.Nwires(ROOT.geo.PlaneID(0, 0, v)))
 
         self._opdet_x = []
         self._opdet_y = []
@@ -457,7 +457,7 @@ class sbnd(geometry):
         self._colorScheme['grayscale'] = color_scheme
 
         self._n_optical_frames = 3
-        self._n_optical_offset = 1250
+        self._n_optical_offset = 1501 # 1250
 
         self._offset = []
         for v in range(0, self._nViews):
@@ -486,8 +486,8 @@ class sbnd(geometry):
         }
 
         self._planeid_to_other_planes = {
-            0: [3],
-            1: [4],
+            0: [4],
+            1: [3],
             2: [5]
         }
 

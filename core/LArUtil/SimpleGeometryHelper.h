@@ -448,9 +448,9 @@ public:
        @brief given 2 2D angles on 2 planes, get the corresponding 3D
        angle in 3 dimensions.
      */
-    int Get3DAxisN(const int& iplane0, const int& iplane1,
-                   const double& omega0, const double& omega1,
-                   double& phi, double& theta) const;
+    // int Get3DAxisN(const int& iplane0, const int& iplane1,
+    //                const double& omega0, const double& omega1,
+    //                double& phi, double& theta) const;
 
     /**
      * @brief given 2 2D points on two planes, find the XYZ coordinate they correspond to
@@ -512,7 +512,7 @@ private:
     // number of planes in the geometry
     UInt_t fNPlanes;
     // angle w.r.t. veritcal per plane
-    std::vector<double> vertangle;
+    // std::vector<double> vertangle;
 
 };
 
