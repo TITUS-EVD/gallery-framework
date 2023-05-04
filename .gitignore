@@ -1,4 +1,5 @@
 .DS_Store
+*.h5
 *.C
 *.txt
 *.o
@@ -34,6 +35,7 @@
 !/UserDev/bin
 !/UserDev/RecoTool
 !/UserDev/BasicTool
+!/UserDev/SuperaLight
 !/UserDev/SelectionTool
 !/UserDev/CosmicTagTool
 !/UserDev/LArLiteApp

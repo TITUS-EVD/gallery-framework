@@ -19,6 +19,8 @@ INCFLAGS += $(shell gallery-config --includes)
 INCFLAGS += $(shell gallery-fmwk-config --includes)
 
 INCFLAGS += -I$(shell python -c "import larcv; print(larcv.get_includes())" )
+INCFLAGS += -I//home/cadams/Polaris/sbnd_parsl/singularity_software/larcv3/src/json/include/
+INCFLAGS += -I//home/cadams/Polaris/sbnd_parsl/singularity_software/larcv3/src/pybind11_json/include
 
 # platform-specific options
 OSNAME          = $(shell uname -s)
