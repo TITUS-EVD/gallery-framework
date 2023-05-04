@@ -33,9 +33,9 @@ bool DrawWire::initialize() {
   _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
   int counter = 0;
   for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
-    for (unsigned int t = 0; t < _geo_service.NTPC(); t++) {
-      for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
-        setXDimension(_geo_service.Nwires(p, t, c), counter);
+    for (unsigned int t = 0; t < _geo_service.NTPC(geo::CryostatID(c)); t++) {
+      for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(c, t)); p++) {
+        setXDimension(_geo_service.Nwires(geo::PlaneID(c, t, p)), counter);
         setYDimension(_det_prop.ReadOutWindowSize(), counter);
         counter++;
       }

@@ -32,9 +32,9 @@ bool DrawRawDigit::initialize() {
   _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
   int counter = 0;
   for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
-    for (unsigned int t = 0; t < _geo_service.NTPC(c); t++) {
-      for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
-        setXDimension(_geo_service.Nwires(p, t, c), counter);
+    for (unsigned int t = 0; t < _geo_service.NTPC(geo::CryostatID(c)); t++) {
+      for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(c, t)); p++) {
+        setXDimension(_geo_service.Nwires(geo::PlaneID(c, t, p)), counter);
         setYDimension(_det_prop.ReadOutWindowSize(), counter);
         counter++;
       }
@@ -142,7 +142,7 @@ bool DrawRawDigit::analyze(const gallery::Event &ev) {
 
         // std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
 
-        if (wire > _geo_service.Nwires(plane, tpc, cryo)) continue;
+        if (wire > _geo_service.Nwires(geo::PlaneID(cryo, tpc, plane))) continue;
 
         if (_geo_service.DetectorName() == "microboone" && ch >= 8254) continue;
 

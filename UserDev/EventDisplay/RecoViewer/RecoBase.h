@@ -119,10 +119,10 @@ RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore&               geometry,
 
   size_t counter = 0;
   for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
-    for (unsigned int t = 0; t < _geo_service.NTPC(c); t++) {
-      for (unsigned int p = 0; p < _geo_service.Nplanes(t); p++) {
+    for (unsigned int t = 0; t < _geo_service.NTPC(geo::CryostatID(c)); t++) {
+      for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(c, t)); p++) {
         _wireRange.at(counter).first  = 0;
-        _wireRange.at(counter).second = _geo_service.Nwires(p, t, c);
+        _wireRange.at(counter).second = _geo_service.Nwires(geo::PlaneID(c, t, p));
         _timeRange.at(counter).first  = 0;
         _timeRange.at(counter).second = _det_prop.ReadOutWindowSize();
         counter++;
