@@ -114,6 +114,35 @@ class recoWire(wire):
             else:
                 self._process.setInput(self._producerName)
 
+class recoChannelROI(wire):
+
+    def __init__(self, geom):
+        super(recoChannelROI, self).__init__()
+        self._geom = geom
+        self._n_tpc = geom.nTPCs()
+        self._n_plane = geom.nPlanes()
+        self._gap = geom.cathodeGap()
+        self._plane_mix = geom.planeMix()
+        self._plane_flip = geom.planeFlip()
+        self._split_wire = geom.splitWire()
+        self._process = evd.DrawChannelROI(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process.initialize()
+        self._process.setInput(self._producerName)
+        for plane in range(geom.nViews() * geom.nTPCs()):
+            self._process.setYDimension(geom.readoutWindowSize(), plane)
+            if geom.readoutPadding() != 0:
+                self._process.setPadding(geom.readoutPadding(), plane)
+
+    def setProducer(self, producer):
+        self._producerName = producer
+        if self._process is not None:
+            self._process.clearInput()
+            if isinstance(producer, list):
+                for p in producer:
+                    self._process.addInput(p)
+            else:
+                self._process.setInput(self._producerName)
+
 
 class rawDigit(wire):
 

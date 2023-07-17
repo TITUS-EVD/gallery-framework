@@ -5,7 +5,7 @@ from datatypes.drawableItems import drawableItemsLive
 # from cluster import cluster
 # from shower import shower
 # from track import track
-from datatypes.wire import wire, rawDigit, recoWire
+from datatypes.wire import wire, rawDigit, recoWire, recoChannelROI
 from datatypes.opdetwaveform import opdetwaveform
 # from match import match
 # from endpoint2d import endpoint2d

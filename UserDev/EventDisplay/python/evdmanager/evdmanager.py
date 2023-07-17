@@ -610,6 +610,29 @@ class evd_manager_2D(evd_manager_base):
             self._processer.add_process("recob::Wire",self._wireDrawer._process)
             self.processEvent(True)
 
+        elif product == 'channelroi':
+            if 'recob::ChannelROI' not in self._keyTable[stage]:
+                print("No wire data available to draw")
+                self._drawWires = False
+                return
+            self._drawWires = True
+            self._wireDrawer = datatypes.recoChannelROI(self._geom)
+
+            if producers is not None:
+                producer = producers
+            elif self._geom.name() == 'icarus' and len(self._keyTable[stage]['recob::ChannelROI']) > 3:
+                producer = [self._keyTable[stage]['recob::ChannelROI'][0].fullName(),
+                            self._keyTable[stage]['recob::ChannelROI'][1].fullName(),
+                            self._keyTable[stage]['recob::ChannelROI'][2].fullName(),
+                            self._keyTable[stage]['recob::ChannelROI'][3].fullName()]
+            else:
+                producer = self._keyTable[stage]['recob::ChannelROI'][0].fullName()
+
+            # self._wireDrawer.setProducer(self._keyTable[stage]['recob::Wire'][0].fullName())
+            self._wireDrawer.setProducer(producer)
+            self._processer.add_process("recob::ChannelROI",self._wireDrawer._process)
+            self.processEvent(True)
+
         elif product == 'rawdigit':
             if 'raw::RawDigit' not in self._keyTable[stage]:
                 print("No raw digit data available to draw")
@@ -639,6 +662,8 @@ class evd_manager_2D(evd_manager_base):
                 self._processer.remove_process('raw::RawDigit')
             if 'recob::Wire' in self._processer._ana_units.keys():
                 self._processer.remove_process('recob::Wire')
+            if 'recob::ChannelROI' in self._processer._ana_units.keys():
+                self._processer.remove_process('recob::ChannelROI')
             self._wireDrawer = None
             self._drawWires = False
 

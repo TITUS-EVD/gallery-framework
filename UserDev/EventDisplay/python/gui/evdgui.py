@@ -101,6 +101,17 @@ class evdgui(gui):
         self._rawDigitLayout.addWidget(self._rawDigitButton)
         self._rawDigitLayout.addWidget(self._rawDigitChoice)
 
+        # Draw ChannelROI
+        self._channelROIButton = QtGui.QRadioButton("ChannelROI")
+        self._channelROIButton.clicked.connect(self.wireChoiceWorker)
+        self._wireButtonGroup.addButton(self._channelROIButton)
+        products = self._event_manager.get_products('recob::ChannelROI')
+        default_products = self._event_manager.get_default_products('recob::ChannelROI')
+        self._channelROIChoice = waveformBox(self, 'recob::ChannelROI', products, default_products)
+        self._channelROILayout = QtGui.QHBoxLayout()
+        self._channelROILayout.addWidget(self._channelROIButton)
+        self._channelROILayout.addWidget(self._channelROIChoice)
+
         # Draw Wires:
         self._opdetWvfButton = QtGui.QRadioButton("OpDetWaveform")
         self._opdetWvfButton.clicked.connect(self.opdetWvfChoiceWorker)
@@ -114,6 +125,7 @@ class evdgui(gui):
         self._wireChoiceLayout.addLayout(self._wireLayout)
         # self._wireChoiceLayout.addWidget(self._wireButton)
         self._wireChoiceLayout.addLayout(self._rawDigitLayout)
+        self._wireChoiceLayout.addLayout(self._channelROILayout)
         # self._wireChoiceLayout.addWidget(self._rawDigitButton)
         self._wireChoiceLayout.addWidget(self._opdetWvfButton)
 
@@ -171,6 +183,8 @@ class evdgui(gui):
             self._event_manager.toggleWires(None)
         if self._wireButton.isChecked():
             self._event_manager.toggleWires('wire',stage=self._stage, producers=activeProducers)
+        if self._channelROIButton.isChecked():
+            self._event_manager.toggleWires('channelroi',stage=self._stage, producers=activeProducers)
         if self._rawDigitButton.isChecked():
             self._event_manager.toggleWires('rawdigit',stage=self._stage, producers=activeProducers)
             self._view_manager.setDrawingRawDigits(True)
