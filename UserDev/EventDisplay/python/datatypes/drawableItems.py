@@ -1,26 +1,12 @@
-from datatypes import hit
-# from datatypes import match
-from datatypes import shower
-from datatypes import track
-from datatypes import wire
-from datatypes import cluster
-from datatypes import endpoint2d
-from datatypes import vertex
-from datatypes import mctrack
-from datatypes import mctruth
-from datatypes import mcshower
-from datatypes import spacepoint
-from datatypes import simch
-from datatypes import opflash
-from datatypes import seed
-from datatypes import pfpart
-# from datatypes import neutrino
-from datatypes import numuselection
-from datatypes import opflash
-
 # This is the class that maintains the list of drawable items.
 # If your class isn't here, it can't be drawn
 import collections
+
+
+from datatypes import hit, shower, track, wire, cluster, endpoint2d, \
+    vertex, mctrack, mctruth, mcshower, spacepoint, simch, opflash, \
+    seed, pfpart, numuselection, febdata
+
 
 
 class drawableItems(object):

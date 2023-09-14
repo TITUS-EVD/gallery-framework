@@ -7,6 +7,7 @@ from datatypes.drawableItems import drawableItemsLive
 # from track import track
 from datatypes.wire import wire, rawDigit, recoWire
 from datatypes.opdetwaveform import opdetwaveform
+from datatypes.febdata import febdata
 # from match import match
 # from endpoint2d import endpoint2d
 # from vertex import vertex
