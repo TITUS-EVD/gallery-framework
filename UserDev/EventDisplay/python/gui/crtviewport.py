@@ -14,8 +14,6 @@ import galleryUtils
 sc = galleryUtils.SourceCode
 sc.loadHeaderFromUPS('larcorealg/Geometry/AuxDetSensitiveGeo.h')
 
-from .shapes import RectItem
-
 
 class CrtViewport(QtWidgets.QWidget):
     ''' Widget holding CRT PyQtGraph window and CRT controls '''
@@ -56,6 +54,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         self.addItem(self._plot)
 
         self._crt_strips = {}
+        self._crt_strip_bounds_map = {}
         self._drawn_crt_modules = []
         self._drawn_crt_hits = set()
 
@@ -93,6 +92,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                 channel1 = 2 * sv_i + 1
                 strip = ad.SensitiveVolume(sv_i)
                 self._crt_strips[(local_mac, sv_i)] = strip
+                self._crt_strip_bounds_map[strip] = self._crt_strip_world_bounds(strip)
 
     def _crt_strip(self, mac, sipm):
         ''' 
@@ -163,6 +163,12 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
 
     def _crt_strip_world_bounds(self, strip):
         ''' return min. and max. corners of CRT strip bounding box in world coordinates '''
+
+        try:
+            return self._crt_strip_bounds_map[strip]
+        except KeyError:
+            pass
+
         hw = strip.HalfWidth1()
         hh = strip.HalfHeight()
         hl = strip.Length() / 2
@@ -172,8 +178,10 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         world_coord_min = strip.toWorldCoords(local_pt_min)
         world_coord_max = strip.toWorldCoords(local_pt_max)
 
-        return np.array([world_coord_min.X(), world_coord_min.Y(), world_coord_min.Z()]),\
-            np.array([world_coord_max.X(), world_coord_max.Y(), world_coord_max.Z()]),
+        self._crt_strip_bounds_map[strip] = (np.array([world_coord_min.X(), world_coord_min.Y(), world_coord_min.Z()]),\
+            np.array([world_coord_max.X(), world_coord_max.Y(), world_coord_max.Z()]))
+        
+        return self._crt_strip_bounds_map[strip]
 
     def _crt_draw_pos(self, coord):
         '''
@@ -226,14 +234,19 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
             w = draw_max[0] - draw_min[0]
             h = draw_max[1] - draw_min[1]
 
-            rect = RectItem(QtCore.QRectF(draw_min[0], draw_min[1], w, h))
+            rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min[0], draw_min[1], w, h))
+            rect.setPen(QtGui.QColor(255, 255, 255))
             self._drawn_crt_modules.append(rect)
             self._plot.addItem(rect)
 
     def draw_crt_hit(self, module, sipm, adc):
         ''' draw a hit CRT strip '''
-        # if len(self._drawn_crt_hits) > 10:
-        #     return
+
+        # skip low adc strips
+        idx = int(min(255, adc / 10))
+        if idx < 50:
+            return
+
         strip = self._crt_strip(module, sipm)
         pt_min, pt_max = self._crt_strip_world_bounds(strip)
         draw_min = self._crt_draw_pos(pt_min)
@@ -241,8 +254,9 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         w = draw_max[0] - draw_min[0]
         h = draw_max[1] - draw_min[1]
 
-        # TODO color scale based on adc count
-        rect = RectItem(QtCore.QRectF(draw_min[0], draw_min[1], w, h), fc='r', lc='r')
+        # rect = RectItem(QtCore., fc=color, lc=color)
+        rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min[0], draw_min[1], w, h))
+        rect.setBrush(QtGui.QColor(idx, 0, 0))
         self._plot.addItem(rect)
         self._drawn_crt_hits.add(rect)
 
@@ -261,7 +275,6 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
     def clear_crt_hits(self):
         for strip in self._drawn_crt_hits:
             self._plot.removeItem(strip)
-            strip.deleteLater()
         self._drawn_crt_hits = set()
 
 

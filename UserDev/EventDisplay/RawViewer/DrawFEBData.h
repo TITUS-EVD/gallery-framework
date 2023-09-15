@@ -66,7 +66,7 @@ namespace evd {
   protected:
 
     std::vector<float> _feb_data;
-    int _n_aux_dets;
+    unsigned int _n_aux_dets;
 
 
     std::string _producer;

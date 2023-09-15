@@ -39,21 +39,20 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
     const auto& febs
         = ev.getValidHandle<std::vector <sbnd::crt::FEBData> >(feb_data_tag);
 
-    int ifeb = 0;
     int total_adc = 0;
     for (auto const& feb : *febs) {
         uint32_t mac5 = feb.Mac5();
-        uint32_t t0 = feb.Ts0();
-		uint32_t coinc = feb.Coinc();
+        // uint32_t t0 = feb.Ts0();
+		// uint32_t coinc = feb.Coinc();
 
         const auto& adc_arr = feb.ADC();
         int isipm = 0;
         for (auto adc : adc_arr) {
-            uint32_t idx = 32 * ifeb + isipm;
-            _feb_data.at(32 * ifeb + isipm++) = (float)adc;
+            uint32_t idx = 32 * mac5 + isipm;
+            _feb_data.at(idx) += (float)adc;
             total_adc += adc;
+            isipm++;
         }
-        ifeb++;
     }
 
     return true;
