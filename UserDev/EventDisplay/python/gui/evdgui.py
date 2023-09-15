@@ -183,7 +183,6 @@ class evdgui(gui):
         if sender == self._opdetWvfButton:
             self._event_manager.toggleOpDetWvf('opdetwaveform', stage=self._stage)
         self._view_manager.drawOpDetWvf(self._event_manager)
-        
 
     def stageSelectHandler(self, _str):
         self._stage = _str

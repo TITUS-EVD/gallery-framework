@@ -138,12 +138,15 @@ class evd_manager_base(manager, QtCore.QObject):
         # Toggle whether or not to draw wires:
         self._drawWires = False
         self._drawOpDetWvf = False
+        self._drawCrts = False
         # self._drawParams = False
         # self._drawTruth = False
 
         self._wireDrawer = None
         self._opDetWvfDrawer = None
+        self._crtDrawer = None
         # self._truthDrawer = None
+
 
         # A list that will contain a dictionary with run, subrun, event keys
         self._run_list = []
@@ -273,6 +276,15 @@ class evd_manager_base(manager, QtCore.QObject):
 
 
         self._keyTable.update(lookUpTable)
+
+        # TODO This is probably out of place
+        if 'sbnd::crt::FEBData' not in self._keyTable['all']:
+            print("No CRT data available to draw")
+            self._drawCrts = False
+        else:
+            self._drawCrts = True
+            self._crtDrawer = datatypes.febdata(self._geom)
+            self._processer.add_process('sbnd::crt::FEBData', self._crtDrawer._process)
 
         f.Close()
 
@@ -667,7 +679,6 @@ class evd_manager_2D(evd_manager_base):
             self._processer.add_process("raw::OpDetWaveform",self._opDetWvfDrawer._process)
             self.processEvent(True)
 
-
     def getPlane(self, plane, cryo=0):
         if self._drawWires:
             return self._wireDrawer.getPlane(plane, cryo)
@@ -676,6 +687,10 @@ class evd_manager_2D(evd_manager_base):
         if self._drawOpDetWvf:
             return self._opDetWvfDrawer.getData()
 
+    def getCrtData(self):
+        if self._drawCrts:
+            return self._crtDrawer.getData()
+
     def hasWireData(self):
         if self._drawWires:
             return True
@@ -683,10 +698,10 @@ class evd_manager_2D(evd_manager_base):
             return False
 
     def hasOpDetWvfData(self):
-        if self._drawOpDetWvf:
-            return True
-        else:
-            return False
+        return self._drawOpDetWvf
+
+    def hasCrtData(self):
+        return self._drawCrts
 
     def drawHitsOnWire(self, plane, wire, tpc):
         if not 'Hit' in self._drawnClasses:

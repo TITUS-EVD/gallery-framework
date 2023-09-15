@@ -33,7 +33,8 @@ class CrtViewport(QtWidgets.QWidget):
         self._layout.addStretch(1)
 
     def drawCrtData(self, data):
-        self._view_widget.drawCrtData(data)
+        if data is not None:
+            self._view_widget.drawCrtData(data)
 
     def getWidget(self):
         return self, self._layout

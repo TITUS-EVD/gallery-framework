@@ -54,6 +54,13 @@ class geoBase(object):
         self._plane_mix = {}
         self._plane_flip = []
 
+        # crt-related
+        # TODO these numbers are adjusted for SBND
+        self._crt_top_ymin = 400
+        self._crt_bot_ymax = -350
+        self._crt_front_zmin = 750
+        self._crt_back_zmax = -160
+
         self._geometryCore = None
         self._detectorProperties = None
         self._clockProperties = None
@@ -182,6 +189,22 @@ class geoBase(object):
 
     def opticalOffset(self):
         return self._n_optical_offset
+
+    @property
+    def crt_top_ymin(self):
+        return self._crt_top_ymin
+
+    @property
+    def crt_bot_ymax(self):
+        return self._crt_bot_ymax
+
+    @property
+    def crt_front_zmin(self):
+        return self._crt_front_zmin
+
+    @property
+    def crt_back_zmax(self):
+        return self._crt_back_zmax
 
     def getGeometryCore(self):
         return self._geometryCore
