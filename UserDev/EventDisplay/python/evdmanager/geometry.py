@@ -56,10 +56,10 @@ class geoBase(object):
 
         # crt-related
         # TODO these numbers are adjusted for SBND
-        self._crt_top_ymin = 400
-        self._crt_bot_ymax = -350
-        self._crt_front_zmin = 750
-        self._crt_back_zmax = -160
+        self._crt_top_ymin = 400.0
+        self._crt_bot_ymax = -376.0
+        self._crt_front_zmin = 746.0
+        self._crt_back_zmax = -177.5
 
         self._geometryCore = None
         self._detectorProperties = None

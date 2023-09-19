@@ -120,44 +120,51 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         separated small amounts are grouped together. I'm not sure if there is
         a GDML way to do it, but AuxDet bounding boxes seem to be too large
         '''
+        plane_number = 0
+        # a dict because named planes may be useful for other geometries
+        result = {}
 
-        # fill with nans to start uninitialized
-        result = {key: [np.full([3], np.nan)] * 2 for key in \
-                  ['hitop', 'top', 'bottom', 'front', 'back', 'left', 'right']}
+        # AuxDets are the CRT strip arrays. The GDML mother of the AuxDets is the CRT module
+        geo_core = self._geometry.getGeometryCore()
+        nauxdet = geo_core.NAuxDets()
+        for ad_i in range(nauxdet):
+            ad = geo_core.AuxDet(ad_i)
+            nstrip = ad.NSensitiveVolume()
 
-        for _, strip in self._crt_strips.items():
-            coord_min, coord_max = self._crt_strip_world_bounds(strip)
+            ad_name = ad.TotalVolume().GetName()
+            name_set = ROOTset(string)()
+            name_set.insert(ad_name)
+            geo_paths = geo_core.FindAllVolumePaths(name_set)
 
-            top = coord_min[1] > self._geometry.crt_top_ymin
-            bot = coord_min[1] < self._geometry.crt_bot_ymax
-            hitop = coord_min[1] > 650
-            if top or bot:
-                key = 'top' if top else 'bottom'
-                key = 'hitop' if hitop else key
-                if np.any(np.isnan(result[key][0])):
-                    result[key][0] = coord_min
-                    result[key][1] = coord_max
-                result[key][0] = np.minimum(result[key][0], coord_min)
-                result[key][1] = np.maximum(result[key][1], coord_max)
-                continue
-        
-            front = coord_min[2] > self._geometry.crt_front_zmin
-            back = coord_min[2] < self._geometry.crt_back_zmax
-            if front or back:
-                key = 'front' if front else 'back'
-                if np.any(np.isnan(result[key][0])):
-                    result[key][0] = coord_min
-                    result[key][1] = coord_max
-                result[key][0] = np.minimum(result[key][0], coord_min)
-                result[key][1] = np.maximum(result[key][1], coord_max)
-                continue
+            path = ''
+            for p in geo_paths[0]:
+                path += p.GetName()
+                path += '/'
+            # remove trailing /
+            path = path[:-1]
+                
+            manager = geo_core.ROOTGeoManager()
+            manager.cd(path)
+            array_node = manager.GetCurrentNode()
+            mod_node = manager.GetMother(1)
+            tagger_node = manager.GetMother(2)
+            det_node = manager.GetMother(3)
+            
+            hw = array_node.GetVolume().GetShape().GetDX();
+            hh = array_node.GetVolume().GetShape().GetDY();
+            hl = array_node.GetVolume().GetShape().GetDZ()/2;
+            limits_min = np.array([-hw, -hh, -hl])
+            limits_max = np.array([hw, hh, hl])
 
-            key = 'left' if coord_min[0] > 0 else 'right'
-            if np.any(np.isnan(result[key][0])):
-                result[key][0] = coord_min
-                result[key][1] = coord_max
-            result[key][0] = np.minimum(result[key][0], coord_min)
-            result[key][1] = np.maximum(result[key][1], coord_max)
+            def to_world_coord(limits):
+                for node in [array_node, mod_node, tagger_node, det_node]:
+                    new_limits = np.zeros(3)
+                    node.LocalToMaster(limits, new_limits)
+                    limits = new_limits.copy()
+                return limits
+
+            result[plane_number] = [to_world_coord(limits_min), to_world_coord(limits_max)]
+            plane_number += 1
 
         return result
 
@@ -198,30 +205,35 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
             x = coord[2]
             y = coord[0]
 
-            if coord[1] > 650:
+            if coord[1] > 680:
                 # SBND special 2nd top CRT
                 return x + 2500, y + 1000
             if coord[1] > self._geometry.crt_top_ymin:
                 return x + 1500, y + 1000
             else:
                 return x, y
-        
-        front = coord[2] > self._geometry.crt_front_zmin
+
+        # front or back
         back = coord[2] < self._geometry.crt_back_zmax
+        front = coord[2] > self._geometry.crt_front_zmin
         if front or back:
-            # y along xdir, x along ydir (beam view)
             x = coord[1]
             y = coord[0]
             if back:
-                return -x - 600, y
+                return -x -600, y
             return x + 1200, y
 
-        # left or right side: z along xdir, y along ydir (side view)
-        x = coord[2]
-        y = coord[1]
-        if coord[0] < 0: 
-            return x, -y - 800
-        return x, y + 800
+        left = coord[0] < -380.0
+        right = coord[0] > 381.3
+        if left or right:
+            # left or right side: z along xdir, y along ydir (side view)
+            x = coord[2]
+            y = coord[1]
+            if coord[0] < 0: 
+                return x, -y - 800
+            return x, y + 800
+        print('invalid point', coord)
+
 
     def init_geometry(self):
         ''' draw the permanent CRT module outlines '''
@@ -231,10 +243,14 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
 
             draw_min = self._crt_draw_pos(pt_min)
             draw_max = self._crt_draw_pos(pt_max)
-            w = draw_max[0] - draw_min[0]
-            h = draw_max[1] - draw_min[1]
 
-            rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min[0], draw_min[1], w, h))
+            # positive widths and heights only!
+            draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
+            draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
+            w = draw_max_sort[0] - draw_min_sort[0]
+            h = draw_max_sort[1] - draw_min_sort[1]
+
+            rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min_sort[0], draw_min_sort[1], w, h))
             rect.setPen(QtGui.QColor(255, 255, 255))
             self._drawn_crt_modules.append(rect)
             self._plot.addItem(rect)
@@ -251,11 +267,13 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         pt_min, pt_max = self._crt_strip_world_bounds(strip)
         draw_min = self._crt_draw_pos(pt_min)
         draw_max = self._crt_draw_pos(pt_max)
-        w = draw_max[0] - draw_min[0]
-        h = draw_max[1] - draw_min[1]
+        draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
+        draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
+        w = draw_max_sort[0] - draw_min_sort[0]
+        h = draw_max_sort[1] - draw_min_sort[1]
 
         # rect = RectItem(QtCore., fc=color, lc=color)
-        rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min[0], draw_min[1], w, h))
+        rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min_sort[0], draw_min_sort[1], w, h))
         rect.setBrush(QtGui.QColor(idx, 0, 0))
         self._plot.addItem(rect)
         self._drawn_crt_hits.add(rect)
@@ -271,6 +289,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                     continue
                 
                 self.draw_crt_hit(mod, sipm, adc)
+        self._plot.update()
 
     def clear_crt_hits(self):
         for strip in self._drawn_crt_hits:
