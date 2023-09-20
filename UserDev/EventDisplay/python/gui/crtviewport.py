@@ -38,6 +38,42 @@ class CrtViewport(QtWidgets.QWidget):
         return self, self._layout
 
 
+class CrtHitsItem(pg.GraphicsObject):
+    '''
+    class to draw all CRT hits to QPicture and save the result to an image for
+    faster drawing and caching
+    '''
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.picture = QtGui.QPicture()
+
+    def add_hits(self, coords):
+        painter = QtGui.QPainter(self.picture)
+
+        for coord_info in coords:
+            coord_min, coord_max, adc = coord_info
+            # don't draw low-adc hits
+            adc_idx = int(min(255, adc / 10))
+            if adc_idx < 50:
+                continue
+
+            x, y = coord_min
+            l = coord_max[0] - coord_min[0]
+            w = coord_max[1] - coord_min[1]
+            color = QtGui.QColor(adc_idx, 0, 0)
+            painter.setBrush(color)
+            painter.setPen(color)
+            painter.drawRect(QtCore.QRectF(x, y, l, w))
+
+        painter.end()
+
+    def paint(self, painter, option, widget=None):
+        painter.drawPicture(0, 0, self.picture)
+
+    # def boundingRect(self):
+    #     return QtCore.QRectF(self.picture.boundingRect())
+
+
 class CrtViewWidget(pg.GraphicsLayoutWidget):
     ''' PyQtGraph widget to draw CRT data '''
     def __init__(self, geometry, plane=-1):
@@ -60,6 +96,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
 
         self._init_crt_strips()
         self.init_geometry()
+        self._crt_hit_picture_cache = {}
 
     def _init_crt_strips(self):
         ''' create initial map of mac and strip ID to GDML objects '''
@@ -255,46 +292,38 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
             self._drawn_crt_modules.append(rect)
             self._plot.addItem(rect)
 
-    def draw_crt_hit(self, module, sipm, adc):
-        ''' draw a hit CRT strip '''
-
-        # skip low adc strips
-        idx = int(min(255, adc / 10))
-        if idx < 50:
-            return
-
-        strip = self._crt_strip(module, sipm)
-        pt_min, pt_max = self._crt_strip_world_bounds(strip)
-        draw_min = self._crt_draw_pos(pt_min)
-        draw_max = self._crt_draw_pos(pt_max)
-        draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
-        draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
-        w = draw_max_sort[0] - draw_min_sort[0]
-        h = draw_max_sort[1] - draw_min_sort[1]
-
-        # rect = RectItem(QtCore., fc=color, lc=color)
-        rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min_sort[0], draw_min_sort[1], w, h))
-        rect.setBrush(QtGui.QColor(idx, 0, 0))
-        self._plot.addItem(rect)
-        self._drawn_crt_hits.add(rect)
-
     def drawCrtData(self, adc_array):
         ''' draw all hit strips '''
         self.clear_crt_hits()
 
-        for mod in range(len(adc_array)):
-            for sipm in range(len(adc_array[mod,:])):
-                adc = adc_array[mod, sipm]
-                if adc <= 0:
-                    continue
-                
-                self.draw_crt_hit(mod, sipm, adc)
+        key = adc_array.data.tobytes()
+        if key not in self._crt_hit_picture_cache:
+            picture = CrtHitsItem()
+            draw_coords = []
+            for mod in range(len(adc_array)):
+                for sipm in range(len(adc_array[mod,:])):
+                    adc = adc_array[mod, sipm]
+                    if adc <= 0:
+                        continue
+                    strip = self._crt_strip(mod, sipm)
+                    pt_min, pt_max = self._crt_strip_world_bounds(strip)
+                    draw_min = self._crt_draw_pos(pt_min)
+                    draw_max = self._crt_draw_pos(pt_max)
+                    draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
+                    draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
+                    draw_coords.append((draw_min_sort, draw_max_sort, adc))
+            
+            picture.add_hits(draw_coords)
+            self._crt_hit_picture_cache[key] = picture
+                    
+        self._plot.addItem(self._crt_hit_picture_cache[key])
+        self._drawn_crt_hits = self._crt_hit_picture_cache[key]
         self._plot.update()
 
     def clear_crt_hits(self):
-        for strip in self._drawn_crt_hits:
-            self._plot.removeItem(strip)
-        self._drawn_crt_hits = set()
+        if self._drawn_crt_hits is not None:
+            self._plot.removeItem(self._drawn_crt_hits)
+        self._drawn_crt_hits = None
 
 
 if __name__ == '__main__':
