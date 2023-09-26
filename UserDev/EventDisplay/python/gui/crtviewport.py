@@ -27,12 +27,15 @@ class CrtViewport(QtWidgets.QWidget):
         self.setLayout(self._layout)
 
         self._view_widget = CrtViewWidget(self._geometry)
+        self._time_widget = CrtTimeViewWidget()
         self._layout.addWidget(self._view_widget)
+        self._layout.addWidget(self._time_widget)
         self._layout.addStretch(1)
 
     def drawCrtData(self, data):
         if data is not None:
             self._view_widget.drawCrtData(data)
+            self._time_widget.drawCrtHitTimes(data)
 
     def getWidget(self):
         return self, self._layout
@@ -40,8 +43,9 @@ class CrtViewport(QtWidgets.QWidget):
 
 class CrtHitsItem(pg.GraphicsObject):
     '''
-    class to draw all CRT hits to QPicture and save the result to an image for
-    faster drawing and caching
+    class to draw all CRT hits to QPicture first, so that QPicture can be drawn
+    in one go. QPicture can also be cached for faster drawing when re-visiting
+    events
     '''
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -52,10 +56,11 @@ class CrtHitsItem(pg.GraphicsObject):
 
         for coord_info in coords:
             coord_min, coord_max, adc = coord_info
-            # don't draw low-adc hits
             adc_idx = int(min(255, adc / 10))
-            if adc_idx < 50:
-                continue
+
+            # don't draw low-adc hits
+            # if adc_idx < 50:
+            #     continue
 
             x, y = coord_min
             l = coord_max[0] - coord_min[0]
@@ -70,8 +75,8 @@ class CrtHitsItem(pg.GraphicsObject):
     def paint(self, painter, option, widget=None):
         painter.drawPicture(0, 0, self.picture)
 
-    # def boundingRect(self):
-    #     return QtCore.QRectF(self.picture.boundingRect())
+    def boundingRect(self):
+        return QtCore.QRectF(self.picture.boundingRect())
 
 
 class CrtViewWidget(pg.GraphicsLayoutWidget):
@@ -84,9 +89,9 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         self._data = None
 
         self._plot = pg.PlotItem(name="CRTPlot")
-        # TODO axis labels
-        self._plot.setLabel(axis='left', text='')
-        self._plot.setLabel(axis='bottom', text='')
+        self._plot.setAspectLocked(1)
+        self._plot.hideAxis('left')
+        self._plot.hideAxis('bottom')
         self.addItem(self._plot)
 
         self._crt_strips = {}
@@ -292,38 +297,85 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
             self._drawn_crt_modules.append(rect)
             self._plot.addItem(rect)
 
-    def drawCrtData(self, adc_array):
+    def drawCrtData(self, hit_array):
         ''' draw all hit strips '''
         self.clear_crt_hits()
 
-        key = adc_array.data.tobytes()
+        key = hit_array.data.tobytes()
         if key not in self._crt_hit_picture_cache:
             picture = CrtHitsItem()
+
+            # draw hit strips
             draw_coords = []
-            for mod in range(len(adc_array)):
-                for sipm in range(len(adc_array[mod,:])):
-                    adc = adc_array[mod, sipm]
-                    if adc <= 0:
-                        continue
-                    strip = self._crt_strip(mod, sipm)
-                    pt_min, pt_max = self._crt_strip_world_bounds(strip)
-                    draw_min = self._crt_draw_pos(pt_min)
-                    draw_max = self._crt_draw_pos(pt_max)
-                    draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
-                    draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
-                    draw_coords.append((draw_min_sort, draw_max_sort, adc))
+            for hit in hit_array:
+                # idx = module * 32 + sipm
+                idx = int(hit[0])
+                mod = idx // 32
+                sipm = idx % 32 
+                adc = hit[3]
+                if adc <= 0:
+                    continue
+
+                strip = self._crt_strip(mod, sipm)
+                pt_min, pt_max = self._crt_strip_world_bounds(strip)
+                draw_min = self._crt_draw_pos(pt_min)
+                draw_max = self._crt_draw_pos(pt_max)
+                draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
+                draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
+                draw_coords.append((draw_min_sort, draw_max_sort, adc))
             
             picture.add_hits(draw_coords)
             self._crt_hit_picture_cache[key] = picture
+
+            
+
+
                     
         self._plot.addItem(self._crt_hit_picture_cache[key])
         self._drawn_crt_hits = self._crt_hit_picture_cache[key]
         self._plot.update()
 
     def clear_crt_hits(self):
+        ''' removes the currently-drawn CrtHitsItem '''
         if self._drawn_crt_hits is not None:
             self._plot.removeItem(self._drawn_crt_hits)
         self._drawn_crt_hits = None
+
+    def _clear_cache(self):
+        ''' removes all cached CrtHitsItems from this object '''
+        self.clear_crt_hits()
+        self._crt_hit_picture_cache = {}
+
+
+class CrtTimeViewWidget(pg.GraphicsLayoutWidget):
+    def __init__(self):
+        super().__init__()
+        self._time_plot = pg.PlotItem(name="CRT Hit Times")
+        self._time_plot.setLabel(axis='left', text='Hits')
+        self._time_plot.setLabel(axis='bottom', text='Time (μs)')
+        self.addItem(self._time_plot)
+
+    def drawCrtHitTimes(self, crt_data):
+        if crt_data is None:
+            return
+
+        times = crt_data[crt_data[:,3] > 0,1]
+        self._time_plot.clear()
+
+        t_min = np.min(times)
+        t_max = np.max(times)
+        n_bins = min(200, int(t_max - t_min))
+
+        if len(crt_data) == 1:
+            t_min -= 100
+            t_max += 100
+            n_bins = 200
+
+        data_y, data_x = np.histogram(times, bins=np.linspace(t_min, t_max, n_bins))
+        self._time_plot.plot(x=data_x, y=data_y, stepMode=True, fillLevel=0, brush=(0,0,255,150))
+        self._time_plot.autoRange()
+        # self._time_plot.addItem(self._time_window)
+
 
 
 if __name__ == '__main__':
