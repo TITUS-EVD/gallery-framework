@@ -46,7 +46,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
 
   // Make a check on the plane:
-  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane >= geom.Nplanes(geo::TPCID(tpc, cryo))) {
+  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane >= geom.Nplanes(geo::TPCID(cryo, tpc))) {
     returnPoint.w = -9999;
     returnPoint.t = -9999;
     return returnPoint;
@@ -59,7 +59,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(plane, tpc, cryo));
+  const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(cryo, tpc, plane));
   returnPoint.w = planeGeo.WireCoordinate(loc) * fWireToCm;
 
 
