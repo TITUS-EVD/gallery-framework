@@ -248,6 +248,15 @@ class GalleryInterface(QtCore.QObject):
 
         self._keyTable.update(lookUpTable)
 
+        # TODO This is probably out of place
+        if 'sbnd::crt::FEBData' not in self._keyTable['all']:
+            print("No CRT data available to draw")
+            self._drawCrts = False
+        else:
+            self._drawCrts = True
+            self._crtDrawer = datatypes.febdata(self._geom)
+            self._processer.add_process('sbnd::crt::FEBData', self._crtDrawer._process)
+
         f.Close()
 
     def set_input_file(self, file):
@@ -602,7 +611,6 @@ class evd_manager_2D(GalleryInterface):
             self._processor.add_process("raw::OpDetWaveform",self._opDetWvfDrawer._process)
             self.process_event(True)
 
-
     def getPlane(self, plane, cryo=0):
         if self._drawWires:
             return self._wireDrawer.getPlane(plane, cryo)
@@ -611,6 +619,10 @@ class evd_manager_2D(GalleryInterface):
         if self._drawOpDetWvf:
             return self._opDetWvfDrawer.getData()
 
+    def getCrtData(self):
+        if self._drawCrts:
+            return self._crtDrawer.getData()
+
     def hasWireData(self):
         if self._drawWires:
             return True
@@ -618,10 +630,10 @@ class evd_manager_2D(GalleryInterface):
             return False
 
     def hasOpDetWvfData(self):
-        if self._drawOpDetWvf:
-            return True
-        else:
-            return False
+        return self._drawOpDetWvf
+
+    def hasCrtData(self):
+        return self._drawCrts
 
     def drawHitsOnWire(self, plane, wire, tpc):
         if not 'Hit' in self._drawnClasses:

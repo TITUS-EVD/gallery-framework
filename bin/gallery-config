@@ -23,6 +23,7 @@ while test $# -gt 0; do
                -I${LARCOREOBJ_INC} \
                -I${LARDATAALG_INC} \
                -I${LARCOREALG_INC} \
+               -I${SBNOBJ_INC} \
                -I${MESSAGEFACILITY_INC}"
         else
           out="-I${GALLERY_INC} \
@@ -39,6 +40,7 @@ while test $# -gt 0; do
                -I${LARCOREOBJ_INC} \
                -I${LARDATAALG_INC} \
                -I${LARCOREALG_INC} \
+               -I${SBNOBJ_INC} \
                -I${MESSAGEFACILITY_INC}"
         fi
     ;;
@@ -59,6 +61,7 @@ while test $# -gt 0; do
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
                -L${LARDATAALG_LIB} -llardataalg_DetectorInfo \
                -L${LARCOREALG_LIB} -llarcorealg_Geometry \
+               -L${SBNOBJ_LIB} -lsbnobj_SBND_CRT -lsbnobj_ICARUS_CRT \
                -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger"
         else
           out="-L${CANVAS_LIB} -lcanvas \
@@ -72,6 +75,7 @@ while test $# -gt 0; do
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
                -L${LARDATAALG_LIB} -llardataalg_DetectorInfo \
                -L${LARCOREALG_LIB} -llarcorealg_Geometry \
+               -L${SBNOBJ_LIB} -lsbnobj_SBND_CRT -lsbnobj_ICARUS_CRT \
                -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger"  
         fi
     ;;

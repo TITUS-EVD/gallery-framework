@@ -10,6 +10,14 @@ from collections import OrderedDict
 import gallery_interface
 
 # Import the class that manages the view windows
+try:
+  from viewport import viewport
+  from opticalviewport import opticalviewport
+  from crtviewport import CrtViewport
+except ImportError:
+  from gui.viewport import viewport
+  from gui.opticalviewport import opticalviewport
+  from gui.crtviewport import CrtViewport
 
 
 class view_manager(QtCore.QObject):
@@ -25,6 +33,7 @@ class view_manager(QtCore.QObject):
     self._geometry = geometry
 
     self._opt_view = opticalviewport(self._geometry)
+    self._crt_view = CrtViewport(self._geometry)
 
     self._wireDrawerMain = self.add_wire_drawer_layout()
 
@@ -149,8 +158,11 @@ class view_manager(QtCore.QObject):
       self._layout.addWidget(widget,0)
 
     self._opt_widget, _ = self._opt_view.getWidget()
+    self._crt_widget, _ = self._crt_view.getWidget()
     self._layout.addWidget(self._opt_widget, 0)
+    self._layout.addWidget(self._crt_widget, 0)
     self._opt_widget.setVisible(False)
+    self._crt_widget.setVisible(False)
 
     self._widget.setLayout(self._layout)
 
@@ -162,6 +174,7 @@ class view_manager(QtCore.QObject):
     # -1 Means the All Views, turn all of them on!
     if self._selectedPlane[0] == -1:
       self.drawOpDets(False)
+      self.drawCrts(False)
 
       for p, c in zip(self._selectedPlane, self._selectedCryo):
         for key, widget in self._planeWidgets.items():
@@ -171,17 +184,27 @@ class view_manager(QtCore.QObject):
           widget.setVisible(True)
       return
 
-    # -1 Means the Optical View, turn only that one on!
-    if self._selectedPlane[0] == -2:
-      self.drawOpDets(True)
-      return
-
     # Otherwise, only draw the selected ones
+    self.drawWire(False)
     self.drawOpDets(False)
+    self.drawCrts(False)
     for key, widget in self._planeWidgets.items():
       # Turn it off to begin width
       self._drawerList[key].toggleLogo(False)
       widget.setVisible(False)
+    
+    # either opdets or CRTs
+    if self._selectedPlane[0] == -2:
+      self.drawOpDets(True)
+      self.drawCrts(False)
+      return
+
+    if self._selectedPlane[0] == -3:
+      self.drawCrts(True)
+      self.drawOpDets(False)
+      return
+
+    # only one plane
     for p, c in zip(self._selectedPlane, self._selectedCryo):
       for key, widget in self._planeWidgets.items():
         if key == (p, c):
@@ -279,22 +302,19 @@ class view_manager(QtCore.QObject):
   def drawWire(self,wireView):
     if wireView:
       self._layout.addWidget(self._wireDrawer)
-      self._wireDrawer.setVisible(True)
     else:
       self._layout.removeWidget(self._wireDrawer)
-      self._wireDrawer.setVisible(False)
+    self._wireDrawer.setVisible(wireView)
 
-  def drawOpDets(self,opdetsView):
-    if opdetsView:
-      # self._layout.addWidget(self._opt_view)
-      self._opt_widget.setVisible(True)
-      for widget in self._planeWidgets.values():
-        widget.setVisible(False)
-    else:
-      # self._layout.removeWidget(self._opt_view)
-      self._opt_widget.setVisible(False)
-      for widget in self._planeWidgets.values():
-        widget.setVisible(True)
+  def drawOpDets(self, opdetsView):
+    self._opt_widget.setVisible(opdetsView)
+
+  def drawCrts(self, crtview):
+    self._crt_widget.setVisible(crtview)
+
+  def updateCrts(self, event_manager):
+    if event_manager.hasCrtData():
+      self._crt_view.drawCrtData(event_manager.getCrtData())
 
   def useCM(self,useCM):
     for view in self._drawerList.values():
@@ -491,6 +511,7 @@ class Gui(QtWidgets.QMainWindow):
     self.update_event_labels()
     self._view_manager.drawPlanes(self._event_manager)
     self._view_manager.drawOpDetWvf(self._event_manager)
+    self._view_manager.updateCrts(self._event_manager)
     self.autoRangeWorker()
 
   # This function prepares the buttons such as prev, next, etc and returns a layout
@@ -797,6 +818,7 @@ class Gui(QtWidgets.QMainWindow):
     # Understand what views the user selected
     if self.sender() == self._all_views_btn:
       self._optical_view_button.setChecked(False)
+      self._crt_view_button.setChecked(False)
       # Uncheck all the other buttons
       for btn in self._viewButtonArray:
         btn.setChecked(False)
@@ -805,10 +827,19 @@ class Gui(QtWidgets.QMainWindow):
 
     elif self.sender() ==  self._optical_view_button:
       self._all_views_btn.setChecked(False)
+      self._crt_view_button.setChecked(False)
       for btn in self._viewButtonArray:
         btn.setChecked(False)
       self._view_manager.selectPlane([-2])
       self._view_manager.selectCryo([-2])
+
+    elif self.sender() ==  self._crt_view_button:
+      self._all_views_btn.setChecked(False)
+      self._optical_view_button.setChecked(False)
+      for btn in self._viewButtonArray:
+        btn.setChecked(False)
+      self._view_manager.selectPlane([-3])
+      self._view_manager.selectCryo([-3])
 
     else:
       self._all_views_btn.setChecked(False)
@@ -1028,6 +1059,11 @@ class Gui(QtWidgets.QMainWindow):
     self._optical_view_button.setCheckable(True)
     self._optical_view_button.clicked.connect(self.viewSelectWorker)
     self._gridLayout.addWidget(self._optical_view_button, len(viewport_names)+1, 0, 1, 4)
+
+    self._crt_view_button = QtGui.QPushButton("CRT")
+    self._crt_view_button.setCheckable(True)
+    self._crt_view_button.clicked.connect(self.viewSelectWorker)
+    self._gridLayout.addWidget(self._crt_view_button, len(viewport_names)+2, 0, 1, 4)
 
     self._westLayout.addLayout(self._gridLayout)
 
