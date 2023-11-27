@@ -57,22 +57,22 @@ class OpticalElements(pg.ScatterPlotItem):
         max_pe = 1
 
     for d in range(0, loop_max):
-        if opdets_name[d] in self._names:
-            # print ('d', d, 'self._tpc', self._tpc, 'self._geom.opdetToTPC(d)', self._geom.opdetToTPC(d))
-            if self._geom.opdetToTPC(d) == self._tpc:
-                if pe is not None:
-                    brush = self._pmtscale.colorMap().map(pe[d]/max_pe)
+        if opdets_name[d] not in self._names:
+            continue
+        if self._geom.opdetToTPC(d) != self._tpc:
+            continue
 
-                # print(f'{self._names}  OpCh{d}: [{opdets_x[d]}, {opdets_y[d]}, {opdets_z[d]}]')
+        if pe is not None:
+            brush = self._pmtscale.colorMap().map(pe[d]/max_pe)
 
-                self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
-                                            'size'   : self._size,
-                                            'pen'    : {'color': _bordercol_[opdets_name[d]],
-                                                        'width': self._line_width},
-                                            'brush'  : brush,
-                                            'symbol' : self._symbol,
-                                            'data'   : {'id': d,
-                                                        'highlight': False}})
+        self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
+                                    'size'   : self._size,
+                                    'pen'    : {'color': _bordercol_[opdets_name[d]],
+                                                'width': self._line_width},
+                                    'brush'  : brush,
+                                    'symbol' : self._symbol,
+                                    'data'   : {'id': d,
+                                                'highlight': False}})
     self._opdets_name = opdets_name
     self._opdets_x = opdets_x
     self._opdets_y = opdets_y
@@ -194,13 +194,13 @@ class Pmts(OpticalElements):
   This class handles the drawing of the
   PMTs as a scatter plot
   '''
-  def __init__(self, geom, tpc=0, pmtscale=None):
+  def __init__(self, geom, tpc, pmtscale=None):
 
     self._names = ['pmt_coated', 'pmt_uncoated']
     self._size = 10
     self._symbol = 'o'
     self._line_width = 2
-    super(Pmts, self).__init__(geom, tpc, pmtscale)
+    super().__init__(geom, tpc, pmtscale)
 
 
 class Arapucas(OpticalElements):

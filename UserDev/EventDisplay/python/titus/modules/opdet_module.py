@@ -3,6 +3,7 @@
 """
 This module adds the optical view & associated controls
 """
+import numpy as np
 import pyqtgraph as pg 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
@@ -10,7 +11,12 @@ from titus.gui.qrangeslider import QRangeSlider
 from titus.gui.optical_elements import Pmts, Arapucas, _bordercol_
 
 from titus.modules import Module
-# from ..gallery_interface import datatypes
+import titus.drawables as drawables
+
+# place any drawables associated with optical view here. For now, just flashes
+_DRAWABLE_LIST = {
+    'OpFlash': [drawables.OpFlash, "recob::OpFlash"],
+}
 
 
 class OpDetModule(Module):
@@ -30,6 +36,7 @@ class OpDetModule(Module):
         self._last_clicked_pmts = []
         self._last_clicked_arapucas = []
         self._flashes = {}
+        self._flash_drawers = {}
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._dock)
@@ -82,6 +89,7 @@ class OpDetModule(Module):
         _bg1 = QtWidgets.QButtonGroup(self)
         self._tpc_all_button = QtWidgets.QRadioButton("All Cryos and TPCs")
         self._tpc_all_button.setToolTip("Shows all TPCs.")
+        self._tpc_all_button.setChecked(True)
         self._tpc_all_button.clicked.connect(self.viewSelectionWorker)
         _bg1.addButton(self._tpc_all_button)
 
@@ -139,21 +147,31 @@ class OpDetModule(Module):
                 self._opdet_views[i].setVisible(True)
 
     def _raw_flash_switch_worker(self):
+        if self._flash_drawers:
+            for _, drawer in self._flash_drawers.items():
+                drawer.clearDrawnObjects()
+        
         if self.sender() == self._show_raw_btn:
             self._show_raw = True
-        else:
-            self._show_raw = False
+            return
+
+        self._show_raw = False
+        if not self._flash_drawers:
+            products = self._gi.get_products(_DRAWABLE_LIST['OpFlash'][1],
+                                        self._lsm.current_stage)
+            for p in products:
+                drawer = _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
+                drawer.set_producer(p.full_name())
+                self._flash_drawers[p.full_name()] = drawer
+        
+        for _, drawer in self._flash_drawers.items():
+            drawer.drawObjects()
 
     def time_range_worker(self):
-        # for p in self._pmts:
-        #     p.set_time_range(self._time_range.getRange())
         for p in self._pmts:
             p.set_time_range(self._time_window.getRegion())
-        return
-
 
     def init_opdet_ui(self):
-
         self._opdet_plots = []
         self._pmts = []
         self._arapucas = []
@@ -255,9 +273,6 @@ class OpDetModule(Module):
     def restoreDefaults(self):
         self._time_window.setBounds([0, 10])
         self.time_range_worker()
-
-
-
 
 
 class waveform_view(pg.GraphicsLayoutWidget):

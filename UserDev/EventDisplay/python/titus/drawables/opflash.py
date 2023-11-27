@@ -1,29 +1,41 @@
-from gallery_interface.datatypes.database import recoBase
 from ROOT import evd, TVector3
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 import math as mt
 from ROOT import larutil
 
-from gallery_interface.datatypes.database import recoBase3D
+from titus.drawables import Drawable
 
-class opflash(recoBase):
-    def __init__(self, geom):
-        super(opflash, self).__init__()
-        self._productName = 'opflash'
-        self._process = evd.DrawOpflash(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
+class OpFlash(Drawable):
+    def __init__(self, gallery_interface, geom, opdet_module):
+        super().__init__(gallery_interface)
+        self._product_name = 'opflash'
+        self._process = evd.DrawOpflash(
+            geom.getGeometryCore(),
+            geom.getDetectorProperties(),
+            geom.getDetectorClocks()
+        )
+        self._geom = geom
+
+        # this product is only drawn when OpDet module is active, and it needs
+        # to access the GUI elements in the OpDet module class.
+        self._module = opdet_module
+
         self.init()
 
-    def drawObjects(self, view_manager):
-        geom = view_manager._geometry
-
-        view = view_manager.getOpticalViewport()
-
+    def drawObjects(self):
         self._drawnObjects.append([])
 
-        for p in range(0, geom.nTPCs() * geom.nCryos()):
+        for p in range(0, self._geom.nTPCs() * self._geom.nCryos()):
             flashes = self._process.getExtraData(p)
-            view.setFlashesForPlane(p, flashes)
+            self._module.setFlashesForPlane(p, flashes)
+
+    def clearDrawnObjects(self, obj_list=None):
+        """ Override base class since our object list is nested """
+        for view_objs in self._drawnObjects:
+            for obj in view_objs:
+                obj.scene().removeItem(obj)
+        self._drawnObjects = []
 
 
 

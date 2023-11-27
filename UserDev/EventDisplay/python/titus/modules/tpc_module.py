@@ -77,6 +77,7 @@ class TpcModule(Module):
         for c in range(self._gm.current_geom.nCryos()):
             for p in range(self._gm.current_geom.nPlanes()):
                 view = WireView(self._gm.current_geom, p, c)
+                # view.connectWireDrawingFunction(self.drawWireOnPlot)
                 view.connectStatusBar(self._gui.statusBar())
                 self._wire_views[(p, c)] = view
                 self._layout.addWidget(view)
@@ -502,6 +503,56 @@ class TpcModule(Module):
                 # Turn on the requested ones
                 widget.setVisible(True)
                 widget.toggleLogo(self._draw_logo)
+
+
+    """
+    def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None):
+        # Need to draw a wire on the wire view
+        # Don't bother if the view isn't active:
+        if not self._wire_drawer.isVisible():
+            return
+       
+       # set the display to show the wire:
+        if tpc % 2 != 0:
+            wireData = np.flip(wireData)
+        
+        self._wirePlotItem.setData(self._wireData)
+        # update the label
+        name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
+        # self._wireDrawer_name.setText(name)
+        self._wireDrawer_name.setToolTip(name)
+        self._wirePlot.setLabel(axis='left', text=name)
+        self._wirePlot.setLabel(axis='bottom', text="Time")
+        self._wirePlot.autoRange()
+        self.plotFFT()
+
+        '''
+        # Store the viewport that just draw this
+        # as we might need it to increase and
+        # decrease the displayed wire
+        self._current_wire_drawer = drawer
+        self._current_wire = wire
+        self._current_tpc = tpc
+        '''
+    
+    def plotFFT(self):
+        '''
+        Take the fft of wire data and plot it in place of the wire signal
+        '''
+        if self._wireData is None:
+            return
+
+        if self._fftButton.isChecked():
+            fft = np.fft.rfft(self._wireData)
+            freqs = np.fft.rfftfreq(len(self._wireData),0.5E-3)
+            self._wirePlotItem.setData(freqs,np.absolute(fft))
+            self._wirePlot.setLabel(axis='bottom', text="Frequency")
+            self._wirePlot.autoRange()
+        else:
+            self._wirePlotItem.setData(self._wireData)
+            self._wirePlot.setLabel(axis='bottom', text="Time")
+            self._wirePlot.autoRange()
+    """
 
 
 class WireView(pg.GraphicsLayoutWidget):
