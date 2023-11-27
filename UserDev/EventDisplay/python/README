@@ -1,0 +1,21 @@
+# python components for TITUS event display
+
+## Organization:
+
+Event display consists of two base components:
+
+- GUI base class which by default just makes an empty window and provides hooks for
+different modules
+- Gallery interface which reads events and outputs data from products
+
+The link between these two comes from user-written modules. Modules have access
+to some parts of the gui and also receive data from the gallery interface.
+
+Data products inherit from a common drawable base class. These can access
+properties of the modules like the module's view widget
+
+To draw a new data product, start by implementing a C++ class for it, following the
+gallery-framework examples in the parent directory. Then add python classes in the
+gallery_interface/datatypes directory
+
+To add a new view or interactive element, write a new class in the modules directory
