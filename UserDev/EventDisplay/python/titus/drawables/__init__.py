@@ -10,6 +10,7 @@ from titus.drawables.mctrack import MCTrack
 from titus.drawables.mctruth import MCTruth
 from titus.drawables.endpoint2d import EndPoint2D
 from titus.drawables.spacepoint import SpacePoint
+from titus.drawables.febdata import FEBData
 
 
 '''

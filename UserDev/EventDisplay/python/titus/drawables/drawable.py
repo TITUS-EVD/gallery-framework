@@ -53,7 +53,14 @@ class Drawable:
         if producer == _NULL_NAME:
             return
 
-        self._process.setProducer(str(producer))
+        try:
+            self._process.setProducer(str(producer))
+        except AttributeError:
+            # only reco classes have setProducer method. If this is a raw class,
+            # allow set producer name to something else besides null name so that
+            # it gets updated
+            pass
+
         self._process.analyze(self._gi.event_handle())
 
     def init(self):

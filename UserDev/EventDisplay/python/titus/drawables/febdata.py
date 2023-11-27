@@ -2,9 +2,9 @@ from titus.drawables import Drawable
 from ROOT import evd
 
 
-class febdata(Drawable):
-    def __init__(self, geom):
-        super(febdata, self).__init__()
+class FEBData(Drawable):
+    def __init__(self, gallery_interface, geom):
+        super().__init__(gallery_interface)
         self._process = evd.DrawFEBData(geom.getGeometryCore(),
                                         geom.getDetectorProperties(),
                                         geom.getDetectorClocks())

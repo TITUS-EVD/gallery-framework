@@ -248,15 +248,6 @@ class GalleryInterface(QtCore.QObject):
 
         self._keyTable.update(lookUpTable)
 
-        # TODO This is probably out of place
-        if 'sbnd::crt::FEBData' not in self._keyTable['all']:
-            print("No CRT data available to draw")
-            self._drawCrts = False
-        else:
-            self._drawCrts = True
-            self._crtDrawer = datatypes.febdata(self._geom)
-            self._processer.add_process('sbnd::crt::FEBData', self._crtDrawer._process)
-
         f.Close()
 
     def set_input_file(self, file):
