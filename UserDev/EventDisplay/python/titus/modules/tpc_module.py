@@ -427,7 +427,7 @@ class TpcModule(Module):
             self._gi.process_event(True)
 
         elif product == _RAW_RAWDIGIT:
-            self._wire_drawer = drawables.RawDigit(self._gm.current_geom)
+            self._wire_drawer = drawables.RawDigit(self._gi, self._gm.current_geom)
             self._wire_drawer.setSubtractPedestal(subtract_pedestal)
 
             if producers is not None:

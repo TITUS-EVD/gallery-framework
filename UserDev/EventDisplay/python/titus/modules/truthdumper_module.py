@@ -10,11 +10,9 @@ import ROOT
 from .module import Module
 
 
-def read_header(h):
-    ROOT.gROOT.ProcessLine('#include "%s"' % h)
-
-def provide_get_valid_handle(class_):
-    ROOT.gROOT.ProcessLine('template gallery::ValidHandle<%(name)s> gallery::Event::getValidHandle<%(name)s>(art::InputTag const&) const;' % {'name' : class_})
+import galleryUtils
+sc = galleryUtils.SourceCode
+sc.loadHeaderFromUPS('nusimdata/SimulationBase/MCTruth.h')
 
 
 class TruthDumperModule(Module):
@@ -32,10 +30,17 @@ class TruthPrintOut:
 ++++++++++++++++++++++++++++++++++++++++++++++++++++'''
     _FOOTER = '++++++++++++++++++++++++++++++++++++++++++++++++++++'
     _INDENT = '  '
+    NU_NAME_MAP = {
+        12: 'NuE',
+        14: 'NuMu',
+        16: 'NuTau',
+        -12: 'NuEBar',
+        -14: 'NuMuBar',
+        -16: 'NuTauBar',
+    }
 
     def __init__(self):
-        read_header('gallery/ValidHandle.h')
-        provide_get_valid_handle('std::vector<simb::MCTruth>')
+        galleryUtils.make_getValidHandle.make('std::vector<simb::MCTruth>')
 
     def print(self, gallery_event):
         ev_aux = gallery_event.eventAuxiliary()
@@ -46,17 +51,21 @@ class TruthPrintOut:
 
     def _print_info(self, ev):
         try:
-            get_mctruths = ev.getValidHandle(ROOT.vector(ROOT.simb.MCTruth))
+            get_mctruths = ev.getValidHandle[ROOT.vector(ROOT.simb.MCTruth)]
             mctruths_tag = ROOT.art.InputTag("generator");
-            truth = get_mctruths(mctruths_tag)
+            truth_vec = get_mctruths(mctruths_tag)
         except TypeError as e:
             print(f'{TruthPrintOut._INDENT}Could not load truth information from this file')
             print(f'{TruthPrintOut._INDENT}{e}')
             return
 
-        origin = truth.Origin()
-        vertex = (truth.GetNeutrino().Nu().Vx(), truth.GetNeutrino().Nu().Vy(), truth.GetNeutrino().Nu().Vz())
-        nutype = truth.GetNeutrino().Nu().PdgCode()
-        enu = truth.GetNeutrino().Nu().E()
-        print(origin, vertex, nutype, enu)
+        for idx in range(truth_vec.size()):
+            t = truth_vec.at(idx)
+            nutype = t.GetNeutrino().Nu().PdgCode()
+            ccnc = "CC" if not t.GetNeutrino().CCNC() else "NC"
+            origin = t.Origin()
+            vertex = (t.GetNeutrino().Nu().Vx(), t.GetNeutrino().Nu().Vy(), t.GetNeutrino().Nu().Vz())
+            enu = t.GetNeutrino().Nu().E()
+            mode = t.GetNeutrino().InteractionType()
 
+            print(f"{TruthPrintOut._INDENT}{TruthPrintOut.NU_NAME_MAP[nutype]} {ccnc} interaction (mode={mode}) at {vertex}, Enu={enu:.4f} GeV")

@@ -1,30 +1,29 @@
-from gallery_interface.datatypes.database import dataBase
+from titus.drawables import Drawable
+
 from ROOT import evd
 import pyqtgraph as pg
 import numpy as np
 
 
-class opdetwaveform(dataBase):
+class OpDetWaveform(Drawable):
 
     """docstring for opdetwaveform"""
 
-    def __init__(self, geom):
-        super(opdetwaveform, self).__init__()
-        self._n_tpc = geom.nTPCs()
-        self._n_plane = geom.nPlanes()
-        self._gap = geom.cathodeGap()
+    def __init__(self, gallery_interface, geom):
+        super().__init__(gallery_interface)
         self._process = evd.DrawOpDetWaveform(geom.getGeometryCore(),
                                               geom.getDetectorProperties(),
                                               geom.getDetectorClocks())
         self._process.set_n_frames(geom.nOpticalFrames())
         self._process.set_time_offset(geom.opticalOffset())
         self._process.initialize()
-        self._process.setInput(self._producerName)
+        self._process.setInput(self._producer_name)
 
-    def setProducer(self, producer):
-        self._producerName = producer
+    def set_producer(self, producer):
+        """ override to call setInput instead of setProducer """
+        self._producer_name = producer
         if self._process is not None:
-            self._process.setInput(self._producerName)
+            self._process.setInput(self._producer_name)
 
     def getData(self):
         return self._process.getArray()

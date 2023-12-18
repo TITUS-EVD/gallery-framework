@@ -398,6 +398,7 @@ class Geometry(geoBase):
         print('Tick Period:            ', self._detectorClocks.TPCClock().TickPeriod())
         print('Drift Velocity:         ', self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature()))
         print('Time To Cm:             ', self._time2Cm)
+        print('Wire To Cm:             ', self._wire2Cm)
         print('')
 
     def recalculateOffsets(self):

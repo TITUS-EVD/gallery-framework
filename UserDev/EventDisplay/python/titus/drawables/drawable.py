@@ -59,7 +59,7 @@ class Drawable:
             # only reco classes have setProducer method. If this is a raw class,
             # allow set producer name to something else besides null name so that
             # it gets updated
-            pass
+            print(f'Warning: Attempt to set producer "{producer}" on a raw object, which does nothing. Setting producers is typically only for reco objects.')
 
         self._process.analyze(self._gi.event_handle())
 

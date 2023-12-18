@@ -100,6 +100,9 @@ class GeometryModule(Module):
         else:
             self.current_geom = self._available_geoms[0]
             self.geometryChanged.emit()
+            # also reload the event
+            if self._gi is not None:
+                self._gi.eventChanged.emit()
 
     def _on_action_checked(self, checked, sender):
         """ call back for QAction in geometry menu bar """

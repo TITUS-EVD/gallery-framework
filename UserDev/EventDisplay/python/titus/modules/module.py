@@ -46,10 +46,12 @@ class Module(QtCore.QObject):
 
     # gallery interface event listeners
     def on_event_change(self):
-        self.update()
+        if self._active:
+            self.update()
 
     def on_file_change(self):
-        self.update()
+        if self._active:
+            self.update()
 
     # gui may call this function
     def update(self):
@@ -68,6 +70,9 @@ class Module(QtCore.QObject):
             self._gui.centralWidget().setCurrentWidget(self._central_widget)
         for dw in self._dock_widgets:
             dw.show()
+
+        if not self._active:
+            self.update()
         self._active = True
 
     def deactivate(self):
@@ -76,3 +81,9 @@ class Module(QtCore.QObject):
         for dw in self._dock_widgets:
             dw.hide()
         self._active = False
+
+    def add_gallery_interface(self, gi):
+        """ add gallery interface to this module without adding it to the GUI """
+        if self._gi is not None:
+            print("Warning: overwriting gallery interface on module")
+        self._gi = gi

@@ -88,6 +88,7 @@ class LArSoftModule(Module):
             self._stage_menu.addAction(action)
             self._stage_action_map[action] = stage
             if stage == 'all':
+                self._current_stage = 'all'
                 action.setChecked(True)
                 action.triggered.emit(True)
 

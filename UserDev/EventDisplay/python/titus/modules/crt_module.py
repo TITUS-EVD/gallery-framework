@@ -22,6 +22,9 @@ from titus.modules import Module
 import titus.drawables as drawables
 
 _SBND_CRT_FEBDATA = 'sbnd::crt::FEBData'
+_CRT_COLORMAP = pg.colormap.get('CET-D8')
+# _CRT_COLORMAP.reverse()
+
 
 class CrtModule(Module):
     def __init__(self, larsoft_module, geom_module):
@@ -44,6 +47,10 @@ class CrtModule(Module):
             return
         self._crt_view = CrtView(self._gm.current_geom)
         self._layout.addWidget(self._crt_view)
+
+        if self._gi.get_products(_SBND_CRT_FEBDATA) is None:
+            self._draw_crt_strips = False
+            return
 
         self._draw_crt_strips = True
         self._crt_strip_drawer = drawables.FEBData(self._gi, self._gm.current_geom)
@@ -101,10 +108,16 @@ class CrtHitsItem(pg.GraphicsObject):
 
     def add_hits(self, coords):
         painter = QtGui.QPainter(self.picture)
+        if not coords:
+            painter.end()
+            return
+
+        min_val = np.min([info[2] for info in coords])
+        max_val = np.max([info[2] for info in coords])
+        val_range = max_val - min_val
 
         for coord_info in coords:
-            coord_min, coord_max, adc = coord_info
-            adc_idx = int(min(255, adc / 10))
+            coord_min, coord_max, time = coord_info
 
             # don't draw low-adc hits
             # if adc_idx < 50:
@@ -113,7 +126,7 @@ class CrtHitsItem(pg.GraphicsObject):
             x, y = coord_min
             l = coord_max[0] - coord_min[0]
             w = coord_max[1] - coord_min[1]
-            color = QtGui.QColor(adc_idx, 0, 0)
+            color = _CRT_COLORMAP.mapToQColor((time - min_val) / val_range)
             painter.setBrush(color)
             painter.setPen(color)
             painter.drawRect(QtCore.QRectF(x, y, l, w))
@@ -145,7 +158,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         self._crt_strips = {}
         self._crt_strip_bounds_map = {}
         self._drawn_crt_modules = []
-        self._drawn_crt_hits = set()
+        self._drawn_crt_hits = None
 
         self._init_crt_strips()
         self.init_geometry()
@@ -361,6 +374,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                 mod = idx // 32
                 sipm = idx % 32 
                 adc = hit[3]
+                time = hit[1]
                 if adc <= 0:
                     continue
 
@@ -370,7 +384,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                 draw_max = self._crt_draw_pos(pt_max)
                 draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
                 draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
-                draw_coords.append((draw_min_sort, draw_max_sort, adc))
+                draw_coords.append((draw_min_sort, draw_max_sort, time))
             
             picture.add_hits(draw_coords)
             self._crt_hit_picture_cache[key] = picture
@@ -425,6 +439,6 @@ class CrtTimeViewWidget(pg.GraphicsLayoutWidget):
             n_bins = 200
 
         data_y, data_x = np.histogram(times, bins=np.linspace(t_min, t_max, n_bins))
-        self._time_plot.plot(x=data_x, y=data_y, stepMode=True, fillLevel=0, brush=(0,0,255,150))
+        self._time_plot.plot(x=data_x, y=data_y, stepMode=True, fillLevel=0, brush=_CRT_COLORMAP.getBrush(span=(t_min, t_max), orientation='horizontal'))
         self._time_plot.autoRange()
         # self._time_plot.addItem(self._time_window)

@@ -40,11 +40,14 @@ def main():
     # these two modules are required to initialize the view modules
     lsm = LArSoftModule()
     gm = GeometryModule(lsm)
+    
 
     # optional to add it to the gui. Allows the user to select different
     # geometries during runtime, but if there is only one available it is loaded
     # by default
     # gui.add_module(gm)
+    # call this method when using geometry module but not adding it to the gui (no geometry menu added)
+    gm.add_gallery_interface(gi)
 
     # views: TPC, Optical, CRT
     vm = ViewSelectModule()
