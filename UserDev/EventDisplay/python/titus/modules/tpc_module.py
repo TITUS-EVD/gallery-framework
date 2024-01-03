@@ -49,7 +49,6 @@ class TpcModule(Module):
         self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._dock_widgets = [self._draw_dock, self._view_dock]
 
-
         self._draw_wires = False
         self._wire_drawer = None
         self._product_box_map = {}
@@ -69,7 +68,8 @@ class TpcModule(Module):
         self._gm.geometryChanged.connect(self.init_tpc_controls)
 
     def init_tpc_views(self):
-        # TODO remove wire views from central widget if they exist
+        # TODO remove wire views from central widget if they exist (in the case
+        # of changing geometry at runtime)
         # self._wire_views = {}
         if self._gm.current_geom is None:
             return
@@ -80,7 +80,9 @@ class TpcModule(Module):
                 # view.connectWireDrawingFunction(self.drawWireOnPlot)
                 view.connectStatusBar(self._gui.statusBar())
                 self._wire_views[(p, c)] = view
-                self._layout.addWidget(view)
+                self._layout.addWidget(view.getWidgetAndLayout()[0], stretch=1)
+
+        self.refresh_draw_list_widget()
 
     def init_tpc_controls(self):
         # panel with buttons to draw objects on TPC view
@@ -166,7 +168,6 @@ class TpcModule(Module):
         plane_layout = QtWidgets.QGridLayout()
         self._all_views_button = QtWidgets.QPushButton("All Views")
         self._all_views_button.setCheckable(True)
-        self._all_views_button.setChecked(True)
         self._all_views_button.clicked.connect(self.select_views)
         plane_layout.addWidget(self._all_views_button, 0, 0, 1, 4)
 
@@ -188,6 +189,9 @@ class TpcModule(Module):
                 self._view_button_array.append(button)
                 plane_layout.addWidget(button, i + 1, c + 2)
         planes_group_box.setLayout(plane_layout)
+
+        # start GUI with all views enabled
+        self._all_views_button.click()
 
         options_group_box = QtWidgets.QGroupBox("Options")
         options_layout = QtWidgets.QVBoxLayout()
@@ -466,7 +470,7 @@ class TpcModule(Module):
             for btn in self._view_button_array:
                 btn.setChecked(False)
             self._selected_planes = [-1]
-            self._selected_cryoss = [-1]
+            self._selected_cryos = [-1]
         else:
             self._all_views_button.setChecked(False)
             self._selected_planes = []
@@ -489,20 +493,20 @@ class TpcModule(Module):
         self.refresh_draw_list_widget()
 
     def refresh_draw_list_widget(self):
-        for key, widget in self._wire_views.items():
+        for key, view in self._wire_views.items():
             # Turn it off to begin width
-            widget.toggleLogo(False)
-            widget.setVisible(False)
+            view.toggleLogo(False)
+            view.setVisible(False)
 
         # negative -1 for p and c means all planes are enabled
         for p, c in zip(self._selected_planes, self._selected_cryos):
-            for key, widget in self._wire_views.items():
+            for key, view in self._wire_views.items():
                 if key != (p, c) and p != -1 and c != -1:
                     continue
 
                 # Turn on the requested ones
-                widget.setVisible(True)
-                widget.toggleLogo(self._draw_logo)
+                view.setVisible(True)
+                view.toggleLogo(self._draw_logo)
 
 
     """
@@ -653,11 +657,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._xBarText = None
         self.useScaleBar = False
 
-        # Set up the blank data:
-        # self._blankData = np.ones((self._geometry.wRange(self._plane),self._geometry.tRange()))
         self.setBackground('w')
-        self.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
-        # self.setBackground(pg.mkColor(0, 0, 0))
 
         self._useLogo = False
         self._logo = None
@@ -727,9 +727,41 @@ class WireView(pg.GraphicsLayoutWidget):
         self._totalLayout.addLayout(colors)
 
         self._widget = QtWidgets.QWidget()
+        self._widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self._widget.setLayout(self._totalLayout)
-        self._widget.setMaximumHeight(1000)
-        self._widget.setMinimumHeight(50)
+        self._show_wrapper = True
+
+    def setVisible(self, vis):
+        """
+        override setVisible to include the widget. This allows the wireview to
+        be used in other modules without showing the colorbar & label
+        """
+
+        self._widget.setVisible(vis)
+
+        # recursive wrapper for sub-layouts
+        def __set_visible(w, vis):
+            if not isinstance(w, QtWidgets.QWidget):
+                for c in w.children():
+                    __set_visible(c, vis)
+            else:
+                w.setVisible(vis)
+
+        # recurse over childen
+        for w in self._widget.children():
+            # annoyingly, the class's widget holds a reference to the class
+            # object skip it to avoid infinite recursion
+            if w is self:
+                continue
+            __set_visible(w, vis & self._show_wrapper)
+
+        # finally get the plot
+        super().setVisible(vis)
+
+    def setWrapperVisible(self, vis: bool):
+        """ Separately hide/show the wrapper widget """
+        self._show_wrapper = vis
+        self.setVisible(self.isVisible())
 
     def drawingRawDigits(self, status):
         if status != self._drawingRawDigits:
@@ -782,7 +814,7 @@ class WireView(pg.GraphicsLayoutWidget):
     def mouseDrag(self):
         print("mouse was dragged")
 
-    def getWidget(self):
+    def getWidgetAndLayout(self):
         return self._widget,self._totalLayout
 
     def levelChanged(self):
@@ -1116,11 +1148,7 @@ class WireView(pg.GraphicsLayoutWidget):
     def drawPlane(self, image):
         self._item.setImage(image,autoLevels=False)
         self._item.setLookupTable(self._cmap.getLookupTable(255))
-        self._cmap.setVisible(True)
-        self._upperLevel.setVisible(True)
-        self._lowerLevel.setVisible(True)
-        self._item.setVisible(False)
-        self._item.setVisible(True)
+        self.setWrapperVisible(True)
         # Make sure the levels are actually set:
         self.levelChanged()
 
@@ -1173,9 +1201,7 @@ class WireView(pg.GraphicsLayoutWidget):
 
     def drawBlank(self):
         self._item.clear()
-        self._cmap.setVisible(False)
-        self._upperLevel.setVisible(False)
-        self._lowerLevel.setVisible(False)
+        self.setWrapperVisible(False)
 
 
     def clearPoints(self):
