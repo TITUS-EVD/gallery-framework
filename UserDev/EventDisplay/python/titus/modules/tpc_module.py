@@ -47,6 +47,13 @@ class TpcModule(Module):
         self._draw_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._view_dock =  QtWidgets.QDockWidget('TPC View Controls', self._gui)
         self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
+        self._waveform_dock =  QtWidgets.QDockWidget('Wire Waveform', self._gui)
+        self._waveform_dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea \
+                                            | QtCore.Qt.LeftDockWidgetArea \
+                                            | QtCore.Qt.RightDockWidgetArea)
+
+        # don't add waveform dock to this list since its visibility is set by
+        # the controls in this gui
         self._dock_widgets = [self._draw_dock, self._view_dock]
 
         self._draw_wires = False
@@ -59,13 +66,16 @@ class TpcModule(Module):
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
+        self._gui.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._waveform_dock)
         self._gui.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._view_dock)
+
+        self.init_wire_waveform()
 
         # main TPC view widget with multiple WireViews and waveform view
         # init once the geometry is selected so that None geometry doesn't do
         # anything
-        self._gm.geometryChanged.connect(self.init_tpc_views)
         self._gm.geometryChanged.connect(self.init_tpc_controls)
+        self._gm.geometryChanged.connect(self.init_tpc_views)
 
     def init_tpc_views(self):
         # TODO remove wire views from central widget if they exist (in the case
@@ -77,7 +87,7 @@ class TpcModule(Module):
         for c in range(self._gm.current_geom.nCryos()):
             for p in range(self._gm.current_geom.nPlanes()):
                 view = WireView(self._gm.current_geom, p, c)
-                # view.connectWireDrawingFunction(self.drawWireOnPlot)
+                view.connectWireDrawingFunction(self.drawWireOnPlot)
                 view.connectStatusBar(self._gui.statusBar())
                 self._wire_views[(p, c)] = view
                 self._layout.addWidget(view.getWidgetAndLayout()[0], stretch=1)
@@ -222,7 +232,8 @@ class TpcModule(Module):
         # check box to toggle the wire drawing
         self._drawWireOption = QtWidgets.QCheckBox("Wire Drawing")
         self._drawWireOption.setToolTip("Draw the wires when clicked on")
-        # self._drawWireOption.stateChanged.connect(self.drawWireWorker)
+        self._drawWireOption.stateChanged.connect(self.draw_wire_waveform)
+
         self._drawRawOption = QtWidgets.QCheckBox("Draw Raw")
         self._drawRawOption.setToolTip("Draw the raw wire signals in 2D")
         self._drawRawOption.setTristate(False)
@@ -273,7 +284,7 @@ class TpcModule(Module):
         self._anodeCathodeOption = QtWidgets.QCheckBox("Draw anode/cathode")
         self._anodeCathodeOption.setToolTip("Shows the anode and cathode position for t0=0.")
         self._anodeCathodeOption.setTristate(False)
-        # self._anodeCathodeOption.stateChanged.connect(self.showAnodeCathodeWorker)
+        self._anodeCathodeOption.stateChanged.connect(self.show_anode_cathode)
 
         self._uniteCathodes = QtWidgets.QCheckBox("Unite cathodes")
         self._uniteCathodes.setToolTip("Unites the cathodes waveforms.")
@@ -334,6 +345,62 @@ class TpcModule(Module):
         main_layout2.addStretch()
 
         self._gm.geometryChanged.connect(self.change_wire_view)
+
+    def init_wire_waveform(self):
+        # panel with buttons to draw objects on TPC view
+        self._wire_waveform_widget = QtWidgets.QWidget(self._draw_dock)
+        self._waveform_dock.setWidget(self._wire_waveform_widget)
+
+        self._wireDrawerMain = pg.GraphicsLayoutWidget()
+        self._wireDrawerMain.setBackground('w')
+        self._wirePlot = self._wireDrawerMain.addPlot()
+        self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
+        self._wirePlot.addItem(self._wirePlotItem)
+        # self._wireDrawerMain.setMaximumHeight(250)
+        self._wireDrawerMain.setMinimumHeight(100)
+        self._wireDrawerMain.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, \
+                                                 QtWidgets.QSizePolicy.Maximum)
+
+        # self._wireDrawer_name = VerticalLabel("Wire Drawer")
+        # self._wireDrawer_name.setMaximumWidth(25)
+        # self._wireDrawer_name.setAlignment(QtCore.Qt.AlignCenter)
+        # self._wireDrawer_name.setToolTip("Click on a wire to display the waveform.")
+        # self._wireDrawer_name.setStyleSheet('color: rgb(169,169,169);')
+        self._wireDrawerLayout = QtWidgets.QHBoxLayout()
+        # self._wireDrawerLayout.addWidget(self._wireDrawer_name)
+        self._wireDrawerLayout.addWidget(self._wireDrawerMain)
+
+        self._fftButton = QtWidgets.QPushButton("FFT Wire")
+        self._fftButton.setToolTip("Compute and show the FFT of the wire currently drawn")
+        self._fftButton.setCheckable(True)
+        # self._fftButton.clicked.connect(self.plotFFT)
+
+        self._left_wire_button = QtWidgets.QPushButton("Previous Wire")
+        # self._left_wire_button.clicked.connect(self.change_wire)
+        self._left_wire_button.setToolTip("Show the previous wire.")
+        self._right_wire_button = QtWidgets.QPushButton("Next Wire")
+        # self._right_wire_button.clicked.connect(self.change_wire)
+        self._right_wire_button.setToolTip("Show the next wire.")
+        self._wire_drawer_button_layout = QtWidgets.QHBoxLayout()
+        self._wire_drawer_button_layout.addWidget(self._fftButton)
+        self._wire_drawer_button_layout.addStretch()
+        self._wire_drawer_button_layout.addWidget(self._left_wire_button)
+        self._wire_drawer_button_layout.addWidget(self._right_wire_button)
+
+        self._wireDrawerVLayout = QtWidgets.QVBoxLayout()
+        self._wireDrawerVLayout.addLayout(self._wireDrawerLayout)
+        self._wireDrawerVLayout.addLayout(self._wire_drawer_button_layout)
+        self._wireDrawerVLayout.addStretch()
+        self._wireDrawerVLayout.setContentsMargins(0, 0, 0, 0)
+
+        self._wire_waveform_widget.setLayout(self._wireDrawerVLayout)
+        # start closed
+        self._waveform_dock.hide()
+
+        # sync check box state with this dock being open
+        self._waveform_dock.visibilityChanged.connect(
+            lambda: self._drawWireOption.setChecked(self._waveform_dock.isVisible())
+        )
 
     # TODO need to rework widgets so that this kind of event forwarding to 
     # gui isn't necessary
@@ -463,6 +530,24 @@ class TpcModule(Module):
         for view in self._wire_views.values():
             view.toggleLogo(logostate)
 
+    def show_anode_cathode(self):
+        show = self._anodeCathodeOption.isChecked()
+        self._separators[0].setVisible(show)
+        self._t0slider.setVisible(show)
+        self._t0sliderLabel.setVisible(show)
+        self._t0sliderLabelIntro.setVisible(show)
+        self._uniteCathodes.setVisible(show)
+        self._separators[1].setVisible(show)
+        for view in self._wire_views.values():
+            view.showAnodeCathode(show)
+
+    def draw_wire_waveform(self):
+        show = self._drawWireOption.isChecked()
+        if show:
+            self._waveform_dock.show()
+        else:
+            self._waveform_dock.hide()
+
     def select_views(self):
         ''' set the internal state of selected_planes and selected_cryos from buttons '''
         if self.sender() == self._all_views_button:
@@ -508,36 +593,32 @@ class TpcModule(Module):
                 view.setVisible(True)
                 view.toggleLogo(self._draw_logo)
 
-
-    """
     def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None):
         # Need to draw a wire on the wire view
         # Don't bother if the view isn't active:
-        if not self._wire_drawer.isVisible():
+        if not self._wire_waveform_widget.isVisible():
             return
        
-       # set the display to show the wire:
+        # set the display to show the wire:
+        self._wireData = wireData
         if tpc % 2 != 0:
-            wireData = np.flip(wireData)
+            self._wireData = np.flip(self._wireData)
         
-        self._wirePlotItem.setData(self._wireData)
+        self._wirePlotItem.setData(wireData)
         # update the label
         name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
         # self._wireDrawer_name.setText(name)
-        self._wireDrawer_name.setToolTip(name)
-        self._wirePlot.setLabel(axis='left', text=name)
+        self._wirePlot.setTitle(name)
         self._wirePlot.setLabel(axis='bottom', text="Time")
         self._wirePlot.autoRange()
         self.plotFFT()
 
-        '''
         # Store the viewport that just draw this
         # as we might need it to increase and
         # decrease the displayed wire
         self._current_wire_drawer = drawer
         self._current_wire = wire
         self._current_tpc = tpc
-        '''
     
     def plotFFT(self):
         '''
@@ -556,7 +637,6 @@ class TpcModule(Module):
             self._wirePlotItem.setData(self._wireData)
             self._wirePlot.setLabel(axis='bottom', text="Time")
             self._wirePlot.autoRange()
-    """
 
 
 class WireView(pg.GraphicsLayoutWidget):
@@ -729,7 +809,13 @@ class WireView(pg.GraphicsLayoutWidget):
         self._widget = QtWidgets.QWidget()
         self._widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self._widget.setLayout(self._totalLayout)
+
+        # show_wrapper is false in the case of drawing blank (no data) views,
+        # but true when drawing data
+        # disable_wrapper overrides show wrapper: Set to true to prevent
+        # wrapper drawing even if there is data
         self._show_wrapper = True
+        self._disable_wrapper = False
 
     def setVisible(self, vis):
         """
@@ -740,12 +826,12 @@ class WireView(pg.GraphicsLayoutWidget):
         self._widget.setVisible(vis)
 
         # recursive wrapper for sub-layouts
-        def __set_visible(w, vis):
+        def __set_visible(w, v):
             if not isinstance(w, QtWidgets.QWidget):
                 for c in w.children():
-                    __set_visible(c, vis)
+                    __set_visible(c, v)
             else:
-                w.setVisible(vis)
+                w.setVisible(v)
 
         # recurse over childen
         for w in self._widget.children():
@@ -753,14 +839,14 @@ class WireView(pg.GraphicsLayoutWidget):
             # object skip it to avoid infinite recursion
             if w is self:
                 continue
-            __set_visible(w, vis & self._show_wrapper)
+            __set_visible(w, vis and self._show_wrapper and not self._disable_wrapper)
 
         # finally get the plot
         super().setVisible(vis)
 
     def setWrapperVisible(self, vis: bool):
         """ Separately hide/show the wrapper widget """
-        self._show_wrapper = vis
+        self._show_wrapper = vis and not self._disable_wrapper
         self.setVisible(self.isVisible())
 
     def drawingRawDigits(self, status):
@@ -1034,21 +1120,22 @@ class WireView(pg.GraphicsLayoutWidget):
                 self._wireData = data[wire]
                 self._wireData = self._wireData[self._first_entry:self._last_entry]
 
-        # Here we want to display the real plane number, not the view.
-        # So, make sure that if you are in an odd TPC we display the right number.
-        plane = self._plane
-        if tpc %2 != 0:
-            if self._plane == 0:
-                plane = 1
-            elif self._plane == 1:
-                plane = 0
-        self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc, cryo=self._cryostat, drawer=self)
+                # Here we want to display the real plane number, not the view.
+                # So, make sure that if you are in an odd TPC we display the right number.
+                plane = self._plane
+                if tpc %2 != 0:
+                    if self._plane == 0:
+                        plane = 1
+                    elif self._plane == 1:
+                        plane = 0
+
+                self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc, cryo=self._cryostat, drawer=self)
 
         # Make a request to draw the hits from this wire:
         self.drawHitsRequested.emit(self._plane, wire, tpc)
 
 
-    def connectWireDrawingFunction(self,func):
+    def connectWireDrawingFunction(self, func):
         self._wdf = func
 
     def connectStatusBar(self, statusBar):
@@ -1248,7 +1335,7 @@ class WireView(pg.GraphicsLayoutWidget):
                 self._view.removeItem(self._drawnPoints[i])
                 self._drawnPoints.pop(i)
                 # Refresh the path:
-                self._path = QtWidgets.QPainterPath()
+                self._path = QtGui.QPainterPath()
                 self._path.addPolygon(self._polygon)
                 self._polyGraphicsItem.setPath(self._path)
                 return
@@ -1265,7 +1352,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._polygon.append(_in_point)
 
         # self._polyGraphicsItem.setPolygon(self._polygon)
-        self._path = QtWidgets.QPainterPath()
+        self._path = QtGui.QPainterPath()
         self._path.addPolygon(self._polygon)
         self._polyGraphicsItem.setPath(self._path)
 

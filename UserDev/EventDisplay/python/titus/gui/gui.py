@@ -44,6 +44,12 @@ class Gui(QtWidgets.QMainWindow):
         self.setFocus()
         self.show()
 
+        # left and right dock areas should take up the full vertical space
+        self.setCorner(QtCore.Qt.TopLeftCorner, QtCore.Qt.LeftDockWidgetArea)
+        self.setCorner(QtCore.Qt.BottomLeftCorner, QtCore.Qt.LeftDockWidgetArea)
+        self.setCorner(QtCore.Qt.TopRightCorner, QtCore.Qt.RightDockWidgetArea)
+        self.setCorner(QtCore.Qt.BottomRightCorner, QtCore.Qt.RightDockWidgetArea)
+
     @property
     def gallery_interface(self):
         return self._gi
