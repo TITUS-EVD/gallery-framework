@@ -432,7 +432,7 @@ class sbnd(Geometry):
         # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
         # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
         self._pedestals = [0, 0, 0]
-        self._levels = [(-80, 0), (-10, 100), (-10, 200)]
+        self._levels = [(100, -10), (-10, 100), (-10, 200)]
 
         self._view_names = ['U', 'V', 'Y']
         # self._plane_mix = {0: [4], 1: [3], 2: [5]}

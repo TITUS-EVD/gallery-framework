@@ -14,6 +14,7 @@ class Module(QtCore.QObject):
         self._central_widget = None
         self._dock_widgets = []
         self._active = True
+        self._drawables = set()
 
     @property
     def parent(self):
@@ -22,6 +23,9 @@ class Module(QtCore.QObject):
     @parent.setter
     def parent(self, val):
         self._parent = val
+
+    def is_active(self):
+        return self._active
 
     def connect_gui(self, gui):
         """ Get references to GUI and its gallery interface """
@@ -80,6 +84,7 @@ class Module(QtCore.QObject):
             self._gui.centralWidget().removeWidget(self._central_widget)
         for dw in self._dock_widgets:
             dw.hide()
+
         self._active = False
 
     def add_gallery_interface(self, gi):
@@ -87,3 +92,11 @@ class Module(QtCore.QObject):
         if self._gi is not None:
             print("Warning: overwriting gallery interface on module")
         self._gi = gi
+
+    def register_drawable(self, drawable):
+        drawable.parent_module = self
+        self._drawables.add(drawable)
+        return drawable
+
+    def remove_drawable(self, drawable):
+        self._drawables.remove(drawable)

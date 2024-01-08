@@ -7,15 +7,6 @@ from ROOT import TFile
 from ROOT import vector as ROOTvector
 from ROOT import string as ROOTstring
 
-# from memory_profiler import profile
-
-# try:
-#   from data import manager, event
-# except ImportError:
-#   from evdmanager.event import manager, event
-
-# import titus.drawables as datatypes
-
 
 class Product(object):
     """ holds information about art products """
@@ -269,14 +260,14 @@ class GalleryInterface(QtCore.QObject):
             # First, check that the file exists:
             try:
                 if not os.path.exists(file):
-                    print("\033[91m ERROR: requested file does not exist. \033[0m")
+                    print(f"\033[91m WARNING\033[0m requested file {file} does not exist, skipping")
                     continue
             except (Exception, e):
                 print(e)
                 return
             # Next, verify it is a root file:
             if not file.endswith(".root"):
-                print("\033[91m ERROR: must supply a root file. \033[0m")
+                print(f"\033[91m WARNING\033[0m {file} is not a .root file, skipping")
                 continue
 
             # Finally, ping the file to see what is available to draw
@@ -295,8 +286,10 @@ class GalleryInterface(QtCore.QObject):
 
 
         # Create an instance of the data manager:
-        if _file_list.size() > 0:
-            self._gallery_event_handle = gallery.Event(_file_list)
+        if _file_list.size() == 0:
+            return
+
+        self._gallery_event_handle = gallery.Event(_file_list)
 
         # Open the manager
         self._lastProcessed = -1
@@ -450,291 +443,3 @@ class GalleryInterface(QtCore.QObject):
             # self._view_manager.drawPlanes(self)
         # self.drawFresh()
         self.eventChanged.emit()
-
-
-
-class evd_manager_2D(GalleryInterface):
-
-    # truthLabelChanged = QtCore.pyqtSignal(str)
-    filterNoise = False
-
-    '''
-    Class to handle the 2D specific aspects of viewer
-    '''
-
-    def __init__(self, file=None):
-        super().__init__(file)
-        self._drawableItems = datatypes.drawableItems()
-
-    # this function is meant for the first request to draw an object or
-    # when the producer changes
-    def redrawProduct(self, geom, informal_type, product, module):
-        # First, determine if there is a drawing process for this product:
-        if product is None:
-            if informal_type in self._drawnClasses:
-                self._drawnClasses[informal_type].clearDrawnObjects(views)
-                self._drawnClasses.pop(informal_type)
-            return
-        if informal_type in self._drawnClasses:
-            self._drawnClasses[informal_type].setProducer(product.fullName())
-            self.process_event(True)
-            self._drawnClasses[informal_type].clearDrawnObjects(views)
-            if informal_type == 'MCTrack' or informal_type == 'Track':
-                self._drawnClasses[informal_type].drawObjects(module, self._gui._tracksOnBothTPCs)
-            else:
-                self._drawnClasses[informal_type].drawObjects(module)
-            return
-
-        # Now, draw the new product
-        if informal_type in self._drawableItems.getListOfTitles():
-            # drawable items contains a reference to the class, so instantiate
-            # it
-            drawingClass = self._drawableItems.getDict()[informal_type][0](geom)
-            # Special case for clusters, connect it to the signal:
-            # if name == 'Cluster':
-            #     self.noiseFilterChanged.connect(
-            #         drawingClass.setParamsDrawing)
-            #     drawingClass.setParamsDrawing(self._drawParams)
-            # if name == 'Match':
-            #     self.noiseFilterChanged.connect(
-            #         drawingClass.setParamsDrawing)
-            #     drawingClass.setParamsDrawing(self._drawParams)
-            if informal_type == "RawDigit":
-                self.noiseFilterChanged.connect(
-                    drawingClass.runNoiseFilter)
-                drawingClass.SetSubtractPdedestal(True)
-
-            drawingClass.setProducer(product.fullName())
-            self._processor.add_process(product, drawingClass._process)
-            self._drawnClasses.update({informal_type: drawingClass})
-            # Need to process the event
-            self.process_event(True)
-            if informal_type == 'MCTrack' or informal_type == 'Track':
-                drawingClass.drawObjects(module, self._gui._tracksOnBothTPCs)
-            else:
-                drawingClass.drawObjects(module)
-
-    def clearAll(self):
-        for recoProduct in self._drawnClasses:
-            self._drawnClasses[recoProduct].clearDrawnObjects(
-                self._view_manager)
-        # self.clearTruth()
-
-    '''
-    def drawFresh(self):
-        # # wires are special:
-        if self._drawWires:
-          self._view_manager.drawPlanes(self)
-        self.clearAll()
-        # Draw objects in a specific order defined by drawableItems
-        order = self._drawableItems.getListOfTitles()
-        # self.drawTruth()
-        for item in order:
-            if item in self._drawnClasses:
-                self._drawnClasses[item].drawObjects(self._view_manager)
-    '''
-
-    def getAutoRange(self, plane):
-        # This gets the max bounds
-        xRangeMax, yRangeMax = super(evd_manager_2D, self).getAutoRange(plane)
-        xRange = [999,-999]
-        yRange = [99999,-99999]
-        for process in self._drawnClasses:
-            x, y = self._drawnClasses[process].getAutoRange(plane)
-            # Check against all four of the parameters:
-            if x is not None:
-                if x[0] < xRange[0]:
-                    xRange[0] = x[0]
-                if x[1] > xRange[1]:
-                    xRange[1] = x[1]
-            if y is not None:
-                if y[0] < yRange[0]:
-                    yRange[0] = y[0]
-                if y[1] > yRange[1]:
-                    yRange[1] = y[1]
-
-        # Pad the ranges by 1 cm to accommodate
-        padding = 5
-        xRange[0] = max(xRangeMax[0], xRange[0] - padding/self._geom.wire2cm())
-        xRange[1] = min(xRangeMax[1], xRange[1] + padding/self._geom.wire2cm())
-        yRange[0] = max(yRangeMax[0], yRange[0] - padding/self._geom.time2cm())
-        yRange[1] = min(yRangeMax[1], yRange[1] + padding/self._geom.time2cm())
-        return xRange, yRange
-
-    def get_products(self, name, stage=None):
-        '''
-        Returns all available products
-        '''
-        if stage is None:
-            stage = 'all'
-
-        if stage not in self._keyTable:
-            return None
-
-        if name not in self._keyTable[stage]:
-            return None
-
-        return self._keyTable[stage][name]
-
-
-    def toggleNoiseFilter(self, filterBool):
-        self.filterNoise = filterBool
-        if 'raw::RawDigit' in self._processor._ana_units.keys():
-            self._wireDrawer.toggleNoiseFilter(self.filterNoise)
-            # Rerun the event just for the raw digits:
-            self.process_event(force=True)
-            # self.drawFresh()
-
-    def toggleOpDetWvf(self, product, stage=None):
-
-        if stage is None:
-            stage = 'all'
-
-        if product == 'opdetwaveform':
-
-            if 'raw::OpDetWaveform' not in self._keyTable[stage]:
-                print("No OpDetWaveform data available to draw")
-                self._drawWires = False
-                return
-            self._drawOpDetWvf = True
-            self._opDetWvfDrawer = datatypes.opdetwaveform(self._geom)
-            self._opDetWvfDrawer.setProducer(self._keyTable[stage]['raw::OpDetWaveform'][0].fullName())
-            self._processor.add_process("raw::OpDetWaveform",self._opDetWvfDrawer._process)
-            self.process_event(True)
-
-    def getPlane(self, plane, cryo=0):
-        if self._drawWires:
-            return self._wireDrawer.getPlane(plane, cryo)
-
-    def getOpDetWvf(self):
-        if self._drawOpDetWvf:
-            return self._opDetWvfDrawer.getData()
-
-    def getCrtData(self):
-        if self._drawCrts:
-            return self._crtDrawer.getData()
-
-    def hasWireData(self):
-        if self._drawWires:
-            return True
-        else:
-            return False
-
-    def hasOpDetWvfData(self):
-        return self._drawOpDetWvf
-
-    def hasCrtData(self):
-        return self._drawCrts
-
-    def drawHitsOnWire(self, plane, wire, tpc):
-        if not 'Hit' in self._drawnClasses:
-            return
-        else:
-            # Get the right plane number
-            this_plane = plane
-            if tpc == 1:
-                this_plane = self._geom.planeMix()[plane][0]
-
-            # Get the hits:
-            hits = self._drawnClasses['Hit'].getHitsOnWire(this_plane, wire)
-            self._view_manager.drawHitsOnPlot(hits)
-
-
-try:
-    import pyqtgraph.opengl as gl
-
-    class evd_manager_3D(evd_manager_base):
-
-        """This class handles file I/O and drawing for 3D viewer"""
-
-        showMCCosmic = True
-
-        def __init__(self, geom, file=None):
-            super(evd_manager_3D, self).__init__(geom, file)
-            self._drawableItems = datatypes.drawableItems3D()
-
-        def getAutoRange(self):
-            pass
-
-        # this function is meant for the first request to draw an object or
-        # when the producer changes
-        def redrawProduct(self, name, product, producer, view_manager, stage = None):
-            # print "Received request to redraw ", product, " by ",producer, " with name ", name
-            # First, determine if there is a drawing process for this product:
-            if stage is None:
-                stage = 'all'
-            if producer is None:
-                if name in self._drawnClasses:
-                    self._drawnClasses[name].clearDrawnObjects(self._view_manager)
-                    self._drawnClasses.pop(name)
-                return
-            if name in self._drawnClasses:
-                self._drawnClasses[name].setProducer(producer)
-                self.process_event(True)
-                self._drawnClasses[name].clearDrawnObjects(self._view_manager)
-                self._drawnClasses[name].drawObjects(self._view_manager)
-                return
-
-
-            # Now, draw the new product
-            if name in self._drawableItems.getListOfTitles():
-                # drawable items contains a reference to the class, so
-                # instantiate it
-                drawingClass=self._drawableItems.getDict()[name][0]()
-                # Special case for clusters, connect it to the signal:
-                # if name is 'PFParticle':
-                    # self.noiseFilterChanged.connect(
-                    #     drawingClass.setParamsDrawing)
-                    # drawingClass.setParamsDrawing(self._drawParams)
-                # if name == 'Match':
-                #     self.noiseFilterChanged.connect(
-                #         drawingClass.setParamsDrawing)
-                #     drawingClass.setParamsDrawing(self._drawParams)
-
-                drawingClass.setProducer(producer)
-                self._processor.add_process(product, drawingClass._process)
-                self._drawnClasses.update({name: drawingClass})
-                if name == "MCTrack":
-                    self._drawnClasses[name].toggleMCCosmic(self.showMCCosmic)
-                # Need to process the event
-                self.process_event(True)
-                drawingClass.drawObjects(self._view_manager)
-
-        def clearAll(self):
-            for recoProduct in self._drawnClasses:
-                self._drawnClasses[recoProduct].clearDrawnObjects(
-                    self._view_manager)
-
-        # def toggleParams(self, paramsBool):
-        #     self._drawParams=paramsBool
-        #     self.noiseFilterChanged.emit(paramsBool)
-        #     if 'PFParticle' in self._drawnClasses:
-        #         self.drawFresh()
-
-        '''
-        def drawFresh(self):
-            # # wires are special:
-            # if self._drawWires:
-            #   self._view_manager.drawPlanes(self)
-            self.clearAll()
-            # Draw objects in a specific order defined by drawableItems
-            order=self._drawableItems.getListOfTitles()
-            for item in order:
-                if item in self._drawnClasses:
-                    self._drawnClasses[item].drawObjects(self._view_manager)
-        '''
-
-        def toggleMCCosmic(self, toggleBool):
-            self.showMCCosmic = toggleBool
-            order=self._drawableItems.getListOfTitles()
-            for item in order:
-                if item == "MCTrack":
-                    if item in self._drawnClasses:
-                        self._drawnClasses[item].toggleMCCosmic(toggleBool)
-                        self._drawnClasses[item].clearDrawnObjects(self._view_manager)
-                        self.process_event(True)
-                        self._drawnClasses[item].drawObjects(self._view_manager)
-            #self.drawFresh()
-
-except:
-    pass

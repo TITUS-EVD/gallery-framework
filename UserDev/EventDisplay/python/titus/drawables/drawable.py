@@ -1,7 +1,8 @@
 """
 Drawable base class
-Drawable objects receive a gallery interface and have analyze methods
-connected to its signals
+Drawable objects receive a gallery interface and have analyze methods connected
+to its signals. Drawables must also hold a reference to their parent module so
+that they are only updated when their parent module is visible
 """
 
 _NULL_NAME = "null"
@@ -20,6 +21,8 @@ class Drawable:
         # some objects take a long time to draw. This flag is useful to decide
         # if we want to re-calculate everything or just show/hide objects
         self._cache = False
+
+        self.parent_module = None
 
     @property
     def product_name(self):
@@ -68,11 +71,14 @@ class Drawable:
 
     # non-public wrappers
     def _on_event_changed(self):
+        if self.parent_module is None:
+            return
+
         # can't think of a good reason to keep the previous event's objects
         # on a new event...
         self.clearDrawnObjects()
 
-        if self._producer_name != _NULL_NAME:
+        if self._producer_name != _NULL_NAME and self.parent_module.is_active():
             self._process.analyze(self._gi.event_handle())
             self.drawObjects()
 
@@ -99,3 +105,9 @@ class Drawable:
 
     def drawObjects(self):
         pass
+
+    def enable(self):
+        self._disabled = False
+
+    def disable(self):
+        self._disabled = True

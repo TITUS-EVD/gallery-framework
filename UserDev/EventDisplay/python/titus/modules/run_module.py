@@ -81,6 +81,7 @@ class RunModule(Module):
         # add some file controls in their expected places
         run_menu = QtWidgets.QMenu("&Run", self._gui)
         self._gui.menuBar().addMenu(run_menu)
+        
 
         restore_action = QtWidgets.QAction('Restore controls...', run_menu)        
         restore_action.triggered.connect(self._on_restore_action)

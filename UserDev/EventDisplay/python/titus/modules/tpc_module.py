@@ -158,7 +158,9 @@ class TpcModule(Module):
             prod_class, product = product_info
             producers = self._gi.get_producers(product, self._lsm.current_stage)
             thisBox = recoBox(self, product_name, product, producers)
-            self._product_box_map[thisBox] = prod_class(self._gi, self._gm.current_geom, self)
+            self._product_box_map[thisBox] = self.register_drawable(
+                prod_class(self._gi, self._gm.current_geom, self)
+            )
 
             thisBox.activated[str].connect(self.reco_box_handler)
             thisBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
@@ -359,7 +361,7 @@ class TpcModule(Module):
         # self._wireDrawerMain.setMaximumHeight(250)
         self._wireDrawerMain.setMinimumHeight(100)
         self._wireDrawerMain.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, \
-                                                 QtWidgets.QSizePolicy.Maximum)
+                                                 QtWidgets.QSizePolicy.Minimum)
 
         # self._wireDrawer_name = VerticalLabel("Wire Drawer")
         # self._wireDrawer_name.setMaximumWidth(25)
@@ -370,16 +372,15 @@ class TpcModule(Module):
         # self._wireDrawerLayout.addWidget(self._wireDrawer_name)
         self._wireDrawerLayout.addWidget(self._wireDrawerMain)
 
-        self._fftButton = QtWidgets.QPushButton("FFT Wire")
+        self._fftButton = QtWidgets.QCheckBox("FFT Wire")
         self._fftButton.setToolTip("Compute and show the FFT of the wire currently drawn")
-        self._fftButton.setCheckable(True)
-        # self._fftButton.clicked.connect(self.plotFFT)
+        self._fftButton.stateChanged.connect(self.plotFFT)
 
         self._left_wire_button = QtWidgets.QPushButton("Previous Wire")
-        # self._left_wire_button.clicked.connect(self.change_wire)
+        self._left_wire_button.clicked.connect(self.change_wire)
         self._left_wire_button.setToolTip("Show the previous wire.")
         self._right_wire_button = QtWidgets.QPushButton("Next Wire")
-        # self._right_wire_button.clicked.connect(self.change_wire)
+        self._right_wire_button.clicked.connect(self.change_wire)
         self._right_wire_button.setToolTip("Show the next wire.")
         self._wire_drawer_button_layout = QtWidgets.QHBoxLayout()
         self._wire_drawer_button_layout.addWidget(self._fftButton)
@@ -446,6 +447,14 @@ class TpcModule(Module):
             else:
                 self._spliTracksOption.setVisible(False)
 
+    def change_wire(self):
+        if self.sender() == self._left_wire_button:
+            wire = max(0, self._current_wire - 1)
+        else:
+            wire = self._current_wire + 1
+
+        self._current_wire_drawer.show_waveform(wire=wire, tpc=self._current_tpc)
+
     def change_wire_view(self):
         pass
 
@@ -473,6 +482,7 @@ class TpcModule(Module):
 
         if product is None:
             self._draw_wires = False
+            self.remove_drawable(self._wire_drawer)
             self._wire_drawer = None
             return
 
@@ -484,7 +494,9 @@ class TpcModule(Module):
         self._draw_wires = True
 
         if product == _RECOB_WIRE:
-            self._wire_drawer = drawables.RecoWire(self._gi, self._gm.current_geom)
+            self._wire_drawer = self.register_drawable(
+                drawables.RecoWire(self._gi, self._gm.current_geom)
+            )
 
             if producers is not None:
                 producer = producers
@@ -498,7 +510,9 @@ class TpcModule(Module):
             self._gi.process_event(True)
 
         elif product == _RAW_RAWDIGIT:
-            self._wire_drawer = drawables.RawDigit(self._gi, self._gm.current_geom)
+            self._wire_drawer = self.register_drawable(
+                drawables.RawDigit(self._gi, self._gm.current_geom)
+            )
             self._wire_drawer.setSubtractPedestal(subtract_pedestal)
 
             if producers is not None:
@@ -509,17 +523,8 @@ class TpcModule(Module):
                 producer = all_producers[0].full_name()
 
             self._wire_drawer.set_producer(producer)
-            # self._gi.processor.add_process(_RAW_RAWDIGIT, self._wire_drawer._process)
-            # self._wire_drawer.toggleNoiseFilter(self.filterNoise)
             self._gi.process_event(True)
-        else:
-            # TODO control doesn't reach here normally but this will crash if it does
-            if 'raw::RawDigit' in self._processer._ana_units.keys():
-                self._gi.processor.remove_process('raw::RawDigit')
-            if 'recob::Wire' in self._processer._ana_units.keys():
-                self._gi.processor.remove_process('recob::Wire')
-            self._wire_drawer = None
-            self._draw_wires = False
+
 
     def lock_aspect_ratio(self, lockstate):
         for view in self._wire_views.values():
@@ -632,11 +637,11 @@ class TpcModule(Module):
             freqs = np.fft.rfftfreq(len(self._wireData),0.5E-3)
             self._wirePlotItem.setData(freqs,np.absolute(fft))
             self._wirePlot.setLabel(axis='bottom', text="Frequency")
-            self._wirePlot.autoRange()
         else:
             self._wirePlotItem.setData(self._wireData)
             self._wirePlot.setLabel(axis='bottom', text="Time")
-            self._wirePlot.autoRange()
+        
+        self._wirePlot.autoRange()
 
 
 class WireView(pg.GraphicsLayoutWidget):

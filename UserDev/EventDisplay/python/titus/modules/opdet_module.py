@@ -159,8 +159,13 @@ class OpDetModule(Module):
         if not self._flash_drawers:
             products = self._gi.get_products(_DRAWABLE_LIST['OpFlash'][1],
                                         self._lsm.current_stage)
+            if products is None:
+                return
+
             for p in products:
-                drawer = _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
+                drawer = self.register_drawable(
+                    _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
+                )
                 drawer.set_producer(p.full_name())
                 self._flash_drawers[p.full_name()] = drawer
         

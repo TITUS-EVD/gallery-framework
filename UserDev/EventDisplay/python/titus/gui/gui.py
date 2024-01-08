@@ -35,6 +35,11 @@ class Gui(QtWidgets.QMainWindow):
         
         self.file_menu = QtWidgets.QMenu("&File", self)
         self.menuBar().addMenu(self.file_menu)
+
+        open_action = QtWidgets.QAction('&Open', self.file_menu)
+        open_action.triggered.connect(self._on_open_action)
+        self.file_menu.addAction(open_action)
+
         quit_action = QtWidgets.QAction('&Exit', self.file_menu)
         quit_action.triggered.connect(self.closeEvent)
         self.file_menu.addAction(quit_action)
@@ -76,3 +81,8 @@ class Gui(QtWidgets.QMainWindow):
         module.connect_gui(self)
         module.initialize()
         self._modules[module_name] = module
+
+    def _on_open_action(self):
+        ''' Show file browser &allow user to open a new file '''
+        file_path = str(QtWidgets.QFileDialog.getOpenFileName(filter="ROOT files (*.root)")[0])
+        self._gi.set_input_file(file_path)
