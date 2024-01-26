@@ -41,13 +41,13 @@ This framework contains TITUS: the event display for SBND at Fermilab. TITUS all
 ## How to build and install the framework
 
 
-1) Set up gallery and larsoftobj.
+1) Create a build directory: `mkdir gallery_framework_build && cd gallery_framework_build`
 
-2) Source the setup script: `source config/setup.sh`
+2) Run `cmake`: `cmake /path/to/gallery-framework`
 
-3) make from the top area: `make -j`
+3) Compile with `cmake --build .`
 
-4) Develop in the user dev area.
+4) Make sure libraries are in your `$LD_LIBRARY_PATH`: `export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH`
 
 
 ## How to build and run the event display
@@ -55,12 +55,10 @@ This framework contains TITUS: the event display for SBND at Fermilab. TITUS all
 
 1) Make sure the framework is built.
 
-2) Source the setup script: `source UserDev/EventDisplay/setup_evd.sh`
+2) Make sure you have a working Python environment with `PyQt5`
 
-3) make from the UserDev/EventDisplay/ area: `make -j`
+3) Go to the `UserDev/EventDisplay/python` directory
 
-4) Run with `evd.py /path/to/art-root-file.root`. Add option `-s` to use the SBND geometry. Add option `-i` to use the ICARUS geometry.
+4) Run with `evd.py /path/to/art-root-file.root`
 
-If you have already built the evd, you can set it up by simply running `source config/setup_evd.sh`
-   
-
+(planned, coming soon) Install TITUS Python library: From `UserDev/EventDisplay/python`, do `pip install .`. Now you can write your own `evd.py` or copy the example and run from anywhere
