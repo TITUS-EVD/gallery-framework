@@ -57,12 +57,14 @@ class Drawable:
             return
 
         try:
+            # reco objects have setProducer method
             self._process.setProducer(str(producer))
         except AttributeError:
             # only reco classes have setProducer method. If this is a raw class,
             # allow set producer name to something else besides null name so that
             # it gets updated
-            print(f'Warning: Attempt to set producer "{producer}" on a raw object, which does nothing. Setting producers is typically only for reco objects.')
+            # raw objects have setInput method (maybe multiple producers)
+            self._process.setInput(str(producer))
 
         self._process.analyze(self._gi.event_handle())
 

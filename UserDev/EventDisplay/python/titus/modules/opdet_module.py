@@ -14,8 +14,10 @@ from titus.modules import Module
 import titus.drawables as drawables
 
 # place any drawables associated with optical view here. For now, just flashes
+_RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
 _DRAWABLE_LIST = {
     'OpFlash': [drawables.OpFlash, "recob::OpFlash"],
+    'OpDetWaveform': [drawables.OpDetWaveform, _RAW_OPDETWAVEFORM],
 }
 
 
@@ -37,6 +39,7 @@ class OpDetModule(Module):
         self._last_clicked_arapucas = []
         self._flashes = {}
         self._flash_drawers = {}
+        self._opdet_wf_drawer = None
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._dock)
@@ -155,6 +158,8 @@ class OpDetModule(Module):
             self._show_raw = True
             return
 
+
+        # otherwise, draw flashes
         self._show_raw = False
         if not self._flash_drawers:
             products = self._gi.get_products(_DRAWABLE_LIST['OpFlash'][1],
@@ -205,6 +210,26 @@ class OpDetModule(Module):
             self._arapucas.append(these_arapucas)
             self._opdetscales.append(this_scale)
 
+    def update(self):
+        all_producers = self._gi.get_producers(_RAW_OPDETWAVEFORM, self._lsm.current_stage)
+        if all_producers is None:
+            if self._opdet_wf_drawer is not None:
+                self.remove_drawable(self._opdet_wf_drawer)
+                self._opdet_wf_drawer = None
+            return
+       
+        # set up waveform drawer
+        if self._opdet_wf_drawer is None:
+            products = self._gi.get_products(_DRAWABLE_LIST['OpDetWaveform'][1],
+                                             self._lsm.current_stage)
+            self._opdet_wf_drawer = self.register_drawable(
+                _DRAWABLE_LIST['OpDetWaveform'][0](self._gi, self._gm.current_geom)
+            )
+            self._opdet_wf_drawer.set_producer(products[1].full_name())
+
+        self.drawOpDetWvf(self._opdet_wf_drawer.getData())
+
+        
 
     def drawOpDetWvf(self, data):
         self._wf_view.drawOpDetWvf(data)

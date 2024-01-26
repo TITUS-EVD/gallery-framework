@@ -99,4 +99,6 @@ class Module(QtCore.QObject):
         return drawable
 
     def remove_drawable(self, drawable):
+        if drawable is None:
+            return
         self._drawables.remove(drawable)

@@ -56,14 +56,15 @@ class CrtModule(Module):
         self._crt_strip_drawer = self.register_drawable(
             drawables.FEBData(self._gi, self._gm.current_geom)
         )
-        self._crt_strip_drawer.set_producer('dummy')
+        self._crt_strip_drawer.set_producer('crtsim')
 
     def update(self):
         all_producers = self._gi.get_producers(_SBND_CRT_FEBDATA, self._lsm.current_stage)
         if all_producers is None:
             self._draw_crt_strips = False
-            self.remove_drawable(self._crt_strip_drawer)
-            self._crt_strip_drawwer = None
+            if self._crt_strip_drawer is not None:
+                self.remove_drawable(self._crt_strip_drawer)
+                self._crt_strip_drawwer = None
             return
 
         self._draw_crt_strips = True
