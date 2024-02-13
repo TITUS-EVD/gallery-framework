@@ -406,16 +406,14 @@ class waveform_view(pg.GraphicsLayoutWidget):
             return
 
         self._wf_plot.clear()
+        wvf = self._data[self._data[:,0] == ch,:]
 
         # n_time_ticks = self._geometry.getDetectorClocks().OpticalClock().FrameTicks() * self._geometry.nOpticalFrames()
-        data_x = np.arange(len(self._data[ch]))
+        data_x = wvf[:,1]
         # data_x = np.linspace(-1250, 2500, len(self._data[0]))
-        data_y = self._data[ch]
+        data_y = wvf[:,2]
 
         # Remove the dafault values from the entries to be plotted
-        default_value_indexes = np.where(data_y == self._geometry.opdetDefaultValue())
-        data_x = np.delete(data_x, default_value_indexes)
-        data_y = np.delete(data_y, default_value_indexes)
 
         # self._wf_plot.plot(x=data_x, y=data_y, connect=False, symbol='o')
         self._wf_plot.plot(x=data_x, y=data_y)

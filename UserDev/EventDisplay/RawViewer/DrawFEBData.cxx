@@ -31,7 +31,6 @@ bool DrawFEBData::initialize() {
 
 
 bool DrawFEBData::analyze(const gallery::Event & ev) {
-
     // each hit will write 4 numbers: index to encode FEB moduble & sipm offset, t0, t1, adc
     _feb_data.clear();
 

@@ -35,7 +35,7 @@ class CrtModule(Module):
         self._layout = QtWidgets.QVBoxLayout()
         self._central_widget.setLayout(self._layout)
 
-        self._draw_crt_strips = False
+        self._draw_crt_strips = True
         self._crt_strip_drawer = None
         self._crt_view = None
 
@@ -47,16 +47,6 @@ class CrtModule(Module):
             return
         self._crt_view = CrtView(self._gm.current_geom)
         self._layout.addWidget(self._crt_view)
-
-        if self._gi.get_products(_SBND_CRT_FEBDATA) is None:
-            self._draw_crt_strips = False
-            return
-
-        self._draw_crt_strips = True
-        self._crt_strip_drawer = self.register_drawable(
-            drawables.FEBData(self._gi, self._gm.current_geom)
-        )
-        self._crt_strip_drawer.set_producer('crtsim')
 
     def update(self):
         all_producers = self._gi.get_producers(_SBND_CRT_FEBDATA, self._lsm.current_stage)
@@ -72,7 +62,7 @@ class CrtModule(Module):
             self._crt_strip_drawer = self.register_drawable(
                 drawables.FEBData(self._gi, self._gm.current_geom)
             )
-            self._crt_strip_drawer.set_producer('dummy')
+            self._crt_strip_drawer.set_producer(all_producers[0].full_name())
 
         self._crt_view.drawCrtData(self._crt_strip_drawer.getData())
 

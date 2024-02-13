@@ -58,16 +58,19 @@ bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
   // }
 
   _wvf_data.clear();
-  initDataHolder();
+  _wvf_data.reserve(_n_op_channels * _n_time_ticks);
+  // initDataHolder();
 
   for (auto const& op_wvf : *op_wvfs) {
     unsigned int       ch   = op_wvf.ChannelNumber();
     double             time = op_wvf.TimeStamp();
 
-
     // time offset is at -1250 mu s
     // time tick period is 0.002
     size_t time_in_ticks = (time + _time_offset) / _tick_period;
+
+    /*
+    // fills output array at time index with each waveform sampling point adc
 
     int offset = ch * _n_time_ticks;
 
@@ -84,7 +87,16 @@ bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
       _wvf_data.at(offset + time_in_ticks + i) = (float)adc;
       i++;
     }
+    */
 
+    // Fill output array with channel, timestamp & adc of each hit
+    size_t i = 0;
+    for (short adc : op_wvf) {
+        _wvf_data.push_back((float)ch);
+        _wvf_data.push_back((float)(time_in_ticks + i));
+        _wvf_data.push_back((float)adc);
+        i++;
+    }
   }
 
   return true;
@@ -123,7 +135,8 @@ PyObject * DrawOpDetWaveform::getArray() {
     // int n_dim = 2;
     // int * dims = new int[n_dim];
     // int dims[2];
-    const npy_intp dims[2] = {_n_op_channels, _n_time_ticks};
+    // const npy_intp dims[2] = {_n_op_channels, _n_time_ticks};
+    const npy_intp dims[2] = { _wvf_data.size() / 3, 3 };
     // dims[0] = _n_op_channels;
     // dims[1] = _n_time_ticks;
     // int data_type = NPY_FLOAT;

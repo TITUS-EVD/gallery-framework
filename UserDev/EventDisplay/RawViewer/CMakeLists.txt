@@ -18,7 +18,7 @@ add_library(EventDisplay_RawViewer SHARED ${EventDisplay_RawViewer_SOURCES})
 
 if (${sbnobj_FOUND})
     target_compile_definitions(EventDisplay_RawViewer PUBLIC WITH_SBNOBJ)
-    target_link_libraries(EventDisplay_RawViewer ${sbnobj_LIBRARIES})
+    target_link_libraries(EventDisplay_RawViewer ${sbnobj_LIBRARY_DIR}/libsbnobj_SBND_CRT.so)
     target_include_directories(EventDisplay_RawViewer PRIVATE ${sbnobj_INCLUDE_DIRS})
 endif()
 

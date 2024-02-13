@@ -4,6 +4,7 @@ Drawable objects receive a gallery interface and have analyze methods connected
 to its signals. Drawables must also hold a reference to their parent module so
 that they are only updated when their parent module is visible
 """
+import sys
 
 from PyQt5 import QtCore
 
@@ -38,13 +39,14 @@ class Drawable:
         self._producer_name = name
 
     def analyze(self):
+        self.clearDrawnObjects()
+
         if self._process is None:
             return
 
         if self._producer_name == _NULL_NAME:
             return
         
-        self.clearDrawnObjects()
         self._process.analyze(self._gi.event_handle())
 
     def set_producer(self, producer):
@@ -69,9 +71,7 @@ class Drawable:
             self._process.setInput(str(producer))
         
         self._producer_name = producer
-        
         self.analyze()
-
 
     def init(self):
         self._process.initialize()
