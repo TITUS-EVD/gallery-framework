@@ -26,4 +26,7 @@ class OpDetWaveform(Drawable):
             self._process.setInput(self._producer_name)
 
     def getData(self):
-        return self._process.getArray()
+        try:
+            return self._process.getArray()
+        except:
+            return np.ones(shape=(312, 1))

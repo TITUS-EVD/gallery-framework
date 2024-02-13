@@ -5,6 +5,8 @@ to its signals. Drawables must also hold a reference to their parent module so
 that they are only updated when their parent module is visible
 """
 
+from PyQt5 import QtCore
+
 _NULL_NAME = "null"
 
 class Drawable:
@@ -18,9 +20,8 @@ class Drawable:
         self._process = None
         self._drawnObjects = []
 
-        # some objects take a long time to draw. This flag is useful to decide
-        # if we want to re-calculate everything or just show/hide objects
-        self._cache = False
+        # some objects take a long time to draw
+        self._cache = {}
 
         self.parent_module = None
 
@@ -36,6 +37,16 @@ class Drawable:
     def producer_name(self, name):
         self._producer_name = name
 
+    def analyze(self):
+        if self._process is None:
+            return
+
+        if self._producer_name == _NULL_NAME:
+            return
+        
+        self.clearDrawnObjects()
+        self._process.analyze(self._gi.event_handle())
+
     def set_producer(self, producer):
         """
         Set the producer. This is a tag needed to get the art objects in the
@@ -47,15 +58,6 @@ class Drawable:
         if producer is None:
             producer = _NULL_NAME
 
-        self.clearDrawnObjects()
-        self._producer_name = producer
-
-        if self._process is None:
-            return
-
-        if producer == _NULL_NAME:
-            return
-
         try:
             # reco objects have setProducer method
             self._process.setProducer(str(producer))
@@ -65,8 +67,11 @@ class Drawable:
             # it gets updated
             # raw objects have setInput method (maybe multiple producers)
             self._process.setInput(str(producer))
+        
+        self._producer_name = producer
+        
+        self.analyze()
 
-        self._process.analyze(self._gi.event_handle())
 
     def init(self):
         self._process.initialize()
@@ -81,7 +86,6 @@ class Drawable:
         self.clearDrawnObjects()
 
         if self._producer_name != _NULL_NAME and self.parent_module.is_active():
-            self._process.analyze(self._gi.event_handle())
             self.drawObjects()
 
         self.on_event_changed()

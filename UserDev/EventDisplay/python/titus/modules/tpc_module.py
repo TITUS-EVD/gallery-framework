@@ -114,17 +114,17 @@ class TpcModule(Module):
         self._wire_button.clicked.connect(self.change_wire_choice)
         wire_button_group.addButton(self._wire_button)
 
-        products = self._gi.get_products('recob::Wire')
-        default_products = self._gi.get_default_products('recob::Wire')
-        self._wire_choice = waveformBox(self, 'recob::Wire', products, default_products)
+        products = self._gi.get_products(_RECOB_WIRE)
+        default_products = self._gi.get_default_products(_RECOB_WIRE)
+        self._wire_choice = waveformBox(self, _RECOB_WIRE, products, default_products)
 
         # Draw Raw Digit
         self._raw_digit_button = QtWidgets.QRadioButton("Raw Digit")
         self._raw_digit_button.clicked.connect(self.change_wire_choice)
         wire_button_group.addButton(self._raw_digit_button)
-        products = self._gi.get_products('raw::RawDigit')
-        default_products = self._gi.get_default_products('raw::RawDigit')
-        self._raw_digit_choice = waveformBox(self, 'raw::RawDigit', products, default_products)
+        products = self._gi.get_products(_RAW_RAWDIGIT)
+        default_products = self._gi.get_default_products(_RAW_RAWDIGIT)
+        self._raw_digit_choice = waveformBox(self, _RAW_RAWDIGIT, products, default_products)
         raw_digit_layout = QtWidgets.QHBoxLayout()
 
         wire_choice_layout = QtWidgets.QGridLayout()
@@ -403,11 +403,6 @@ class TpcModule(Module):
             lambda: self._drawWireOption.setChecked(self._waveform_dock.isVisible())
         )
 
-    # TODO need to rework widgets so that this kind of event forwarding to 
-    # gui isn't necessary
-    def keyPressEvent(self, e):
-        return self._gui.keyPressEvent(e)
-
     def reco_box_handler(self, text):
         sender = self.sender()
         # Get the full product obj for this:
@@ -466,6 +461,7 @@ class TpcModule(Module):
         if self._raw_digit_button.isChecked():
             self.toggle_wires(_RAW_RAWDIGIT, stage=self._lsm.current_stage, producers=None)
 
+        self._gi.process_event(True)
         self.update()
 
     def update(self):
@@ -507,7 +503,6 @@ class TpcModule(Module):
 
             self._wire_drawer.set_producer(producer)
             # self._gi.processor.add_process(_RECOB_WIRE, self._wire_drawer._process)
-            self._gi.process_event(True)
 
         elif product == _RAW_RAWDIGIT:
             self._wire_drawer = self.register_drawable(
@@ -523,7 +518,6 @@ class TpcModule(Module):
                 producer = all_producers[0].full_name()
 
             self._wire_drawer.set_producer(producer)
-            self._gi.process_event(True)
 
 
     def lock_aspect_ratio(self, lockstate):

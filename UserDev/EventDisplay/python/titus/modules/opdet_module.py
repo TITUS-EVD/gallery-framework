@@ -12,11 +12,13 @@ from titus.gui.optical_elements import Pmts, Arapucas, _bordercol_
 
 from titus.modules import Module
 import titus.drawables as drawables
+from titus.gui.widgets import waveformBox, recoBox
 
 # place any drawables associated with optical view here. For now, just flashes
 _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
+_RECOB_OPFLASH = 'recob::OpFlash'
 _DRAWABLE_LIST = {
-    'OpFlash': [drawables.OpFlash, "recob::OpFlash"],
+    'OpFlash': [drawables.OpFlash, _RECOB_OPFLASH],
     'OpDetWaveform': [drawables.OpDetWaveform, _RAW_OPDETWAVEFORM],
 }
 
@@ -30,9 +32,11 @@ class OpDetModule(Module):
         self._layout = QtWidgets.QVBoxLayout()
         self._central_widget.setLayout(self._layout)
 
+        self._view_dock =  QtWidgets.QDockWidget('OpDet View Controls', self._gui)
+        self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._dock =  QtWidgets.QDockWidget('OpDet Controls', self._gui)
         self._dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        self._dock_widgets = [self._dock]
+        self._dock_widgets = [self._view_dock, self._dock]
 
         self._opdet_views = []
         self._last_clicked_pmts = []
@@ -42,6 +46,7 @@ class OpDetModule(Module):
         self._opdet_wf_drawer = None
 
     def _initialize(self):
+        self._gui.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._view_dock)
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._dock)
 
         # geometry should be selected before creating buttons
@@ -53,6 +58,7 @@ class OpDetModule(Module):
 
         for tpc in range(self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()):
             opdet_view = pg.GraphicsLayoutWidget()
+            opdet_view.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             self._layout.addWidget(opdet_view)
             self._opdet_views.append(opdet_view)
 
@@ -67,6 +73,7 @@ class OpDetModule(Module):
         for p in self._pmts:
             p.set_time_range(self._time_window.getRegion())
 
+        self.init_opdet_controls()
         self.add_button_layout()
 
         self._wf_view.setMaximumHeight(200)
@@ -81,12 +88,11 @@ class OpDetModule(Module):
 
         self._layout.setAlignment(QtCore.Qt.AlignTop)
 
-
-    def add_button_layout(self):
+    def init_opdet_controls(self):
         frame = QtWidgets.QWidget(self._dock)
         main_layout = QtWidgets.QVBoxLayout()
         frame.setLayout(main_layout)
-        self._dock.setWidget(frame)
+        self._view_dock.setWidget(frame)
 
         view_group_box = QtWidgets.QGroupBox("Views")
         _bg1 = QtWidgets.QButtonGroup(self)
@@ -104,35 +110,58 @@ class OpDetModule(Module):
                 tpc_button.clicked.connect(self.viewSelectionWorker)
                 _bg1.addButton(tpc_button)
                 self._tpc_buttons.append(tpc_button)
-
+        
         button_layout = QtWidgets.QVBoxLayout()
-
 
         button_layout.addWidget(self._tpc_all_button)
         for item in self._tpc_buttons:
             button_layout.addWidget(item)
         view_group_box.setLayout(button_layout)
+        main_layout.addWidget(view_group_box)
+        main_layout.addStretch()
+
+
+    def add_button_layout(self):
+        frame = QtWidgets.QWidget(self._dock)
+        main_layout = QtWidgets.QVBoxLayout()
+        frame.setLayout(main_layout)
+        self._dock.setWidget(frame)
 
         draw_group_box = QtWidgets.QGroupBox("Products")
         _bg2 = QtWidgets.QButtonGroup(self)
+        self._show_none_btn = QtWidgets.QRadioButton("None")
         self._show_raw_btn = QtWidgets.QRadioButton("Raw Data")
-        self._show_raw_btn.clicked.connect(self._raw_flash_switch_worker)
-        self._show_raw_btn.setChecked(True)
-        self._show_raw = True
-        _bg2.addButton(self._show_raw_btn)
         self._show_flash_btn = QtWidgets.QRadioButton("Flashes")
+        self._show_none_btn.clicked.connect(self._raw_flash_switch_worker)
+        self._show_raw_btn.clicked.connect(self._raw_flash_switch_worker)
         self._show_flash_btn.clicked.connect(self._raw_flash_switch_worker)
+        self._show_none_btn.setChecked(True)
+        _bg2.addButton(self._show_none_btn)
+        _bg2.addButton(self._show_raw_btn)
         _bg2.addButton(self._show_flash_btn)
 
-        raw_flash_btn_layout = QtWidgets.QVBoxLayout()
-        raw_flash_btn_layout.addWidget(self._show_raw_btn)
-        raw_flash_btn_layout.addWidget(self._show_flash_btn)
+        products = self._gi.get_products(_RAW_OPDETWAVEFORM)
+        default_products = self._gi.get_default_products(_RAW_OPDETWAVEFORM)
+        self._wfm_choice = waveformBox(self, _RAW_OPDETWAVEFORM, products, default_products)
+        self._wfm_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        
+        products = self._gi.get_products(_RECOB_OPFLASH)
+        default_products = self._gi.get_default_products(_RECOB_OPFLASH)
+        self._flash_choice = waveformBox(self, _RECOB_OPFLASH, products, default_products)
+        self._flash_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+
+        raw_flash_btn_layout = QtWidgets.QGridLayout()
+        raw_flash_btn_layout.addWidget(self._show_none_btn, 0, 0, 1, 1)
+        raw_flash_btn_layout.addWidget(self._show_raw_btn, 1, 0, 1, 1)
+        raw_flash_btn_layout.addWidget(self._wfm_choice, 1, 1, 1, 1)
+
+        raw_flash_btn_layout.addWidget(self._show_flash_btn, 2, 0, 1, 1)
+        raw_flash_btn_layout.addWidget(self._flash_choice, 2, 1, 1, 1)
+
         draw_group_box.setLayout(raw_flash_btn_layout)
-
-        main_layout.addWidget(view_group_box)
         main_layout.addWidget(draw_group_box)
-        main_layout.addStretch()
 
+        main_layout.addStretch()
 
     def viewSelectionWorker(self):
         self._wf_view.setVisible(False)
@@ -150,32 +179,54 @@ class OpDetModule(Module):
                 self._opdet_views[i].setVisible(True)
 
     def _raw_flash_switch_worker(self):
+        if self._show_none_btn.isChecked():
+            self.toggle_opdets(None)
+        elif self._show_raw_btn.isChecked():
+            self.toggle_opdets(_RAW_OPDETWAVEFORM, stage=self._lsm.current_stage, producers=None)
+        elif self._show_flash_btn.isChecked():
+            self.toggle_opdets(_RECOB_OPFLASH, stage=self._lsm.current_stage, producers=None)
+
+        self._gi.process_event(True)
+        self.update()
+
+    def toggle_opdets(self, product, stage=None, producers=None):
         if self._flash_drawers:
             for _, drawer in self._flash_drawers.items():
                 drawer.clearDrawnObjects()
-        
-        if self.sender() == self._show_raw_btn:
-            self._show_raw = True
+
+        if product is None:
+            self.remove_drawable(self._opdet_wf_drawer)
+            self._opdet_wf_drawer = None
             return
 
+        all_producers = self._gi.get_producers(product, stage)
+        if all_producers is None:
+            return
 
-        # otherwise, draw flashes
-        self._show_raw = False
-        if not self._flash_drawers:
-            products = self._gi.get_products(_DRAWABLE_LIST['OpFlash'][1],
-                                        self._lsm.current_stage)
-            if products is None:
-                return
-
-            for p in products:
-                drawer = self.register_drawable(
-                    _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
+        if product == _RAW_OPDETWAVEFORM:
+            # set up waveform drawer
+            if self._opdet_wf_drawer is None:
+                products = self._gi.get_products(_DRAWABLE_LIST['OpDetWaveform'][1],
+                                                 self._lsm.current_stage)
+                self._opdet_wf_drawer = self.register_drawable(
+                    _DRAWABLE_LIST['OpDetWaveform'][0](self._gi, self._gm.current_geom)
                 )
-                drawer.set_producer(p.full_name())
-                self._flash_drawers[p.full_name()] = drawer
-        
-        for _, drawer in self._flash_drawers.items():
-            drawer.drawObjects()
+                self._opdet_wf_drawer.set_producer(products[1].full_name())
+
+        elif product == _RECOB_OPFLASH:
+            if not self._flash_drawers:
+                products = self._gi.get_products(_DRAWABLE_LIST['OpFlash'][1],
+                                            self._lsm.current_stage)
+                if products is None:
+                    return
+
+                for p in products:
+                    drawer = self.register_drawable(
+                        _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
+                    )
+                    drawer.set_producer(p.full_name())
+                    self._flash_drawers[p.full_name()] = drawer
+            
 
     def time_range_worker(self):
         for p in self._pmts:
@@ -211,37 +262,19 @@ class OpDetModule(Module):
             self._opdetscales.append(this_scale)
 
     def update(self):
-        all_producers = self._gi.get_producers(_RAW_OPDETWAVEFORM, self._lsm.current_stage)
-        if all_producers is None:
-            if self._opdet_wf_drawer is not None:
-                self.remove_drawable(self._opdet_wf_drawer)
-                self._opdet_wf_drawer = None
-            return
-       
-        # set up waveform drawer
-        if self._opdet_wf_drawer is None:
-            products = self._gi.get_products(_DRAWABLE_LIST['OpDetWaveform'][1],
-                                             self._lsm.current_stage)
-            self._opdet_wf_drawer = self.register_drawable(
-                _DRAWABLE_LIST['OpDetWaveform'][0](self._gi, self._gm.current_geom)
-            )
-            self._opdet_wf_drawer.set_producer(products[1].full_name())
-
-        self.drawOpDetWvf(self._opdet_wf_drawer.getData())
-
+        if self._opdet_wf_drawer is not None:
+            self.drawOpDetWvf(self._opdet_wf_drawer.getData())
+        for _, drawer in self._flash_drawers.items():
+            drawer.drawObjects()
         
-
     def drawOpDetWvf(self, data):
         self._wf_view.drawOpDetWvf(data)
-
-        if self._show_raw:
+        if self._show_raw_btn.isChecked():
             for p, a in zip(self._pmts, self._arapucas):
                 p.show_raw_data(data)
                 a.show_raw_data(data)
 
-
     def setFlashesForPlane(self, p, flashes):
-
         if len(flashes) == 0:
             return
 
@@ -261,10 +294,8 @@ class OpDetModule(Module):
 
         self._flash_time_view.drawOpFlashTimes(flashes)
 
-
     def getWidget(self):
         return self, self._layout
-
 
     def connectStatusBar(self, statusBar):
         self._statusBar = statusBar
@@ -277,27 +308,28 @@ class OpDetModule(Module):
     def connectMessageBar(self, messageBar):
         self._messageBar = messageBar
 
-    def pmtClickWorker(self, plot, points):
+    def _reset_pmt_highlight(self):
         for p in self._last_clicked_pmts:
             p.setPen('w', width=2)
+        for p in self._last_clicked_arapucas:
+            p.setPen(_bordercol_['arapuca_vuv'], width=1)
+
+    def pmtClickWorker(self, plot, points):
+        self._reset_pmt_highlight()
         for p in points:
             p.setPen('g', width=3)
             self._selected_ch = p.data()['id']
 
         self._last_clicked_pmts = points
-
         self._wf_view.drawWf(self._selected_ch)
 
-
     def arapucaClickWorker(self, plot, points):
-        for p in self._last_clicked_arapucas:
-            p.setPen(_bordercol_['arapuca_vuv'], width=1)
+        self._reset_pmt_highlight()
         for p in points:
             p.setPen('g', width=2)
             self._selected_ch = p.data()['id']
 
         self._last_clicked_arapucas = points
-
         self._wf_view.drawWf(self._selected_ch)
 
     def restoreDefaults(self):

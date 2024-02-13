@@ -130,7 +130,6 @@ PyObject * DrawOpDetWaveform::getArray() {
 
     // std::cout << "Returning array, dims: " << dims[0] << ", " << dims[1] << ", n_dim: " << n_dim << ", data_type: " << data_type << std::endl;
 
-    // return (PyObject *) PyArray_FromDimsAndData(n_dim, dims, data_type, (char*) & ((_wvf_data)[0]) );
     return (PyObject *) PyArray_SimpleNewFromData(2, dims, NPY_FLOAT, _wvf_data.data());
   }
   catch ( ... ) {

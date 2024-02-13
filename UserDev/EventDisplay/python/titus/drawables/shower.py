@@ -62,11 +62,11 @@ class Shower(Drawable):
             # print ('Drawing showers for plane', view.plane())
             self.drawShowers(view, showers, offset, view.plane(), self._geom)
 
-            if geom.nTPCs() == 2:
-                for left_plane in geom.planeMix()[thisPlane]:
+            if self._geom.nTPCs() == 2:
+                for left_plane in self._geom.planeMix()[thisPlane]:
                     showers = self._process.getDataByPlane(left_plane)
                     # print ('Drawing tracks for plane', left_plane)
-                    self.drawShowers(view, showers, offset, left_plane, geom)
+                    self.drawShowers(view, showers, offset, left_plane, self._geom)
 
 
     def drawShowers(self, view, showers, offset, plane, geom):
@@ -97,8 +97,8 @@ class Shower(Drawable):
                 # Remember - everything is in cm, but the display is in
                 # wire/time!
 
-                x = shower.startPoint().w / geom.wire2cm()
-                y = shower.startPoint().t / geom.time2cm() #+ offset
+                x = shower.startPoint().w / self._geom.wire2cm()
+                y = shower.startPoint().t / self._geom.time2cm() #+ offset
 
                 # y += tpc_view_offset
 
@@ -125,10 +125,10 @@ class Shower(Drawable):
                     perpAxis.Y()
 
                 # Scale everything to wire/time:
-                x1 /= geom.wire2cm()
-                y1 /= geom.time2cm()
-                x2 /= geom.wire2cm()
-                y2 /= geom.time2cm()
+                x1 /= self._geom.wire2cm()
+                y1 /= self._geom.time2cm()
+                x2 /= self._geom.wire2cm()
+                y2 /= self._geom.time2cm()
 
                 # y1 += offset
                 # y2 += offset

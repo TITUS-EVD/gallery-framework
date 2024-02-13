@@ -14,7 +14,9 @@ class Module(QtCore.QObject):
         self._central_widget = None
         self._dock_widgets = []
         self._active = True
+
         self._drawables = set()
+        self._thread_pool = QtCore.QThreadPool()
 
     @property
     def parent(self):
@@ -51,11 +53,20 @@ class Module(QtCore.QObject):
     # gallery interface event listeners
     def on_event_change(self):
         if self._active:
-            self.update()
+            self._update()
 
     def on_file_change(self):
         if self._active:
-            self.update()
+            self._update()
+
+    def _update(self):
+        for d in self._drawables:
+            # worker = DrawableWorker(d)
+            # worker.signals.finished.connect(d.drawObjects)
+            # self._thread_pool.start(worker)
+            d.analyze()
+            d.drawObjects()
+        self.update()
 
     # gui may call this function
     def update(self):
@@ -66,8 +77,8 @@ class Module(QtCore.QObject):
         module.parent = self
         self._gui.add_module(module)
 
-    """ Generic methods for showing/hiding all the GUI elements associated with this module """
     def activate(self):
+        """ Generic methods for showing/hiding all the GUI elements associated with this module """
         if self._central_widget is not None:
             if self._gui.centralWidget().indexOf(self._central_widget) == -1:
                 self._gui.centralWidget().addWidget(self._central_widget)
@@ -102,3 +113,23 @@ class Module(QtCore.QObject):
         if drawable is None:
             return
         self._drawables.remove(drawable)
+
+    # TODO need to rework widgets so that this kind of event forwarding to 
+    # gui isn't necessary
+    def keyPressEvent(self, e):
+        return self._gui.keyPressEvent(e)
+
+
+
+class DrawableWorker(QtCore.QRunnable):
+    def __init__(self, drawable):
+        super().__init__()
+        self._drawable = drawable
+        self.signals = WorkerSignals()
+
+    def run(self):
+        self._drawable.analyze()
+
+
+class WorkerSignals(QtCore.QObject):
+    finished = QtCore.pyqtSignal()

@@ -8,7 +8,7 @@ from ROOT import vector as ROOTvector
 from ROOT import string as ROOTstring
 
 
-class Product(object):
+class Product:
     """ holds information about art products """
     def __init__(self, name, typeName):
         self._name=name.rstrip(".")
@@ -51,49 +51,6 @@ class Product(object):
         self._typeName = tokens[0].rstrip('s')
 
 
-class Processor(object):
-    def __init__(self):
-
-        # Storing ana units as a map:
-        # self._ana_units[data product] -> instance of ana_unit
-        self._ana_units = dict()
-        pass
-
-    def process_event(self, gallery_event):
-        # print "Running ... "
-        for key in self._ana_units:
-            # print('Processing', key)
-            self._ana_units[key].analyze(gallery_event)
-            # print('Size of anaunit after processing', asizeof.asized(self._ana_units[key], detail=2).format())
-
-    def add_process(self, data_product, ana_unit):
-        if data_product in self._ana_units:
-            self._ana_units.pop(data_product)
-        self._ana_units.update({data_product : ana_unit})
-        return
-
-    def remove_process(self, data_product, ana_unit=None):
-        if data_product in self._ana_units:
-            self._ana_units.pop(data_product)
-        return
-
-    def get_process(self, data_product):
-        if data_product in self._ana_units:
-            return self._ana_units[data_product]
-        else:
-            return None
-
-    def get_n_processes(self):
-        return len(self._ana_units)
-
-    def remove_all_processes(self):
-        for data_product in self._ana_units.copy():
-            self._ana_units.pop(data_product)
-
-    def reset(self):
-        self._ana_units = dict()
-
-
 class GalleryInterface(QtCore.QObject):
     fileChanged = QtCore.pyqtSignal()
     eventChanged = QtCore.pyqtSignal()
@@ -101,7 +58,6 @@ class GalleryInterface(QtCore.QObject):
     def __init__(self, file=None):
         super().__init__()
 
-        self._processor = Processor()
         self._gallery_event_handle = None
 
         self._keyTable = {}
@@ -118,10 +74,6 @@ class GalleryInterface(QtCore.QObject):
 
         if file != None:
             self.setInputFiles(file)
-
-    @property
-    def processor(self):
-        return self._processor
 
     def available_runs(self):
         '''
