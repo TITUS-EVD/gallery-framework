@@ -12,7 +12,7 @@ from pyqtgraph import ViewBox, Point
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from titus.modules import Module
-from titus.gui.widgets import waveformBox, recoBox, VerticalLabel
+from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel
 import titus.drawables as drawables
 
 
@@ -54,7 +54,7 @@ class TpcModule(Module):
 
         # don't add waveform dock to this list since its visibility is set by
         # the controls in this gui
-        self._dock_widgets = [self._draw_dock, self._view_dock]
+        self._dock_widgets = set([self._draw_dock, self._view_dock])
 
         self._draw_wires = False
         self._wire_drawer = None
@@ -116,7 +116,8 @@ class TpcModule(Module):
 
         products = self._gi.get_products(_RECOB_WIRE)
         default_products = self._gi.get_default_products(_RECOB_WIRE)
-        self._wire_choice = waveformBox(self, _RECOB_WIRE, products, default_products)
+        self._wire_choice = MultiSelectionBox(_RECOB_WIRE, products, default_products)
+        self._wire_choice.activated.connect(self.change_wire_choice)
 
         # Draw Raw Digit
         self._raw_digit_button = QtWidgets.QRadioButton("Raw Digit")
@@ -124,7 +125,8 @@ class TpcModule(Module):
         wire_button_group.addButton(self._raw_digit_button)
         products = self._gi.get_products(_RAW_RAWDIGIT)
         default_products = self._gi.get_default_products(_RAW_RAWDIGIT)
-        self._raw_digit_choice = waveformBox(self, _RAW_RAWDIGIT, products, default_products)
+        self._raw_digit_choice = MultiSelectionBox(self, _RAW_RAWDIGIT, products, default_products)
+        self._raw_digit_choice.activated.connect(self.change_wire_choice)
         raw_digit_layout = QtWidgets.QHBoxLayout()
 
         wire_choice_layout = QtWidgets.QGridLayout()
@@ -321,6 +323,12 @@ class TpcModule(Module):
         # self._spliTracksOption.stateChanged.connect(self.splitTracksWorker)
         self._spliTracksOption.setVisible(False)
 
+        self._plane_frames = QtWidgets.QCheckBox("Plane frames")
+        self._plane_frames.setToolTip("Show or hide the scale back frame.")
+        self._plane_frames.setTristate(False)
+        self._plane_frames.stateChanged.connect(self.show_plane_frames)
+        self._plane_frames.setChecked(True)
+
         options_layout.addWidget(self._grayScale)
         options_layout.addLayout(self._rangeLayout)
         options_layout.addWidget(self._drawWireOption)
@@ -334,6 +342,7 @@ class TpcModule(Module):
         options_layout.addWidget(self._separators[1])
         options_layout.addLayout(self._scaleBarLayout)
         options_layout.addWidget(self._logoOption)
+        options_layout.addWidget(self._plane_frames)
         options_layout.addWidget(self._spliTracksOption)
         options_layout.addWidget(self._maxRangeButton)
         options_layout.addLayout(self._clearEvalPointsLayout)
@@ -346,7 +355,6 @@ class TpcModule(Module):
         main_layout.addStretch()
         main_layout2.addStretch()
 
-        self._gm.geometryChanged.connect(self.change_wire_view)
 
     def init_wire_waveform(self):
         # panel with buttons to draw objects on TPC view
@@ -450,8 +458,6 @@ class TpcModule(Module):
 
         self._current_wire_drawer.show_waveform(wire=wire, tpc=self._current_tpc)
 
-    def change_wire_view(self):
-        pass
 
     def change_wire_choice(self):
         if self._none_wire_button.isChecked():
@@ -475,21 +481,26 @@ class TpcModule(Module):
 
     def toggle_wires(self, product, stage=None, subtract_pedestal=True, producers=None):
         ''' get wire data from gallery interface '''
-
-        if product is None:
+        def clear_wire_drawer():
             self._draw_wires = False
             self.remove_drawable(self._wire_drawer)
             self._wire_drawer = None
+
+        if product is None:
+            clear_wire_drawer()
             return
 
         all_producers = self._gi.get_producers(product, stage)
         if all_producers is None:
-            self._draw_wires = False
+            clear_wire_drawer()
             return
 
         self._draw_wires = True
 
         if product == _RECOB_WIRE:
+            if not self._wire_choice.selected_products():
+                clear_wire_drawer()
+                return
             self._wire_drawer = self.register_drawable(
                 drawables.RecoWire(self._gi, self._gm.current_geom)
             )
@@ -505,6 +516,9 @@ class TpcModule(Module):
             # self._gi.processor.add_process(_RECOB_WIRE, self._wire_drawer._process)
 
         elif product == _RAW_RAWDIGIT:
+            if not self._raw_digit_choice.selected_products():
+                clear_wire_drawer()
+                return
             self._wire_drawer = self.register_drawable(
                 drawables.RawDigit(self._gi, self._gm.current_geom)
             )
@@ -540,12 +554,29 @@ class TpcModule(Module):
         for view in self._wire_views.values():
             view.showAnodeCathode(show)
 
+    def show_plane_frames(self):
+        show = self._plane_frames.isChecked()
+        for p, c in zip(self._selected_planes, self._selected_cryos):
+            for key, view in self._wire_views.items():
+                # Turn on the requested ones
+                view.setWrapperVisible(show)
+
     def draw_wire_waveform(self):
-        show = self._drawWireOption.isChecked()
-        if show:
+        """
+        Show the wire waveform. Since it's dock-able, add it to the list of
+        docked widgets so that it is opened/closed properly
+        """
+        if self._drawWireOption.isChecked():
             self._waveform_dock.show()
+            self._dock_widgets.add(self._waveform_dock)
         else:
-            self._waveform_dock.hide()
+            # TODO hack: activating/de-activating this module forces a
+            # "stateChange" trigger but we want the checkstate to persist
+            # between the module being activated/deactivated so: only remove
+            # module if we are active
+            if self._active:
+                self._waveform_dock.hide()
+                self._dock_widgets.remove(self._waveform_dock)
 
     def select_views(self):
         ''' set the internal state of selected_planes and selected_cryos from buttons '''

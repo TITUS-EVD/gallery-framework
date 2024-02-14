@@ -30,48 +30,83 @@ class ComboBoxWithKeyConnect(QtWidgets.QComboBox):
         else:
             self._owner_KPE(e)
 
-class waveformBox(QtWidgets.QToolButton):
-    activated = QtCore.pyqtSignal(str)
+
+class MultiSelectionBox(QtWidgets.QToolButton):
+    """ Allows users to select multiple checkable products from a drop-down button and displays the selected objects """
+    activated = QtCore.pyqtSignal()
+    _DEFAULT_STR = 'Select'
 
     def __init__(self, owner, name, products, default_products=[]):
-        super(waveformBox, self).__init__()
+        super(MultiSelectionBox, self).__init__()
         self._name = name
         self._owner = owner
+        self.default_products = default_products
 
-        self.setText('Select')
+        self.setText(MultiSelectionBox._DEFAULT_STR)
         self._toolmenu = QtWidgets.QMenu(self)
         self._actions = []
+
+        self.setMenu(self._toolmenu)
+        self.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        self.set_products(products)
+
+        # set explicit minimum size to let the box shrink even if the label is
+        # long. the overriden paint method adds ellipses to long strings
+        # automatically
+        self.setMinimumWidth(50)
+
+    def set_products(self, products):
+        self._toolmenu.clear()
         if products is not None:
             for i, product in enumerate(products):
                 action = self._toolmenu.addAction(product.full_name())
                 action.setCheckable(True)
-                if product in default_products:
+                if product in self.default_products:
                     action.setChecked(True)
-                action.triggered.connect(self.emitSignal)
+                action.triggered.connect(self.on_action_triggered)
                 self._actions.append(action)
         else:
-            action = self._toolmenu.addAction("No " + name + " available to draw.")
+            action = self._toolmenu.addAction(f"No {self._name} available to draw.")
             action.setCheckable(False)
+        self.setText(self.display_name())
 
-        self.setMenu(self._toolmenu)
-        self.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+    def on_action_triggered(self):
+        self.setText(self.display_name())
+        self.activated.emit()
 
-
-    def emitSignal(self, text):
-        # self.activated.emit(text)
-        # print('got signal from', self.sender().text(), text)
-        self._active_producers = []
-        for a in self._actions:
-            if a.isChecked():
-                # print ('action', a.text(), 'is checked.')
-                self._active_producers.append(a.text())
-        self._owner.change_wire_choice(status=True, activeProducers=self._active_producers)
-        return
-
+    def display_name(self):
+        selected = [a for a in self._toolmenu.actions() if a.isChecked()]
+        n = len(selected)
+        if n == 0:
+            return MultiSelectionBox._DEFAULT_STR
+        if n == 1:
+            return selected[0].text()
+        return f"{n} selected"
+    
+    @property
     def name(self):
         return self._name
 
+    def selected_products(self):
+        return [a.text() for a in self._toolmenu.actions() if a.isChecked()]
 
+    def paintEvent(self, event):
+        '''
+        Override to elide the text.
+        See https://doc.qt.io/qtforpython-6.2/overviews/qtwidgets-widgets-elidedlabel-example.html
+        https://stackoverflow.com/questions/41360618/qcombobox-elided-text-on-selected-item
+        The -10 corrects for the pixels associated with the menu button icon
+        '''
+
+        opt = QtWidgets.QStyleOptionToolButton()
+        self.initStyleOption(opt);
+        opt.text = ""
+        painter = QtWidgets.QStylePainter(self)
+        painter.drawComplexControl(QtWidgets.QStyle.CC_ToolButton, opt);
+        font_metrics = painter.fontMetrics()
+        text_rect = self.style().subControlRect(QtWidgets.QStyle.CC_ToolButton, opt, QtWidgets.QStyle.SC_ToolButton, self)
+        opt.text = font_metrics.elidedText(self.text(), QtCore.Qt.ElideRight, text_rect.width() - 15)
+        painter.drawControl(QtWidgets.QStyle.CE_ToolButtonLabel, opt)
 
 
 class recoBox(ComboBoxWithKeyConnect):
@@ -142,3 +177,4 @@ class recoBox(ComboBoxWithKeyConnect):
 
     def currentProducer(self):
         return self._current_producer
+

@@ -4,6 +4,45 @@ import datetime
 from PyQt5 import Qt, QtGui, QtCore, QtWidgets
 
 
+'''
+# experimental highlight effect when hovering over the menu items
+# Not quite working & a bit hacky
+class HighlightEffect(QtWidgets.QGraphicsEffect):
+    def __init__(self):
+        super().__init__()
+
+    def draw(self, painter):
+        pixmap = QtGui.QPixmap()
+
+        if self.sourceIsPixmap():
+            pixmap, offset = self.sourcePixmap(QtCore.Qt.LogicalCoordinates)
+        else:
+            pixmap, offset = self.sourcePixmap(QtCore.Qt.DeviceCoordinates)
+            painter.setWorldTransform(QtGui.QTransform())
+        
+        painter.setBrush(QtGui.QColor(0, 0, 0, 255))
+        painter.drawRect(pixmap.rect())
+        painter.setOpacity(0.5)
+        painter.drawPixmap(offset, pixmap)
+
+
+class HighlightLabel(QtWidgets.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._widget = None
+        self._effect = HighlightEffect
+
+    def set_widget(self, w):
+        self._widget = w
+
+    def enterEvent(self, event):
+        self._widget.setGraphicsEffect(self._effect())
+
+    def leaveEvent(self, event):
+        self._widget.setGraphicsEffect(None)
+'''
+
+
 class Gui(QtWidgets.QMainWindow):
     def __init__(self, gallery_interface):
         super().__init__()
@@ -40,6 +79,23 @@ class Gui(QtWidgets.QMainWindow):
         open_action.triggered.connect(self._on_open_action)
         self.file_menu.addAction(open_action)
 
+        # screenshot controls
+        self.file_menu.addSeparator()
+        capture_action = QtWidgets.QAction('Screenshot (view)', self.file_menu)
+        # capture_action = QtWidgets.QWidgetAction(self.file_menu)
+        # capture_action.setText('Screenshot (view)')
+        # label = HighlightLabel("Screenshot (view)")
+        # label.set_widget(self._central_widget)
+        # capture_action.setDefaultWidget(label)
+        capture_action.triggered.connect(self._on_capture_action)
+        self.file_menu.addAction(capture_action)
+
+        capture_screen_action = QtWidgets.QAction('Screenshot (window)', self.file_menu)
+        capture_screen_action.triggered.connect(self._on_capture_screen_action)
+        self.file_menu.addAction(capture_screen_action)
+
+        # exit
+        self.file_menu.addSeparator()
         quit_action = QtWidgets.QAction('&Exit', self.file_menu)
         quit_action.triggered.connect(self.closeEvent)
         self.file_menu.addAction(quit_action)
@@ -86,3 +142,13 @@ class Gui(QtWidgets.QMainWindow):
         ''' Show file browser &allow user to open a new file '''
         file_path = str(QtWidgets.QFileDialog.getOpenFileName(filter="ROOT files (*.root)")[0])
         self._gi.set_input_file(file_path)
+
+    def _on_capture_action(self):
+        ''' Capture just the central widget '''
+        img = self._central_widget.grab(self._central_widget.rect())
+        QtWidgets.QApplication.clipboard().setPixmap(img)
+
+    def _on_capture_screen_action(self):
+        ''' Capture the whole application '''
+        img = self.grab(self.rect())
+        QtWidgets.QApplication.clipboard().setPixmap(img)

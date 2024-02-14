@@ -12,7 +12,7 @@ from titus.gui.optical_elements import Pmts, Arapucas, _bordercol_
 
 from titus.modules import Module
 import titus.drawables as drawables
-from titus.gui.widgets import waveformBox, recoBox
+from titus.gui.widgets import MultiSelectionBox, recoBox
 
 # place any drawables associated with optical view here. For now, just flashes
 _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
@@ -36,7 +36,7 @@ class OpDetModule(Module):
         self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._dock =  QtWidgets.QDockWidget('OpDet Controls', self._gui)
         self._dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        self._dock_widgets = [self._view_dock, self._dock]
+        self._dock_widgets = set([self._view_dock, self._dock])
 
         self._opdet_views = []
         self._last_clicked_pmts = []
@@ -142,12 +142,12 @@ class OpDetModule(Module):
 
         products = self._gi.get_products(_RAW_OPDETWAVEFORM)
         default_products = self._gi.get_default_products(_RAW_OPDETWAVEFORM)
-        self._wfm_choice = waveformBox(self, _RAW_OPDETWAVEFORM, products, default_products)
+        self._wfm_choice = MultiSelectionBox(self, _RAW_OPDETWAVEFORM, products, default_products)
         self._wfm_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         
         products = self._gi.get_products(_RECOB_OPFLASH)
         default_products = self._gi.get_default_products(_RECOB_OPFLASH)
-        self._flash_choice = waveformBox(self, _RECOB_OPFLASH, products, default_products)
+        self._flash_choice = MultiSelectionBox(self, _RECOB_OPFLASH, products, default_products)
         self._flash_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
         raw_flash_btn_layout = QtWidgets.QGridLayout()

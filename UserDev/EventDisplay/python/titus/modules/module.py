@@ -12,7 +12,7 @@ class Module(QtCore.QObject):
         self._gi = gallery_interface
         self._parent = None
         self._central_widget = None
-        self._dock_widgets = []
+        self._dock_widgets = set()
         self._active = True
 
         self._drawables = set()
@@ -88,15 +88,15 @@ class Module(QtCore.QObject):
 
         if not self._active:
             self.update()
-        self._active = True
+            self._active = True
+
 
     def deactivate(self):
+        self._active = False
         if self._central_widget is not None:
             self._gui.centralWidget().removeWidget(self._central_widget)
         for dw in self._dock_widgets:
             dw.hide()
-
-        self._active = False
 
     def add_gallery_interface(self, gi):
         """ add gallery interface to this module without adding it to the GUI """
@@ -118,7 +118,6 @@ class Module(QtCore.QObject):
     # gui isn't necessary
     def keyPressEvent(self, e):
         return self._gui.keyPressEvent(e)
-
 
 
 class DrawableWorker(QtCore.QRunnable):

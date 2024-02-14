@@ -25,7 +25,7 @@ class RunModule(Module):
         self._event_dock.setWidget(frame)
 
         # this connection allows dock widget to be restored with activate function
-        self._dock_widgets.append(self._event_dock)
+        self._dock_widgets.add(self._event_dock)
 
         # Run display labels, horizontally centered
         self._run_label = QtWidgets.QLabel("Run: 0")
