@@ -100,6 +100,13 @@ class Gui(QtWidgets.QMainWindow):
         quit_action.triggered.connect(self.closeEvent)
         self.file_menu.addAction(quit_action)
 
+        # edit menu
+        self.edit_menu = QtWidgets.QMenu("&Edit", self)
+        self.menuBar().addMenu(self.edit_menu)
+        pref_action = QtWidgets.QAction('&Preferences', self.edit_menu)
+        pref_action.triggered.connect(self._on_preferences_action)
+        self.edit_menu.addAction(pref_action)
+
         self.resize(1366, 768)
         self.setWindowTitle('TITUS Event Display')    
         self.setFocus()
@@ -145,10 +152,21 @@ class Gui(QtWidgets.QMainWindow):
 
     def _on_capture_action(self):
         ''' Capture just the central widget '''
-        img = self._central_widget.grab(self._central_widget.rect())
+        # TODO User setting for scale
+        scale = 4.0
+        w = self._central_widget.width()
+        h = self._central_widget.height()
+        img = QtGui.QPixmap(w * scale, h * scale);
+        img.setDevicePixelRatio(scale);
+        self._central_widget.render(img);
+
+        # img = self._central_widget.grab(self._central_widget.rect())
         QtWidgets.QApplication.clipboard().setPixmap(img)
 
     def _on_capture_screen_action(self):
         ''' Capture the whole application '''
         img = self.grab(self.rect())
         QtWidgets.QApplication.clipboard().setPixmap(img)
+
+    def _on_preferences_action(self):
+        pass

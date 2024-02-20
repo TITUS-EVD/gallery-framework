@@ -1,10 +1,10 @@
 from titus.drawables import Drawable
 from ROOT import evd
-from pyqtgraph.Qt import QtGui
+from PyQt5 import QtWidgets, QtGui
 import pyqtgraph as pg
 # from titus.modules import TpcModule
 
-class hitBox(QtGui.QGraphicsRectItem):
+class hitBox(QtWidgets.QGraphicsRectItem):
 
     """docstring for hitBox"""
 
@@ -24,8 +24,8 @@ class Hit(Drawable):
 
     """docstring for hit"""
 
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'hit'
         self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._brush = (0, 0, 0)

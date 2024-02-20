@@ -144,11 +144,13 @@ class OpDetModule(Module):
         default_products = self._gi.get_default_products(_RAW_OPDETWAVEFORM)
         self._wfm_choice = MultiSelectionBox(self, _RAW_OPDETWAVEFORM, products, default_products)
         self._wfm_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self._wfm_choice.activated.connect(self._raw_flash_switch_worker)
         
         products = self._gi.get_products(_RECOB_OPFLASH)
         default_products = self._gi.get_default_products(_RECOB_OPFLASH)
         self._flash_choice = MultiSelectionBox(self, _RECOB_OPFLASH, products, default_products)
         self._flash_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self._flash_choice.activated.connect(self._raw_flash_switch_worker)
 
         raw_flash_btn_layout = QtWidgets.QGridLayout()
         raw_flash_btn_layout.addWidget(self._show_none_btn, 0, 0, 1, 1)
@@ -211,9 +213,12 @@ class OpDetModule(Module):
                 self._opdet_wf_drawer = self.register_drawable(
                     _DRAWABLE_LIST['OpDetWaveform'][0](self._gi, self._gm.current_geom)
                 )
-                self._opdet_wf_drawer.set_producer(products[1].full_name())
+            producer = self._wfm_choice.selected_products()[0]
+            self._opdet_wf_drawer.set_producer(producer)
 
         elif product == _RECOB_OPFLASH:
+            # TODO support multiple flash drawers
+            producer = self._flash_choice.selected_products()[0]
             if not self._flash_drawers:
                 products = self._gi.get_products(_DRAWABLE_LIST['OpFlash'][1],
                                             self._lsm.current_stage)
@@ -224,8 +229,12 @@ class OpDetModule(Module):
                     drawer = self.register_drawable(
                         _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
                     )
-                    drawer.set_producer(p.full_name())
-                    self._flash_drawers[p.full_name()] = drawer
+                    self._flash_drawers[producer] = drawer
+
+            self._flash_drawers = {}
+            for drawer in self._flash_drawers:
+                drawer.set_producer(producer)
+                self._flash_drawers[producer] = drawer
             
 
     def time_range_worker(self):
@@ -406,12 +415,12 @@ class waveform_view(pg.GraphicsLayoutWidget):
             return
 
         self._wf_plot.clear()
-        wvf = self._data[self._data[:,0] == ch,:]
 
         # n_time_ticks = self._geometry.getDetectorClocks().OpticalClock().FrameTicks() * self._geometry.nOpticalFrames()
-        data_x = wvf[:,1]
-        # data_x = np.linspace(-1250, 2500, len(self._data[0]))
-        data_y = wvf[:,2]
+        data_x = np.linspace(0, 5060, len(self._data[0]))
+        data_y = self._data[ch,:] 
+        if data_y[0] == -9999:
+            return
 
         # Remove the dafault values from the entries to be plotted
 

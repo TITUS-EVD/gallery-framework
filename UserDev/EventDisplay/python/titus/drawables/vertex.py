@@ -8,8 +8,8 @@ class Vertex(Drawable):
 
     """docstring for vertex"""
 
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'vertex'
         self._process = evd.DrawVertex(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._brush = (0, 0, 0)

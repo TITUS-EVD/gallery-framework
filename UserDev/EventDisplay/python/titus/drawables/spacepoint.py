@@ -9,8 +9,8 @@ class SpacePoint(Drawable):
 
     """docstring for spacepoint"""
 
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'spacepoint'
         self._process = evd.DrawSpacepoint(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._geom = geom

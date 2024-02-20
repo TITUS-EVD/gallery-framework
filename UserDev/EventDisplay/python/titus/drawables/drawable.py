@@ -11,7 +11,8 @@ from PyQt5 import QtCore
 _NULL_NAME = "null"
 
 class Drawable:
-    def __init__(self, gallery_interface):
+
+    def __init__(self, gallery_interface, *args, **kwargs):
         self._gi = gallery_interface
         self._gi.eventChanged.connect(self._on_event_changed)
         self._gi.fileChanged.connect(self._on_file_changed)

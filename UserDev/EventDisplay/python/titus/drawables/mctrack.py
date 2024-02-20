@@ -8,8 +8,8 @@ from titus.drawables.track import polyLine
 
 class MCTrack(Drawable):
 
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'mctrack'
         self._process = evd.DrawMCTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._geom = geom

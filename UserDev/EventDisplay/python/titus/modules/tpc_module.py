@@ -10,6 +10,7 @@ import numpy as np
 import pyqtgraph as pg 
 from pyqtgraph import ViewBox, Point
 from PyQt5 import QtWidgets, QtGui, QtCore
+import PIL
 
 from titus.modules import Module
 from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel
@@ -41,6 +42,7 @@ class TpcModule(Module):
 
         self._central_widget = QtWidgets.QWidget()
         self._layout = QtWidgets.QVBoxLayout()
+        self._layout.setContentsMargins(0, 0, 0, 0)
         self._central_widget.setLayout(self._layout)
 
         self._draw_dock =  QtWidgets.QDockWidget('TPC Draw Controls', self._gui)
@@ -478,6 +480,8 @@ class TpcModule(Module):
 
         for plane_cryo, view in self._wire_views.items():
             view.drawPlane(self._wire_drawer.getPlane(*plane_cryo))
+            # np.save(f'{plane_cryo[0]}_{plane_cryo[1]}', self._wire_drawer.getPlane(*plane_cryo))
+
 
     def toggle_wires(self, product, stage=None, subtract_pedestal=True, producers=None):
         ''' get wire data from gallery interface '''
@@ -510,7 +514,7 @@ class TpcModule(Module):
             elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
                 producer = [p.full_name() for p in all_producers[:3]]
             else:
-                producer = all_producers[0].full_name()
+                producer = self._wire_choice.selected_products()[0]
 
             self._wire_drawer.set_producer(producer)
             # self._gi.processor.add_process(_RECOB_WIRE, self._wire_drawer._process)
@@ -529,7 +533,7 @@ class TpcModule(Module):
             elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
                 producer = [p.full_name() for p in all_producers[:3]]
             else:
-                producer = all_producers[0].full_name()
+                producer = self._raw_digit_choice.selected_products()[0]
 
             self._wire_drawer.set_producer(producer)
 
@@ -724,7 +728,7 @@ class WireView(pg.GraphicsLayoutWidget):
     def __init__(self, geometry, plane=-1, cryostat=0, tpc=0):
         super().__init__(border=None)
         # add a view box, which is a widget that allows an image to be shown
-        self._view = self.addViewBox(border=None)
+        self._view = self.addViewBox(border=None, defaultPadding=0)
         # add an image item which handles drawing (and refreshing) the image
         self._item = pg.ImageItem(useOpenGL=True)
         # self._item._setPen((0,0,0))

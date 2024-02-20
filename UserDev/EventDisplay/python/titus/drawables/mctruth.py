@@ -20,8 +20,8 @@ mode_to_name = {
 
 class MCTruth(Drawable):
 
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'mctruth'
         self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._geom = geom

@@ -9,8 +9,8 @@ class EndPoint2D(Drawable):
 
     """docstring for endpoint2d"""
 
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'endpoint2d'
         self._process = evd.DrawEndpoint(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._brush = (0, 0, 0)

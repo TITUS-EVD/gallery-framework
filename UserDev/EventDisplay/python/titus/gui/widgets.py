@@ -58,9 +58,11 @@ class MultiSelectionBox(QtWidgets.QToolButton):
     def set_products(self, products):
         self._toolmenu.clear()
         if products is not None:
+            group = QtWidgets.QActionGroup(self._toolmenu)
             for i, product in enumerate(products):
                 action = self._toolmenu.addAction(product.full_name())
                 action.setCheckable(True)
+                action.setActionGroup(group)
                 if product in self.default_products:
                     action.setChecked(True)
                 action.triggered.connect(self.on_action_triggered)
@@ -72,6 +74,7 @@ class MultiSelectionBox(QtWidgets.QToolButton):
 
     def on_action_triggered(self):
         self.setText(self.display_name())
+        # TODO currently doesn't support multi-selection. Not sure if we will ever need it?
         self.activated.emit()
 
     def display_name(self):

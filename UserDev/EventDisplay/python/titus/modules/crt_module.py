@@ -67,22 +67,16 @@ class CrtModule(Module):
         self._crt_view.drawCrtData(self._crt_strip_drawer.getData())
 
 
-class CrtView(QtWidgets.QWidget):
+class CrtView(QtWidgets.QSplitter):
     ''' Widget holding CRT PyQtGraph window and CRT controls '''
     def __init__(self, geometry, plane=-1):
         super().__init__()
-
         self._geometry = geometry
-
-
-        self._layout = QtWidgets.QVBoxLayout()
-        self.setLayout(self._layout)
-
+        self.setOrientation(QtCore.Qt.Vertical)
         self._view_widget = CrtViewWidget(self._geometry)
         self._time_widget = CrtTimeViewWidget()
-        self._layout.addWidget(self._view_widget)
-        self._layout.addWidget(self._time_widget)
-        self._layout.addStretch(1)
+        self.addWidget(self._view_widget)
+        self.addWidget(self._time_widget)
 
     def drawCrtData(self, data):
         if data is None:
@@ -128,8 +122,10 @@ class CrtHitsItem(pg.GraphicsObject):
             x, y = coord_min
             l = coord_max[0] - coord_min[0]
             w = coord_max[1] - coord_min[1]
-            color = _CRT_COLORMAP.mapToQColor((time - min_val) / val_range)
+            tfrac = (time - min_val) / val_range
+            color = _CRT_COLORMAP.mapToQColor(tfrac)
             painter.setBrush(color)
+            painter.setOpacity(1.0 - 2.0 * np.abs(tfrac - 0.5))
             painter.setPen(color)
             painter.drawRect(QtCore.QRectF(x, y, l, w))
 

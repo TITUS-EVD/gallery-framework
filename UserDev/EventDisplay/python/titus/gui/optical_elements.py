@@ -163,15 +163,15 @@ class OpticalElements(pg.ScatterPlotItem):
         pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
         for element in self._opdet_circles:
             ch = element['data']['id']
-            data_y = self._data[data[:,0] == ch,:2]
+            data_y = self._data[ch,:]
 
             if len(data_y) == 0:
                 continue
 
-            try:
-                amplitude = data_y.max() - data_y.min()
-            except:
+            if data_y[0] == -9999:
                 continue
+
+            amplitude = data_y.max() - data_y.min()
 
             pe_per_opdet[ch] = amplitude
 

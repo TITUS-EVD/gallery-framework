@@ -1,10 +1,10 @@
 from titus.drawables import Drawable
-from pyqtgraph.Qt import QtGui, QtCore
+from PyQt5 import QtWidgets, QtGui, QtCore
 from ROOT import evd
 import pyqtgraph as pg
 
 
-class polyLine(QtGui.QGraphicsPathItem):
+class polyLine(QtWidgets.QGraphicsPathItem):
     def __init__(self, points, color=None, *args):
         super(polyLine, self).__init__()
         self.setAcceptHoverEvents(True)
@@ -28,19 +28,19 @@ class polyLine(QtGui.QGraphicsPathItem):
 
 
     def hoverEnterEvent(self, e):
-        QtGui.QGraphicsPathItem.hoverEnterEvent(self, e)
+        QtWidgets.QGraphicsPathItem.hoverEnterEvent(self, e)
         self.setPen(pg.mkPen(self._color, width=5))
         self.update()
 
     def hoverLeaveEvent(self, e):
-        QtGui.QGraphicsPathItem.hoverLeaveEvent(self, e)
+        QtWidgets.QGraphicsPathItem.hoverLeaveEvent(self, e)
         self.setPen(pg.mkPen(self._color, width=2))
         self.update()
 
 
 class Track(Drawable):
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'track'
         self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
