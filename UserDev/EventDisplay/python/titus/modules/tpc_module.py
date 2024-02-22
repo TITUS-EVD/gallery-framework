@@ -40,10 +40,9 @@ class TpcModule(Module):
         self._lsm = larsoft_module
         self._gm = geom_module
 
-        self._central_widget = QtWidgets.QWidget()
-        self._layout = QtWidgets.QVBoxLayout()
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._central_widget.setLayout(self._layout)
+        self._central_widget = QtWidgets.QSplitter()
+        self._central_widget.setOrientation(QtCore.Qt.Vertical)
+        self._central_widget.setChildrenCollapsible(False)
 
         self._draw_dock =  QtWidgets.QDockWidget('TPC Draw Controls', self._gui)
         self._draw_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
@@ -92,7 +91,7 @@ class TpcModule(Module):
                 view.connectWireDrawingFunction(self.drawWireOnPlot)
                 view.connectStatusBar(self._gui.statusBar())
                 self._wire_views[(p, c)] = view
-                self._layout.addWidget(view.getWidgetAndLayout()[0], stretch=1)
+                self._central_widget.addWidget(view.getWidgetAndLayout()[0])
 
         self.refresh_draw_list_widget()
 

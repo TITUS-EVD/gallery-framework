@@ -112,6 +112,7 @@ class Module(QtCore.QObject):
     def remove_drawable(self, drawable):
         if drawable is None:
             return
+        drawable.clearDrawnObjects() 
         self._drawables.remove(drawable)
 
     # TODO need to rework widgets so that this kind of event forwarding to 

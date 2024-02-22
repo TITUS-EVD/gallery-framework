@@ -24,22 +24,14 @@ class OpFlash(Drawable):
         self.init()
 
     def drawObjects(self):
-        self._drawnObjects.append([])
-
         for p in range(0, self._geom.nTPCs() * self._geom.nCryos()):
             flashes = self._process.getExtraData(p)
             self._module.setFlashesForPlane(p, flashes)
 
     def clearDrawnObjects(self, obj_list=None):
-        """ Override base class since our object list is nested """
-        for view_objs in self._drawnObjects:
-            for obj in view_objs:
-                obj.scene().removeItem(obj)
-        self._drawnObjects = []
-
-
-
-
+        """ Override base class """
+        for p in range(0, self._geom.nTPCs() * self._geom.nCryos()):
+            self._module.setFlashesForPlane(p, None)
 
 
 

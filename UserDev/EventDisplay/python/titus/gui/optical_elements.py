@@ -15,8 +15,9 @@ class OpticalElements(pg.ScatterPlotItem):
     This class handles the drawing of optical elements
       (PTMs, arapucas, ...) as a scatter plot
     '''
+
     def __init__(self, geom, tpc=0, pmtscale=None):
-        super(OpticalElements, self).__init__()
+        super().__init__()
 
         self._geom = geom
         self._tpc = tpc
@@ -65,20 +66,35 @@ class OpticalElements(pg.ScatterPlotItem):
             if pe is not None:
                 brush = self._pmtscale.colorMap().map(pe[d]/max_pe)
 
-            self._opdet_circles.append({'pos'    : (opdets_z[d], opdets_y[d]),
-                                        'size'   : self._size,
-                                        'pen'    : {'color': _bordercol_[opdets_name[d]],
-                                                    'width': self._line_width},
-                                        'brush'  : brush,
-                                        'symbol' : self._symbol,
-                                        'data'   : {'id': d,
-                                                    'highlight': False}})
+            self._opdet_circles.append(
+                {
+                    'pos'    : (opdets_z[d], opdets_y[d]),
+                    'size'   : self._size,
+                    'pen'    : {'color': _bordercol_[opdets_name[d]],
+                                'width': self._line_width},
+                    'brush'  : brush,
+                    'symbol' : self._symbol,
+                    'data'   : {'id': d, 'highlight': False}
+                }
+            )
         self._opdets_name = opdets_name
         self._opdets_x = opdets_x
         self._opdets_y = opdets_y
         self._opdets_z = opdets_z
 
         return self._opdet_circles
+
+    def select_opdet(self, selected_ch=None):
+        for p in self.points():
+            ch = p.data()['id']
+            pen_data = {
+                'color': _bordercol_[self._geom.opdetName()[ch]],
+                'width': self._line_width
+            }
+            if ch == selected_ch:
+                pen_data['color'] = 'g'
+                pen_data['width'] = 3
+            p.setPen(**pen_data)
 
 
     def connectStatusBar(self, statusBar):
@@ -132,7 +148,6 @@ class OpticalElements(pg.ScatterPlotItem):
 
 
     def drawFlashes(self, flashes):
-
         if flashes is None:
             return
 
@@ -157,7 +172,7 @@ class OpticalElements(pg.ScatterPlotItem):
 
         # print ('Displaying', n_drawn_flashes, 'flashes.')
 
-    def show_raw_data(self, data):
+    def show_raw_data(self, data, selected_ch=None):
         self._data = data
 
         pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
@@ -168,7 +183,7 @@ class OpticalElements(pg.ScatterPlotItem):
             if len(data_y) == 0:
                 continue
 
-            if data_y[0] == -9999:
+            if data_y[0] == self._geom.opdetDefaultValue():
                 continue
 
             amplitude = data_y.max() - data_y.min()
@@ -179,6 +194,8 @@ class OpticalElements(pg.ScatterPlotItem):
         self._opdet_circles = self.get_opdet_circles(pe_per_opdet, max_pe)
         self.clear()
         self.addPoints(self._opdet_circles)
+        self.select_opdet(selected_ch)
+        return self._opdet_circles
 
 
 class Pmts(OpticalElements):

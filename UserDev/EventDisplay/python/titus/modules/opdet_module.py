@@ -39,8 +39,8 @@ class OpDetModule(Module):
         self._dock_widgets = set([self._view_dock, self._dock])
 
         self._opdet_views = []
-        self._last_clicked_pmts = []
-        self._last_clicked_arapucas = []
+        self._last_clicked_opdet = None
+        self._selected_ch = None
         self._flashes = {}
         self._flash_drawers = {}
         self._opdet_wf_drawer = None
@@ -148,7 +148,7 @@ class OpDetModule(Module):
         
         products = self._gi.get_products(_RECOB_OPFLASH)
         default_products = self._gi.get_default_products(_RECOB_OPFLASH)
-        self._flash_choice = MultiSelectionBox(self, _RECOB_OPFLASH, products, default_products)
+        self._flash_choice = MultiSelectionBox(self, _RECOB_OPFLASH, products, default_products, mutually_exclusive=False)
         self._flash_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self._flash_choice.activated.connect(self._raw_flash_switch_worker)
 
@@ -217,24 +217,40 @@ class OpDetModule(Module):
             self._opdet_wf_drawer.set_producer(producer)
 
         elif product == _RECOB_OPFLASH:
-            # TODO support multiple flash drawers
-            producer = self._flash_choice.selected_products()[0]
-            if not self._flash_drawers:
+            producers = self._flash_choice.selected_products()
+            if producers is None:
+                for _, drawer in self._flash_drawers:
+                    self.remove_drawable(drawer)
+                self._flash_drawers = {}
+
+            for p in producers:
+                if p in self._flash_drawers:
+                    continue
+                # create new flash drawer 
                 products = self._gi.get_products(_DRAWABLE_LIST['OpFlash'][1],
                                             self._lsm.current_stage)
                 if products is None:
                     return
 
-                for p in products:
-                    drawer = self.register_drawable(
-                        _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
-                    )
-                    self._flash_drawers[producer] = drawer
+                drawer = self.register_drawable(
+                    _DRAWABLE_LIST['OpFlash'][0](self._gi, self._gm.current_geom, self)
+                )
+                self._flash_drawers[p] = drawer
 
-            self._flash_drawers = {}
-            for drawer in self._flash_drawers:
+
+            # check if we un-selected any previously selected producers
+            new_flash_drawers = {}
+            for producer, drawer in self._flash_drawers.items():
+                if producer not in producers:
+                    self.remove_drawable(drawer)
+                    continue
+                new_flash_drawers[producer] = drawer
+               
+            self._flash_drawers = new_flash_drawers
+            print(self._flash_drawers)
+            for producer, drawer in self._flash_drawers.items():
+                print('set producer', producer)
                 drawer.set_producer(producer)
-                self._flash_drawers[producer] = drawer
             
 
     def time_range_worker(self):
@@ -257,12 +273,12 @@ class OpDetModule(Module):
 
             these_pmts = Pmts(self._gm.current_geom, tpc=tpc, pmtscale=this_scale)
             opdet_plot.addItem(these_pmts)
-            these_pmts.sigClicked.connect(self.pmtClickWorker)
+            these_pmts.sigClicked.connect(self.opdetClickWorker)
             these_pmts.scene().sigMouseMoved.connect(these_pmts.onMove)
 
             these_arapucas = Arapucas(self._gm.current_geom, tpc=tpc, pmtscale=this_scale)
             opdet_plot.addItem(these_arapucas)
-            these_arapucas.sigClicked.connect(self.arapucaClickWorker)
+            these_arapucas.sigClicked.connect(self.opdetClickWorker)
             these_arapucas.scene().sigMouseMoved.connect(these_arapucas.onMove)
 
             self._opdet_plots.append(opdet_plot)
@@ -273,26 +289,29 @@ class OpDetModule(Module):
     def update(self):
         if self._opdet_wf_drawer is not None:
             self.drawOpDetWvf(self._opdet_wf_drawer.getData())
+            self._wf_view.drawWf(self._selected_ch)
+        
         for _, drawer in self._flash_drawers.items():
             drawer.drawObjects()
+        
+        # self._flash_time_view.clear()
+        self._flash_time_view.drawOpFlashTimes(self._flashes)
         
     def drawOpDetWvf(self, data):
         self._wf_view.drawOpDetWvf(data)
         if self._show_raw_btn.isChecked():
             for p, a in zip(self._pmts, self._arapucas):
-                p.show_raw_data(data)
-                a.show_raw_data(data)
+                p.show_raw_data(data, self._selected_ch)
+                a.show_raw_data(data, self._selected_ch)
 
     def setFlashesForPlane(self, p, flashes):
-        if len(flashes) == 0:
+        if flashes is None:
+            self._flashes[p] = None
+            self._pmts[p].clear()
             return
 
-        times = []
-        for f in flashes:
-            times.append(f.time())
-
-        time_min = np.min(times) - 10
-        time_max = np.max(times) + 10
+        if len(flashes) == 0:
+            return
 
         # self._time_range.setMin(int(time_min))
         # self._time_range.setMax(int(time_max))
@@ -301,7 +320,6 @@ class OpDetModule(Module):
         self._flashes[p] = flashes
         self._pmts[p].drawFlashes(flashes)
 
-        self._flash_time_view.drawOpFlashTimes(flashes)
 
     def getWidget(self):
         return self, self._layout
@@ -317,28 +335,11 @@ class OpDetModule(Module):
     def connectMessageBar(self, messageBar):
         self._messageBar = messageBar
 
-    def _reset_pmt_highlight(self):
-        for p in self._last_clicked_pmts:
-            p.setPen('w', width=2)
-        for p in self._last_clicked_arapucas:
-            p.setPen(_bordercol_['arapuca_vuv'], width=1)
-
-    def pmtClickWorker(self, plot, points):
-        self._reset_pmt_highlight()
-        for p in points:
-            p.setPen('g', width=3)
-            self._selected_ch = p.data()['id']
-
-        self._last_clicked_pmts = points
-        self._wf_view.drawWf(self._selected_ch)
-
-    def arapucaClickWorker(self, plot, points):
-        self._reset_pmt_highlight()
-        for p in points:
-            p.setPen('g', width=2)
-            self._selected_ch = p.data()['id']
-
-        self._last_clicked_arapucas = points
+    def opdetClickWorker(self, plot, points):
+        self._selected_ch = points[0].data()['id']
+        all_opdets = self._pmts + self._arapucas
+        for opdet_collection in all_opdets:
+            opdet_collection.select_opdet(self._selected_ch)
         self._wf_view.drawWf(self._selected_ch)
 
     def restoreDefaults(self):
@@ -387,28 +388,14 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
 
     def drawOpDetWvf(self, data, offset=100):
-
         self._data = data
 
-        # opdets_name = self._geometry.opdetName()
-
-        # data_x = np.linspace(-1250, 2500, len(data[0]))
-
-        # counter = 0
-        # for ch in range(0, len(opdets_name)):
-        #     name = opdets_name[ch]
-
-        #     if name == 'pmt':
-        #         data_y = data[ch]
-        #         data_y = data_y + counter * offset
-        #         # self._wf_plot.plot(x=data_x, y=data_y)
-        #         counter += 1
-        #         if counter > 7:
-        #             break
 
         self._wf_plot.autoRange()
 
     def drawWf(self, ch):
+        if ch is None:
+            return
 
         if self._data is None:
             print ('OpDetWaveform data not loaded. No waveform to display.')
@@ -417,9 +404,10 @@ class waveform_view(pg.GraphicsLayoutWidget):
         self._wf_plot.clear()
 
         # n_time_ticks = self._geometry.getDetectorClocks().OpticalClock().FrameTicks() * self._geometry.nOpticalFrames()
-        data_x = np.linspace(0, 5060, len(self._data[0]))
         data_y = self._data[ch,:] 
-        if data_y[0] == -9999:
+        ticks = len(data_y)
+        data_x = np.linspace(0, ticks - 1, ticks)
+        if data_y[0] == self._geometry.opdetDefaultValue():
             return
 
         # Remove the dafault values from the entries to be plotted
@@ -455,36 +443,36 @@ class flash_time_view(pg.GraphicsLayoutWidget):
         return self._widget, self._layout
 
 
-        self._wf_plot.autoRange()
-
-    def drawOpFlashTimes(self, flashes):
-
-        if flashes is None:
-            return
-
-        if len(flashes) == 0:
-            return
-
+    def clear(self):
         self._time_plot.clear()
 
-        times = []
-        for f in flashes:
-            times.append(f.time())
+    def drawOpFlashTimes(self, flashes_by_plane):
+        if not flashes_by_plane:
+            return
 
-        t_min = np.min(times)
-        t_max = np.max(times)
+        t_min = 0
+        t_max = 0
+        times = np.array([])
+        for p, flashes in flashes_by_plane.items():
+            if not flashes:
+                continue
+            
+            times = np.hstack([times, [f.time() for f in flashes]])
+            t_min = min(t_min, np.min(times))
+            t_max = max(t_max, np.max(times))
+
         n_bins = int(t_max - t_min)
-
-        if len(flashes) == 1:
+        if len(times) == 1:
             t_min -= 100
             t_max += 100
             n_bins = 200
 
         data_y, data_x = np.histogram(times, bins=np.linspace(t_min, t_max, n_bins))
-
-        self._time_plot.plot(x=data_x, y=data_y, stepMode=True, fillLevel=0, brush=(0,0,255,150))
+        self._time_plot.plot(
+            x=data_x, y=data_y, stepMode=True,
+            fillLevel=0, brush=(0,0,255,150),
+            clear=True
+        )
+        
         self._time_plot.addItem(self._time_window)
-
         self._time_plot.autoRange()
-
-

@@ -36,11 +36,12 @@ class MultiSelectionBox(QtWidgets.QToolButton):
     activated = QtCore.pyqtSignal()
     _DEFAULT_STR = 'Select'
 
-    def __init__(self, owner, name, products, default_products=[]):
-        super(MultiSelectionBox, self).__init__()
+    def __init__(self, owner, name, products, default_products=[], mutually_exclusive=True):
+        super().__init__()
         self._name = name
         self._owner = owner
         self.default_products = default_products
+        self._mutually_exclusive = mutually_exclusive
 
         self.setText(MultiSelectionBox._DEFAULT_STR)
         self._toolmenu = QtWidgets.QMenu(self)
@@ -48,23 +49,30 @@ class MultiSelectionBox(QtWidgets.QToolButton):
 
         self.setMenu(self._toolmenu)
         self.setPopupMode(QtWidgets.QToolButton.InstantPopup)
-        self.set_products(products)
+
 
         # set explicit minimum size to let the box shrink even if the label is
         # long. the overriden paint method adds ellipses to long strings
         # automatically
         self.setMinimumWidth(50)
 
+        self.set_products(products)
+
     def set_products(self, products):
         self._toolmenu.clear()
+        first = True
         if products is not None:
             group = QtWidgets.QActionGroup(self._toolmenu)
             for i, product in enumerate(products):
                 action = self._toolmenu.addAction(product.full_name())
                 action.setCheckable(True)
-                action.setActionGroup(group)
-                if product in self.default_products:
+                if self._mutually_exclusive:
+                    action.setActionGroup(group)
+                if product in self.default_products and not self._mutually_exclusive:
                     action.setChecked(True)
+                if first and self._mutually_exclusive:
+                    action.setChecked(True)
+                    first = False
                 action.triggered.connect(self.on_action_triggered)
                 self._actions.append(action)
         else:
@@ -74,7 +82,6 @@ class MultiSelectionBox(QtWidgets.QToolButton):
 
     def on_action_triggered(self):
         self.setText(self.display_name())
-        # TODO currently doesn't support multi-selection. Not sure if we will ever need it?
         self.activated.emit()
 
     def display_name(self):
