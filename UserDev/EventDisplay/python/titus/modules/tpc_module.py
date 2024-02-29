@@ -13,7 +13,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import PIL
 
 from titus.modules import Module
-from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel
+from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar
 import titus.drawables as drawables
 
 
@@ -61,7 +61,8 @@ class TpcModule(Module):
         self._wire_drawer = None
         self._product_box_map = {}
         self._wire_views = {}
-        self._draw_logo = False
+        self._show_logo = False
+        self._show_scale_bar = False
         self._selected_planes = [-1]
         self._selected_cryos = [-1]
 
@@ -257,12 +258,12 @@ class TpcModule(Module):
         self._unitDisplayOption = QtWidgets.QCheckBox("Use cm")
         self._unitDisplayOption.setToolTip("Display the units in cm (checked = true)")
         self._unitDisplayOption.setTristate(False)
-        # self._unitDisplayOption.stateChanged.connect(self.useCMWorker)
+        self._unitDisplayOption.stateChanged.connect(self.use_cm)
 
-        self._scaleBarOption = QtWidgets.QCheckBox("Scale Bar")
+        self._scaleBarOption = QtWidgets.QCheckBox("Scale bar")
         self._scaleBarOption.setToolTip("Display a scale bar on each view showing the distance")
         self._scaleBarOption.setTristate(False)
-        # self._scaleBarOption.stateChanged.connect(self.scaleBarWorker)
+        self._scaleBarOption.stateChanged.connect(self.show_scale_bar)
 
         self._scaleBarLayout = QtWidgets.QVBoxLayout()
         self._scaleBarLayout.addWidget(self._scaleBarOption)
@@ -542,9 +543,18 @@ class TpcModule(Module):
             view.lockRatio(lockstate)
 
     def draw_logo(self, logostate):
-        self._draw_logo = logostate
+        self._show_logo = logostate
         for view in self._wire_views.values():
             view.toggleLogo(logostate)
+
+    def show_scale_bar(self, chkstate):
+        self._show_scale_bar = chkstate
+        for view in self._wire_views.values():
+            view.toggleScale(chkstate)
+    
+    def use_cm(self, chkstate):
+        for view in self._wire_views.values():
+            view.useCM(chkstate)
 
     def show_anode_cathode(self):
         show = self._anodeCathodeOption.isChecked()
@@ -624,7 +634,8 @@ class TpcModule(Module):
 
                 # Turn on the requested ones
                 view.setVisible(True)
-                view.toggleLogo(self._draw_logo)
+                view.toggleLogo(self._show_logo)
+                view.toggleScale(self._show_scale_bar)
 
     def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None):
         # Need to draw a wire on the wire view
@@ -767,7 +778,6 @@ class WireView(pg.GraphicsLayoutWidget):
         self._view.sigYRangeChanged.connect(self.scaleHandler)
         self._view.sigXRangeChanged.connect(self.scaleHandler)
         self._xBar = None
-        self._xBarText = None
         self.useScaleBar = False
 
         self.setBackground('w')
@@ -891,9 +901,6 @@ class WireView(pg.GraphicsLayoutWidget):
 
     def toggleScale(self, scaleBool):
         # If there is a scale, remove it:
-        if self._xBar in self._view.addedItems:
-            self._view.removeItem(self._xBar)
-            self._view.removeItem(self._xBarText)
         self.useScaleBar = scaleBool
         self.refreshScaleBar()
 
@@ -910,12 +917,12 @@ class WireView(pg.GraphicsLayoutWidget):
         if not self._useLogo:
             return
 
-        self._logo = QtWidgets.QGraphicsPixmapItem(QtGui.QPixmap(self._geometry.logo()))
+        self._logo = MovablePixmapItem(QtGui.QPixmap(self._geometry.logo()))
         self._logo.setX(self._geometry.logoPos()[0])
         self._logo.setY(self._geometry.logoPos()[1])
         self._logo.setScale(self._geometry.logoScale())
+        self._logo.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.scene().addItem(self._logo)
-
 
     def restoreDefaults(self):
         level_lower = self._geometry.getLevels(self._plane)[0]
@@ -1149,23 +1156,25 @@ class WireView(pg.GraphicsLayoutWidget):
         if self._item.image is not None:
             # get the data from the plot:
             data = self._item.image
-            if wire < len(data):
-                self._wireData = data[wire]
-                self._wireData = self._wireData[self._first_entry:self._last_entry]
+            if wire < 0 or wire >= len(data):
+                return
+            
+            self._wireData = data[wire]
+            self._wireData = self._wireData[self._first_entry:self._last_entry]
 
-                # Here we want to display the real plane number, not the view.
-                # So, make sure that if you are in an odd TPC we display the right number.
-                plane = self._plane
-                if tpc %2 != 0:
-                    if self._plane == 0:
-                        plane = 1
-                    elif self._plane == 1:
-                        plane = 0
+            # Here we want to display the real plane number, not the view.
+            # So, make sure that if you are in an odd TPC we display the right number.
+            plane = self._plane
+            if tpc %2 != 0:
+                if self._plane == 0:
+                    plane = 1
+                elif self._plane == 1:
+                    plane = 0
 
-                self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc, cryo=self._cryostat, drawer=self)
+            self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc, cryo=self._cryostat, drawer=self)
 
-        # Make a request to draw the hits from this wire:
-        self.drawHitsRequested.emit(self._plane, wire, tpc)
+            # Make a request to draw the hits from this wire:
+            self.drawHitsRequested.emit(self._plane, wire, tpc)
 
 
     def connectWireDrawingFunction(self, func):
@@ -1195,58 +1204,27 @@ class WireView(pg.GraphicsLayoutWidget):
 
 
     def scaleHandler(self):
-        # print self.sender()
         if self.useScaleBar:
             self.refreshScaleBar()
 
 
     def refreshScaleBar(self):
         if not self.useScaleBar:
+            if self._xBar is not None:
+                self.scene().removeItem(self._xBar)
+                self._xBar = None
             return
-        # First, get the range in x and y:
-        # [[xmin, xmax], [ymin, ymax]]
-        dims = self._view.viewRange()
 
-        # The view bars get drawn on 10% of the lengths
-        # if ratio lock is set, only draw X
+        nwires = 100
+        if self._xBar is None:
+            self._xBar = MovableScaleBar(size=nwires, suffix='wires')
+            self._xBar.setParentItem(self._view)
+            self._xBar.anchor((1, 1), (1, 1), offset=(-20, -20))
 
-        # Draw the X bar:
-        xMin = dims[0][0]
-        xMax = dims[0][1]
-        yMin = dims[1][0]
-        yMax = dims[1][1]
-        width = 0.1*(xMax - xMin)
-        height = 0.01*(yMax - yMin)
-        xLoc = xMin + 0.1*(xMax - xMin)
-        yLoc = yMin + 0.1*(yMax - yMin)
-
-
-        if self._xBar in self._view.addedItems:
-            self._view.removeItem(self._xBar)
-            self._view.removeItem(self._xBarText)
-
-        self._xBar = QtWidgets.QGraphicsRectItem(xLoc,yLoc,width,height)
-        self._xBar.setBrush(pg.mkColor(255,255,255))
-        self._view.addItem(self._xBar)
-
-        xString = ""
         if self._cmSpace:
-            xString = "{0:.0f}".format(round(width*self._geometry.wire2cm()))
-            xString = xString + " cm"
+            self._xBar.setUnits(self._geometry.wire2cm(), suffix='cm')
         else:
-            xString = "{0:.0f}".format(round(width))
-            xString = xString + " wires"
-
-
-        # Add the text:
-        self._xBarText = QtWidgets.QGraphicsSimpleTextItem(xString)
-        self._xBarText.setBrush(pg.mkColor(255,255,255))
-        xScale = 0.015* width
-        yScale = - 0.3* height
-        self._xBarText.setPos(xLoc,yLoc)
-        self._xBarText.scale(xScale,yScale)
-        self._xBarText.font().setPixelSize(15)
-        self._view.addItem(self._xBarText)
+            self._xBar.setUnits(1.0, suffix='wires')
 
 
     def plane(self):
@@ -1447,3 +1425,5 @@ class WireView(pg.GraphicsLayoutWidget):
         if swapped:
             points.reverse()
         return points
+
+

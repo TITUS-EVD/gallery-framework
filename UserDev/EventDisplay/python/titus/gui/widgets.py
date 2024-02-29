@@ -1,4 +1,5 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
+import pyqtgraph as pg
 
 class VerticalLabel(QtWidgets.QLabel):
 
@@ -188,3 +189,84 @@ class recoBox(ComboBoxWithKeyConnect):
     def currentProducer(self):
         return self._current_producer
 
+
+class MovablePixmapItem(QtWidgets.QGraphicsPixmapItem):
+    """ GraphicsPixmapItem which can be clicked & dragged """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable)
+        self.setAcceptHoverEvents(True)
+        self._border_pen = QtGui.QPen(
+            QtCore.Qt.yellow, 10,
+            QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin
+        )
+
+        self._border = QtWidgets.QGraphicsRectItem(self.boundingRect())
+        self._border.setPen(self._border_pen)
+
+    def hoverEnterEvent(self, ev):
+        super().hoverEnterEvent(ev)
+        self.scene().addItem(self._border)
+        self._border.setPos(self.pos())
+
+    def mouseMoveEvent(self, ev):
+        super().mouseMoveEvent(ev)
+        self._border.setPos(self.pos())
+
+    def hoverLeaveEvent(self, ev):
+        super().hoverLeaveEvent(ev)
+        self.scene().removeItem(self._border)
+
+    def setScale(self, scale):
+        super().setScale(scale)
+        self._border.setScale(scale)
+
+
+class MovableScaleBar(pg.ScaleBar):
+    '''
+    scale bar which can be moved around. The inner bar highlights when the
+    mouse hovers over it
+    '''
+    class HighlightBar(QtWidgets.QGraphicsRectItem):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.setAcceptHoverEvents(True)
+            self._highlight_brush = QtGui.QBrush(QtCore.Qt.yellow, 1)
+            self._brush = None
+
+        def setDefaultBrush(self, brush):
+            super().setBrush(brush)
+            self._brush = brush
+
+        def hoverEnterEvent(self, ev):
+            super().hoverEnterEvent(ev)
+            self.setBrush(self._highlight_brush)
+
+        def hoverLeaveEvent(self, ev):
+            super().hoverLeaveEvent(ev)
+            self.setBrush(self._brush)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAcceptHoverEvents(True)
+        
+        self.bar = MovableScaleBar.HighlightBar()
+        self.bar.setPen(self.pen)
+        self.bar.setDefaultBrush(self.brush)
+        self.bar.setParentItem(self)
+
+        self.setAcceptedMouseButtons(QtCore.Qt.MouseButton.LeftButton)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
+
+        self._last_pos = None
+
+    def anchor(self, itemPos, parentPos, offset=(0,0)):
+        super().anchor(itemPos, parentPos, offset)
+        self.offset = offset
+
+    def boundingRect(self):
+        return self.bar.rect()
+
+    def setUnits(self, scale=1, suffix=''):
+        self.text.setText(pg.functions.siFormat(self.size * scale, suffix=suffix))

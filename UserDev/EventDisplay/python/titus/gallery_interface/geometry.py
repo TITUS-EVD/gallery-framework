@@ -7,7 +7,7 @@ from ROOT import galleryfmwk
 import numpy as np
 
 LOCAL_PATH = pathlib.Path(__file__).parent.resolve()
-LOGO_PATH = pathlib.Path(LOCAL_PATH.parent, 'resources', 'logos')
+LOGO_PATH = pathlib.Path(LOCAL_PATH.parent.parent, 'resources', 'logos')
 
 class geoBase(object):
 
