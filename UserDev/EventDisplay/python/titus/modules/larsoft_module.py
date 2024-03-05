@@ -58,7 +58,7 @@ class LArSoftModule(Module):
 
     def _initialize(self):
         self.populate_menu()
-        self._gui.statusBar().addPermanentWidget(self._stage_label)
+        self._gui.statusBar().insertPermanentWidget(0, self._stage_label)
 
         # start gui with this module's waiting widget
         self.activate()

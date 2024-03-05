@@ -36,3 +36,5 @@ ROOT_GENERATE_DICTIONARY(EventDisplay_3DViewer_Dict
     MODULE EventDisplay_3DViewer
     LINKDEF LinkDef.h
 )
+
+install(TARGETS EventDisplay_3DViewer DESTINATION lib)

@@ -23,6 +23,22 @@ if (${sbnobj_FOUND})
 endif()
 
 
+target_link_libraries(EventDisplay_RawViewer
+    ${gallery_LIBRARY_DIR}/libgallery.so
+    ${ROOT_LIBRARIES}
+    ${CLHEP_LIBRARIES}
+    ${canvas_LIBRARY_DIR}/libcanvas.so
+    ${larcoreobj_LIBRARY_DIR}/liblarcoreobj_SummaryData.so
+    ${larcorealg_LIBRARY_DIR}/liblarcorealg_Geometry.so
+    ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
+    ${lardataalg_LIBRARY_DIR}/liblardataalg_DetectorInfo.so
+    ${cetlib_except_LIBRARY_DIR}/libcetlib_except.so 
+    gallery_framework_Base
+    gallery_framework_Analysis
+    gallery_framework_LArUtil
+)
+
+
 target_include_directories(EventDisplay_RawViewer PRIVATE ${PROJECT_SOURCE_DIR}/core)
 
 find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
@@ -45,3 +61,5 @@ ROOT_GENERATE_DICTIONARY(EventDisplay_RawViewer_Dict
     MODULE EventDisplay_RawViewer
     LINKDEF LinkDef.h
 )
+
+install(TARGETS EventDisplay_RawViewer DESTINATION lib)

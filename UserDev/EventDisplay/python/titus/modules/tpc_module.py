@@ -480,6 +480,7 @@ class TpcModule(Module):
 
         for plane_cryo, view in self._wire_views.items():
             view.drawPlane(self._wire_drawer.getPlane(*plane_cryo))
+            view.setWrapperVisible(self._plane_frames.isChecked())
             # np.save(f'{plane_cryo[0]}_{plane_cryo[1]}', self._wire_drawer.getPlane(*plane_cryo))
 
 
@@ -703,7 +704,7 @@ class WireView(pg.GraphicsLayoutWidget):
         dif = dif * -1
 
         ## Ignore axes if mouse is disabled
-        mouseEnabled = np.array(self._view.state['mouseEnabled'], dtype=np.float)
+        mouseEnabled = np.array(self._view.state['mouseEnabled'], dtype=float)
         mask = mouseEnabled.copy()
         if axis is not None:
             mask[1-axis] = 0.0
@@ -1246,7 +1247,6 @@ class WireView(pg.GraphicsLayoutWidget):
     def drawPlane(self, image):
         self._item.setImage(image,autoLevels=False)
         self._item.setLookupTable(self._cmap.getLookupTable(255))
-        self.setWrapperVisible(True)
         # Make sure the levels are actually set:
         self.levelChanged()
 
@@ -1295,12 +1295,9 @@ class WireView(pg.GraphicsLayoutWidget):
             self._view.addItem(line)
             self._tpc_div_lines.append(line)
 
-
-
     def drawBlank(self):
         self._item.clear()
         self.setWrapperVisible(False)
-
 
     def clearPoints(self):
         for point in self._drawnPoints:

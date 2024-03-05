@@ -15,3 +15,9 @@ ROOT_GENERATE_DICTIONARY(gallery_framework_Base_Dict
     MODULE gallery_framework_Base
     LINKDEF LinkDef.h
 )
+
+target_link_libraries(gallery_framework_Base
+    ${ROOT_LIBRARIES}
+)
+
+install(TARGETS gallery_framework_Base DESTINATION lib)
