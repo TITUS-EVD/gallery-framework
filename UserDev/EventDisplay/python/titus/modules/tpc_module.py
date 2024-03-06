@@ -65,6 +65,8 @@ class TpcModule(Module):
         self._show_scale_bar = False
         self._selected_planes = [-1]
         self._selected_cryos = [-1]
+        self._current_wire = 0
+        self._current_wire_drawer = None
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -482,6 +484,9 @@ class TpcModule(Module):
             view.drawPlane(self._wire_drawer.getPlane(*plane_cryo))
             view.setWrapperVisible(self._plane_frames.isChecked())
             # np.save(f'{plane_cryo[0]}_{plane_cryo[1]}', self._wire_drawer.getPlane(*plane_cryo))
+        
+        if self._current_wire_drawer is not None:
+            self._current_wire_drawer.show_waveform(wire=self._current_wire, tpc=self._current_tpc)
 
 
     def toggle_wires(self, product, stage=None, subtract_pedestal=True, producers=None):

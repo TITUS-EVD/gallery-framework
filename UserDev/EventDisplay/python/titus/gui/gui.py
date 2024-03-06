@@ -148,6 +148,8 @@ class Gui(QtWidgets.QMainWindow):
     def _on_open_action(self):
         ''' Show file browser &allow user to open a new file '''
         file_path = str(QtWidgets.QFileDialog.getOpenFileName(filter="ROOT files (*.root)")[0])
+        if file_path == '':
+            return
         self._gi.set_input_file(file_path)
 
     def _on_capture_action(self):
@@ -162,11 +164,13 @@ class Gui(QtWidgets.QMainWindow):
 
         # img = self._central_widget.grab(self._central_widget.rect())
         QtWidgets.QApplication.clipboard().setPixmap(img)
+        self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
 
     def _on_capture_screen_action(self):
         ''' Capture the whole application '''
         img = self.grab(self.rect())
         QtWidgets.QApplication.clipboard().setPixmap(img)
+        self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
 
     def _on_preferences_action(self):
         pass
