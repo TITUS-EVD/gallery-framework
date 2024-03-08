@@ -3,7 +3,7 @@
 
 
 #include "DrawChannelROI.h"
-#include  "icaruscode/IcarusObj/ChannelROI.h"
+#include  "sbnobj/ICARUS/TPC/ChannelROI.h"
 
 namespace evd {
 

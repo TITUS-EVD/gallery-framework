@@ -22,7 +22,7 @@
 #include "canvas/Utilities/InputTag.h"
 #include "gallery/Event.h"
 
-#include  "icaruscode/IcarusObj/ChannelROI.h"
+#include  "sbnobj/ICARUS/TPC/ChannelROI.h"
 
 #include "TTree.h"
 #include "TGraph.h"

@@ -12,6 +12,15 @@ find_package(sbnobj)
 message(STATUS "Compile with SBNOBJ=" ${sbnobj_FOUND})
 if (${sbnobj_FOUND})
     list(APPEND EventDisplay_RawViewer_SOURCES DrawFEBData.cxx)
+    list(APPEND EventDisplay_RawViewer_SOURCES DrawChannelROI.cxx)
+endif()
+
+find_package(icarusalg)
+find_package(icarus_signal_processing)
+find_package(icaruscode)
+message(STATUS "Compile with ICARUSCODE=" ${icaruscode_FOUND})
+if (${icaruscode_FOUND})
+    # do something
 endif()
 
 add_library(EventDisplay_RawViewer SHARED ${EventDisplay_RawViewer_SOURCES})
@@ -19,7 +28,18 @@ add_library(EventDisplay_RawViewer SHARED ${EventDisplay_RawViewer_SOURCES})
 if (${sbnobj_FOUND})
     target_compile_definitions(EventDisplay_RawViewer PUBLIC WITH_SBNOBJ)
     target_link_libraries(EventDisplay_RawViewer ${sbnobj_LIBRARY_DIR}/libsbnobj_SBND_CRT.so)
-    target_include_directories(EventDisplay_RawViewer PRIVATE ${sbnobj_INCLUDE_DIRS})
+    target_include_directories(EventDisplay_RawViewer PRIVATE ${sbnobj_INCLUDE_DIR})
+
+    # for channel ROI
+    target_link_libraries(EventDisplay_RawViewer ${sbnobj_LIBRARY_DIR}/libsbnobj_ICARUS_TPC.so)
+    target_include_directories(EventDisplay_RawViewer PRIVATE ${sbnobj_INCLUDE_DIR})
+endif()
+
+if (${icaruscode_FOUND})
+    target_compile_definitions(EventDisplay_RawViewer PUBLIC WITH_ICARUSCODE)
+    target_link_libraries(EventDisplay_RawViewer ${icaruscode_LIBRARY_DIR}/libicaruscode_IcarusObj.so)
+    target_include_directories(EventDisplay_RawViewer PRIVATE ${icaruscode_INCLUDE_DIRS})
+    target_include_directories(EventDisplay_RawViewer PRIVATE ${icaruscode_INCLUDE_DIRS})
 endif()
 
 
@@ -54,6 +74,10 @@ set(EventDisplay_RawViewer_HEADERS
 )
 if (${sbnobj_FOUND})
     list(APPEND EventDisplay_RawViewer_HEADERS DrawFEBData.h)
+    list(APPEND EventDisplay_RawViewer_HEADERS DrawChannelROI.h)
+endif()
+if (${icaruscode_FOUND})
+    # do something
 endif()
 
 ROOT_GENERATE_DICTIONARY(EventDisplay_RawViewer_Dict
