@@ -2,6 +2,7 @@
 from titus.drawables.drawable import Drawable
 from titus.drawables.wire import RecoWire
 from titus.drawables.wire import RawDigit
+from titus.drawables.wire import recoChannelROI
 from titus.drawables.hit import Hit
 from titus.drawables.track import Track
 from titus.drawables.cluster import Cluster

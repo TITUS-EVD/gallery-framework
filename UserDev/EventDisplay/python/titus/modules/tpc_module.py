@@ -21,7 +21,7 @@ import titus.drawables as drawables
 _DRAWABLE_LIST = {
     'Hit': [drawables.Hit, "recob::Hit"],
     'Cluster': [drawables.Cluster, "recob::Cluster"],
-    'Shower': [drawables.Shower, "recob::Shower"],
+    # 'Shower': [drawables.Shower, "recob::Shower"],
     'Track': [drawables.Track, "recob::Track"],
     'MCTruth': [drawables.MCTruth, "simb::MCTruth"],
     'MCTrack': [drawables.MCTrack, "sim::MCTrack"],
@@ -32,7 +32,9 @@ _DRAWABLE_LIST = {
 
 
 _RECOB_WIRE = 'recob::Wire'
+_RECOB_CHANNELROI = 'recob::ChannelROI'
 _RAW_RAWDIGIT = 'raw::RawDigit'
+
 
 class TpcModule(Module):
     def __init__(self, larsoft_module, geom_module):
@@ -131,7 +133,6 @@ class TpcModule(Module):
         default_products = self._gi.get_default_products(_RAW_RAWDIGIT)
         self._raw_digit_choice = MultiSelectionBox(self, _RAW_RAWDIGIT, products, default_products)
         self._raw_digit_choice.activated.connect(self.change_wire_choice)
-        raw_digit_layout = QtWidgets.QHBoxLayout()
 
         wire_choice_layout = QtWidgets.QGridLayout()
         wire_choice_layout.addWidget(self._none_wire_button, 0, 0, 1, 1)
@@ -142,6 +143,20 @@ class TpcModule(Module):
         wire_choice_layout.addWidget(self._raw_digit_button, 2, 0, 1, 1)
         wire_choice_layout.addWidget(self._raw_digit_choice, 2, 1, 1, 1)
         self._raw_digit_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+
+        if self._gm.current_geom.name() == 'icarus':
+            # Draw ChannelROI
+            self._channel_roi_button = QtWidgets.QRadioButton("Channel ROI")
+            self._channel_roi_button.clicked.connect(self.change_wire_choice)
+            wire_button_group.addButton(self._channel_roi_button)
+            products = self._gi.get_products(_RECOB_CHANNELROI)
+            default_products = self._gi.get_default_products(_RECOB_CHANNELROI)
+            self._channel_roi_choice = MultiSelectionBox(self, _RECOB_CHANNELROI, products, default_products)
+            self._channel_roi_choice.activated.connect(self.change_wire_choice)
+            
+            wire_choice_layout.addWidget(self._channel_roi_button, 3, 0, 1, 1)
+            wire_choice_layout.addWidget(self._channel_roi_choice, 3, 1, 1, 1)
+            self._channel_roi_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
         wire_group_box.setLayout(wire_choice_layout)
         main_layout.addWidget(wire_group_box)
@@ -466,10 +481,12 @@ class TpcModule(Module):
     def change_wire_choice(self):
         if self._none_wire_button.isChecked():
             self.toggle_wires(None)
-        if self._wire_button.isChecked():
+        elif self._wire_button.isChecked():
             self.toggle_wires(_RECOB_WIRE, stage=self._lsm.current_stage, producers=None)
-        if self._raw_digit_button.isChecked():
+        elif self._raw_digit_button.isChecked():
             self.toggle_wires(_RAW_RAWDIGIT, stage=self._lsm.current_stage, producers=None)
+        elif self._channel_roi_button.isChecked():
+            self.toggle_wires(_RECOB_CHANNELROI, stage=self._lsm.current_stage, producers=None)
 
         self._gi.process_event(True)
         self.update()
@@ -523,7 +540,23 @@ class TpcModule(Module):
                 producer = self._wire_choice.selected_products()[0]
 
             self._wire_drawer.set_producer(producer)
-            # self._gi.processor.add_process(_RECOB_WIRE, self._wire_drawer._process)
+
+        elif product == _RECOB_CHANNELROI:
+            if not self._channel_roi_choice.selected_products():
+                clear_wire_drawer()
+                return
+            self._wire_drawer = self.register_drawable(
+                drawables.recoChannelROI(self._gi, self._gm.current_geom)
+            )
+
+            if producers is not None:
+                producer = producers
+            elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
+                producer = [p.full_name() for p in all_producers[:3]]
+            else:
+                producer = self._wire_choice.selected_products()[0]
+
+            self._wire_drawer.set_producer(producer)
 
         elif product == _RAW_RAWDIGIT:
             if not self._raw_digit_choice.selected_products():

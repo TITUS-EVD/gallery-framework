@@ -9,23 +9,31 @@ maintains a dictionary of LArSoft products present at each stage
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-try:
-    import SBNDservices as services
-except ImportError:
-    try:
-        import ICARUSservices as services
-    except ImportError:
-        raise ImportError("LArSoft module could not import SBND or ICARUS services.")
-
 from .module import Module
 
+
+SUPPORTED_SERVICES = {
+    'icarus': 'ICARUSservices',
+    'sbnd': 'SBNDservices',
+}
+
+# variable to store python module interface
+services = None
 
 class LArSoftModule(Module):
     servicesLoaded = QtCore.pyqtSignal()
     stageChanged = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, service_name: str = ''):
+        global services
         super().__init__()
+        if service_name != '':
+            try:
+                services = __import__(SUPPORTED_SERVICES[service_name])
+            except KeyError:
+                raise RuntimeError(f'{service_name} is not supported by LArSoft module')
+            except ImportError:
+                raise ImportError(f'LArSoft module could not import {service_name} services')
 
         self._stage_label = QtWidgets.QLabel()
         self._stage_label.setText('Stage: All')

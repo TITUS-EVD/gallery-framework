@@ -14,8 +14,6 @@ from titus.modules import LArSoftModule, RunModule, GeometryModule, ViewSelectMo
     TpcModule, OpDetModule, CrtModule, HelpModule, TruthDumperModule
 from titus.gallery_interface import GalleryInterface
 
-from sbnd_commissioning.modules import SBNDCommissioningModule
-
 
 def sigintHandler(*args):
     sys.stderr.write('\r')
@@ -24,6 +22,13 @@ def sigintHandler(*args):
 
 def main():
     parser = argparse.ArgumentParser(description='TITUS event display.')
+    geom_args = parser.add_mutually_exclusive_group()
+    geom_args.add_argument('-S', '-s', '--sbnd',
+                      action='store_true',
+                      help="Run with the SBND Geometry")
+    geom_args.add_argument('-I', '-i', '--icarus',
+                      action='store_true',
+                      help="Run with the ICARUS Geometry")
     parser.add_argument('file', nargs='*', help="Optional input file to use")
     args = parser.parse_args()
 
@@ -38,7 +43,12 @@ def main():
     gui.add_module(RunModule())
 
     # these two modules are required to initialize the view modules
-    lsm = LArSoftModule()
+    det_service_name = 'sbnd'
+    if args.icarus:
+        det_service_name = 'icarus'
+    # add other services here...
+
+    lsm = LArSoftModule(det_service_name)
     gm = GeometryModule(lsm)
     
 
@@ -55,8 +65,8 @@ def main():
 
     vm.add_module(TpcModule(lsm, gm), view_name='TPC')
     vm.add_module(OpDetModule(lsm, gm), view_name='Optical')
-    vm.add_module(CrtModule(lsm, gm), view_name='CRT')
-    vm.add_module(SBNDCommissioningModule(lsm, gm), view_name='SBND Commissioning')
+    if args.sbnd:
+        vm.add_module(CrtModule(lsm, gm), view_name='CRT')
 
     # TODO
     # add other modules here. LArSoft module initiates a loading sequence which
@@ -64,7 +74,7 @@ def main():
     # there should be a more elegant way to stage this
     gui.add_module(lsm)
     gui.add_module(HelpModule())
-    gui.add_module(TruthDumperModule())
+    # gui.add_module(TruthDumperModule())
 
     # allow no-questions-asked keyboard interrupt 
     signal.signal(signal.SIGINT, sigintHandler)

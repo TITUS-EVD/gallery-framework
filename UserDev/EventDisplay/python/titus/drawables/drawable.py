@@ -69,7 +69,12 @@ class Drawable:
             # allow set producer name to something else besides null name so that
             # it gets updated
             # raw objects have setInput method (maybe multiple producers)
-            self._process.setInput(str(producer))
+            self._process.clearInput();
+            if isinstance(producer, list):
+                for p in producer:
+                    self._process.addInput(p)
+            else:
+                self._process.setInput(str(producer))
         
         self._producer_name = producer
         self.analyze()
