@@ -435,6 +435,24 @@ class view_manager(QtCore.QObject):
     '''
     return self._drawing_raw_digits
 
+  def setDrawingChannelROIs(self, status):
+    '''
+    Sets True if the viewports are
+    currently drawing RawDigits, False
+    otherwise.
+    '''
+    self._drawing_channelrois = status
+    for view in self._drawerList.values():
+        view.drawingChannelROIs(status)
+
+  def drawingChannelROIs(self):
+    '''
+    Returns True if the viewports are
+    currently drawing ChannelROI, False
+    otherwise.
+    '''
+    return self._drawing_channelrois
+
   def getViewPorts(self):
     '''
     Returns all the viewports

@@ -19,6 +19,7 @@ while test $# -gt 0; do
                -I${HEP_CONCURRENCY_INC} \
                -I${FHICLCPP_INC} \
                -I${LARDATAOBJ_INC} \
+               -I${ICARUSCODE_INC} \
                -I${NUSIMDATA_INC} \
                -I${LARCOREOBJ_INC} \
                -I${LARDATAALG_INC} \
@@ -36,6 +37,7 @@ while test $# -gt 0; do
                -I${HEP_CONCURRENCY_INC} \
                -I${FHICLCPP_INC} \
                -I${LARDATAOBJ_INC} \
+               -I${ICARUSCODE_INC} \
                -I${NUSIMDATA_INC} \
                -I${LARCOREOBJ_INC} \
                -I${LARDATAALG_INC} \
@@ -60,6 +62,7 @@ while test $# -gt 0; do
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
                -L${LARDATAALG_LIB} -llardataalg_DetectorInfo \
+               -L${ICARUSCODE_LIB} -licaruscode_IcarusObj \
                -L${LARCOREALG_LIB} -llarcorealg_Geometry \
                -L${SBNOBJ_LIB} -lsbnobj_SBND_CRT -lsbnobj_ICARUS_CRT \
                -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger"
@@ -74,6 +77,7 @@ while test $# -gt 0; do
                -L${LARCOREOBJ_LIB} -llarcoreobj_SummaryData \
                -L${LARDATAOBJ_LIB} -llardataobj_RecoBase \
                -L${LARDATAALG_LIB} -llardataalg_DetectorInfo \
+               -L${ICARUSCODE_LIB} -licaruscode_IcarusObj \
                -L${LARCOREALG_LIB} -llarcorealg_Geometry \
                -L${SBNOBJ_LIB} -lsbnobj_SBND_CRT -lsbnobj_ICARUS_CRT \
                -L${MESSAGEFACILITY_LIB} -lMF_MessageLogger"  

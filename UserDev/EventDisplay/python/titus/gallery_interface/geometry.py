@@ -535,7 +535,7 @@ class icarus(Geometry):
         self.configure(geometryCore, detProperties, detClocks, lar_properties)
 
         self._pedestals = [0, 0, 0, 0, 0, 0]
-        self._levels = [(-10, 10), (-10, 10), (-10, 10), (-10, 10), (-10, 10), (-10, 10)]
+        self._levels = [(100, 0), (0, 100), (0, 100), (100, 0), (0, 100), (0, 100)]
         self._view_names = ['H', 'U', 'V']
         # self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
         self._plane_mix = {0: [3], 1: [5], 2: [4], 6: [9], 7: [11], 8: [10]}
