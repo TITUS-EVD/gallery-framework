@@ -31,7 +31,7 @@ class RunModule(Module):
         """ Add run controls to the GUI in a DockWidget """
         self.init_auto_advance()
 
-        self._event_dock =  QtWidgets.QDockWidget('Event Controls', self._gui)
+        self._event_dock =  QtWidgets.QDockWidget('Event Controls', self._gui, objectName='_run_dock_event')
         self._event_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._event_dock.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         frame = QtWidgets.QWidget(self._event_dock)

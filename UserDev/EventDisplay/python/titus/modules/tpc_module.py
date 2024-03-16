@@ -41,16 +41,17 @@ class TpcModule(Module):
         super().__init__()
         self._lsm = larsoft_module
         self._gm = geom_module
+        self._name = 'TPC Module'
 
         self._central_widget = QtWidgets.QSplitter()
         self._central_widget.setOrientation(QtCore.Qt.Vertical)
         self._central_widget.setChildrenCollapsible(False)
 
-        self._draw_dock =  QtWidgets.QDockWidget('TPC Draw Controls', self._gui)
+        self._draw_dock =  QtWidgets.QDockWidget('TPC Draw Controls', self._gui, objectName='tpc_dock_draw')
         self._draw_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        self._view_dock =  QtWidgets.QDockWidget('TPC View Controls', self._gui)
+        self._view_dock =  QtWidgets.QDockWidget('TPC View Controls', self._gui, objectName='tpc_dock_view')
         self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        self._waveform_dock =  QtWidgets.QDockWidget('Wire Waveform', self._gui)
+        self._waveform_dock =  QtWidgets.QDockWidget('Wire Waveform', self._gui, objectName='tpc_dock_wire')
         self._waveform_dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea \
                                             | QtCore.Qt.LeftDockWidgetArea \
                                             | QtCore.Qt.RightDockWidgetArea)
@@ -136,13 +137,13 @@ class TpcModule(Module):
 
         wire_choice_layout = QtWidgets.QGridLayout()
         wire_choice_layout.addWidget(self._none_wire_button, 0, 0, 1, 1)
-        wire_choice_layout.addWidget(self._wire_button, 1, 0, 1, 1)
-        wire_choice_layout.addWidget(self._wire_choice, 1, 1, 1, 1)
-        self._wire_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        wire_choice_layout.addWidget(self._raw_digit_button, 1, 0, 1, 1)
+        wire_choice_layout.addWidget(self._raw_digit_choice, 1, 1, 1, 1)
+        wire_choice_layout.addWidget(self._wire_button, 2, 0, 1, 1)
+        wire_choice_layout.addWidget(self._wire_choice, 2, 1, 1, 1)
 
-        wire_choice_layout.addWidget(self._raw_digit_button, 2, 0, 1, 1)
-        wire_choice_layout.addWidget(self._raw_digit_choice, 2, 1, 1, 1)
         self._raw_digit_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self._wire_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
         if self._gm.current_geom.name() == 'icarus':
             # Draw ChannelROI
@@ -237,12 +238,6 @@ class TpcModule(Module):
         self._maxRangeButton = QtWidgets.QPushButton("Max Range")
         self._maxRangeButton.setToolTip("Set the range of the viewers to show the whole event")
         # self._maxRangeButton.clicked.connect(self._view_manager.setRangeToMax)
-
-        # Check box to active autorange
-        self._autoRangeBox = QtWidgets.QCheckBox("AutoRange")
-        self._autoRangeBox.setToolTip("Set the range of the viewers to the regions of interest")
-        self._autoRangeBox.setTristate(False)
-        # self._autoRangeBox.stateChanged.connect(self.autoRangeWorker)
 
         self._lockAspectRatio = QtWidgets.QCheckBox("1:1 Aspect Ratio")
         self._lockAspectRatio.setToolTip("Lock the aspect ratio to 1:1")

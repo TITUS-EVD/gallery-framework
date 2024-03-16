@@ -32,9 +32,9 @@ class OpDetModule(Module):
         self._layout = QtWidgets.QVBoxLayout()
         self._central_widget.setLayout(self._layout)
 
-        self._view_dock =  QtWidgets.QDockWidget('OpDet View Controls', self._gui)
+        self._view_dock =  QtWidgets.QDockWidget('OpDet View Controls', self._gui, objectName='opdet_dock_view')
         self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        self._dock =  QtWidgets.QDockWidget('OpDet Controls', self._gui)
+        self._dock =  QtWidgets.QDockWidget('OpDet Controls', self._gui, objectName='opdet_dock')
         self._dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._dock_widgets = set([self._view_dock, self._dock])
 

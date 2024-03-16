@@ -10,10 +10,12 @@ class Module(QtCore.QObject):
         super().__init__()
         self._gui = gui
         self._gi = gallery_interface
+        self._name = 'Empty Module'
         self._parent = None
         self._central_widget = None
         self._dock_widgets = set()
         self._active = True
+        self._settings = {}
 
         self._drawables = set()
         self._thread_pool = QtCore.QThreadPool()
@@ -25,6 +27,19 @@ class Module(QtCore.QObject):
     @parent.setter
     def parent(self, val):
         self._parent = val
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def settings(self):
+        return self._settings
+
+    def load_setting(self, setting):
+        # what to do when user starts the GUI and a module-specific setting
+        # was saved
+        pass
 
     def is_active(self):
         return self._active

@@ -43,10 +43,65 @@ class HighlightLabel(QtWidgets.QLabel):
 '''
 
 
+_SET_FIVEPM_REMINDER = 'General/5 PM reminder'
+_SET_SCREENSHOT_SCALE = 'General/Screenshot scale'
+_SET_SCREENSHOT_MODE = 'General/Screenshot mode'
+
 class Gui(QtWidgets.QMainWindow):
     def __init__(self, gallery_interface):
         super().__init__()
         self._gi = gallery_interface
+
+        # settings that appear in the settings menu. Modules may add to these
+        # via add_setting method
+
+        # On linux, this is equivalent to ~/.config/TITUS/TITUS.conf
+        QtCore.QCoreApplication.setApplicationName("TITUS");
+        QtCore.QCoreApplication.setOrganizationName("TITUS");
+
+        self._settings = QtCore.QSettings()
+
+        self._settings_layout = QtWidgets.QGridLayout()
+        self._screenshot_mode_clip = QtWidgets.QRadioButton('Clipboard')
+        self._screenshot_mode_clip.toggled.connect(
+            lambda x: self._settings.setValue(_SET_SCREENSHOT_MODE, "Clipboard") if x else 0
+        )
+        # self._screenshot_mode_clip.toggle()
+        self._screenshot_mode_file = QtWidgets.QRadioButton('File')
+        self._screenshot_mode_file.toggled.connect(
+            lambda x: self._settings.setValue(_SET_SCREENSHOT_MODE, "File") if x else 0
+        )
+        label = QtWidgets.QLabel(_SET_SCREENSHOT_MODE.split('/')[1])
+        self._settings_layout.addWidget(label, 0, 0, 1, 1)
+        self._settings_layout.addWidget(self._screenshot_mode_clip, 0, 1, 1, 1)
+        self._settings_layout.addWidget(self._screenshot_mode_file, 0, 2, 1, 1)
+
+        label2 = QtWidgets.QLabel(_SET_SCREENSHOT_SCALE.split('/')[1])
+        self._screenshot_scale_spin = QtWidgets.QDoubleSpinBox()
+        self._screenshot_scale_spin.setRange(1.0, 4.0)
+        self._screenshot_scale_spin.setDecimals(1)
+        self._screenshot_scale_spin.setSingleStep(0.5)
+        self._screenshot_scale_spin.valueChanged.connect(
+            lambda x: self._settings.setValue(_SET_SCREENSHOT_SCALE, x)
+        )
+        self._settings_layout.addWidget(label2, 1, 0, 1, 1)
+        self._settings_layout.addWidget(self._screenshot_scale_spin, 1, 1, 1, -1)
+
+        label3 = QtWidgets.QLabel(_SET_FIVEPM_REMINDER.split('/')[1])
+        self._fivepm_reminder = QtWidgets.QCheckBox()
+        self._fivepm_reminder.stateChanged.connect(
+            lambda x: self._settings.setValue(_SET_FIVEPM_REMINDER, x)
+        )
+        # self._fivepm_reminder.toggle()
+        self._settings_layout.addWidget(label3, 2, 0, 1, 1)
+        self._settings_layout.addWidget(self._fivepm_reminder, 2, 1, 1, -1)
+        self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
+
+
+        self._restore_from_settings()
+        self._settings_dialog = ModuleSettingsDialog(self, self._settings)
+        self._settings_dialog.add_settings_layout('General', self._settings_layout)
+
         self._modules = {}
 
         self._timer = QtCore.QTimer()
@@ -107,7 +162,6 @@ class Gui(QtWidgets.QMainWindow):
         pref_action.triggered.connect(self._on_preferences_action)
         self.edit_menu.addAction(pref_action)
 
-        self.resize(1366, 768)
         self.setWindowTitle('TITUS Event Display')    
         self.setFocus()
         self.show()
@@ -124,6 +178,10 @@ class Gui(QtWidgets.QMainWindow):
 
     def fix_a_drink(self):
         self._timer.stop()
+        if not self._settings.value(_SET_FIVEPM_REMINDER):
+            # maybe next time...
+            return
+
         choice = QtWidgets.QMessageBox.question(self, 'It is 5 pm!',
                                             "Time to fix yourself a drink!",
                                             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
@@ -134,16 +192,33 @@ class Gui(QtWidgets.QMainWindow):
             print("Boring.")
 
     def closeEvent(self, event):
+        self._settings.beginGroup("MainWindow");
+        # self._settings.setValue("geometry", self.saveGeometry());
+        self._settings.setValue("state", self.saveState(1.0));
+        self._settings.endGroup();
+
         QtCore.QCoreApplication.instance().quit()
 
     def add_module(self, module):
-        module_name = type(module).__name__
-        if module_name in self._modules:
+        module_type = type(module).__name__
+        if module_type in self._modules:
             raise ValueError('attempt to add multiple modules of the same class with add_module')
+        
 
         module.connect_gui(self)
         module.initialize()
-        self._modules[module_name] = module
+
+        self._settings.beginGroup(module.name)
+        for key, val in module.settings:
+            setting = self._settings.value(key)
+            if not setting.isValid():
+                self._settings.setValue(key, val)
+            else:
+                # user must implement this per module
+                module.load_setting(setting)
+        self._settings.endGroup()
+        
+        self._modules[module_type] = module
 
     def _on_open_action(self):
         ''' Show file browser &allow user to open a new file '''
@@ -154,8 +229,8 @@ class Gui(QtWidgets.QMainWindow):
 
     def _on_capture_action(self):
         ''' Capture just the central widget '''
-        # TODO User setting for scale
-        scale = 4.0
+        scale = float(self._settings.value(_SET_SCREENSHOT_SCALE))
+
         w = self._central_widget.width()
         h = self._central_widget.height()
         img = QtGui.QPixmap(w * scale, h * scale);
@@ -163,14 +238,117 @@ class Gui(QtWidgets.QMainWindow):
         self._central_widget.render(img);
 
         # img = self._central_widget.grab(self._central_widget.rect())
-        QtWidgets.QApplication.clipboard().setPixmap(img)
-        self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
+        if self._settings.value(_SET_SCREENSHOT_MODE) == "Clipboard":
+            QtWidgets.QApplication.clipboard().setPixmap(img)
+            self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
+        else:
+            fname = self._screenshot_filename()
+            file = QtCore.QFile(fname)
+            file.open(QtCore.QIODevice.WriteOnly)
+            img.save(file, "PNG")
+            self.statusBar().showMessage(f'Screenshot saved to {fname}', 3000)
 
     def _on_capture_screen_action(self):
         ''' Capture the whole application '''
         img = self.grab(self.rect())
-        QtWidgets.QApplication.clipboard().setPixmap(img)
-        self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
+        if self._settings.value(_SET_SCREENSHOT_MODE) == "Clipboard":
+            QtWidgets.QApplication.clipboard().setPixmap(img)
+            self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
+        else:
+            fname = self._screenshot_filename()
+            file = QtCore.QFile(fname)
+            file.open(QtCore.QIODevice.WriteOnly);
+            img.save(file, "PNG")
+            self.statusBar().showMessage(f'Screenshot saved to {fname}', 3000)
 
     def _on_preferences_action(self):
-        pass
+        self._settings_dialog.exec()
+
+    def _restore_from_settings(self):
+        # Attempt to get user's last window settings
+        self._settings.beginGroup("MainWindow");
+        win_geom = self._settings.value("geometry", QtCore.QByteArray())
+        win_state = self._settings.value("state", QtCore.QByteArray())
+        if win_geom.isEmpty():
+            self.setGeometry(200, 200, 1366, 768);
+        else:
+            self.restoreGeometry(win_geom)
+
+        if not win_state.isEmpty():
+            self.restoreState(win_state, 1)
+
+        self._settings.endGroup();
+
+        # other settings
+        if (x := self._settings.value(_SET_SCREENSHOT_MODE)) == '':
+            self._screenshot_mode_clip.toggle()
+        else:
+            if x == 'Clipboard':
+                self._screenshot_mode_clip.setChecked(True)
+                self._screenshot_mode_file.setChecked(False)
+            else:
+                self._screenshot_mode_clip.setChecked(False)
+                self._screenshot_mode_file.setChecked(True)
+
+        if (x := self._settings.value(_SET_SCREENSHOT_SCALE)) == '':
+            self._screenshot_scale_spin.setValue(2.0)
+        else:
+            self._screenshot_scale_spin.setValue(float(x))
+
+        if (x := self._settings.value(_SET_FIVEPM_REMINDER)) == '':
+            self._fivepm_reminder.setChecked(True)
+        else:
+            self._fivepm_reminder.setChecked(int(x))
+
+    def _screenshot_filename(self):
+        now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"titus_run{self._gi.run()}_sub{self._gi.subrun()}_evt{self._gi.event()}_{now_str}.png"
+
+
+class ModuleSettingsDialog(QtWidgets.QDialog):
+    # saved settings which are not user-configurable
+    SKIP_SETTINGS = ['MainWindow']
+
+    def __init__(self, parent, settings):
+        super().__init__(parent)
+        self.setWindowTitle('Settings')
+        self.setMinimumSize(320, 200)
+        self._settings = settings
+        self._group_layouts = {}
+
+        qbtn = QtWidgets.QDialogButtonBox.Ok
+        self.button_box = QtWidgets.QDialogButtonBox(qbtn)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+        self._widget = QtWidgets.QTabWidget()
+        self._layout = QtWidgets.QVBoxLayout()
+        self._layout.addWidget(self._widget)
+
+        self.setLayout(self._layout)
+
+    def add_settings_layout(self, group_name, layout):
+        self._group_layouts[group_name] = layout
+    
+    def exec(self):
+        self._setup()
+        super().exec()
+
+    def _setup(self):
+        while self._widget.count():
+            w = self._widget.widget(self._widget.currentIndex())
+            self._widget.removeTab(self._widget.currentIndex())
+            del w
+
+        child_groups = self._settings.childGroups();
+        for group in child_groups:
+            if group in ModuleSettingsDialog.SKIP_SETTINGS:
+                continue
+
+            if group in self._group_layouts.keys():
+                widget = QtWidgets.QWidget()
+                widget.setLayout(self._group_layouts[group])
+                self._widget.addTab(widget, group)
+
+        self._layout.addWidget(self.button_box)
+
