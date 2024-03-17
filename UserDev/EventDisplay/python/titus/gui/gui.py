@@ -1,3 +1,4 @@
+import os
 import sys
 import datetime
 
@@ -130,9 +131,13 @@ class Gui(QtWidgets.QMainWindow):
         self.file_menu = QtWidgets.QMenu("&File", self)
         self.menuBar().addMenu(self.file_menu)
 
-        open_action = QtWidgets.QAction('&Open', self.file_menu)
+        open_action = QtWidgets.QAction('&Open file', self.file_menu)
         open_action.triggered.connect(self._on_open_action)
         self.file_menu.addAction(open_action)
+
+        open_dir_action = QtWidgets.QAction('&Open directory', self.file_menu)
+        open_dir_action.triggered.connect(self._on_open_dir_action)
+        self.file_menu.addAction(open_dir_action)
 
         # screenshot controls
         self.file_menu.addSeparator()
@@ -193,7 +198,7 @@ class Gui(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         self._settings.beginGroup("MainWindow");
-        # self._settings.setValue("geometry", self.saveGeometry());
+        self._settings.setValue("geometry", self.saveGeometry());
         self._settings.setValue("state", self.saveState(1.0));
         self._settings.endGroup();
 
@@ -207,16 +212,11 @@ class Gui(QtWidgets.QMainWindow):
 
         module.connect_gui(self)
         module.initialize()
+        module.restore_from_settings()
 
-        self._settings.beginGroup(module.name)
-        for key, val in module.settings:
-            setting = self._settings.value(key)
-            if not setting.isValid():
-                self._settings.setValue(key, val)
-            else:
-                # user must implement this per module
-                module.load_setting(setting)
-        self._settings.endGroup()
+        if (x := module.settings_layout) is not None:
+            self._settings_dialog.add_settings_layout(module.name, x)
+        
         
         self._modules[module_type] = module
 
@@ -226,6 +226,19 @@ class Gui(QtWidgets.QMainWindow):
         if file_path == '':
             return
         self._gi.set_input_file(file_path)
+
+    def _on_open_dir_action(self):
+        ''' Show file browser &allow user to open a new file '''
+        dialog = QtWidgets.QFileDialog(self)
+        dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        dir_path = dialog.getExistingDirectory(
+            self, "Open Directory", self._gi.current_directory,
+            QtWidgets.QFileDialog.DontResolveSymlinks
+        )
+        if dir_path == '':
+            return
+
+        self._gi.current_directory = dir_path
 
     def _on_capture_action(self):
         ''' Capture just the central widget '''
@@ -270,7 +283,7 @@ class Gui(QtWidgets.QMainWindow):
         win_geom = self._settings.value("geometry", QtCore.QByteArray())
         win_state = self._settings.value("state", QtCore.QByteArray())
         if win_geom.isEmpty():
-            self.setGeometry(200, 200, 1366, 768);
+            self.setGeometry(400, 100, 1366, 768);
         else:
             self.restoreGeometry(win_geom)
 
@@ -280,7 +293,7 @@ class Gui(QtWidgets.QMainWindow):
         self._settings.endGroup();
 
         # other settings
-        if (x := self._settings.value(_SET_SCREENSHOT_MODE)) == '':
+        if (x := self._settings.value(_SET_SCREENSHOT_MODE)) is None:
             self._screenshot_mode_clip.toggle()
         else:
             if x == 'Clipboard':
@@ -290,12 +303,12 @@ class Gui(QtWidgets.QMainWindow):
                 self._screenshot_mode_clip.setChecked(False)
                 self._screenshot_mode_file.setChecked(True)
 
-        if (x := self._settings.value(_SET_SCREENSHOT_SCALE)) == '':
+        if (x := self._settings.value(_SET_SCREENSHOT_SCALE)) is None:
             self._screenshot_scale_spin.setValue(2.0)
         else:
             self._screenshot_scale_spin.setValue(float(x))
 
-        if (x := self._settings.value(_SET_FIVEPM_REMINDER)) == '':
+        if (x := self._settings.value(_SET_FIVEPM_REMINDER)) is None:
             self._fivepm_reminder.setChecked(True)
         else:
             self._fivepm_reminder.setChecked(int(x))

@@ -13,6 +13,22 @@ class VerticalLabel(QtWidgets.QLabel):
         painter.drawText(0, self.width()/2, self.text())
         painter.end()
 
+
+class ElidedLabel(QtWidgets.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setMinimumWidth(50)
+
+    def paintEvent(self, event):
+        # super().paintEvent(event);
+
+        painter = QtGui.QPainter(self);
+        fontMetrics = painter.fontMetrics();
+        elidedLine = fontMetrics.elidedText(self.text(), QtCore.Qt.ElideMiddle, self.width());
+        painter.drawText(QtCore.QPoint(0, fontMetrics.ascent()), elidedLine);
+        painter.end()
+
+
 class ComboBoxWithKeyConnect(QtWidgets.QComboBox):
 
     def __init__(self):
@@ -37,11 +53,15 @@ class MultiSelectionBox(QtWidgets.QToolButton):
     activated = QtCore.pyqtSignal()
     _DEFAULT_STR = 'Select'
 
-    def __init__(self, owner, name, products, default_products=[], mutually_exclusive=True):
+    def __init__(self, owner, name, products, default_products=None, mutually_exclusive=True):
         super().__init__()
         self._name = name
         self._owner = owner
-        self.default_products = default_products
+
+        self.default_products = []
+        if default_products is not None:
+            self.default_products = default_products
+
         self._mutually_exclusive = mutually_exclusive
 
         self.setText(MultiSelectionBox._DEFAULT_STR)
@@ -101,6 +121,11 @@ class MultiSelectionBox(QtWidgets.QToolButton):
     def selected_products(self):
         return [a.text() for a in self._toolmenu.actions() if a.isChecked()]
 
+    def select(self, product):
+        avail_products = [a.text() for a in self._toolmenu.actions()]
+        if product in avail_products:
+            self._toolmenu.actions()[avail_products.index(product)].setChecked(True)
+
     def paintEvent(self, event):
         '''
         Override to elide the text.
@@ -134,6 +159,15 @@ class recoBox(ComboBoxWithKeyConnect):
         self._producers = producers
         self._current_producer = None
         self._stage = "all"
+        self.set_product_and_producers(self._product, self._producers)
+
+        self.connectOwnerKPE(owner.keyPressEvent)
+
+    def set_product_and_producers(self, product, producers):
+        self.clear()
+        self._product = product
+        self._producers = producers
+        
         if producers == None:
             self.addItem("--None--")
         else:
@@ -141,26 +175,24 @@ class recoBox(ComboBoxWithKeyConnect):
             for producer in producers:
                 self.addItem(producer.producer())
 
-        self.connectOwnerKPE(owner.keyPressEvent)
-
     def selectStage(self, stage):
         # If no stage can draw this product, just return
         if self._producers is None:
             return
+        
+        self.clear()
+
+        prod_list = []
+        for prod in self._producers:
+            if prod.stage() == stage or stage == 'all':
+                prod_list.append(prod.producer())
+
+        if len(prod_list) > 0:
+            self.addItem("--Select--")
+            for _producer in prod_list:
+                self.addItem(_producer)
         else:
-            self.clear()
-
-            prod_list = []
-            for prod in self._producers:
-                if prod.stage() == stage or stage == 'all':
-                    prod_list.append(prod.producer())
-
-            if len(prod_list) > 0:
-                self.addItem("--Select--")
-                for _producer in prod_list:
-                    self.addItem(_producer)
-            else:
-                self.addItem("--None--")
+            self.addItem("--None--")
 
         self.setDuplicatesEnabled(False)
 

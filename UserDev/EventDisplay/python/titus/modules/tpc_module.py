@@ -4,6 +4,7 @@
 This module adds the wire plane views and associated controls. Uses the
 geometry module to get the currently-selected geometry
 """
+import sys
 import math
 
 import numpy as np
@@ -83,6 +84,7 @@ class TpcModule(Module):
         # anything
         self._gm.geometryChanged.connect(self.init_tpc_controls)
         self._gm.geometryChanged.connect(self.init_tpc_views)
+        self._gi.fileChanged.connect(self.update_reco_boxes)
 
     def init_tpc_views(self):
         # TODO remove wire views from central widget if they exist (in the case
@@ -232,7 +234,7 @@ class TpcModule(Module):
         self._grayScale = QtWidgets.QCheckBox("Grayscale")
         self._grayScale.setToolTip("Changes the color map to grayscale.")
         self._grayScale.setTristate(False)
-        # self._grayScale.stateChanged.connect(self.changeColorMapWorker)
+        self._grayScale.stateChanged.connect(self.grayscale)
 
         # Button to set range to max
         self._maxRangeButton = QtWidgets.QPushButton("Max Range")
@@ -244,7 +246,6 @@ class TpcModule(Module):
         self._lockAspectRatio.stateChanged.connect(self.lock_aspect_ratio)
 
         self._rangeLayout = QtWidgets.QVBoxLayout()
-        self._rangeLayout.addWidget(self._autoRangeBox)
         self._rangeLayout.addWidget(self._lockAspectRatio)
 
         # check box to toggle the wire drawing
@@ -263,9 +264,9 @@ class TpcModule(Module):
         # self._subtractPedestal.stateChanged.connect(self.subtractPedestalWorker)
 
         # add a box to restore the drawing defaults:
-        self._restoreDefaults = QtWidgets.QPushButton("Restore Defaults")
-        self._restoreDefaults.setToolTip("Restore the drawing defaults of the views.")
-        # self._restoreDefaults.clicked.connect(self.restoreDefaultsWorker)
+        self._restoreDefaults = QtWidgets.QPushButton("Reset view")
+        self._restoreDefaults.setToolTip("Reset wire view range and t0")
+        self._restoreDefaults.clicked.connect(self.restore_defaults)
 
         self._unitDisplayOption = QtWidgets.QCheckBox("Use cm")
         self._unitDisplayOption.setToolTip("Display the units in cm (checked = true)")
@@ -369,6 +370,37 @@ class TpcModule(Module):
         main_layout.addStretch()
         main_layout2.addStretch()
 
+    def update_reco_boxes(self):
+        ''' update all the product boxes when the file or larsoft stage changes '''
+        current_wire_choice = self._wire_choice.selected_products()
+        products = self._gi.get_products(_RECOB_WIRE, self._lsm.current_stage)
+        self._wire_choice.set_products(products)
+        for c in current_wire_choice:
+            self._wire_choice.select(c)
+
+        current_rawdigit_choice = self._raw_digit_choice.selected_products()
+        products = self._gi.get_products(_RAW_RAWDIGIT, self._lsm.current_stage)
+        self._raw_digit_choice.set_products(products)
+        for c in current_rawdigit_choice:
+            self._raw_digit_choice.select(c)
+
+        if self._gm.current_geom.name() == 'icarus':
+            current_channelroi_choice = self._channel_roi_choice.selected_products()
+            products = self._gi.get_products(_RECOB_CHANNELROI, self._lsm.current_stage)
+            self._channel_roi_choice.set_products(products)
+            for c in current_channelroi_choice:
+                self._channel_roi_choice.select(c)
+
+        for box, drawable in self._product_box_map.items():
+            current_producer = box.currentProducer()
+            product = drawable.product_name
+            producers = self._gi.get_producers(product, self._lsm.current_stage)
+            box.set_product_and_producers(product, producers)
+            if producers is not None:
+                if current_producer in producers:
+                    box.setCurrentIndex(box.findText(current_producer))
+            # update even if the box's producer was none
+            box.activated[str].emit(current_producer)
 
     def init_wire_waveform(self):
         # panel with buttons to draw objects on TPC view
@@ -429,7 +461,7 @@ class TpcModule(Module):
         sender = self.sender()
         # Get the full product obj for this:
         product = sender.productObj(text, self._lsm.current_stage)
-        print('reco_box_handler', text, sender.name(), product)
+        # print('reco_box_handler', text, sender.name(), product)
 
         visible = not (text == "--Select--" or text == "--None--" or text == None)
         if not visible:
@@ -472,8 +504,11 @@ class TpcModule(Module):
 
         self._current_wire_drawer.show_waveform(wire=wire, tpc=self._current_tpc)
 
-
     def change_wire_choice(self):
+        # reset the wire drawer regardless of what happens next
+        self.remove_drawable(self._wire_drawer)
+        self._wire_drawer = None
+
         if self._none_wire_button.isChecked():
             self.toggle_wires(None)
         elif self._wire_button.isChecked():
@@ -484,7 +519,11 @@ class TpcModule(Module):
             self.toggle_wires(_RECOB_CHANNELROI, stage=self._lsm.current_stage, producers=None)
 
         self._gi.process_event(True)
-        self.update()
+
+    def on_file_change(self):
+        ''' override of base class method to update reco boxes first '''
+        self.update_reco_boxes()
+        self.change_wire_choice()
 
     def update(self):
         if not self._draw_wires:
@@ -495,7 +534,6 @@ class TpcModule(Module):
         for plane_cryo, view in self._wire_views.items():
             view.drawPlane(self._wire_drawer.getPlane(*plane_cryo))
             view.setWrapperVisible(self._plane_frames.isChecked())
-            # np.save(f'{plane_cryo[0]}_{plane_cryo[1]}', self._wire_drawer.getPlane(*plane_cryo))
         
         if self._current_wire_drawer is not None:
             self._current_wire_drawer.show_waveform(wire=self._current_wire, tpc=self._current_tpc)
@@ -571,6 +609,10 @@ class TpcModule(Module):
 
             self._wire_drawer.set_producer(producer)
 
+    def grayscale(self):
+        cmap = 'grayscale' if self._grayScale.isChecked() else 'default'
+        for view in self._wire_views.values():
+            view.changeColorMap(colormaptype=cmap)
 
     def lock_aspect_ratio(self, lockstate):
         for view in self._wire_views.values():
@@ -585,6 +627,14 @@ class TpcModule(Module):
         self._show_scale_bar = chkstate
         for view in self._wire_views.values():
             view.toggleScale(chkstate)
+
+    def restore_defaults(self):
+        for view in self._wire_views.values():
+            view.restoreDefaults()
+            view.setRangeToMax()
+            view.uniteCathodes(False)
+            view.restoret0()
+            # self._t0slider.setValue(0)
     
     def use_cm(self, chkstate):
         for view in self._wire_views.values():
@@ -932,6 +982,8 @@ class WireView(pg.GraphicsLayoutWidget):
             self.restoreDefaults()
         self._drawingRawDigits = status
 
+    def changeColorMap(self, colormaptype='default'):
+        self.setColorMap(colormaptype)
 
     def toggleScale(self, scaleBool):
         # If there is a scale, remove it:

@@ -53,6 +53,7 @@ class Product:
 
 class GalleryInterface(QtCore.QObject):
     fileChanged = QtCore.pyqtSignal()
+    dirChanged = QtCore.pyqtSignal()
     eventChanged = QtCore.pyqtSignal()
 
     def __init__(self, file=None):
@@ -74,6 +75,11 @@ class GalleryInterface(QtCore.QObject):
 
         if file != None:
             self.setInputFiles(file)
+
+        self._current_file = ''
+        if file is not None:
+            self._current_file = file
+        self._current_directory = os.getcwd()
 
     def available_runs(self):
         '''
@@ -197,6 +203,19 @@ class GalleryInterface(QtCore.QObject):
         f = [file, ]
         self.set_input_files(f)
 
+    @property
+    def current_file(self):
+        return self._current_file
+
+    @property
+    def current_directory(self):
+        return self._current_directory
+
+    @current_directory.setter
+    def current_directory(self, dirpath):
+        self._current_directory = dirpath
+        self.dirChanged.emit()
+
     def set_input_files(self, files):
         # reset the storage manager and process
         if self._gallery_event_handle is not None:
@@ -223,13 +242,19 @@ class GalleryInterface(QtCore.QObject):
                 continue
 
             # Finally, ping the file to see what is available to draw
-            self.ping_file(file)
+            try:
+                self.ping_file(file)
+            except OSError:
+                print(f"\033[91m WARNING\033[0m Could not open {file}, skipping")
+                continue
+
             if len(self._keyTable['all']) > 0:
                 self._hasFile = True
                 _file_list.push_back(file)
 
 
         # Have to figure out number of events available
+        self._n_entries = 0
         for _f in _file_list:
             _rf = TFile(str(_f))
             _tree = _rf.Get("Events")
@@ -241,14 +266,19 @@ class GalleryInterface(QtCore.QObject):
         if _file_list.size() == 0:
             return
 
+        # TODO gallery supports vector of files chained together, but for now
+        # we only consider one file opened at a time
+        self._current_file = str(_file_list[0])
         self._gallery_event_handle = gallery.Event(_file_list)
 
-        # Open the manager
         self._lastProcessed = -1
+        self._event = 0
 
-        self.go_to_event(0)
-
+        # crucial to emit file change before setting event, to give modules
+        # a heads-up that they should expect different products in the file
+        # before processing the new event
         self.fileChanged.emit()
+        self.go_to_event(0)
 
 
     def get_stages(self):
@@ -358,10 +388,14 @@ class GalleryInterface(QtCore.QObject):
             self.eventChanged.emit()
 
     def go_to_event(self, event, subrun=None, run=None, force=False):
-        # Gallery events don't offer random access
-
-        # if rubrun and run are specified, then we are dealing with real (event, subrun, run)
-        # not an event index as usual. So first of all go from (event, subrun, run) to event index
+        '''
+        Gallery events don't offer random access
+        if rubrun and run are specified, then we are dealing with real (event,
+        subrun, run) not an event index as usual. So first of all go from
+        (event, subrun, run) to event index
+        '''
+        if self._gallery_event_handle is None:
+            return
         if subrun is not None and run is not None:
             try:
                 item = {'run': run, 'subrun': subrun, 'event': event}
@@ -390,8 +424,3 @@ class GalleryInterface(QtCore.QObject):
 
         self._event = self._gallery_event_handle.eventEntry()
         self.process_event()
-
-        # if self._view_manager != None:
-            # self._view_manager.drawPlanes(self)
-        # self.drawFresh()
-        self.eventChanged.emit()

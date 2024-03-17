@@ -29,17 +29,20 @@ class Drawable:
 
     @property
     def product_name(self):
-        return self._productName
+        return self._product_name
 
     @property
     def producer_name(self):
-        return self._producerName
+        return self._producer_name
 
     @producer_name.setter
     def producer_name(self, name):
         self._producer_name = name
 
     def analyze(self):
+        if self._gi.event_handle() is None:
+            return
+
         self.clearDrawnObjects()
 
         if self._process is None:
@@ -77,7 +80,6 @@ class Drawable:
                 self._process.setInput(str(producer))
         
         self._producer_name = producer
-        self.analyze()
 
     def init(self):
         self._process.initialize()

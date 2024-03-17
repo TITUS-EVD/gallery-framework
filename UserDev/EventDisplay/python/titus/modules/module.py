@@ -2,6 +2,7 @@
 
 """ Module base class for connecting GUI elements with gallery interface """
 
+import sys
 from PyQt5 import QtCore
 
 
@@ -15,7 +16,9 @@ class Module(QtCore.QObject):
         self._central_widget = None
         self._dock_widgets = set()
         self._active = True
-        self._settings = {}
+        self._settings = QtCore.QSettings()
+        self._settings_defaults = {}
+        self._settings_layout = None
 
         self._drawables = set()
         self._thread_pool = QtCore.QThreadPool()
@@ -33,12 +36,14 @@ class Module(QtCore.QObject):
         return self._name
 
     @property
-    def settings(self):
-        return self._settings
+    def settings_defaults(self):
+        return self._settings_defaults
 
-    def load_setting(self, setting):
-        # what to do when user starts the GUI and a module-specific setting
-        # was saved
+    @property
+    def settings_layout(self):
+        return self._settings_layout
+
+    def restore_from_settings(self):
         pass
 
     def is_active(self):
@@ -71,8 +76,7 @@ class Module(QtCore.QObject):
             self._update()
 
     def on_file_change(self):
-        if self._active:
-            self._update()
+        pass
 
     def _update(self):
         for d in self._drawables:
