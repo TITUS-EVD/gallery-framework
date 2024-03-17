@@ -54,8 +54,8 @@ class Module(QtCore.QObject):
         self._gui = gui
         self._gi = self._gui.gallery_interface
 
-        self._gi.eventChanged.connect(self.on_event_change)
-        self._gi.fileChanged.connect(self.on_file_change)
+        self._gi.eventChanged.connect(self._on_event_change)
+        self._gi.fileChanged.connect(self._on_file_change)
 
     def initialize(self):
         """
@@ -71,9 +71,20 @@ class Module(QtCore.QObject):
         pass
 
     # gallery interface event listeners
+    # wrap to block module update if it isn't active
+    # prevents interference between modules
+    def _on_event_change(self):
+        if not self._active:
+            return
+        self.on_event_change()
+    
     def on_event_change(self):
-        if self._active:
-            self._update()
+        self._update()
+
+    def _on_file_change(self):
+        if not self._active:
+            return
+        self.on_file_change()
 
     def on_file_change(self):
         pass

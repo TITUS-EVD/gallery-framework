@@ -1,4 +1,5 @@
 import os
+import sys
 
 from PyQt5 import QtCore
 
@@ -142,6 +143,7 @@ class GalleryInterface(QtCore.QObject):
         # Get all the (run, subrun, event) IDs
         self._run_list = []
         ev_aux_b = e.GetBranch("EventAuxiliary")
+
         for i in range(ev_aux_b.GetEntries()):
             ev_aux_b.GetEntry(i)
             ev_aux = e.EventAuxiliary
@@ -244,7 +246,7 @@ class GalleryInterface(QtCore.QObject):
             # Finally, ping the file to see what is available to draw
             try:
                 self.ping_file(file)
-            except OSError:
+            except (OSError, AttributeError):
                 print(f"\033[91m WARNING\033[0m Could not open {file}, skipping")
                 continue
 

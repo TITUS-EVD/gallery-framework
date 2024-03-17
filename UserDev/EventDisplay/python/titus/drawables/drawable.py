@@ -14,8 +14,8 @@ class Drawable:
 
     def __init__(self, gallery_interface, *args, **kwargs):
         self._gi = gallery_interface
-        self._gi.eventChanged.connect(self._on_event_changed)
-        self._gi.fileChanged.connect(self._on_file_changed)
+        self._gi.eventChanged.connect(self.on_event_changed)
+        self._gi.fileChanged.connect(self.on_file_changed)
 
         self._product_name = _NULL_NAME
         self._producer_name = _NULL_NAME
@@ -84,7 +84,12 @@ class Drawable:
     def init(self):
         self._process.initialize()
 
+    '''
     # non-public wrappers
+    # DEPRECATED since module is solely responsible for calling drawable.analyze
+    # i.e., drawable should not update based on receive the signal from
+    # gallery_interface but possibly useful for derived classes to do something
+    # else on those signals
     def _on_event_changed(self):
         if self.parent_module is None:
             return
@@ -101,6 +106,7 @@ class Drawable:
     def _on_file_changed(self):
         self.on_file_changed()
         self._on_event_changed()
+    '''
 
     def drawObjects(self):
         pass

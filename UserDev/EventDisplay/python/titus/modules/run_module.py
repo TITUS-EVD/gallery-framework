@@ -7,6 +7,8 @@ Also supports auto-updating from a folder
 import os, time
 import glob
 
+from ROOT import TFile
+
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from titus.modules import Module
@@ -27,8 +29,8 @@ class RunModule(Module):
         # provides fixed 1s updates to the GUI
         self._event_timer = QtCore.QTimer()
         self._ui_timer = QtCore.QTimer()
-        self._ui_timer.timeout.connect(self._auto_advance_timeout)
-        self._ui_timer.setInterval(1000)
+        self._ui_timer.timeout.connect(self._ui_timeout)
+        self._ui_timer.setInterval(100)
 
         self._settings_defaults = {
             _SET_AUTOADVANCE_MODE: 'Interval',
@@ -217,7 +219,7 @@ class RunModule(Module):
             self._nextfile_mode_newest.toggle()
 
     def init_auto_advance(self):
-        self._event_timer.timeout.connect(self._gi.next)
+        self._event_timer.timeout.connect(self._auto_advance_timeout)
         self._file_handler = FileMonitor(filedir=None, search_pattern='*.root',
                                          gallery_interface=self._gi, delay=self._settings_defaults[_SET_FILE_CHECK_INTERVAL])
         self._auto_advance_label = QtWidgets.QLabel()
@@ -228,6 +230,7 @@ class RunModule(Module):
             self._ui_timer.stop()
             self._gui.statusBar().removeWidget(self._auto_advance_label)
             self._auto_advance_label.hide()
+            self._file_handler.stop()
             return
         
         interval = int(self._settings.value(_SET_AUTOADVANCE_INTERVAL,
@@ -247,13 +250,21 @@ class RunModule(Module):
         self._auto_advance_label.show()
 
     def _auto_advance_timeout(self):
-        remaining_sec = self._event_timer.remainingTime() / 1000.
-
         # grab internal event counters from gallery interface
         evts = self._gi._n_entries
         this_evt = self._gi._event + 1
-        if this_evt == evts:
-            self._auto_advance_checkbox.setCheckState(False)
+        if this_evt < evts:
+            self._gi.next()
+        else:
+            # ask the file handler if there's a new file
+            self._file_handler.callback()
+            evts = self._gi._n_entries
+            this_evt = self._gi._event
+
+    def _ui_timeout(self):
+        evts = self._gi._n_entries
+        this_evt = self._gi._event + 1
+        remaining_sec = self._event_timer.remainingTime() / 1000.
         self._auto_advance_label.setText(f'Event: {this_evt}/{evts} Next event: {remaining_sec:.0f} s')
 
     def go_to_event(self):
@@ -324,6 +335,10 @@ class RunModule(Module):
 
 class FileMonitor:
     ''' Looks for new files for the live event display '''
+
+    _STATUS_NONE = ''
+    _STATUS_WAITING = 'Waiting for new files'
+
     def __init__(self, filedir, search_pattern, gallery_interface, delay=180, do_check=False, hours_alert=1):
         self._filedir = filedir
         self._search_pattern = search_pattern
@@ -332,9 +347,7 @@ class FileMonitor:
         self._delay = delay
         self._do_check = do_check
         self._hours_alert = hours_alert
-
-        self._first_time = True
-        self._current_file = ''
+        self._status = FileMonitor._STATUS_NONE
 
         # file opening mode: either "Sequential" to move to the next file
         # in order, or "Newest" to always skip to the newest file
@@ -342,12 +355,11 @@ class FileMonitor:
 
         self._timer = QtCore.QTimer()
         self._timer.setInterval(self._delay * 1000)
-        self._timer.timeout.connect(self._callback)
-
-        self._callback()
+        self._timer.timeout.connect(self._get_files)
 
         if self._do_check:
             self._start_timer()
+        self._files = []
 
     @property
     def delay(self):
@@ -379,11 +391,12 @@ class FileMonitor:
 
     def start(self):
         self._start_timer()
-        if self._first_time:
-            self._callback()
-            self._first_time = False
+        self._get_files()
 
-    def _callback(self):
+    def stop(self):
+        self._stop_timer()
+
+    def callback(self):
         # only go to next file if we are on the last event of the current one
         evts = self._gi._n_entries
         this_evt = self._gi._event + 1
@@ -393,47 +406,62 @@ class FileMonitor:
         if self._filedir is None:
             self._filedir = self._gi.current_directory
 
-        files = self._get_files()
-
-        if not len(files):
+        if not self._files:
             print(f'No files available in {self._filedir}!')
             return
 
-        if files[-1][0] == self._current_file:
-            print('No new file to draw.')
-            return
-
         if self._mode == 'Newest':
-            self._current_file = files[-1][0]
+            if self._files[-1][0] == self._gi.current_file:
+                self._status = FileMonitor._STATUS_WAITING
+                return
+
+            next_file = self._files[-1][0]
         else:
             # find the next file after the current one
-            current_file_time = os.path.getmtime(self._current_file)
-            ft = files[0][1]
+            current_file_time = os.path.getmtime(self._gi.current_file)
+            ft = self._files[0][1]
             idx = 0
-            while current_file_time > ft or idx >= len(files):
-                ft = files[idx][1]
+            while current_file_time >= ft and idx < len(self._files):
+                ft = self._files[idx][1]
                 idx += 1
 
-            if current_file_time > ft:
-                print('No new file to draw.')
+            if current_file_time >= ft:
+                self._status = FileMonitor._STATUS_WAITING
                 return
-            self._current_file = files[idx][0]
 
+        self.clear_status()
+        next_file = self._files[idx][0]
 
-        print("Switching to file ", self._current_file)
-        self._gi.set_input_file(self._current_file)
-
-        self._check_time(self._current_file)
+        print("Switching to file ", next_file)
+        self._gi.set_input_file(next_file)
+        self._check_time(next_file)
 
     def _get_files(self):
         '''
         Gets all the files in dir _filedir in order of creation (latest last)
         '''
 
+        current_file_time = os.path.getmtime(self._gi.current_file)
+
         files = list(filter(os.path.isfile, glob.glob(self._filedir + '/' + self._search_pattern)))
-        times = [os.path.getmtime(x) for x in files]
-        files = sorted(zip(files, times), key=lambda x: x[1])
-        return files
+        self._files = []
+        for f in files:
+            if os.path.getmtime(f) < current_file_time:
+                continue
+
+            # make sure this is an artroot file
+            # TODO essentially copies the check from ping_file in
+            # gallery_interface. make the method in gallery interface const to
+            # avoid the duplication
+            try:
+                tf = TFile(f)
+                e = tf.Get("Events")
+                ev_aux_b = e.GetBranch("EventAuxiliary")
+            except (OSError, AttributeError):
+                print(f"\033[91m WARNING\033[0m Could not open {f}, skipping")
+                continue
+
+            self._files.append([f, os.path.getmtime(f)])
 
     def _check_time(self, file):
         '''
@@ -460,3 +488,10 @@ class FileMonitor:
     def _stop_timer(self):
         if self._timer.isActive():
             self._timer.stop()
+
+    @property
+    def status(self):
+        return self._status
+
+    def clear_status(self):
+        self._status = FileMonitor._STATUS_NONE

@@ -209,14 +209,12 @@ class Gui(QtWidgets.QMainWindow):
         if module_type in self._modules:
             raise ValueError('attempt to add multiple modules of the same class with add_module')
         
-
         module.connect_gui(self)
         module.initialize()
         module.restore_from_settings()
 
         if (x := module.settings_layout) is not None:
             self._settings_dialog.add_settings_layout(module.name, x)
-        
         
         self._modules[module_type] = module
 

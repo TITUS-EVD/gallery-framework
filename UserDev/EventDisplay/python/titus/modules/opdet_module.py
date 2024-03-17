@@ -165,6 +165,24 @@ class OpDetModule(Module):
 
         main_layout.addStretch()
 
+    def update_reco_boxes(self):
+        ''' update all the product boxes when the file or larsoft stage changes '''
+        current_wfm_choice = self._wfm_choice.selected_products()
+        products = self._gi.get_products(_RAW_OPDETWAVEFORM, self._lsm.current_stage)
+        self._wfm_choice.set_products(products)
+        for c in current_wfm_choice:
+            self._wfm_choice.select(c)
+        if not products and self._show_raw_btn.isChecked():
+            self._show_none_btn.toggle()
+        
+        current_opflash_choice = self._flash_choice.selected_products()
+        products = self._gi.get_products(_RECOB_OPFLASH)
+        self._flash_choice.set_products(products)
+        for c in current_opflash_choice:
+            self._flash_choice.select(c)
+        if not products and self._show_flash_btn.isChecked():
+            self._show_none_btn.toggle()
+
     def viewSelectionWorker(self):
         self._wf_view.setVisible(False)
         for view in self._opdet_views:
@@ -181,6 +199,13 @@ class OpDetModule(Module):
                 self._opdet_views[i].setVisible(True)
 
     def _raw_flash_switch_worker(self):
+        self.remove_drawable(self._opdet_wf_drawer)
+        self._opdet_wf_drawer = None
+        for _, drawer in self._flash_drawers.items():
+            self.remove_drawable(drawer)
+            drawer.clearDrawnObjects()
+        self._flash_drawers = {}
+        
         if self._show_none_btn.isChecked():
             self.toggle_opdets(None)
         elif self._show_raw_btn.isChecked():
@@ -189,23 +214,28 @@ class OpDetModule(Module):
             self.toggle_opdets(_RECOB_OPFLASH, stage=self._lsm.current_stage, producers=None)
 
         self._gi.process_event(True)
-        self.update()
 
     def toggle_opdets(self, product, stage=None, producers=None):
-        if self._flash_drawers:
+        def clear_flash_drawers():
             for _, drawer in self._flash_drawers.items():
                 drawer.clearDrawnObjects()
+                self.remove_drawable(drawer)
 
-        if product is None:
+        def clear_opdet_wf_drawer():
             self.remove_drawable(self._opdet_wf_drawer)
             self._opdet_wf_drawer = None
+
+        if product is None:
+            clear_flash_drawers()
+            clear_opdet_wf_drawer()
             return
 
         all_producers = self._gi.get_producers(product, stage)
-        if all_producers is None:
-            return
 
         if product == _RAW_OPDETWAVEFORM:
+            if all_producers is None:
+                clear_opdet_wf_drawer()
+                return
             # set up waveform drawer
             if self._opdet_wf_drawer is None:
                 products = self._gi.get_products(_DRAWABLE_LIST['OpDetWaveform'][1],
@@ -217,6 +247,9 @@ class OpDetModule(Module):
             self._opdet_wf_drawer.set_producer(producer)
 
         elif product == _RECOB_OPFLASH:
+            if all_producers is None:
+                clear_flash_drawers()
+                return
             producers = self._flash_choice.selected_products()
             if producers is None:
                 for _, drawer in self._flash_drawers:
@@ -247,7 +280,6 @@ class OpDetModule(Module):
                 new_flash_drawers[producer] = drawer
                
             self._flash_drawers = new_flash_drawers
-            print(self._flash_drawers)
             for producer, drawer in self._flash_drawers.items():
                 print('set producer', producer)
                 drawer.set_producer(producer)
@@ -285,6 +317,11 @@ class OpDetModule(Module):
             self._pmts.append(these_pmts)
             self._arapucas.append(these_arapucas)
             self._opdetscales.append(this_scale)
+
+    def on_file_change(self):
+        ''' override of base class method to update available products first '''
+        self.update_reco_boxes()
+        self._raw_flash_switch_worker()
 
     def update(self):
         if self._opdet_wf_drawer is not None:

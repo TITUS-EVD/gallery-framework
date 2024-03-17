@@ -84,7 +84,6 @@ class TpcModule(Module):
         # anything
         self._gm.geometryChanged.connect(self.init_tpc_controls)
         self._gm.geometryChanged.connect(self.init_tpc_views)
-        self._gi.fileChanged.connect(self.update_reco_boxes)
 
     def init_tpc_views(self):
         # TODO remove wire views from central widget if they exist (in the case
@@ -377,12 +376,16 @@ class TpcModule(Module):
         self._wire_choice.set_products(products)
         for c in current_wire_choice:
             self._wire_choice.select(c)
+        if not products and self._wire_button.isChecked():
+            self._none_wire_button.toggle()
 
         current_rawdigit_choice = self._raw_digit_choice.selected_products()
         products = self._gi.get_products(_RAW_RAWDIGIT, self._lsm.current_stage)
         self._raw_digit_choice.set_products(products)
         for c in current_rawdigit_choice:
             self._raw_digit_choice.select(c)
+        if not products and self._raw_digit_button.isChecked():
+            self._none_wire_button.toggle()
 
         if self._gm.current_geom.name() == 'icarus':
             current_channelroi_choice = self._channel_roi_choice.selected_products()
@@ -390,6 +393,8 @@ class TpcModule(Module):
             self._channel_roi_choice.set_products(products)
             for c in current_channelroi_choice:
                 self._channel_roi_choice.select(c)
+            if not products and self._channel_roi_button.isChecked():
+                self._none_wire_button.toggle()
 
         for box, drawable in self._product_box_map.items():
             current_producer = box.currentProducer()
@@ -474,8 +479,8 @@ class TpcModule(Module):
             self._product_box_map[sender].drawObjects()
             return
 
-        # TODO are these next lines needed?
-        self._gi.process_event()
+        # TODO untested if automatic event switching when reco products drawn
+        # self._gi.process_event()
         
         # self._gi.redrawProduct(self._gm.current_geom, sender.name(), prod, self)
         self.specialHandles(sender.name(), visible)
