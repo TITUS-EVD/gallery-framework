@@ -64,6 +64,7 @@ class GalleryInterface(QtCore.QObject):
 
         self._keyTable = {}
         self._drawnClasses = {}
+        self._lastProcessed = -1
 
         self._n_entries = 0
 
@@ -72,7 +73,7 @@ class GalleryInterface(QtCore.QObject):
 
         self._run = 0
         self._subrun = 0
-        self._event = 0
+        self._entry = 0
 
         if file != None:
             self.setInputFiles(file)
@@ -271,10 +272,12 @@ class GalleryInterface(QtCore.QObject):
         # TODO gallery supports vector of files chained together, but for now
         # we only consider one file opened at a time
         self._current_file = str(_file_list[0])
+        self._current_directory = os.path.dirname(self._current_file)
+
         self._gallery_event_handle = gallery.Event(_file_list)
 
         self._lastProcessed = -1
-        self._event = 0
+        self._entry = 0
 
         # crucial to emit file change before setting event, to give modules
         # a heads-up that they should expect different products in the file
@@ -373,20 +376,20 @@ class GalleryInterface(QtCore.QObject):
     def next(self):
         # print "Called next"
         # Check that this isn't the last event:
-        if self._event < self._n_entries - 1:
-            self.go_to_event(self._event + 1)
+        if self._entry < self._n_entries - 1:
+            self.go_to_event(self._entry + 1)
         else:
             print("On the last event, can't go to next.")
 
     def prev(self):
-        if self._event != 0:
-            self.go_to_event(self._event - 1)
+        if self._entry != 0:
+            self.go_to_event(self._entry - 1)
         else:
             print("On the first event, can't go to previous.")
 
     def process_event(self, force=False):
-        if self._lastProcessed != self._event or force:
-            self._lastProcessed = self._event
+        if self._lastProcessed != self._entry or force:
+            self._lastProcessed = self._entry
             self.eventChanged.emit()
 
     def go_to_event(self, event, subrun=None, run=None, force=False):
@@ -409,11 +412,11 @@ class GalleryInterface(QtCore.QObject):
 
         # Loop through until the event is gotten:
         if event < self._n_entries:
-            if event == self._event + 1:
+            if event == self._entry + 1:
                 self._gallery_event_handle.next()
 
             else:
-                if event > self._event:
+                if event > self._entry:
                     while event != self._gallery_event_handle.eventEntry():
                         self._gallery_event_handle.next()
                 else:
@@ -424,5 +427,5 @@ class GalleryInterface(QtCore.QObject):
             print(f"Selected event is too high. You have requested event {event}, but there is a maximum of {self._n_entries}.")
             return
 
-        self._event = self._gallery_event_handle.eventEntry()
+        self._entry = self._gallery_event_handle.eventEntry()
         self.process_event()

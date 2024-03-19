@@ -50,6 +50,7 @@ class RunModule(Module):
         self._autoadvance_mode_timestamp.toggled.connect(
             lambda x: self._settings.setValue(_SET_AUTOADVANCE_MODE, 'Timestamp') if x else 0
         )
+        self._autoadvance_mode_timestamp.setEnabled(False)
 
         self._btngrp = QtWidgets.QButtonGroup()
         self._btngrp.addButton(self._autoadvance_mode_interval)
@@ -60,7 +61,7 @@ class RunModule(Module):
         self._settings_layout.addWidget(self._autoadvance_mode_interval, 0, 1, 1, 1)
         self._settings_layout.addWidget(self._autoadvance_mode_timestamp, 0, 2, 1, 1)
 
-        label2 = QtWidgets.QLabel(_SET_AUTOADVANCE_INTERVAL.split('/')[1])
+        label2 = QtWidgets.QLabel(f'{_SET_AUTOADVANCE_INTERVAL.split("/")[1]} (s)')
         self._autoadvance_interval = QtWidgets.QSpinBox()
         self._autoadvance_interval.setRange(5, 600)
         self._autoadvance_interval.setSingleStep(1)
@@ -90,7 +91,7 @@ class RunModule(Module):
         self._settings_layout.addWidget(self._nextfile_mode_sequential, 2, 1, 1, 1)
         self._settings_layout.addWidget(self._nextfile_mode_newest, 2, 2, 1, 1)
 
-        label3 = QtWidgets.QLabel(_SET_FILE_CHECK_INTERVAL.split('/')[1])
+        label3 = QtWidgets.QLabel(f'{_SET_FILE_CHECK_INTERVAL.split("/")[1]} (s)')
         self._new_file_check_interval = QtWidgets.QSpinBox()
         self._new_file_check_interval.setRange(10, 600)
         self._new_file_check_interval.setSingleStep(1)
@@ -252,18 +253,18 @@ class RunModule(Module):
     def _auto_advance_timeout(self):
         # grab internal event counters from gallery interface
         evts = self._gi._n_entries
-        this_evt = self._gi._event + 1
+        this_evt = self._gi._entry + 1
         if this_evt < evts:
             self._gi.next()
         else:
             # ask the file handler if there's a new file
             self._file_handler.callback()
             evts = self._gi._n_entries
-            this_evt = self._gi._event
+            this_evt = self._gi._entry
 
     def _ui_timeout(self):
         evts = self._gi._n_entries
-        this_evt = self._gi._event + 1
+        this_evt = self._gi._entry + 1
         remaining_sec = self._event_timer.remainingTime() / 1000.
         self._auto_advance_label.setText(f'Event: {this_evt}/{evts} Next event: {remaining_sec:.0f} s')
 
@@ -280,6 +281,13 @@ class RunModule(Module):
 
     def update(self):
         ''' Sets the text boxes correctly '''
+
+        # disable next/back buttons to indicate end or beginning of file
+        evts = self._gi._n_entries
+        this_evt = self._gi._entry + 1
+        self._next_button.setEnabled(this_evt < evts)
+        self._prev_button.setEnabled(this_evt > 1)
+
         self._larlite_event_entry.setText(str(self._gi.event()))
 
         self._event_label.setText(f'Event: {self._gi.event()}')
@@ -288,10 +296,14 @@ class RunModule(Module):
 
         self._file_label.setText(f'File: {os.path.basename(self._gi.current_file)}')
 
-        # directory: Display current absolute otherwise relative to current
+        # directory: Display current absolute, otherwise shorter of 
+        # relpath and absolute path
         dir_path = os.getcwd()
         if (x := os.path.relpath(self._gi.current_directory)) != '.':
-            dir_path = x
+            if len(x) > len(self._gi.current_directory):
+                dir_path = self._gi.current_directory
+            else:
+                dir_path = x
         self._dir_label.setText(f'Scan dir.: {dir_path}')
 
         self.setupEventRunSubrun()
@@ -399,7 +411,7 @@ class FileMonitor:
     def callback(self):
         # only go to next file if we are on the last event of the current one
         evts = self._gi._n_entries
-        this_evt = self._gi._event + 1
+        this_evt = self._gi._entry + 1
         if this_evt < evts:
             return
 
@@ -410,9 +422,11 @@ class FileMonitor:
             print(f'No files available in {self._filedir}!')
             return
 
+        next_file = None
         if self._mode == 'Newest':
             if self._files[-1][0] == self._gi.current_file:
                 self._status = FileMonitor._STATUS_WAITING
+                print(self._status)
                 return
 
             next_file = self._files[-1][0]
@@ -427,10 +441,15 @@ class FileMonitor:
 
             if current_file_time >= ft:
                 self._status = FileMonitor._STATUS_WAITING
+                print(self._status)
                 return
+            next_file = self._files[idx - 1][0]
+
+        if next_file is None:
+            print('Warning: Next file was not set')
+            return
 
         self.clear_status()
-        next_file = self._files[idx][0]
 
         print("Switching to file ", next_file)
         self._gi.set_input_file(next_file)
