@@ -155,7 +155,7 @@ class RunModule(Module):
         event_layout = QtWidgets.QHBoxLayout()
         event_layout.addWidget(QtWidgets.QLabel('Go to:'))
         event_layout.addWidget(self._larlite_event_entry)
-        main_layout.addLayout(event_layout)
+        # main_layout.addLayout(event_layout)
 
         self._run_entry = QtWidgets.QLineEdit()
         self._run_entry.setPlaceholderText('Run')
@@ -164,6 +164,7 @@ class RunModule(Module):
         self._event_entry = QtWidgets.QLineEdit()
         self._event_entry.setPlaceholderText('Event')
         self._goto_button = QtWidgets.QPushButton('Go')
+        self._goto_button.clicked.connect(self.go_to_run_subrun_event)
         run_entry_layout = QtWidgets.QHBoxLayout()
         run_entry_layout.addWidget(self._run_entry)
         run_entry_layout.addWidget(self._subrun_entry)
@@ -279,7 +280,17 @@ class RunModule(Module):
             self._larlite_event_entry.setText(str(self._event_manager.event()))
             return
         
+        print(f'Going to event {event}')
         self._gi.go_to_event(event)
+
+    def go_to_run_subrun_event(self):
+        """ helper function for parsing text box """
+        run = int(self._run_entry.text())
+        subrun = int(self._subrun_entry.text())
+        event = int(self._event_entry.text())
+        
+        print(f'Going to event {event}, {subrun}, {subrun}')
+        self._gi.go_to_event(event, subrun, run)
 
     def update(self):
         ''' Sets the text boxes correctly '''

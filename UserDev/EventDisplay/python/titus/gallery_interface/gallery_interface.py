@@ -418,6 +418,7 @@ class GalleryInterface(QtCore.QObject):
         (event, subrun, run) to event index
         '''
         if self._gallery_event_handle is None:
+            print('No _gallery_event_handle')
             return
         if subrun is not None and run is not None:
             try:
@@ -426,6 +427,7 @@ class GalleryInterface(QtCore.QObject):
                 print('This combination does not exist:', item)
                 return
             event = self._run_list.index(item)
+            print(f'Found event {event}')
 
 
         # Loop through until the event is gotten:
