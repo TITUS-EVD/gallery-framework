@@ -172,8 +172,10 @@ class RunModule(Module):
         main_layout.addLayout(run_entry_layout)
 
         # file/directory labels
+        self._time_label = ElidedLabel('Time: None')
         self._file_label = ElidedLabel('File: None')
         self._dir_label = ElidedLabel('Directory: None')
+        main_layout.addWidget(self._time_label)
         main_layout.addWidget(self._file_label)
         main_layout.addWidget(self._dir_label)
 
@@ -294,6 +296,7 @@ class RunModule(Module):
         self._run_label.setText(f'Run: {self._gi.run()}')
         self._subrun_label.setText(f'Subrun: {self._gi.subrun()}')
 
+        self._time_label.setText(f'Time: {self._gi.date()}')
         self._file_label.setText(f'File: {os.path.basename(self._gi.current_file)}')
 
         # directory: Display current absolute, otherwise shorter of 

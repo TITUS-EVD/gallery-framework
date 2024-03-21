@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime, timezone
 
 from PyQt5 import QtCore
 
@@ -371,6 +372,23 @@ class GalleryInterface(QtCore.QObject):
         if self._gallery_event_handle is None:
             return 0
         return self._gallery_event_handle.eventAuxiliary().subRun()
+
+    def datetime(self):
+        if self._gallery_event_handle is None:
+            return 0
+        ts = self._gallery_event_handle.eventAuxiliary().time().value()
+
+        # Get the timestamp: https://github.com/LArSoft/lareventdisplay/blob/6cbc95e04f8b8fd1639d14f7ef0ad37841962027/lareventdisplay/EventDisplay/HeaderDrawer.cxx#L41
+        mask32 = 0xFFFFFFFF
+        timestamp_s = (ts >> 32) & mask32
+        timestamp_us = ts & mask32
+
+        return datetime.fromtimestamp(timestamp_s, timezone.utc)
+
+    def date(self):
+        dt = self.datetime()
+
+        return dt.strftime("%B %d, %Y - %H:%M:%S UTC")
 
     # override the functions from manager as needed here
     def next(self):
