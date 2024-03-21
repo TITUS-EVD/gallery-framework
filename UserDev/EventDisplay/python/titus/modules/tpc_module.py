@@ -910,31 +910,51 @@ class WireView(pg.GraphicsLayoutWidget):
         self._cmap.setMaximumWidth(25)
         self._lowerLevel.setMaximumWidth(35)
 
-        # The name of the viewport with appropriate tooltip
-        name = 'View '
-        name += self._geometry.viewNames()[plane]
-        name += ', Cryo '
-        name += str(cryostat)
-        self._viewport_name = VerticalLabel(name)
-        self._viewport_name.setStyleSheet('color: rgb(169,169,169);')
-        tooltip = 'Bottom view is for TPC 0, top view is for TPC 1. '
-        tooltip += 'Note that the vaweforms in TPC 1 are flipped in time '
-        tooltip += 'so as to retain the same x direction as in TPC 0. '
-        if self._geometry.viewNames()[plane] == 'U':
-            tooltip += 'NOTE: bottom image is plane 1 for TPC 0 '
-            tooltip += 'but top image is plane 2 for TPC 1'
-        if self._geometry.viewNames()[plane] == 'V':
-            tooltip += 'NOTE: bottom image is plane 2 for TPC 0 '
-            tooltip += 'but top image is plane 1 for TPC 1.'
-        self._viewport_name.setToolTip(tooltip)
-        self._viewport_name.setMaximumWidth(25)
+        # tooltip = 'Bottom view is for TPC 0, top view is for TPC 1. '
+        # tooltip += 'Note that the vaweforms in TPC 1 are flipped in time '
+        # tooltip += 'so as to retain the same x direction as in TPC 0. '
+        # if self._geometry.viewNames()[plane] == 'U':
+        #     tooltip += 'NOTE: bottom image is plane 1 for TPC 0 '
+        #     tooltip += 'but top image is plane 2 for TPC 1'
+        # if self._geometry.viewNames()[plane] == 'V':
+        #     tooltip += 'NOTE: bottom image is plane 2 for TPC 0 '
+        #     tooltip += 'but top image is plane 1 for TPC 1.'
+        # self._viewport_name_low.setToolTip(tooltip)
+
+        view = self._geometry.viewNames()[plane]
+        if view == 'Y':
+            plane = 2
+        elif view == 'U':
+            plane = 0
+        elif view == 'V':
+            plane = 1
+        name = f'TPC East, Plane {plane}'
+        self._viewport_name_low = VerticalLabel(name)
+        self._viewport_name_low.setStyleSheet('color: rgb(169,169,169);')
+        self._viewport_name_low.setMaximumWidth(25)
+
+        if view == 'Y':
+            plane = 2
+        elif view == 'U':
+            plane = 1
+        elif view == 'V':
+            plane = 0
+        name = f'TPC West, Plane {plane}'
+        self._viewport_name_up = VerticalLabel(name)
+        self._viewport_name_up.setStyleSheet('color: rgb(169,169,169);')
+        self._viewport_name_up.setMaximumWidth(25)
 
         colors = QtWidgets.QVBoxLayout()
         colors.addWidget(self._upperLevel)
         colors.addWidget(self._cmap)
         colors.addWidget(self._lowerLevel)
+
+        names = QtWidgets.QVBoxLayout()
+        names.addWidget(self._viewport_name_up)
+        names.addWidget(self._viewport_name_low)
+
         self._totalLayout = QtWidgets.QHBoxLayout()
-        self._totalLayout.addWidget(self._viewport_name)
+        self._totalLayout.addLayout(names)
         self._totalLayout.addWidget(self)
         self._totalLayout.addLayout(colors)
 
