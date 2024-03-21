@@ -421,12 +421,12 @@ class GalleryInterface(QtCore.QObject):
             print('No _gallery_event_handle')
             return
         if subrun is not None and run is not None:
+            item = {'run': run, 'subrun': subrun, 'event': event}
             try:
-                item = {'run': run, 'subrun': subrun, 'event': event}
-            except:
-                print('This combination does not exist:', item)
+                event = self._run_list.index(item)
+            except ValueError:
+                print('Tried to go to invalid run, subrun, event: ', item)
                 return
-            event = self._run_list.index(item)
             print(f'Found event {event}')
 
 
