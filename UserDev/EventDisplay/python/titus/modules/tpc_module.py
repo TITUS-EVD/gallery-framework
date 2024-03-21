@@ -259,7 +259,7 @@ class TpcModule(Module):
         self._subtractPedestal = QtWidgets.QCheckBox("Subtract Pedestal")
         self._subtractPedestal.setToolTip("Subtracts the pedestal from RawDigits. You will need to adjust the range.")
         self._subtractPedestal.setTristate(False)
-        self._subtractPedestal.setCheckState(QtCore.Qt.Checked)
+        # self._subtractPedestal.setCheckState(QtCore.Qt.Checked)
         # self._subtractPedestal.stateChanged.connect(self.subtractPedestalWorker)
 
         # add a box to restore the drawing defaults:
