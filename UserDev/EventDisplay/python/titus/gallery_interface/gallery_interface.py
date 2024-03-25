@@ -375,7 +375,7 @@ class GalleryInterface(QtCore.QObject):
 
     def datetime(self):
         if self._gallery_event_handle is None:
-            return 0
+            return None
         ts = self._gallery_event_handle.eventAuxiliary().time().value()
 
         # Get the timestamp: https://github.com/LArSoft/lareventdisplay/blob/6cbc95e04f8b8fd1639d14f7ef0ad37841962027/lareventdisplay/EventDisplay/HeaderDrawer.cxx#L41
@@ -387,7 +387,8 @@ class GalleryInterface(QtCore.QObject):
 
     def date(self):
         dt = self.datetime()
-
+        if dt is None:
+            return 'No event selected'
         return dt.strftime("%B %d, %Y - %H:%M:%S UTC")
 
     # override the functions from manager as needed here

@@ -11,7 +11,7 @@ import numpy as np
 import pyqtgraph as pg 
 from pyqtgraph import ViewBox, Point
 from PyQt5 import QtWidgets, QtGui, QtCore
-import PIL
+from PIL import ImageColor
 
 from titus.modules import Module
 from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar
@@ -35,6 +35,12 @@ _DRAWABLE_LIST = {
 _RECOB_WIRE = 'recob::Wire'
 _RECOB_CHANNELROI = 'recob::ChannelROI'
 _RAW_RAWDIGIT = 'raw::RawDigit'
+
+_MAX_WIRE_WAVEFORMS = 5
+# tab10 from matplotlib
+_WIRE_COLOR_CYCLE = [QtGui.QColor(*ImageColor.getcolor(h, 'RGB')) for h in \
+                    [ '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                     '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf' ]]
 
 
 class TpcModule(Module):
@@ -69,8 +75,8 @@ class TpcModule(Module):
         self._show_scale_bar = False
         self._selected_planes = [-1]
         self._selected_cryos = [-1]
-        self._current_wire = 0
         self._current_wire_drawer = None
+        self._current_wire = -1
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -415,8 +421,11 @@ class TpcModule(Module):
         self._wireDrawerMain = pg.GraphicsLayoutWidget()
         self._wireDrawerMain.setBackground('w')
         self._wirePlot = self._wireDrawerMain.addPlot()
-        self._wirePlotItem = pg.PlotDataItem(pen=(0,0,0))
-        self._wirePlot.addItem(self._wirePlotItem)
+        self._wirePlot.addLegend()
+        self._wirePlotItems = {}
+        # pg.PlotDataItem(pen=(0,0,0))
+        # self._wirePlot.addItem(self._wirePlotItem)
+
         # self._wireDrawerMain.setMaximumHeight(250)
         self._wireDrawerMain.setMinimumHeight(100)
         self._wireDrawerMain.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, \
@@ -441,11 +450,16 @@ class TpcModule(Module):
         self._right_wire_button = QtWidgets.QPushButton("Next Wire")
         self._right_wire_button.clicked.connect(self.change_wire)
         self._right_wire_button.setToolTip("Show the next wire.")
+        self._clear_wire_button = QtWidgets.QPushButton("Clear Wires")
+        self._clear_wire_button.clicked.connect(self.clear_wires)
+        self._clear_wire_button.setToolTip("Clear selected wires")
+
         self._wire_drawer_button_layout = QtWidgets.QHBoxLayout()
-        self._wire_drawer_button_layout.addWidget(self._fftButton)
-        self._wire_drawer_button_layout.addStretch()
         self._wire_drawer_button_layout.addWidget(self._left_wire_button)
         self._wire_drawer_button_layout.addWidget(self._right_wire_button)
+        self._wire_drawer_button_layout.addWidget(self._fftButton)
+        self._wire_drawer_button_layout.addStretch()
+        self._wire_drawer_button_layout.addWidget(self._clear_wire_button)
 
         self._wireDrawerVLayout = QtWidgets.QVBoxLayout()
         self._wireDrawerVLayout.addLayout(self._wireDrawerLayout)
@@ -507,7 +521,23 @@ class TpcModule(Module):
         else:
             wire = self._current_wire + 1
 
-        self._current_wire_drawer.show_waveform(wire=wire, tpc=self._current_tpc)
+        if (self._current_tpc, wire) in self._wirePlotItems:
+            # user is requesting to draw a wire which is already shown, avoid
+            # showing the same wire twice
+            return
+
+        if (self._current_tpc, self._current_wire) in self._wirePlotItems:
+            # replace the wire at idx instead of adding a new wire
+            replace_idx = self._wirePlotItems[(self._current_tpc, self._current_wire)]['idx']
+
+        self._current_wire_drawer.show_waveform(wire=wire, tpc=self._current_tpc, replace_idx=replace_idx)
+
+    def clear_wires(self):
+        for _, item in self._wirePlotItems.items():
+            self._wirePlot.removeItem(item['plot'])
+
+        self._wirePlotItems = {}
+        self._current_wire = -1
 
     def change_wire_choice(self):
         # reset the wire drawer regardless of what happens next
@@ -541,7 +571,12 @@ class TpcModule(Module):
             view.setWrapperVisible(self._plane_frames.isChecked())
         
         if self._current_wire_drawer is not None:
-            self._current_wire_drawer.show_waveform(wire=self._current_wire, tpc=self._current_tpc)
+            # do this in two steps since self._wirePlotItems will be changed
+            # during call to show_waveform
+            updated_vals = [{'wire': key[1], 'tpc': key[0], 'replace_idx': item['idx']} \
+                            for key, item in self._wirePlotItems.items()]
+            for d in updated_vals:
+                self._current_wire_drawer.show_waveform(**d)
 
 
     def toggle_wires(self, product, stage=None, subtract_pedestal=True, producers=None):
@@ -726,7 +761,9 @@ class TpcModule(Module):
                 view.toggleLogo(self._show_logo)
                 view.toggleScale(self._show_scale_bar)
 
-    def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None):
+    def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None, replace_idx=None):
+        # for next & previous wire: set update_idx so that the wire isn't
+        # treated as a new line & instead replaces the preceding wire
         # Need to draw a wire on the wire view
         # Don't bother if the view isn't active:
         if not self._wire_waveform_widget.isVisible():
@@ -737,14 +774,49 @@ class TpcModule(Module):
         if tpc % 2 != 0:
             self._wireData = np.flip(self._wireData)
         
-        self._wirePlotItem.setData(wireData)
+        # must store data of each selected wire for FFT
+        iwire = len(self._wirePlotItems) % _MAX_WIRE_WAVEFORMS
+        if replace_idx is None:
+            if (tpc, wire) in self._wirePlotItems:
+                # wire is already drawn
+                return
+
+            if len(self._wirePlotItems) + 1 > _MAX_WIRE_WAVEFORMS:
+                # removes the oldest wire from the plot
+                item = self._wirePlotItems.pop(next(iter(self._wirePlotItems)))
+                self._wirePlot.removeItem(item['plot'])
+                iwire = item['idx']
+        else:
+            # remove the wire plot at idx & use same idx for the new wire
+            iwire = replace_idx
+            for key, d in self._wirePlotItems.items():
+                if d['idx'] == replace_idx:
+                    self._wirePlot.removeItem(d['plot'])
+                    del self._wirePlotItems[key]
+                    break
+            
+        self._wirePlotItems[(tpc, wire)] = {
+            'plot': pg.PlotDataItem(name=f'C: {cryo} T: {tpc} P: {plane} W: {wire}', pen=pg.mkPen(_WIRE_COLOR_CYCLE[iwire])),
+            'data': wireData,
+            'idx': iwire
+        }
+
+        # to keep the legend in the correct order...
+        self._wirePlot.clear()
+        for item in sorted(self._wirePlotItems.values(), key=lambda x: x['idx']):
+            self._wirePlot.addItem(item['plot'])
+
+        self._wirePlotItems[(tpc, wire)]['plot'].setData(wireData)
         # update the label
-        name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
-        # self._wireDrawer_name.setText(name)
-        self._wirePlot.setTitle(name)
+        # name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
+        # self._wirePlot.setTitle(name)
         self._wirePlot.setLabel(axis='bottom', text="Time")
-        self._wirePlot.autoRange()
+
+        # only autorange if we are adding the first wire, otherwise keep current view
         self.plotFFT()
+        if len(self._wirePlotItems) == 1:
+            self._wirePlot.autoRange()
+
 
         # Store the viewport that just draw this
         # as we might need it to increase and
@@ -757,19 +829,24 @@ class TpcModule(Module):
         '''
         Take the fft of wire data and plot it in place of the wire signal
         '''
-        if self._wireData is None:
-            return
+        # if self._wireData is None:
+        #     return
 
-        if self._fftButton.isChecked():
-            fft = np.fft.rfft(self._wireData)
-            freqs = np.fft.rfftfreq(len(self._wireData),0.5E-3)
-            self._wirePlotItem.setData(freqs,np.absolute(fft))
+        do_fft = self._fftButton.isChecked()
+        if do_fft:
             self._wirePlot.setLabel(axis='bottom', text="Frequency")
         else:
-            self._wirePlotItem.setData(self._wireData)
             self._wirePlot.setLabel(axis='bottom', text="Time")
-        
-        self._wirePlot.autoRange()
+
+        for _, plot_data in self._wirePlotItems.items():
+            plot = plot_data['plot']
+            data = plot_data['data']
+            if do_fft:
+                fft = np.fft.rfft(data)
+                freqs = np.fft.rfftfreq(len(data),0.5E-3)
+                plot.setData(freqs,np.absolute(fft))
+            else:
+                plot.setData(data)
 
 
 class WireView(pg.GraphicsLayoutWidget):
@@ -1255,13 +1332,15 @@ class WireView(pg.GraphicsLayoutWidget):
         wire = int(self._lastPos.x())
         self.show_waveform(wire=wire, tpc=tpc)
 
-    def show_waveform(self, wire, tpc):
+    def show_waveform(self, wire, tpc, replace_idx=None):
         '''
         Shows the waveform on the wire drawer.
 
         Args:
             wire (int): The wire number
             tpc (int): The TPC number where the wire belongs to
+            replace_idx (int): Optional for replacing a currently-drawn wire
+                               instead of drawing a new one. Gets forwarded to _wdf
         '''
 
         if self._item.image is not None:
@@ -1282,7 +1361,8 @@ class WireView(pg.GraphicsLayoutWidget):
                 elif self._plane == 1:
                     plane = 0
 
-            self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc, cryo=self._cryostat, drawer=self)
+            self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc,\
+                      cryo=self._cryostat, drawer=self, replace_idx=replace_idx)
 
             # Make a request to draw the hits from this wire:
             self.drawHitsRequested.emit(self._plane, wire, tpc)
