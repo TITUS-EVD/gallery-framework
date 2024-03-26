@@ -476,9 +476,8 @@ class FileMonitor:
 
         current_file_time = os.path.getmtime(self._gi.current_file)
 
-        files = list(filter(os.path.isfile, glob.glob(self._filedir + '/' + self._search_pattern)))
         self._files = []
-        for f in files:
+        for f in filter(os.path.isfile, glob.glob(self._filedir + '/' + self._search_pattern)):
             if os.path.getmtime(f) < current_file_time:
                 continue
 
