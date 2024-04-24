@@ -266,10 +266,15 @@ class RunModule(Module):
             this_evt = self._gi._entry
 
     def _ui_timeout(self):
-        evts = self._gi._n_entries
-        this_evt = self._gi._entry + 1
         remaining_sec = self._event_timer.remainingTime() / 1000.
-        self._auto_advance_label.setText(f'Event: {this_evt}/{evts} Next event: {remaining_sec:.0f} s')
+        if self._gi.current_file != '':
+            evts = self._gi._n_entries
+            this_evt = self._gi._entry + 1
+            next_str = 'event' if this_evt < evts else 'file'
+
+            self._auto_advance_label.setText(f'Event: {this_evt}/{evts} Next {next_str}: {remaining_sec:.0f} s')
+        else:
+            self._auto_advance_label.setText(f'No files. Waiting: {remaining_sec:.0f} s')
 
     def go_to_event(self):
         """ helper function for parsing text box """
@@ -386,6 +391,8 @@ class FileMonitor:
         if self._do_check:
             self._start_timer()
         self._files = []
+        # keep track of files we tried to open, but couldn't
+        self._failed_cache = set()
 
     @property
     def delay(self):
@@ -437,6 +444,7 @@ class FileMonitor:
             return
 
         next_file = None
+        idx = -1
         if self._mode == 'Newest':
             if self._files[-1][0] == self._gi.current_file:
                 self._status = FileMonitor._STATUS_WAITING
@@ -444,20 +452,26 @@ class FileMonitor:
                 return
 
             next_file = self._files[-1][0]
+            idx = len(self._files) - 1
         else:
             # find the next file after the current one
-            current_file_time = os.path.getmtime(self._gi.current_file)
-            ft = self._files[0][1]
+            # _files is guaranteed non-empty here, so set idx = 0
             idx = 0
-            while current_file_time >= ft and idx < len(self._files):
-                ft = self._files[idx][1]
-                idx += 1
+            if self._gi.current_file != '':
+                current_file_time = os.path.getmtime(self._gi.current_file)
+                ft = self._files[0][1]
+                while current_file_time >= ft and idx < len(self._files):
+                    ft = self._files[idx][1]
+                    idx += 1
 
-            if current_file_time >= ft:
-                self._status = FileMonitor._STATUS_WAITING
-                print(self._status)
-                return
-            next_file = self._files[idx - 1][0]
+                if current_file_time >= ft:
+                    self._status = FileMonitor._STATUS_WAITING
+                    print(self._status)
+                    return
+                idx -= 1
+                next_file = self._files[idx][0]
+            else:
+                next_file = self._files[idx][0]
 
         if next_file is None:
             print('Warning: Next file was not set')
@@ -466,25 +480,32 @@ class FileMonitor:
         self.clear_status()
 
         print("Switching to file ", next_file)
-        self._gi.set_input_file(next_file)
-        self._check_time(next_file)
+        # file wasn't opened, remove from the list and try the next one
+        if not self._gi.set_input_file(next_file):
+            self._failed_cache.add(next_file)
+            del self._files[idx]
+            self.callback()
+        else:
+            self._check_time(next_file)
 
     def _get_files(self):
         '''
         Gets all the files in dir _filedir in order of creation (latest last)
         '''
 
-        current_file_time = os.path.getmtime(self._gi.current_file)
-
         self._files = []
         for f in filter(os.path.isfile, glob.glob(self._filedir + '/' + self._search_pattern)):
-            if os.path.getmtime(f) < current_file_time:
+            if f in self._failed_cache:
                 continue
+            # if os.path.getmtime(f) < current_file_time:
+            #     continue
 
             # make sure this is an artroot file
             # TODO essentially copies the check from ping_file in
             # gallery_interface. make the method in gallery interface const to
             # avoid the duplication
+            # this is slow!!! Very wasteful to check every file when creating the queue
+            '''
             try:
                 tf = TFile(f)
                 e = tf.Get("Events")
@@ -492,8 +513,16 @@ class FileMonitor:
             except (OSError, AttributeError):
                 print(f"\033[91m WARNING\033[0m Could not open {f}, skipping")
                 continue
+            '''
 
-            self._files.append([f, os.path.getmtime(f)])
+            self._files.append((f, os.path.getmtime(f)))
+        
+        if self._gi.current_file != '':
+            current_file_time = os.path.getmtime(self._gi.current_file)
+            self._files = [f for f in self._files if f[1] > current_file_time]
+        
+        self._files = sorted(self._files, key=lambda x: x[1])
+
 
     def _check_time(self, file):
         '''
@@ -515,6 +544,7 @@ class FileMonitor:
     def _start_timer(self):
         if self._timer.isActive():
             self._timer.stop()
+        self._failed_cache = set()
         self._timer.start()
 
     def _stop_timer(self):

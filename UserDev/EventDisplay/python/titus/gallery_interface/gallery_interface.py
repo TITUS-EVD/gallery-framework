@@ -203,9 +203,9 @@ class GalleryInterface(QtCore.QObject):
 
         f.Close()
 
-    def set_input_file(self, file):
+    def set_input_file(self, file) -> bool:
         f = [file, ]
-        self.set_input_files(f)
+        return self.set_input_files(f)
 
     @property
     def current_file(self):
@@ -220,14 +220,14 @@ class GalleryInterface(QtCore.QObject):
         self._current_directory = dirpath
         self.dirChanged.emit()
 
-    def set_input_files(self, files):
+    def set_input_files(self, files) -> bool:
         # reset the storage manager and process
         if self._gallery_event_handle is not None:
             del self._gallery_event_handle
             self._gallery_event_handle = None
 
         if files == None:
-            return
+            return False
 
         _file_list = ROOTvector(ROOTstring)()
 
@@ -239,7 +239,7 @@ class GalleryInterface(QtCore.QObject):
                     continue
             except (Exception, e):
                 print(e)
-                return
+                return False
             # Next, verify it is a root file:
             if not file.endswith(".root"):
                 print(f"\033[91m WARNING\033[0m {file} is not a .root file, skipping")
@@ -268,7 +268,7 @@ class GalleryInterface(QtCore.QObject):
 
         # Create an instance of the data manager:
         if _file_list.size() == 0:
-            return
+            return False
 
         # TODO gallery supports vector of files chained together, but for now
         # we only consider one file opened at a time
@@ -285,6 +285,7 @@ class GalleryInterface(QtCore.QObject):
         # before processing the new event
         self.fileChanged.emit()
         self.go_to_event(0)
+        return True
 
 
     def get_stages(self):
