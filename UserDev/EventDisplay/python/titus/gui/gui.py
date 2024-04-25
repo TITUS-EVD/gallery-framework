@@ -224,6 +224,8 @@ class Gui(QtWidgets.QMainWindow):
         if file_path == '':
             return
         self._gi.set_input_file(file_path)
+        if (x := os.path.dirname(file_path)) != '':
+            self._gi.current_directory = x
 
     def _on_open_dir_action(self):
         ''' Show file browser &allow user to open a new file '''

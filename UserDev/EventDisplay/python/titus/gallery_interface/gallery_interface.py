@@ -274,6 +274,9 @@ class GalleryInterface(QtCore.QObject):
         # we only consider one file opened at a time
         self._current_file = str(_file_list[0])
         self._current_directory = os.path.dirname(self._current_file)
+        # if the file has no dirname, assume it is meant to be in the current directory
+        if self._current_directory == '':
+            self._current_directory = os.getcwd()
 
         self._gallery_event_handle = gallery.Event(_file_list)
 
