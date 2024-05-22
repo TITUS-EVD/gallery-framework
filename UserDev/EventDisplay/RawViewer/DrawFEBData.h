@@ -16,6 +16,7 @@
 #define EVD_DRAWFEBData_H
 
 #include "Analysis/ana_base.h"
+#include "RawBase.h"
 
 #include "canvas/Persistency/Common/FindMany.h"
 #include "canvas/Utilities/InputTag.h"
@@ -44,14 +45,13 @@ namespace evd {
      \class DrawFEBData
      User custom analysis class made by SHELL_USER_NAME
    */
-  class DrawFEBData : public galleryfmwk::ana_base {
+  class DrawFEBData : public galleryfmwk::ana_base, public RawBase {
 
   public:
 
     /// Default constructor
     DrawFEBData(const geo::GeometryCore&               geometry,
-                const detinfo::DetectorPropertiesData& detectorProperties,
-                const detinfo::DetectorClocksData&     detectorClocks);
+                const detinfo::DetectorPropertiesData& detectorProperties);
 
     /// Default destructor
     virtual ~DrawFEBData(){}
@@ -71,9 +71,7 @@ namespace evd {
 
     std::string _producer;
 
-    const geo::GeometryCore&               _geo_service;
-    const detinfo::DetectorPropertiesData& _det_prop;
-    const detinfo::DetectorClocksData&     _det_clocks;
+    // const detinfo::DetectorClocksData&     _det_clocks;
 
   };
 }

@@ -9,12 +9,10 @@
 namespace evd {
 
 DrawFEBData::DrawFEBData(const geo::GeometryCore&               geometry,
-                         const detinfo::DetectorPropertiesData& detectorProperties,
-                         const detinfo::DetectorClocksData&     detectorClocks) :
-    _geo_service(geometry),
-    _det_prop(detectorProperties),
-    _det_clocks(detectorClocks)
+                         const detinfo::DetectorPropertiesData& detectorProperties) :
+    RawBase(geometry, detectorProperties)
 {
+    // _det_clocks(detectorClocks)
     _name = "DrawFEBData";
     _producer = "crtsim";
     _n_aux_dets = _geo_service.NAuxDets();
