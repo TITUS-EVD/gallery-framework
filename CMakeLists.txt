@@ -18,6 +18,8 @@ message(STATUS "-------------------------------------")
 message(STATUS ${PROJECT_VERSION})
 message(STATUS "-------------------------------------")
 
+find_package(Boost REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
 find_package(gallery REQUIRED)
 include_directories(${gallery_INCLUDE_DIRS})
 find_package(canvas REQUIRED)
