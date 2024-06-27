@@ -24,7 +24,7 @@ class LArSoftModule(Module):
     servicesLoaded = QtCore.pyqtSignal()
     stageChanged = QtCore.pyqtSignal()
 
-    def __init__(self, service_name: str = ''):
+    def __init__(self, service_name: str = '', time_range: int = None):
         global services
         super().__init__()
         if service_name != '':
@@ -47,6 +47,8 @@ class LArSoftModule(Module):
             self.configured_for = 'icarus'
 
         self._services_loaded = False
+
+        self.time_range = time_range
 
         self.det_clock_service = None
         self.det_prop_service = None

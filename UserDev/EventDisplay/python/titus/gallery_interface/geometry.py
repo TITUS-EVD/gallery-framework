@@ -390,6 +390,7 @@ class Geometry(geoBase):
             # print ('opch', opch, 'shape', geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName())
             # self._opdet_radius = geometryCore.OpDetGeoFromOpChannel(opch).RMax()
 
+    def print_summary(self):
         print('Configured with:')
         print('Trigger Offset TCP:     ', self._triggerOffset)
         print('Time Range:             ', self._tRange)
@@ -400,6 +401,17 @@ class Geometry(geoBase):
         print('Time To Cm:             ', self._time2Cm)
         print('Wire To Cm:             ', self._wire2Cm)
         print('')
+
+    def override_time_range(self, time_range):
+        '''
+        Overrides the time range with a custom value
+        '''
+        print('!!!WARNING!!!')
+        print(f'Overriding time range from {self._tRange} to {time_range}.')
+        print('!!!WARNING!!!')
+        self._tRange = 6000
+        self._readoutWindowSize = 6000
+
 
     def recalculateOffsets(self):
         self._offset = []
