@@ -409,8 +409,8 @@ class Geometry(geoBase):
         print('!!!WARNING!!!')
         print(f'Overriding time range from {self._tRange} to {time_range}.')
         print('!!!WARNING!!!')
-        self._tRange = 6000
-        self._readoutWindowSize = 6000
+        self._tRange = time_range
+        self._readoutWindowSize = time_range
 
 
     def recalculateOffsets(self):
