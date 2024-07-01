@@ -29,6 +29,8 @@ def main():
     geom_args.add_argument('-I', '-i', '--icarus',
                       action='store_true',
                       help="Run with the ICARUS Geometry")
+    parser.add_argument('--timerange',
+                      help="Overrides the number of time samples.")
     parser.add_argument('file', nargs='*', help="Optional input file to use")
     args = parser.parse_args()
 
@@ -48,7 +50,7 @@ def main():
         det_service_name = 'icarus'
     # add other services here...
 
-    lsm = LArSoftModule(det_service_name)
+    lsm = LArSoftModule(det_service_name, args.timerange)
     gm = GeometryModule(lsm)
     
 

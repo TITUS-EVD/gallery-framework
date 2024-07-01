@@ -27,6 +27,8 @@ class GeometryModule(Module):
         self._detector_label.setText('Detector: None')
         self._geom_action_map = {}
 
+        self._time_range = self._lsm.time_range
+
         self.current_geom = None
 
     def _initialize(self):
@@ -91,6 +93,13 @@ class GeometryModule(Module):
                 geometry.icarus(self._lsm.geom_service, self._lsm.det_prop_service,
                               self._lsm.det_clock_service, self._lsm.lar_prop_service)
             ]
+
+        if self._time_range is not None:
+            for geo in self._available_geoms:
+                geo.override_time_range(self._time_range)
+
+        for geo in self._available_geoms:
+            geo.print_summary()
 
         # gui support is optional for this module. If not enabled, just
         # internally set the current geometry, and user will not be able to
