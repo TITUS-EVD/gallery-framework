@@ -31,6 +31,9 @@ class OpticalElements(pg.ScatterPlotItem):
         self._start_time = 0
         self._end_time = 10
 
+        self._data = None
+        self._selected_ch = None
+
         self._flashes = None # The flashes to be displayed
 
         self._opdet_circles = self.get_opdet_circles()
@@ -146,6 +149,9 @@ class OpticalElements(pg.ScatterPlotItem):
         self._end_time = time_range[1]
         self.drawFlashes(self._flashes)
 
+    def set_wf_time_range(self, time_range):
+        self.show_raw_data(self._data, self._selected_ch, time_range)
+
 
     def drawFlashes(self, flashes):
         if flashes is None:
@@ -172,8 +178,9 @@ class OpticalElements(pg.ScatterPlotItem):
 
         # print ('Displaying', n_drawn_flashes, 'flashes.')
 
-    def show_raw_data(self, data, selected_ch=None):
+    def show_raw_data(self, data, selected_ch=None, time_range=None):
         self._data = data
+        self._selected_ch = selected_ch
 
         pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
         for element in self._opdet_circles:
@@ -186,9 +193,20 @@ class OpticalElements(pg.ScatterPlotItem):
             if data_y[0] == self._geom.opdetDefaultValue():
                 continue
 
-            amplitude = data_y.max() - data_y.min()
+            if time_range:
+                tick_min = int(time_range[0])
+                tick_max = int(time_range[1])
 
-            pe_per_opdet[ch] = amplitude
+                tick_min = np.maximum(tick_min, 0)
+                tick_max = np.minimum(tick_max, len(data_y))
+
+                data_y_sel = data_y[tick_min:tick_max]
+            else:
+                data_y_sel = data_y
+
+            amplitude = data_y_sel.max() - data_y_sel.min()
+
+            pe_per_opdet[ch] = np.abs(amplitude)
 
         max_pe = np.max(pe_per_opdet)
         self._opdet_circles = self.get_opdet_circles(pe_per_opdet, max_pe)

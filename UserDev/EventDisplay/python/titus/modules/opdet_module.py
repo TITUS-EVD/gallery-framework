@@ -55,6 +55,7 @@ class OpDetModule(Module):
     def init_ui(self):
         self._wf_view = waveform_view(self._gm.current_geom)
         self._layout.addWidget(self._wf_view)
+        self._wf_view.timeWindowChanged.connect(self.time_range_wf_worker)
 
         for tpc in range(self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()):
             opdet_view = pg.GraphicsLayoutWidget()
@@ -284,6 +285,9 @@ class OpDetModule(Module):
                 print('set producer', producer)
                 drawer.set_producer(producer)
             
+    def time_range_wf_worker(self, t_range):
+        for p in self._pmts:
+            p.set_wf_time_range(t_range)
 
     def time_range_worker(self):
         for p in self._pmts:
@@ -338,8 +342,8 @@ class OpDetModule(Module):
         self._wf_view.drawOpDetWvf(data)
         if self._show_raw_btn.isChecked():
             for p, a in zip(self._pmts, self._arapucas):
-                p.show_raw_data(data, self._selected_ch)
-                a.show_raw_data(data, self._selected_ch)
+                p.show_raw_data(data, self._selected_ch, self._wf_view._time_range)
+                a.show_raw_data(data, self._selected_ch, self._wf_view._time_range)
 
     def setFlashesForPlane(self, p, flashes):
         if flashes is None:
@@ -386,6 +390,8 @@ class OpDetModule(Module):
 
 class waveform_view(pg.GraphicsLayoutWidget):
 
+    timeWindowChanged = QtCore.pyqtSignal(tuple)
+    
     def __init__(self, geometry, plane=-1):
         super(waveform_view, self).__init__(border=None)
 
@@ -393,12 +399,20 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
         self._data = None
 
+        self._time_range = [1500,2300]
+
         self._wf_plot = pg.PlotItem(name="OpDetWaveform")
         self._wf_plot.setLabel(axis='left', text='ADC')
         self._wf_plot.setLabel(axis='bottom', text='Ticks')
         # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical)
         # self._wf_plot.addItem(self._wf_linear_region)
         self.addItem(self._wf_plot)
+
+
+        self._time_window = pg.LinearRegionItem(values=self._time_range, orientation=pg.LinearRegionItem.Vertical)
+        self._time_window.sigRegionChangeFinished.connect(lambda: self.timeWindowChanged.emit(self._time_window.getRegion()))
+        self._wf_plot.addItem(self._time_window)
+
 
 
     def getWidget(self):
@@ -451,6 +465,7 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
         # self._wf_plot.plot(x=data_x, y=data_y, connect=False, symbol='o')
         self._wf_plot.plot(x=data_x, y=data_y)
+        self._wf_plot.addItem(self._time_window)
 
         self._wf_plot.autoRange()
 
