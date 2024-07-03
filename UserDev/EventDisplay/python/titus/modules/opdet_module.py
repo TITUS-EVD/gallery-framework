@@ -152,7 +152,15 @@ class OpDetModule(Module):
         for item in self._tpc_buttons:
             button_layout.addWidget(item)
         view_group_box.setLayout(button_layout)
+
+        fine_selection_layout = QtWidgets.QVBoxLayout()
+        self._no_uncoated_btn = QtWidgets.QCheckBox("Exclude Uncoated")
+        self._no_uncoated_btn.stateChanged.connect(self.exclude_uncoated)
+        fine_selection_layout.addWidget(self._no_uncoated_btn)
+
+
         main_layout.addWidget(view_group_box)
+        main_layout.addLayout(fine_selection_layout)
         main_layout.addStretch()
 
 
@@ -318,6 +326,10 @@ class OpDetModule(Module):
             for producer, drawer in self._flash_drawers.items():
                 print('set producer', producer)
                 drawer.set_producer(producer)
+
+    def exclude_uncoated(self):
+        for p in self._pmts:
+            p.exclude_uncoated(self._no_uncoated_btn.isChecked())
             
     def time_range_wf_worker(self, t_range):
         for p in self._pmts:

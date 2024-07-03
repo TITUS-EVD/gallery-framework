@@ -33,6 +33,7 @@ class OpticalElements(pg.ScatterPlotItem):
 
         self._data = None
         self._selected_ch = None
+        self._time_range_wf = None
 
         self._flashes = None # The flashes to be displayed
 
@@ -152,6 +153,10 @@ class OpticalElements(pg.ScatterPlotItem):
     def set_wf_time_range(self, time_range):
         self.show_raw_data(self._data, self._selected_ch, time_range)
 
+    def exclude_uncoated(self, do_exclude=False):
+        self.show_raw_data(self._data, self._selected_ch, self._time_range_wf, do_exclude)
+
+
 
     def drawFlashes(self, flashes):
         if flashes is None:
@@ -178,9 +183,10 @@ class OpticalElements(pg.ScatterPlotItem):
 
         # print ('Displaying', n_drawn_flashes, 'flashes.')
 
-    def show_raw_data(self, data, selected_ch=None, time_range=None):
+    def show_raw_data(self, data, selected_ch=None, time_range=None, exclude_uncoated=False):
         self._data = data
         self._selected_ch = selected_ch
+        self._time_range_wf = time_range
 
         pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
         for element in self._opdet_circles:
@@ -191,6 +197,9 @@ class OpticalElements(pg.ScatterPlotItem):
                 continue
 
             if data_y[0] == self._geom.opdetDefaultValue():
+                continue
+
+            if 'uncoated' in self._opdets_name[ch] and exclude_uncoated:
                 continue
 
             if time_range:
