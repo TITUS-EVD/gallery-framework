@@ -12,7 +12,7 @@ from titus.gui.optical_elements import Pmts, Arapucas, _bordercol_
 
 from titus.modules import Module
 import titus.drawables as drawables
-from titus.gui.widgets import MultiSelectionBox, recoBox
+from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel
 
 # place any drawables associated with optical view here. For now, just flashes
 _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
@@ -53,26 +53,61 @@ class OpDetModule(Module):
         self._gm.geometryChanged.connect(self.init_ui)
 
     def init_ui(self):
+        # Waveform View
+        wfv_layout = QtWidgets.QHBoxLayout()
         self._wf_view = waveform_view(self._gm.current_geom)
-        self._layout.addWidget(self._wf_view)
         self._wf_view.timeWindowChanged.connect(self.time_range_wf_worker)
 
-        for tpc in range(self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()):
+        name = VerticalLabel('Waveform Viewer')
+        name.setStyleSheet('color: rgb(169,169,169);')
+        name.setMaximumWidth(25)
+        wfv_layout.addWidget(name)
+        wfv_layout.addWidget(self._wf_view)
+
+        self._layout.addLayout(wfv_layout)
+
+        # TPC OpDets Views
+        n_tpcs = self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()
+        self._opdet_views = [None] * n_tpcs
+        for tpc in range(n_tpcs-1, -1, -1):
+        # for tpc in range(self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()):
             opdet_view = pg.GraphicsLayoutWidget()
             opdet_view.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self._layout.addWidget(opdet_view)
+            # self._layout.addWidget(opdet_view)
             self._opdet_views.append(opdet_view)
+            self._opdet_views[tpc] = opdet_view
+
+            name = VerticalLabel('TPC East' if tpc == 0 else 'TPC West')
+            name.setToolTip(f'TPC {tpc}')
+            name.setStyleSheet('color: rgb(169,169,169);')
+            name.setMaximumWidth(25)
+
+            tpc_layout = QtWidgets.QHBoxLayout()
+            tpc_layout.addWidget(name)
+            tpc_layout.addWidget(opdet_view)
+
+            self._layout.addLayout(tpc_layout)
 
         self.init_opdet_ui()
         self.connectStatusBar(self._gui.statusBar())
 
+        # Flash Time View
+        flash_layout = QtWidgets.QHBoxLayout()
         self._flash_time_view = flash_time_view(self._gm.current_geom)
-        self._layout.addWidget(self._flash_time_view)
+        # self._layout.addWidget(self._flash_time_view)
         self._time_window = pg.LinearRegionItem(values=[0,10], orientation=pg.LinearRegionItem.Vertical)
         self._time_window.sigRegionChangeFinished.connect(self.time_range_worker)
         self._flash_time_view.connectTimeWindow(self._time_window)
         for p in self._pmts:
             p.set_time_range(self._time_window.getRegion())
+
+        name = VerticalLabel('Flash Time Viewer')
+        name.setStyleSheet('color: rgb(169,169,169);')
+        name.setMaximumWidth(25)
+        flash_layout.addWidget(name)
+        flash_layout.addWidget(self._flash_time_view)
+
+        self._layout.addLayout(flash_layout)
 
         self.init_opdet_controls()
         self.add_button_layout()
@@ -97,20 +132,19 @@ class OpDetModule(Module):
 
         view_group_box = QtWidgets.QGroupBox("Views")
         _bg1 = QtWidgets.QButtonGroup(self)
-        self._tpc_all_button = QtWidgets.QRadioButton("All Cryos and TPCs")
+        self._tpc_all_button = QtWidgets.QRadioButton("All TPCs")
         self._tpc_all_button.setToolTip("Shows all TPCs.")
         self._tpc_all_button.setChecked(True)
         self._tpc_all_button.clicked.connect(self.viewSelectionWorker)
         _bg1.addButton(self._tpc_all_button)
 
         self._tpc_buttons = []
-        for cryo in range(self._gm.current_geom.nCryos()):
-            for tpc in range(self._gm.current_geom.nTPCs()):
-                tpc_button = QtWidgets.QRadioButton("Cryo "+str(cryo)+", TPC "+str(tpc))
-                tpc_button.setToolTip("Shows only Cryo "+str(cryo)+", TPC "+str(tpc))
-                tpc_button.clicked.connect(self.viewSelectionWorker)
-                _bg1.addButton(tpc_button)
-                self._tpc_buttons.append(tpc_button)
+        for tpc in range(self._gm.current_geom.nTPCs()):
+            tpc_button = QtWidgets.QRadioButton('TPC East' if tpc == 0 else 'TPC West')
+            tpc_button.setToolTip('Show only TPC 0' if tpc == 0 else 'Show only TPC 1')
+            tpc_button.clicked.connect(self.viewSelectionWorker)
+            _bg1.addButton(tpc_button)
+            self._tpc_buttons.append(tpc_button)
         
         button_layout = QtWidgets.QVBoxLayout()
 
