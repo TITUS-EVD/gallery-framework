@@ -332,12 +332,24 @@ class OpDetModule(Module):
             p.exclude_uncoated(self._no_uncoated_btn.isChecked())
             
     def time_range_wf_worker(self, t_range):
+        '''
+        Sets a time window for raw waveforms. The waveform in the
+        time window is used to color OpDets.
+        '''
         for p in self._pmts:
             p.set_wf_time_range(t_range)
 
+        self.update()
+
     def time_range_worker(self):
+        '''
+        Sets a time window for flashes. The flashes in the
+        time window is used to color OpDets.
+        '''
         for p in self._pmts:
             p.set_time_range(self._time_window.getRegion())
+
+        self.update()
 
     def init_opdet_ui(self):
         self._opdet_plots = []
@@ -385,11 +397,25 @@ class OpDetModule(Module):
         self._flash_time_view.drawOpFlashTimes(self._flashes)
         
     def drawOpDetWvf(self, data):
-        self._wf_view.drawOpDetWvf(data)
+        '''
+        OpDet display shows raw waveform data
+        '''
+        self._wf_view.drawOpDetWvf(data) # ???
         if self._show_raw_btn.isChecked():
-            for p, a in zip(self._pmts, self._arapucas):
-                p.show_raw_data(data, self._selected_ch, self._wf_view._time_range)
-                a.show_raw_data(data, self._selected_ch, self._wf_view._time_range)
+
+            max_scale = -1e12
+            min_scale = 1e12
+
+            for p in self._pmts:
+                min_sc, max_sc = p.set_raw_data(data)
+                max_scale = max(max_scale, max_sc)
+                min_scale = min(min_scale, min_sc)
+
+            for p in self._pmts:
+                p.show_raw_data(min_scale, max_scale, self._selected_ch)
+
+            # TODO: do the same for arapucas
+
 
     def setFlashesForPlane(self, p, flashes):
         if flashes is None:
@@ -400,10 +426,6 @@ class OpDetModule(Module):
         if len(flashes) == 0:
             return
 
-        # self._time_range.setMin(int(time_min))
-        # self._time_range.setMax(int(time_max))
-        # self._time_range.setVisible(False)
-        # self._time_range.setVisible(True)
         self._flashes[p] = flashes
         self._pmts[p].drawFlashes(flashes)
 
@@ -450,8 +472,6 @@ class waveform_view(pg.GraphicsLayoutWidget):
         self._wf_plot = pg.PlotItem(name="OpDetWaveform")
         self._wf_plot.setLabel(axis='left', text='ADC')
         self._wf_plot.setLabel(axis='bottom', text='Ticks')
-        # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical)
-        # self._wf_plot.addItem(self._wf_linear_region)
         self.addItem(self._wf_plot)
 
 
@@ -464,24 +484,6 @@ class waveform_view(pg.GraphicsLayoutWidget):
     def getWidget(self):
         return self._widget, self._layout
 
-      # def init_geometry(self):
-
-      #   opdets_x, opdets_y, opdets_z = self._geometry.opdetLoc()
-      #   opdets_name = self._geometry.opdetName()
-      #   diameter = self._geometry.opdetRadius() * 2
-
-      #   self._opdet_circles = []
-      #   for d in range(0, len(opdets_x)):
-      #       # print('Adding opdet', opdets_x[d], opdets_y[d], diameter, diameter)
-      #       self._opdet_circles.append(QtWidgets.QGraphicsEllipseItem(opdets_z[d], opdets_y[d], diameter, diameter))
-
-      #       if opdets_name[d] == 'pmt':
-      #           self._opdet_circles[d].setPen(pg.mkPen('r'))
-      #       if opdets_name[d] == 'barepmt':
-      #           self._opdet_circles[d].setPen(pg.mkPen('b'))
-
-      #       if opdets_x[d] < 20 and (opdets_name[d] == 'pmt' or opdets_name[d] == 'barepmt'):
-      #           self._view.addItem(self._opdet_circles[d])
 
 
     def drawOpDetWvf(self, data, offset=100):
