@@ -14,7 +14,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PIL import ImageColor
 
 from titus.modules import Module
-from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar
+from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar, MovableLabel
 import titus.drawables as drawables
 
 
@@ -950,6 +950,7 @@ class WireView(pg.GraphicsLayoutWidget):
 
         self._useLogo = False
         self._logo = None
+        self._label = None
 
         self._drawingRawDigits = False
         # each drawer contains its own color gradient and levels
@@ -1075,6 +1076,9 @@ class WireView(pg.GraphicsLayoutWidget):
         if self._logo in self.scene().items():
             self.scene().removeItem(self._logo)
 
+        if self._label in self.scene().items():
+            self.scene().removeItem(self._label)
+
         self._useLogo = logoBool
         self.refreshLogo()
 
@@ -1088,6 +1092,31 @@ class WireView(pg.GraphicsLayoutWidget):
         self._logo.setScale(self._geometry.logoScale())
         self._logo.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.scene().addItem(self._logo)
+
+        self.drawEventNumber()
+
+    def drawEventNumber(self):
+
+      dims = self._view.viewRange()
+      xMin = dims[0][0]
+      xMax = dims[0][1]
+      yMin = dims[1][0]
+      yMax = dims[1][1]
+      xLoc = xMin + 0.22*(xMax - xMin)
+      yLoc = yMax - 0.1*(yMax - yMin)
+
+      if self._label in self._view.addedItems:
+        self._view.removeItem(self._label)
+
+      label = f'RUN {self._gi.run()}, EVENT {self._gi.event()}\n'
+      label += self._gi.date()
+
+      self._label = MovableLabel(label, anchor=(0., 0.5))
+      self._label.setPos(xLoc,yLoc)
+      self._label.setFont(QtGui.QFont("Helvetica", 15))
+      # self._label.setFlag(self._label.GraphicsItemFlag.ItemIgnoresTransformations)
+      self._view.addItem(self._label, ignoreBounds=True)
+
 
     def restoreDefaults(self):
         level_lower = self._geometry.getLevels(self._plane)[0]
