@@ -124,6 +124,8 @@ class OpDetModule(Module):
 
         self._layout.setAlignment(QtCore.Qt.AlignTop)
 
+        self.time_range_wf_worker(self._wf_view._time_range)
+
     def init_opdet_controls(self):
         frame = QtWidgets.QWidget(self._dock)
         main_layout = QtWidgets.QVBoxLayout()
@@ -467,7 +469,7 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
         self._data = None
 
-        self._time_range = [1500,2300]
+        self._time_range = [1500, 2300]
 
         self._wf_plot = pg.PlotItem(name="OpDetWaveform")
         self._wf_plot.setLabel(axis='left', text='ADC')
