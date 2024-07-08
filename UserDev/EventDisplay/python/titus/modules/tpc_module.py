@@ -100,7 +100,7 @@ class TpcModule(Module):
 
         for c in range(self._gm.current_geom.nCryos()):
             for p in range(self._gm.current_geom.nPlanes()):
-                view = WireView(self._gm.current_geom, p, c)
+                view = WireView(self._gm.current_geom, p, c, gallery_interface=self._gi)
                 view.connectWireDrawingFunction(self.drawWireOnPlot)
                 view.connectStatusBar(self._gui.statusBar())
                 self._wire_views[(p, c)] = view
@@ -902,6 +902,7 @@ class WireView(pg.GraphicsLayoutWidget):
             self._view.sigRangeChangedManually.emit(self._view.state['mouseEnabled'])
 
     def __init__(self, geometry, plane=-1, cryostat=0, tpc=0):
+    def __init__(self, geometry, plane=-1, cryostat=0, tpc=0, gallery_interface=None):
         super().__init__(border=None)
         # add a view box, which is a widget that allows an image to be shown
         self._view = self.addViewBox(border=None, defaultPadding=0)
@@ -909,6 +910,8 @@ class WireView(pg.GraphicsLayoutWidget):
         self._item = pg.ImageItem(useOpenGL=True)
         # self._item._setPen((0,0,0))
         self._view.addItem(self._item)
+
+        self._gi = gallery_interface
 
         self._removed_entries = 0
         self._manual_t0 = 0
