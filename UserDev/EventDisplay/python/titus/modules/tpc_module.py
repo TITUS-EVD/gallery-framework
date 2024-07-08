@@ -901,7 +901,6 @@ class WireView(pg.GraphicsLayoutWidget):
                 self._view.translateBy(x=x, y=y)
             self._view.sigRangeChangedManually.emit(self._view.state['mouseEnabled'])
 
-    def __init__(self, geometry, plane=-1, cryostat=0, tpc=0):
     def __init__(self, geometry, plane=-1, cryostat=0, tpc=0, gallery_interface=None):
         super().__init__(border=None)
         # add a view box, which is a widget that allows an image to be shown
