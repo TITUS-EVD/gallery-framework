@@ -30,6 +30,7 @@ def main():
                       action='store_true',
                       help="Run with the ICARUS Geometry")
     parser.add_argument('--timerange',
+                      type=int,
                       help="Overrides the number of time samples.")
     parser.add_argument('file', nargs='*', help="Optional input file to use")
     args = parser.parse_args()

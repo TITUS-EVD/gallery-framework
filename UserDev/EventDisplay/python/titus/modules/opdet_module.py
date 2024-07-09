@@ -12,7 +12,7 @@ from titus.gui.optical_elements import Pmts, Arapucas, _bordercol_
 
 from titus.modules import Module
 import titus.drawables as drawables
-from titus.gui.widgets import MultiSelectionBox, recoBox
+from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel
 
 # place any drawables associated with optical view here. For now, just flashes
 _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
@@ -53,25 +53,61 @@ class OpDetModule(Module):
         self._gm.geometryChanged.connect(self.init_ui)
 
     def init_ui(self):
+        # Waveform View
+        wfv_layout = QtWidgets.QHBoxLayout()
         self._wf_view = waveform_view(self._gm.current_geom)
-        self._layout.addWidget(self._wf_view)
+        self._wf_view.timeWindowChanged.connect(self.time_range_wf_worker)
 
-        for tpc in range(self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()):
+        name = VerticalLabel('Waveform Viewer')
+        name.setStyleSheet('color: rgb(169,169,169);')
+        name.setMaximumWidth(25)
+        wfv_layout.addWidget(name)
+        wfv_layout.addWidget(self._wf_view)
+
+        self._layout.addLayout(wfv_layout)
+
+        # TPC OpDets Views
+        n_tpcs = self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()
+        self._opdet_views = [None] * n_tpcs
+        for tpc in range(n_tpcs-1, -1, -1):
+        # for tpc in range(self._gm.current_geom.nTPCs() * self._gm.current_geom.nCryos()):
             opdet_view = pg.GraphicsLayoutWidget()
             opdet_view.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self._layout.addWidget(opdet_view)
+            # self._layout.addWidget(opdet_view)
             self._opdet_views.append(opdet_view)
+            self._opdet_views[tpc] = opdet_view
+
+            name = VerticalLabel('TPC East' if tpc == 0 else 'TPC West')
+            name.setToolTip(f'TPC {tpc}')
+            name.setStyleSheet('color: rgb(169,169,169);')
+            name.setMaximumWidth(25)
+
+            tpc_layout = QtWidgets.QHBoxLayout()
+            tpc_layout.addWidget(name)
+            tpc_layout.addWidget(opdet_view)
+
+            self._layout.addLayout(tpc_layout)
 
         self.init_opdet_ui()
         self.connectStatusBar(self._gui.statusBar())
 
+        # Flash Time View
+        flash_layout = QtWidgets.QHBoxLayout()
         self._flash_time_view = flash_time_view(self._gm.current_geom)
-        self._layout.addWidget(self._flash_time_view)
+        # self._layout.addWidget(self._flash_time_view)
         self._time_window = pg.LinearRegionItem(values=[0,10], orientation=pg.LinearRegionItem.Vertical)
         self._time_window.sigRegionChangeFinished.connect(self.time_range_worker)
         self._flash_time_view.connectTimeWindow(self._time_window)
         for p in self._pmts:
             p.set_time_range(self._time_window.getRegion())
+
+        name = VerticalLabel('Flash Time Viewer')
+        name.setStyleSheet('color: rgb(169,169,169);')
+        name.setMaximumWidth(25)
+        flash_layout.addWidget(name)
+        flash_layout.addWidget(self._flash_time_view)
+
+        self._layout.addLayout(flash_layout)
 
         self.init_opdet_controls()
         self.add_button_layout()
@@ -88,6 +124,8 @@ class OpDetModule(Module):
 
         self._layout.setAlignment(QtCore.Qt.AlignTop)
 
+        self.time_range_wf_worker(self._wf_view._time_range)
+
     def init_opdet_controls(self):
         frame = QtWidgets.QWidget(self._dock)
         main_layout = QtWidgets.QVBoxLayout()
@@ -96,20 +134,19 @@ class OpDetModule(Module):
 
         view_group_box = QtWidgets.QGroupBox("Views")
         _bg1 = QtWidgets.QButtonGroup(self)
-        self._tpc_all_button = QtWidgets.QRadioButton("All Cryos and TPCs")
+        self._tpc_all_button = QtWidgets.QRadioButton("All TPCs")
         self._tpc_all_button.setToolTip("Shows all TPCs.")
         self._tpc_all_button.setChecked(True)
         self._tpc_all_button.clicked.connect(self.viewSelectionWorker)
         _bg1.addButton(self._tpc_all_button)
 
         self._tpc_buttons = []
-        for cryo in range(self._gm.current_geom.nCryos()):
-            for tpc in range(self._gm.current_geom.nTPCs()):
-                tpc_button = QtWidgets.QRadioButton("Cryo "+str(cryo)+", TPC "+str(tpc))
-                tpc_button.setToolTip("Shows only Cryo "+str(cryo)+", TPC "+str(tpc))
-                tpc_button.clicked.connect(self.viewSelectionWorker)
-                _bg1.addButton(tpc_button)
-                self._tpc_buttons.append(tpc_button)
+        for tpc in range(self._gm.current_geom.nTPCs()):
+            tpc_button = QtWidgets.QRadioButton('TPC East' if tpc == 0 else 'TPC West')
+            tpc_button.setToolTip('Show only TPC 0' if tpc == 0 else 'Show only TPC 1')
+            tpc_button.clicked.connect(self.viewSelectionWorker)
+            _bg1.addButton(tpc_button)
+            self._tpc_buttons.append(tpc_button)
         
         button_layout = QtWidgets.QVBoxLayout()
 
@@ -117,7 +154,15 @@ class OpDetModule(Module):
         for item in self._tpc_buttons:
             button_layout.addWidget(item)
         view_group_box.setLayout(button_layout)
+
+        fine_selection_layout = QtWidgets.QVBoxLayout()
+        self._no_uncoated_btn = QtWidgets.QCheckBox("Exclude Uncoated")
+        self._no_uncoated_btn.stateChanged.connect(self.exclude_uncoated)
+        fine_selection_layout.addWidget(self._no_uncoated_btn)
+
+
         main_layout.addWidget(view_group_box)
+        main_layout.addLayout(fine_selection_layout)
         main_layout.addStretch()
 
 
@@ -283,11 +328,30 @@ class OpDetModule(Module):
             for producer, drawer in self._flash_drawers.items():
                 print('set producer', producer)
                 drawer.set_producer(producer)
+
+    def exclude_uncoated(self):
+        for p in self._pmts:
+            p.exclude_uncoated(self._no_uncoated_btn.isChecked())
             
+    def time_range_wf_worker(self, t_range):
+        '''
+        Sets a time window for raw waveforms. The waveform in the
+        time window is used to color OpDets.
+        '''
+        for p in self._pmts:
+            p.set_wf_time_range(t_range)
+
+        self.update()
 
     def time_range_worker(self):
+        '''
+        Sets a time window for flashes. The flashes in the
+        time window is used to color OpDets.
+        '''
         for p in self._pmts:
             p.set_time_range(self._time_window.getRegion())
+
+        self.update()
 
     def init_opdet_ui(self):
         self._opdet_plots = []
@@ -335,11 +399,25 @@ class OpDetModule(Module):
         self._flash_time_view.drawOpFlashTimes(self._flashes)
         
     def drawOpDetWvf(self, data):
-        self._wf_view.drawOpDetWvf(data)
+        '''
+        OpDet display shows raw waveform data
+        '''
+        self._wf_view.drawOpDetWvf(data) # ???
         if self._show_raw_btn.isChecked():
-            for p, a in zip(self._pmts, self._arapucas):
-                p.show_raw_data(data, self._selected_ch)
-                a.show_raw_data(data, self._selected_ch)
+
+            max_scale = -1e12
+            min_scale = 1e12
+
+            for p in self._pmts:
+                min_sc, max_sc = p.set_raw_data(data)
+                max_scale = max(max_scale, max_sc)
+                min_scale = min(min_scale, min_sc)
+
+            for p in self._pmts:
+                p.show_raw_data(min_scale, max_scale, self._selected_ch)
+
+            # TODO: do the same for arapucas
+
 
     def setFlashesForPlane(self, p, flashes):
         if flashes is None:
@@ -350,10 +428,6 @@ class OpDetModule(Module):
         if len(flashes) == 0:
             return
 
-        # self._time_range.setMin(int(time_min))
-        # self._time_range.setMax(int(time_max))
-        # self._time_range.setVisible(False)
-        # self._time_range.setVisible(True)
         self._flashes[p] = flashes
         self._pmts[p].drawFlashes(flashes)
 
@@ -386,6 +460,8 @@ class OpDetModule(Module):
 
 class waveform_view(pg.GraphicsLayoutWidget):
 
+    timeWindowChanged = QtCore.pyqtSignal(tuple)
+    
     def __init__(self, geometry, plane=-1):
         super(waveform_view, self).__init__(border=None)
 
@@ -393,35 +469,23 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
         self._data = None
 
+        self._time_range = [1500, 2300]
+
         self._wf_plot = pg.PlotItem(name="OpDetWaveform")
         self._wf_plot.setLabel(axis='left', text='ADC')
         self._wf_plot.setLabel(axis='bottom', text='Ticks')
-        # self._wf_linear_region = pg.LinearRegionItem(values=[0,30], orientation=pg.LinearRegionItem.Vertical)
-        # self._wf_plot.addItem(self._wf_linear_region)
         self.addItem(self._wf_plot)
+
+
+        self._time_window = pg.LinearRegionItem(values=self._time_range, orientation=pg.LinearRegionItem.Vertical)
+        self._time_window.sigRegionChangeFinished.connect(lambda: self.timeWindowChanged.emit(self._time_window.getRegion()))
+        self._wf_plot.addItem(self._time_window)
+
 
 
     def getWidget(self):
         return self._widget, self._layout
 
-      # def init_geometry(self):
-
-      #   opdets_x, opdets_y, opdets_z = self._geometry.opdetLoc()
-      #   opdets_name = self._geometry.opdetName()
-      #   diameter = self._geometry.opdetRadius() * 2
-
-      #   self._opdet_circles = []
-      #   for d in range(0, len(opdets_x)):
-      #       # print('Adding opdet', opdets_x[d], opdets_y[d], diameter, diameter)
-      #       self._opdet_circles.append(QtWidgets.QGraphicsEllipseItem(opdets_z[d], opdets_y[d], diameter, diameter))
-
-      #       if opdets_name[d] == 'pmt':
-      #           self._opdet_circles[d].setPen(pg.mkPen('r'))
-      #       if opdets_name[d] == 'barepmt':
-      #           self._opdet_circles[d].setPen(pg.mkPen('b'))
-
-      #       if opdets_x[d] < 20 and (opdets_name[d] == 'pmt' or opdets_name[d] == 'barepmt'):
-      #           self._view.addItem(self._opdet_circles[d])
 
 
     def drawOpDetWvf(self, data, offset=100):
@@ -451,6 +515,7 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
         # self._wf_plot.plot(x=data_x, y=data_y, connect=False, symbol='o')
         self._wf_plot.plot(x=data_x, y=data_y)
+        self._wf_plot.addItem(self._time_window)
 
         self._wf_plot.autoRange()
 

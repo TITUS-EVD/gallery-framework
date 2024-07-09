@@ -122,6 +122,7 @@ class viewport(pg.GraphicsLayoutWidget):
 
     self._useLogo = False
     self._logo = None
+    self._label = None
 
     self._drawingRawDigits = False
     # each drawer contains its own color gradient and levels

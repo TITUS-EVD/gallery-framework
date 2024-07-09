@@ -16,6 +16,7 @@ class Module(QtCore.QObject):
         self._central_widget = None
         self._dock_widgets = set()
         self._active = True
+        self._update_on_activation = False
         self._settings = QtCore.QSettings()
         self._settings_defaults = {}
         self._settings_layout = None
@@ -75,6 +76,7 @@ class Module(QtCore.QObject):
     # prevents interference between modules
     def _on_event_change(self):
         if not self._active:
+            self._update_on_activation = True
             return
         self.on_event_change()
     
@@ -117,7 +119,9 @@ class Module(QtCore.QObject):
             dw.show()
 
         if not self._active:
-            self.update()
+            if self._update_on_activation:
+                self._update()
+                self._update_on_activation = False
             self._active = True
 
 

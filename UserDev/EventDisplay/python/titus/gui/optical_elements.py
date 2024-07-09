@@ -28,8 +28,14 @@ class OpticalElements(pg.ScatterPlotItem):
         # self._symbol = 'o'
         # self._line_width = 2
 
-        self._start_time = 0
-        self._end_time = 10
+        self._data = None
+        self._selected_ch = None
+        self._time_range_wf = None # Time window for raw waveforms
+        self._time_range_flash = [0, 10] # Time window for flashes
+        self._exclude_uncoated = False
+
+        self._min_range = 0
+        self._max_range = 0
 
         self._flashes = None # The flashes to be displayed
 
@@ -142,9 +148,24 @@ class OpticalElements(pg.ScatterPlotItem):
 
 
     def set_time_range(self, time_range):
-        self._start_time = time_range[0]
-        self._end_time = time_range[1]
-        self.drawFlashes(self._flashes)
+        self._time_range_flash = time_range
+
+    def set_wf_time_range(self, time_range):
+        self._time_range_wf = time_range
+
+    def exclude_uncoated(self, do_exclude=False):
+        self.show_raw_data(self._data, self._selected_ch)
+
+    def get_min_scale(self):
+        return self._min_range
+
+    def get_max_scale(self):
+        return self._max_range
+
+    def set_scale(self, min_range, max_range):
+        self._min_range = min_range
+        self._max_range = max_range
+        self._pmtscale
 
 
     def drawFlashes(self, flashes):
@@ -161,7 +182,7 @@ class OpticalElements(pg.ScatterPlotItem):
         total_pes_per_opdet = [0] * len(flashes[0].pe_per_opdet())
 
         for f in flashes:
-            if (f.time() > self._start_time and f.time() < self._end_time):
+            if (f.time() > self._time_range_flash[0] and f.time() < self._time_range_flash[1]):
                 total_pes_per_opdet = np.add(total_pes_per_opdet, f.pe_per_opdet())
                 n_drawn_flashes += 1
 
@@ -172,10 +193,15 @@ class OpticalElements(pg.ScatterPlotItem):
 
         # print ('Displaying', n_drawn_flashes, 'flashes.')
 
-    def show_raw_data(self, data, selected_ch=None):
+
+    def set_raw_data(self, data):
+        '''
+        Sets raw waveform data and evaluates max and min of
+        based on waveform amplitudes
+        '''
         self._data = data
 
-        pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
+        self._pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
         for element in self._opdet_circles:
             ch = element['data']['id']
             data_y = self._data[ch,:]
@@ -186,16 +212,39 @@ class OpticalElements(pg.ScatterPlotItem):
             if data_y[0] == self._geom.opdetDefaultValue():
                 continue
 
-            amplitude = data_y.max() - data_y.min()
+            if 'uncoated' in self._opdets_name[ch] and self._exclude_uncoated:
+                continue
 
-            pe_per_opdet[ch] = amplitude
+            if self._time_range_wf:
+                tick_min = int(self._time_range_wf[0])
+                tick_max = int(self._time_range_wf[1])
 
-        max_pe = np.max(pe_per_opdet)
-        self._opdet_circles = self.get_opdet_circles(pe_per_opdet, max_pe)
+                tick_min = np.maximum(tick_min, 0)
+                tick_max = np.minimum(tick_max, len(data_y))
+
+                data_y_sel = data_y[tick_min:tick_max]
+            else:
+                data_y_sel = data_y
+
+            amplitude = data_y_sel.max() - data_y_sel.min()
+
+            self._pe_per_opdet[ch] = np.abs(amplitude)
+
+        max_pe = np.max(self._pe_per_opdet)
+        min_pe = 0
+
+        return min_pe, max_pe
+
+
+    def show_raw_data(self, min_scale, max_scale, selected_ch=None):
+        '''
+        Displays the data
+        '''
+
+        self._opdet_circles = self.get_opdet_circles(self._pe_per_opdet, max_scale)
         self.clear()
         self.addPoints(self._opdet_circles)
         self.select_opdet(selected_ch)
-        return self._opdet_circles
 
 
 class Pmts(OpticalElements):

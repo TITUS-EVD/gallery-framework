@@ -302,3 +302,38 @@ class MovableScaleBar(pg.ScaleBar):
 
     def setUnits(self, scale=1, suffix=''):
         self.text.setText(pg.functions.siFormat(self.size * scale, suffix=suffix))
+
+
+class MovableLabel(pg.TextItem):
+    """ GraphicsPixmapItem which can be clicked & dragged """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable)
+        self.setAcceptHoverEvents(True)
+        self._border_pen = QtGui.QPen(
+            QtCore.Qt.yellow, 10,
+            QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin
+        )
+
+        # self._border = QtWidgets.QGraphicsRectItem(self.boundingRect())
+        # self._border.setPen(self._border_pen)
+
+    # def hoverEnterEvent(self, ev):
+    #     super().hoverEnterEvent(ev)
+    #     self.scene().addItem(self._border)
+    #     self._border.setPos(self.pos())
+
+    # def mouseMoveEvent(self, ev):
+    #     super().mouseMoveEvent(ev)
+    #     self._border.setPos(self.pos())
+
+    # def hoverLeaveEvent(self, ev):
+    #     super().hoverLeaveEvent(ev)
+    #     self.scene().removeItem(self._border)
+
+    # def setScale(self, scale):
+    #     super().setScale(scale)
+    #     self._border.setScale(scale)
+
+
