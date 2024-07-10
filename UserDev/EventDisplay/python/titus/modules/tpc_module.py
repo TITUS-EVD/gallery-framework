@@ -36,19 +36,23 @@ _RECOB_WIRE = 'recob::Wire'
 _RECOB_CHANNELROI = 'recob::ChannelROI'
 _RAW_RAWDIGIT = 'raw::RawDigit'
 
-_MAX_WIRE_WAVEFORMS = 5
+_MAX_WIRE_WAVEFORMS = 10
 # tab10 from matplotlib
 _WIRE_COLOR_CYCLE = [QtGui.QColor(*ImageColor.getcolor(h, 'RGB')) for h in \
                     [ '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
                      '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf' ]]
 
+# setting to change number of waveforms
+_SET_N_WIRE_WAVEFORMS = 'TPC/Number of Waveforms'
+
 
 class TpcModule(Module):
     def __init__(self, larsoft_module, geom_module):
         super().__init__()
+        self._name = 'TPC'
+
         self._lsm = larsoft_module
         self._gm = geom_module
-        self._name = 'TPC Module'
 
         self._central_widget = QtWidgets.QSplitter()
         self._central_widget.setOrientation(QtCore.Qt.Vertical)
@@ -77,6 +81,34 @@ class TpcModule(Module):
         self._selected_cryos = [-1]
         self._current_wire_drawer = None
         self._current_wire = -1
+
+        self._wirePlot = None
+        self._wirePlotItems = {}
+
+        # user settings page
+        self._settings_defaults = {
+            _SET_N_WIRE_WAVEFORMS: 5,
+        }
+        self._init_settings_page()
+
+    def _init_settings_page(self):
+        self._settings_layout = QtWidgets.QGridLayout()
+
+        label = QtWidgets.QLabel(_SET_N_WIRE_WAVEFORMS.split('/')[1])
+        self._settings_layout.addWidget(label, 0, 0, 1, 1)
+        self._n_wire_waveforms = QtWidgets.QSpinBox()
+        self._n_wire_waveforms.setRange(1, _MAX_WIRE_WAVEFORMS)
+        self._n_wire_waveforms.setSingleStep(1)
+        self._n_wire_waveforms.valueChanged.connect(
+            lambda x: self._update_n_wire_waveforms(x)
+        )
+        self._n_wire_waveforms.setValue(self._settings_defaults[_SET_N_WIRE_WAVEFORMS])
+        self._settings_layout.addWidget(self._n_wire_waveforms, 0, 1, 1, -1)
+        self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
+
+    def restore_from_settings(self):
+        x = self._settings.value(_SET_N_WIRE_WAVEFORMS, self._settings_defaults[_SET_N_WIRE_WAVEFORMS])
+        self._n_wire_waveforms.setValue(int(x))
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -761,6 +793,26 @@ class TpcModule(Module):
                 view.toggleLogo(self._show_logo)
                 view.toggleScale(self._show_scale_bar)
 
+
+    def _update_n_wire_waveforms(self, x: int):
+        '''
+        helper to update the drawn wire list in case the user changes the
+        number of wires to cycle through
+        '''
+        self._settings.setValue(_SET_N_WIRE_WAVEFORMS, x)
+        result = {}
+        for key in self._wirePlotItems.keys():
+            old_idx = self._wirePlotItems[key]['idx'] 
+            if old_idx >= x:
+                continue
+
+            # copy this wire to new dict and update idx
+            result[key] = self._wirePlotItems[key]
+            result[key]['idx'] = old_idx % x
+        self._wirePlotItems = result
+        self.refresh_wire_view()
+                
+
     def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None, replace_idx=None):
         # for next & previous wire: set update_idx so that the wire isn't
         # treated as a new line & instead replaces the preceding wire
@@ -775,13 +827,14 @@ class TpcModule(Module):
             self._wireData = np.flip(self._wireData)
         
         # must store data of each selected wire for FFT
-        iwire = len(self._wirePlotItems) % _MAX_WIRE_WAVEFORMS
+        ncycle = self._settings.value(_SET_N_WIRE_WAVEFORMS, self._settings_defaults[_SET_N_WIRE_WAVEFORMS])
+        iwire = len(self._wirePlotItems) % ncycle
         if replace_idx is None:
             if (tpc, wire) in self._wirePlotItems:
                 # wire is already drawn
                 return
 
-            if len(self._wirePlotItems) + 1 > _MAX_WIRE_WAVEFORMS:
+            if len(self._wirePlotItems) + 1 > ncycle:
                 # removes the oldest wire from the plot
                 item = self._wirePlotItems.pop(next(iter(self._wirePlotItems)))
                 self._wirePlot.removeItem(item['plot'])
@@ -801,12 +854,26 @@ class TpcModule(Module):
             'idx': iwire
         }
 
-        # to keep the legend in the correct order...
+        self._wirePlotItems[(tpc, wire)]['plot'].setData(self._wireData)
+        self.refresh_wire_view()
+
+        # Store the viewport that just draw this
+        # as we might need it to increase and
+        # decrease the displayed wire
+        self._current_wire_drawer = drawer
+        self._current_wire = wire
+        self._current_tpc = tpc
+
+
+    def refresh_wire_view(self):
+        ''' Re-draw the wire waveform view without updating anything '''
+        if self._wirePlot is None:
+            return
+
         self._wirePlot.clear()
         for item in sorted(self._wirePlotItems.values(), key=lambda x: x['idx']):
             self._wirePlot.addItem(item['plot'])
 
-        self._wirePlotItems[(tpc, wire)]['plot'].setData(wireData)
         # update the label
         # name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
         # self._wirePlot.setTitle(name)
@@ -816,15 +883,8 @@ class TpcModule(Module):
         self.plotFFT()
         if len(self._wirePlotItems) == 1:
             self._wirePlot.autoRange()
-
-
-        # Store the viewport that just draw this
-        # as we might need it to increase and
-        # decrease the displayed wire
-        self._current_wire_drawer = drawer
-        self._current_wire = wire
-        self._current_tpc = tpc
     
+
     def plotFFT(self):
         '''
         Take the fft of wire data and plot it in place of the wire signal

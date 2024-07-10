@@ -17,6 +17,9 @@ class Module(QtCore.QObject):
         self._dock_widgets = set()
         self._active = True
         self._update_on_activation = False
+
+        # Note: To get settings to appear in the GUI, you must initialize a
+        # settings layout and call self._settings.setValue(...)
         self._settings = QtCore.QSettings()
         self._settings_defaults = {}
         self._settings_layout = None
