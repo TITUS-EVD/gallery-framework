@@ -66,10 +66,12 @@ class TpcModule(Module):
         self._waveform_dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea \
                                             | QtCore.Qt.LeftDockWidgetArea \
                                             | QtCore.Qt.RightDockWidgetArea)
+        self._mctruth_dock = QtWidgets.QDockWidget('MCTruth Info', self._gui, objectName='tpc_dock_mctruth')
+        self._mctruth_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
 
         # don't add waveform dock to this list since its visibility is set by
         # the controls in this gui
-        self._dock_widgets = set([self._draw_dock, self._view_dock])
+        self._dock_widgets = set([self._draw_dock, self._view_dock, self._mctruth_dock])
 
         self._draw_wires = False
         self._wire_drawer = None
@@ -114,8 +116,10 @@ class TpcModule(Module):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
         self._gui.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._waveform_dock)
         self._gui.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._view_dock)
+        self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._mctruth_dock)
 
         self.init_wire_waveform()
+        self.init_mctruth()
 
         # main TPC view widget with multiple WireViews and waveform view
         # init once the geometry is selected so that None geometry doesn't do
@@ -444,6 +448,31 @@ class TpcModule(Module):
                     box.setCurrentIndex(box.findText(current_producer))
             # update even if the box's producer was none
             box.activated[str].emit(current_producer)
+
+    def init_mctruth(self):
+
+        frame = QtWidgets.QWidget(self._mctruth_dock)
+        main_layout = QtWidgets.QVBoxLayout()
+        frame.setLayout(main_layout)
+        self._mctruth_dock.setWidget(frame)
+
+        self._mctruth_text1 = QtWidgets.QLabel("Some text 1")
+        self._mctruth_text2 = QtWidgets.QLabel("Some text 2")
+        self._show_vertex = QtWidgets.QCheckBox("Show Neutrino Vertex")
+        self._show_vertex.setToolTip("Shows the neutrino vertex with a red x.")
+        self._show_vertex.setTristate(False)
+        self._show_vertex.setChecked(True)
+
+        text_layout = QtWidgets.QVBoxLayout()
+        text_layout.addStretch()
+        text_layout.addWidget(self._mctruth_text1)
+        text_layout.addWidget(self._mctruth_text2)
+        text_layout.addWidget(self._show_vertex)
+        text_layout.addStretch()
+        main_layout.addLayout(text_layout)
+
+        self._mctruth_dock.hide()
+
 
     def init_wire_waveform(self):
         # panel with buttons to draw objects on TPC view
