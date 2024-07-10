@@ -14,7 +14,7 @@ DrawFEBData::DrawFEBData(const geo::GeometryCore&               geometry,
 {
     // _det_clocks(detectorClocks)
     _name = "DrawFEBData";
-    _producer = "crtsim";
+    _producer = "crtdecoder";
     _n_aux_dets = _geo_service.NAuxDets();
 
     _import_array();
@@ -43,26 +43,48 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
 
     // int total_adc = 0;
     for (auto const& feb : *febs) {
+        // only want 'data' not resets
+        if(feb.Flags() != 3 && feb.Flags() != 1)
+          continue;
+
         uint32_t mac5 = feb.Mac5();
         // t0 is ???
         // t1 is the offset specific for this FEB
         uint32_t t0 = feb.Ts0();
         uint32_t t1 = feb.Ts1();
 
-        // SiPM index that fired the trigger. Unused
-		// uint32_t coinc = feb.Coinc();
-        
         const auto& adc_arr = feb.ADC();
-        int isipm = 0;
+        float max_adc = -1.;
+        int isipm = 0, max_isipm = -1;
+
+        // Find which SiPM had the largest ADC
+        for (auto adc : adc_arr)
+          {
+            if(adc > max_adc)
+              {
+                max_adc = adc;
+                max_isipm = isipm;
+              }
+
+            ++isipm;
+          }
+
+        isipm = 0;
         for (auto adc : adc_arr) {
-            uint32_t idx = 32 * mac5 + isipm;
-            if (adc >= 0) {
-                _feb_data.push_back((float)idx);
-                _feb_data.push_back((float)t0);
-                _feb_data.push_back((float)t1);
-                _feb_data.push_back((float)adc);
+          if(isipm != max_isipm)
+            {
+              ++isipm;
+              continue;
             }
-            isipm++;
+
+          uint32_t idx = 32 * mac5 + isipm;
+          if (adc >= 0) {
+            _feb_data.push_back((float)idx);
+            _feb_data.push_back((float)t0);
+            _feb_data.push_back((float)t1);
+            _feb_data.push_back((float)adc);
+          }
+          isipm++;
         }
     }
 
