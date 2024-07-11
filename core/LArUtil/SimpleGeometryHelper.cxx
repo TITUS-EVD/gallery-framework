@@ -45,6 +45,10 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   unsigned int tpc = geom.PositionToTPCID(loc).TPC;
   unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
 
+  // std::cout << "*****  " << std::endl;
+  // std::cout << "TPC  " << tpc << std::endl;
+  // std::cout << "CRYO " << cryo << std::endl;
+
   // Make a check on the plane:
   if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane >= geom.Nplanes(geo::TPCID(cryo, tpc))) {
     returnPoint.w = -9999;
@@ -72,7 +76,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // before the actual spill.
   // So, it moves the "0" farther away from the actual
   // time and is an addition)
-  returnPoint.t += trigger_offset(clocks) * fTimeToCm;
+  // std::cout << "_3D_position.X(): " << _3D_position.X() << std::endl;
 
   //Get the origin point of this plane:
   Double_t planeOrigin[3];
@@ -92,7 +96,17 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // beyond 0 needs to make the time coordinate larger
   // Therefore, subtract the offest (which is already
   // in centimeters)
-  returnPoint.t += abs(planeOrigin[0]);
+  if (tpc == 0) {
+    returnPoint.t = returnPoint.t - planeOrigin[0];
+  } else {
+    returnPoint.t = planeOrigin[0] - returnPoint.t;
+  }
+  // std::cout << "returnPoint.t: " << returnPoint.t << std::endl;
+
+  // std::cout << "trigger_offset: " << trigger_offset(clocks) << std::endl;
+  // std::cout << "fTimeToCm: " << fTimeToCm << std::endl;
+  returnPoint.t += trigger_offset(clocks) * fTimeToCm;
+  // std::cout << "returnPoint.t: " << returnPoint.t << std::endl;
 
   // Set the plane of the Point2D:
   returnPoint.plane = plane;
