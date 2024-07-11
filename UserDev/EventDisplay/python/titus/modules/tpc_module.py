@@ -95,11 +95,8 @@ class TpcModule(Module):
         # user settings page
         self._settings_defaults = {
             _SET_N_WIRE_WAVEFORMS: 5,
-<<<<<<< Updated upstream
             _SET_SCALE_BAR_LENGTH: 30,
-=======
             _SET_SCALE_BAR_FONT_SIZE: 20,
->>>>>>> Stashed changes
         }
         self._init_settings_page()
 
@@ -897,7 +894,7 @@ class TpcModule(Module):
         '''
         self._settings.setValue(_SET_SCALE_BAR_FONT_SIZE, font_size)
         for view in self._wire_views.values():
-            view.setScaleBarFont(font_size)
+            view.setScaleBarFontSize(font_size)
         # self._xBar_fontsize = font_size
         # self.refreshScaleBar()
                 
@@ -1307,8 +1304,8 @@ class WireView(pg.GraphicsLayoutWidget):
         self._cmSpace = useCMBool
         self.refreshScaleBar()
 
-    def setScaleBarFont(self, font_size):
-        self.setScaleBarFont = font_size
+    def setScaleBarFontSize(self, font_size):
+        self._xBar_fontsize = font_size
         self.refreshScaleBar()
 
     def showAnodeCathode(self,showAC):
@@ -1584,12 +1581,14 @@ class WireView(pg.GraphicsLayoutWidget):
             self._xBar = MovableScaleBar(size=self._scale_bar_nwires, suffix='wires')
             self._xBar.setParentItem(self._view)
             self._xBar.anchor((1, 1), (1, 1), offset=(-20, -20))
-            self._xBar.setPointSize(self._xBar_fontsize)
 
         if self._cmSpace:
             self._xBar.setUnits(self._geometry.wire2cm(), suffix='cm')
         else:
             self._xBar.setUnits(1.0, suffix='wires')
+
+        if self._xBar is not None:
+            self._xBar.setPointSize(self._xBar_fontsize)
 
 
     def plane(self):
