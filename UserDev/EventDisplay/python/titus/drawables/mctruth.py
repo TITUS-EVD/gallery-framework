@@ -70,16 +70,16 @@ class MCTruth(Drawable):
                                                       self._geom.getDetectorProperties(),
                                                       self._geom.getDetectorClocks())
 
-
-            vertexPoint = geo_helper.Point_3Dto2D(vertex, view.plane())
-
             tpc = 0 if vertex[0] < 0 else 1
+            plane = view.plane()
 
-            vtx = geo_helper.Point_3Dto2D(vertex, view.plane(), 0)
-            vtx = geo_helper.Point_3Dto2D(vertex, view.plane(), 1)
+            if not self._geom.projectionsMatch():
+                # swap plane 0 and 1 for TPC 1
+                if tpc == 1:
+                    if plane is not 2:
+                        plane =  abs(plane - 1)
 
-            # if vertex[0] > 0:
-            #     vertexPoint.t += self._geom.cathodeGap()/self._geom.time2cm()
+            vertexPoint = geo_helper.Point_3Dto2D(vertex, plane)
 
             # Convert to wires and ticks
             vertexPoint_2d_w = vertexPoint.w/self._geom.wire2cm()
@@ -92,6 +92,7 @@ class MCTruth(Drawable):
                 vertexPoint_2d_t += self._geom.tRange()
                 # add cathode gap
                 vertexPoint_2d_t += self._geom.cathodeGap()
+
 
 
             points = self.makeCross(startX=vertexPoint_2d_w,
