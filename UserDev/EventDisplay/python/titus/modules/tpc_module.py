@@ -42,8 +42,9 @@ _WIRE_COLOR_CYCLE = [QtGui.QColor(*ImageColor.getcolor(h, 'RGB')) for h in \
                     [ '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
                      '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf' ]]
 
-# setting to change number of waveforms
+# TPC view setting strings
 _SET_N_WIRE_WAVEFORMS = 'TPC/Number of Waveforms'
+_SET_SCALE_BAR_LENGTH = 'TPC/Scale bar length (cm)'
 
 
 class TpcModule(Module):
@@ -90,6 +91,7 @@ class TpcModule(Module):
         # user settings page
         self._settings_defaults = {
             _SET_N_WIRE_WAVEFORMS: 5,
+            _SET_SCALE_BAR_LENGTH: 30,
         }
         self._init_settings_page()
 
@@ -106,11 +108,25 @@ class TpcModule(Module):
         )
         self._n_wire_waveforms.setValue(self._settings_defaults[_SET_N_WIRE_WAVEFORMS])
         self._settings_layout.addWidget(self._n_wire_waveforms, 0, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_SCALE_BAR_LENGTH.split('/')[1])
+        self._settings_layout.addWidget(label, 1, 0, 1, 1)
+        self._scale_bar_length = QtWidgets.QSpinBox()
+        self._scale_bar_length.setRange(5, 200)
+        self._scale_bar_length.setSingleStep(5)
+        self._scale_bar_length.valueChanged.connect(
+            lambda x: self._update_scale_bar_length(x)
+        )
+        self._scale_bar_length.setValue(self._settings_defaults[_SET_SCALE_BAR_LENGTH])
+        self._settings_layout.addWidget(self._scale_bar_length, 1, 1, 1, -1)
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
 
     def restore_from_settings(self):
         x = self._settings.value(_SET_N_WIRE_WAVEFORMS, self._settings_defaults[_SET_N_WIRE_WAVEFORMS])
         self._n_wire_waveforms.setValue(int(x))
+
+        x = self._settings.value(_SET_SCALE_BAR_LENGTH, self._settings_defaults[_SET_SCALE_BAR_LENGTH])
+        self._scale_bar_length.setValue(int(x))
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -822,6 +838,13 @@ class TpcModule(Module):
                 view.toggleLogo(self._show_logo)
                 view.toggleScale(self._show_scale_bar)
 
+    def _update_scale_bar_length(self, x: int):
+        '''
+        update the scale bar length on all the views. expects cm while the
+        views expect wires
+        '''
+        for _, view in self._wire_views.items():
+            view.scale_bar_nwires = x / self._gm.current_geom.wire2cm()
 
     def _update_n_wire_waveforms(self, x: int):
         '''
@@ -1036,6 +1059,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._view.sigXRangeChanged.connect(self.scaleHandler)
         self._xBar = None
         self.useScaleBar = False
+        self._scale_bar_nwires = 100
 
         self.setBackground('w')
 
@@ -1157,7 +1181,6 @@ class WireView(pg.GraphicsLayoutWidget):
         self.setColorMap(colormaptype)
 
     def toggleScale(self, scaleBool):
-        # If there is a scale, remove it:
         self.useScaleBar = scaleBool
         self.refreshScaleBar()
 
@@ -1491,21 +1514,32 @@ class WireView(pg.GraphicsLayoutWidget):
         self._view.setRange(xRange=xR,yRange=yR, padding=0.002)
 
 
+    # Scale bar
     def scaleHandler(self):
         if self.useScaleBar:
             self.refreshScaleBar()
 
+    @property
+    def scale_bar_nwires(self):
+        return self._scale_bar_nwires
 
-    def refreshScaleBar(self):
-        if not self.useScaleBar:
+    @scale_bar_nwires.setter
+    def scale_bar_nwires(self, x):
+        self._scale_bar_nwires = x
+        self.refreshScaleBar(force_redraw=True)
+
+    def refreshScaleBar(self, force_redraw=False):
+        if not self.useScaleBar or force_redraw:
+            # delete existing bar
             if self._xBar is not None:
                 self.scene().removeItem(self._xBar)
                 self._xBar = None
+
+        if not self.useScaleBar:
             return
 
-        nwires = 100
         if self._xBar is None:
-            self._xBar = MovableScaleBar(size=nwires, suffix='wires')
+            self._xBar = MovableScaleBar(size=self._scale_bar_nwires, suffix='wires')
             self._xBar.setParentItem(self._view)
             self._xBar.anchor((1, 1), (1, 1), offset=(-20, -20))
 
