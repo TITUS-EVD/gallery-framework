@@ -46,6 +46,10 @@ _WIRE_COLOR_CYCLE = [QtGui.QColor(*ImageColor.getcolor(h, 'RGB')) for h in \
 _SET_N_WIRE_WAVEFORMS = 'TPC/Number of Waveforms'
 _SET_SCALE_BAR_LENGTH = 'TPC/Scale bar length (cm)'
 
+# setting to change the scale bar font size
+_SET_SCALE_BAR_FONT_SIZE = 'TPC/Scale Bar Font Size'
+_MAX_SCALE_BAR_FONT_SIZE = 50
+
 
 class TpcModule(Module):
     def __init__(self, larsoft_module, geom_module):
@@ -91,7 +95,11 @@ class TpcModule(Module):
         # user settings page
         self._settings_defaults = {
             _SET_N_WIRE_WAVEFORMS: 5,
+<<<<<<< Updated upstream
             _SET_SCALE_BAR_LENGTH: 30,
+=======
+            _SET_SCALE_BAR_FONT_SIZE: 20,
+>>>>>>> Stashed changes
         }
         self._init_settings_page()
 
@@ -119,6 +127,18 @@ class TpcModule(Module):
         )
         self._scale_bar_length.setValue(self._settings_defaults[_SET_SCALE_BAR_LENGTH])
         self._settings_layout.addWidget(self._scale_bar_length, 1, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_SCALE_BAR_FONT_SIZE.split('/')[1])
+        self._settings_layout.addWidget(label, 2, 0, 1, 1)
+        self._scale_bar_font_size = QtWidgets.QSpinBox()
+        self._scale_bar_font_size.setRange(1, _MAX_SCALE_BAR_FONT_SIZE)
+        self._scale_bar_font_size.setSingleStep(1)
+        self._scale_bar_font_size.valueChanged.connect(
+            lambda x: self._update_scale_bar_font_size(x)
+        )
+        self._scale_bar_font_size.setValue(self._settings_defaults[_SET_SCALE_BAR_FONT_SIZE])
+        self._settings_layout.addWidget(self._scale_bar_font_size, 2, 1, 1, -1)
+
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
 
     def restore_from_settings(self):
@@ -127,6 +147,9 @@ class TpcModule(Module):
 
         x = self._settings.value(_SET_SCALE_BAR_LENGTH, self._settings_defaults[_SET_SCALE_BAR_LENGTH])
         self._scale_bar_length.setValue(int(x))
+
+        x = self._settings.value(_SET_SCALE_BAR_FONT_SIZE, self._settings_defaults[_SET_SCALE_BAR_FONT_SIZE])
+        self._scale_bar_font_size.setValue(int(x))
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -567,6 +590,7 @@ class TpcModule(Module):
 
         if product is not None:
             self._product_box_map[sender].set_producer(product.full_name())
+            self._gi.process_event()
             self._product_box_map[sender].drawObjects()
             return
 
@@ -863,6 +887,19 @@ class TpcModule(Module):
             result[key]['idx'] = old_idx % x
         self._wirePlotItems = result
         self.refresh_wire_view()
+
+    def _update_scale_bar_font_size(self, font_size: int):
+        '''
+        helper to update the font size of the scale bar
+
+        args:
+            font_size (int): the font size in points
+        '''
+        self._settings.setValue(_SET_SCALE_BAR_FONT_SIZE, font_size)
+        for view in self._wire_views.values():
+            view.setScaleBarFont(font_size)
+        # self._xBar_fontsize = font_size
+        # self.refreshScaleBar()
                 
 
     def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None, replace_idx=None):
@@ -1058,6 +1095,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._view.sigYRangeChanged.connect(self.scaleHandler)
         self._view.sigXRangeChanged.connect(self.scaleHandler)
         self._xBar = None
+        self._xBar_fontsize = 20
         self.useScaleBar = False
         self._scale_bar_nwires = 100
 
@@ -1267,6 +1305,10 @@ class WireView(pg.GraphicsLayoutWidget):
 
     def useCM(self,useCMBool):
         self._cmSpace = useCMBool
+        self.refreshScaleBar()
+
+    def setScaleBarFont(self, font_size):
+        self.setScaleBarFont = font_size
         self.refreshScaleBar()
 
     def showAnodeCathode(self,showAC):
@@ -1542,6 +1584,7 @@ class WireView(pg.GraphicsLayoutWidget):
             self._xBar = MovableScaleBar(size=self._scale_bar_nwires, suffix='wires')
             self._xBar.setParentItem(self._view)
             self._xBar.anchor((1, 1), (1, 1), offset=(-20, -20))
+            self._xBar.setPointSize(self._xBar_fontsize)
 
         if self._cmSpace:
             self._xBar.setUnits(self._geometry.wire2cm(), suffix='cm')
