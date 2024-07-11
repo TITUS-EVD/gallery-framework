@@ -303,6 +303,11 @@ class MovableScaleBar(pg.ScaleBar):
     def setUnits(self, scale=1, suffix=''):
         self.text.setText(pg.functions.siFormat(self.size * scale, suffix=suffix))
 
+    def setPointSize(self, point_size):
+        font = QtGui.QFont()
+        font.setPixelSize(point_size)
+        self.text.setFont(font)
+
 
 class MovableLabel(pg.TextItem):
     """ GraphicsPixmapItem which can be clicked & dragged """
