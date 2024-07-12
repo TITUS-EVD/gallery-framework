@@ -303,9 +303,7 @@ class MovableScaleBar(pg.ScaleBar):
     def setUnits(self, scale=1, suffix=''):
         self.text.setText(pg.functions.siFormat(self.size * scale, suffix=suffix))
 
-    def setPointSize(self, point_size):
-        font = QtGui.QFont()
-        font.setPixelSize(point_size)
+    def setFont(self, font):
         self.text.setFont(font)
 
 
