@@ -1,5 +1,5 @@
 from titus.drawables import Drawable
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 from ROOT import evd, larutil
 import pyqtgraph as pg
 
@@ -26,6 +26,7 @@ class MCTruth(Drawable):
         self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._geom = geom
         self._module = tpc_module
+        self._module._show_vertex.stateChanged.connect(self.toggle_cross)
         self.init()
 
     def getLabel(self):
@@ -54,6 +55,7 @@ class MCTruth(Drawable):
         mcts = self._process.getData()
 
         if len(mcts) == 0:
+            # print('No MCTruth available')
             return
 
         # Only the first neutrino for now
@@ -68,19 +70,43 @@ class MCTruth(Drawable):
                                                       self._geom.getDetectorProperties(),
                                                       self._geom.getDetectorClocks())
 
-            vertexPoint = geo_helper.Point_3Dto2D(vertex, view.plane())
+            tpc = 0 if vertex[0] < 0 else 1
+            plane = view.plane()
 
-            points = self.makeCross(startX=vertexPoint.w/self._geom.wire2cm(),
-                                    startY=vertexPoint.t/self._geom.time2cm(),
-                                    shortDistX=0.05/self._geom.wire2cm(),
-                                    longDistX=1.0/self._geom.wire2cm(),
-                                    shortDistY=0.05/self._geom.time2cm(),
-                                    longDistY=1.0/self._geom.time2cm(),
+            if not self._geom.projectionsMatch():
+                # swap plane 0 and 1 for TPC 1
+                if tpc == 1:
+                    if plane is not 2:
+                        plane =  abs(plane - 1)
+
+            vertexPoint = geo_helper.Point_3Dto2D(vertex, plane)
+
+            # Convert to wires and ticks
+            vertexPoint_2d_w = vertexPoint.w/self._geom.wire2cm()
+            vertexPoint_2d_t = vertexPoint.t/self._geom.time2cm()
+
+            if tpc == 1:
+                # flip
+                vertexPoint_2d_t = self._geom.tRange() - vertexPoint_2d_t
+                # move up
+                vertexPoint_2d_t += self._geom.tRange()
+                # add cathode gap
+                vertexPoint_2d_t += self._geom.cathodeGap()
+
+
+
+            points = self.makeCross(startX=vertexPoint_2d_w,
+                                    startY=vertexPoint_2d_t,
+                                    shortDistX=1.0/self._geom.wire2cm(),
+                                    longDistX=4.0/self._geom.wire2cm(),
+                                    shortDistY=1.0/self._geom.time2cm(),
+                                    longDistY=4.0/self._geom.time2cm(),
                                     )
 
             thisPolyF = QtGui.QPolygonF(points)
-            thisPoly = QtGui.QGraphicsPolygonItem(thisPolyF)
-            thisPoly.setBrush(pg.mkColor((255,255,255,0))) # white
+            thisPoly = QtWidgets.QGraphicsPolygonItem(thisPolyF)
+            # thisPoly.setBrush(pg.mkColor((255,255,255,0))) # white
+            thisPoly.setBrush(QtGui.QBrush(QtGui.QColor("salmon"))) # white
 
             thisPoly.setToolTip('Neutrino Interaction Vertex')
 
@@ -88,9 +114,6 @@ class MCTruth(Drawable):
             view._view.addItem(thisPoly)
 
 
-        # TODO find a home for this block
-        '''
-        mb = view_manager.getMessageBar()
         message = str()
         tooltip = str()
 
@@ -124,10 +147,10 @@ class MCTruth(Drawable):
                     tooltip += f'\n  PDG: {p}, Energy: {e:.3} GeV'
 
 
-
-        mb.showMessage(message)
-        mb.setToolTip(tooltip)
-        '''
+        self._module._mctruth_text1.setText(message)
+        self._module._mctruth_text1.setToolTip(tooltip)
+        self._module._mctruth_text2.setText(tooltip)
+        self._module._mctruth_dock.show()
 
     def makeCross(self, startX, startY,
                   shortDistX, longDistX,
@@ -165,6 +188,16 @@ class MCTruth(Drawable):
 
         return points
 
+    def toggle_cross(self):
+        if self._module._show_vertex.isChecked():
+            for view_objs in self._drawnObjects:
+                for obj in view_objs:
+                    obj.show()
+        else:
+            for view_objs in self._drawnObjects:
+                for obj in view_objs:
+                    obj.hide()
+
 
     def clearDrawnObjects(self, obj_list=None):
         """ Override base class since our object list is nested """
@@ -172,3 +205,4 @@ class MCTruth(Drawable):
             for obj in view_objs:
                 obj.scene().removeItem(obj)
         self._drawnObjects = []
+        self._module._mctruth_dock.hide()
