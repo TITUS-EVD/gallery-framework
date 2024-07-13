@@ -4,12 +4,35 @@ from PyQt5 import QtWidgets, QtGui
 import pyqtgraph as pg
 # from titus.modules import TpcModule
 
-class hitBox(QtWidgets.QGraphicsRectItem):
 
-    """docstring for hitBox"""
+class HitBoxCollection(QtWidgets.QGraphicsItem):
+    '''
+    A collection of HitBox classes to be drawn at the same time.
+    '''
+
+    def __init__(self):
+        super().__init__()
+        self._rects = []
+
+    def add_hitbox(self, hitbox):
+        self._rects.append(hitbox)
+
+    def add_hitboxes(self, rects):
+        self._rects = rects
+    
+    def paint(self, painter, option, widget):
+        # This method is intentionally left empty because QGraphicsRectItem
+        # will handle their own painting.
+        pass
+
+
+class HitBox(QtWidgets.QGraphicsRectItem):
+    '''
+    Represents a single Hit
+    '''
 
     def __init__(self, *args, **kwargs):
-        super(hitBox, self).__init__(*args)
+        super().__init__(*args)
         self.setAcceptHoverEvents(True)
         self._isHighlighted = False
 
@@ -51,9 +74,7 @@ class Hit(Drawable):
 
             for i in range(0, self._n_planes): self._drawnObjects.append([])
 
-            # First get the hit information:
             hits = self._process.getDataByPlane(thisPlane)
-
             self.drawHitList(view, hits, thisPlane, self._geom)
 
             # Draw the additional planes, if any
@@ -70,8 +91,12 @@ class Hit(Drawable):
     def drawHitList(self, view, hits, thisPlane, geom, flip=False, shift=False):
         if len(hits) == 0:
             return
-        # for i in range(len(hits)):
-        for i in range(100):
+
+        hit_collection = HitBoxCollection()
+        rects = []
+
+        for i in range(len(hits)):
+        # for i in range(100):
             hit = hits[i]
 
             wire = hit.wire()
@@ -97,26 +122,24 @@ class Hit(Drawable):
                 offset = (geom.wRange(view.plane()) - geom.cathodeGap()) / 2. + geom.cathodeGap()
                 wire = wire + offset
 
-            r = hitBox(wire,
+            r = HitBox(wire,
                        time,
                        width,
-                       height)
+                       height,
+                       hit_collection)
 
             opacity = int(128 * hit.charge() / self._process.maxCharge(thisPlane)) + 127
-            # opacity = exp( 1 + hit.charge() / self._process.maxCharge(thisPlane))/exp(2);
-            # # New Way
-            # r.setPen(pg.mkPen(brush,width=2))
-            # # r.setBrush(pg.mkColor((255,255,255)))
 
-            # Old Way:
             r.setPen(pg.mkPen(None))
             r.setBrush(pg.mkColor(0,0,0,opacity))
-            # r.setBrush((0,0,0,opacity))
 
             r.setToolTip(self.genToolTip(hit))
 
-            self._drawnObjects[thisPlane].append(r)
-            view._view.addItem(r)
+            rects.append(r)
+
+        hit_collection.add_hitboxes(rects)
+        self._drawnObjects[thisPlane].append(hit_collection)
+        view._view.addItem(hit_collection)
 
     def genToolTip(self, hit):
         return 'Time: {time:0.1f}\nRMS: {rms:0.1f}\nIntegral: {integral:0.1f}'.format(
