@@ -43,18 +43,23 @@ class Track(Drawable):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'track'
         self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
+        self._process._projections_match = geom.projectionsMatch()
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._geom = geom
         self._module = tpc_module
         self.init()
+
 
     def drawObjects(self, on_both_tpcs=False):
         for _, view in self._module._wire_views.items():
             self._drawnObjects.append([])
             tracks = self._process.getDataByPlane(view.plane())
 
+            plane = view.plane()
+
             for i in range(len(tracks)):
                 track = tracks[i]
+
                 # construct a polygon for this track:
                 points = []
                 # Remeber - everything is in cm, but the display is in
@@ -63,9 +68,12 @@ class Track(Drawable):
                     x = pair.first / self._geom.wire2cm()
                     y = pair.second / self._geom.time2cm()
 
-                    # If odd TPC, shit this piece of the track up
-                    if track.tpc()[i] % 2:
-                        y += 2 * self._geom.triggerOffset()
+                    if track.tpc()[i] == 1:
+                        # flip
+                        y = self._geom.tRange() - y
+                        # move up
+                        y += self._geom.tRange()
+                        # add cathode gap
                         y += self._geom.cathodeGap()
 
                     points.append(QtCore.QPointF(x, y))
@@ -89,7 +97,7 @@ class Track(Drawable):
         if len(tracks) == 0:
             return
 
-        # print ('  Cool. We have', len(tracks), ' tracks.')
+        print ('  Cool. We have', len(tracks), ' tracks.')
 
         for i in range(len(tracks)):
             track = tracks[i]
