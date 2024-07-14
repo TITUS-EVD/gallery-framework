@@ -1,6 +1,6 @@
 from titus.drawables import Drawable
 from ROOT import evd
-from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtWidgets, QtGui
 import pyqtgraph as pg
 
 
@@ -37,7 +37,7 @@ class Vertex(Drawable):
                 sW = point.w / self._geom.wire2cm()
                 sT = point.t / self._geom.time2cm() + offset
 
-                r = QtGui.QGraphicsEllipseItem(
+                r = QtWidgets.QGraphicsEllipseItem(
                     sW-radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
 
                 # r = QtGui.QGraphicsRectItem(

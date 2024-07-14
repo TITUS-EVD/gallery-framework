@@ -1,7 +1,7 @@
 from titus.drawables import Drawable
 from ROOT import evd, TVector3
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtWidgets, QtGui, QtCore
 import math as mt
 
 
@@ -38,7 +38,7 @@ class SpacePoint(Drawable):
                 
                 sW = thisPoint.w / self._geom.wire2cm()
                 sT = thisPoint.t / self._geom.time2cm() + offset
-                r = QtGui.QGraphicsEllipseItem(
+                r = QtWidgets.QGraphicsEllipseItem(
                     sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
 
                 r.setPen(pg.mkPen(255,0,255))
