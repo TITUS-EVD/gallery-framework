@@ -389,11 +389,15 @@ class GalleryInterface(QtCore.QObject):
 
         return datetime.fromtimestamp(timestamp_s, timezone.utc)
 
-    def date(self):
+    def date(self, include_time=True):
         dt = self.datetime()
         if dt is None:
             return 'No event selected'
-        return dt.strftime("%B %d, %Y - %H:%M:%S UTC")
+
+        if include_time:
+            return dt.strftime("%B %d, %Y - %H:%M:%S UTC")
+
+        return dt.strftime("%B %d, %Y")
 
     # override the functions from manager as needed here
     def next(self):

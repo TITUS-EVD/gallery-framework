@@ -50,6 +50,8 @@ _SET_SCALE_BAR_LENGTH = 'TPC/Scale bar length (cm)'
 # setting to change the scale bar font size and logo size
 _SET_LABEL_FONT_SIZE = 'TPC/Label font size'
 _MAX_LABEL_FONT_SIZE = 50
+_SET_LABEL_PLANE = 'TPC/Show plane number in label'
+_SET_LABEL_TIME = 'TPC/Show event time in label'
 _SET_LOGO_SIZE = 'TPC/Logo size'
 
 
@@ -99,6 +101,8 @@ class TpcModule(Module):
             _SET_N_WIRE_WAVEFORMS: 5,
             _SET_SCALE_BAR_LENGTH: 30,
             _SET_LABEL_FONT_SIZE: 20,
+            _SET_LABEL_PLANE: QtCore.Qt.Unchecked,
+            _SET_LABEL_TIME: QtCore.Qt.Unchecked,
             _SET_LOGO_SIZE: 1.0,
         }
         self._init_settings_page()
@@ -139,8 +143,28 @@ class TpcModule(Module):
         )
         self._settings_layout.addWidget(self._label_font_size, 2, 1, 1, -1)
 
-        label = QtWidgets.QLabel(_SET_LOGO_SIZE.split('/')[1])
+        label = QtWidgets.QLabel(_SET_LABEL_PLANE.split('/')[1])
         self._settings_layout.addWidget(label, 3, 0, 1, 1)
+        self._label_plane = QtWidgets.QCheckBox()
+        self._label_plane.setTristate(False)
+        self._label_plane.setChecked(self._settings_defaults[_SET_LABEL_PLANE])
+        self._label_plane.stateChanged.connect(
+            lambda x: self._update_label_plane(x)
+        )
+        self._settings_layout.addWidget(self._label_plane, 3, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_LABEL_TIME.split('/')[1])
+        self._settings_layout.addWidget(label, 4, 0, 1, 1)
+        self._label_time = QtWidgets.QCheckBox()
+        self._label_time.setTristate(False)
+        self._label_time.setChecked(self._settings_defaults[_SET_LABEL_TIME])
+        self._label_time.stateChanged.connect(
+            lambda x: self._update_label_time(x)
+        )
+        self._settings_layout.addWidget(self._label_time, 4, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_LOGO_SIZE.split('/')[1])
+        self._settings_layout.addWidget(label, 5, 0, 1, 1)
         self._logo_size = QtWidgets.QDoubleSpinBox()
         self._logo_size.setDecimals(1)
         self._logo_size.setRange(1, 2)
@@ -149,7 +173,7 @@ class TpcModule(Module):
         self._logo_size.valueChanged.connect(
             lambda x: self._update_logo_size(x)
         )
-        self._settings_layout.addWidget(self._logo_size, 3, 1, 1, -1)
+        self._settings_layout.addWidget(self._logo_size, 5, 1, 1, -1)
 
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
 
@@ -166,6 +190,14 @@ class TpcModule(Module):
         x = int(self._settings.value(_SET_LABEL_FONT_SIZE, self._settings_defaults[_SET_LABEL_FONT_SIZE]))
         self._label_font_size.setValue(x)
         self._label_font_size.valueChanged.emit(x)
+
+        x = QtCore.Qt.CheckState(self._settings.value(_SET_LABEL_PLANE, self._settings_defaults[_SET_LABEL_PLANE]))
+        self._label_plane.setCheckState(x)
+        self._label_plane.stateChanged.emit(x)
+
+        x = QtCore.Qt.CheckState(self._settings.value(_SET_LABEL_TIME, self._settings_defaults[_SET_LABEL_TIME]))
+        self._label_time.setCheckState(x)
+        self._label_time.stateChanged.emit(x)
 
         x = float(self._settings.value(_SET_LOGO_SIZE, self._settings_defaults[_SET_LOGO_SIZE]))
         self._logo_size.setValue(x)
@@ -921,6 +953,35 @@ class TpcModule(Module):
         for view in self._wire_views.values():
             view.setLabelFontSize(font_size)
 
+    def _update_label_plane(self, show_plane: QtCore.Qt.CheckState):
+        '''
+        helper to to toggle the plane number in the label
+
+        args:
+            show_plane (CheckState): checkbox state
+        '''
+        self._settings.setValue(_SET_LABEL_PLANE, show_plane)
+        for view in self._wire_views.values():
+            if show_plane == QtCore.Qt.Checked:
+                view.showPlaneNoInLabel(True)
+            else:
+                view.showPlaneNoInLabel(False)
+
+    def _update_label_time(self, include_time: QtCore.Qt.CheckState):
+        '''
+        helper to to toggle the time in the label
+
+        args:
+            show_plane (CheckState): checkbox state
+        '''
+        self._settings.setValue(_SET_LABEL_TIME, include_time)
+        for view in self._wire_views.values():
+            if include_time == QtCore.Qt.Checked:
+                view.includeTimeInLabel(True)
+            else:
+                view.includeTimeInLabel(False)
+
+
     def _update_logo_size(self, size: float):
         '''
         helper to update the logo size on each view
@@ -1137,6 +1198,8 @@ class WireView(pg.GraphicsLayoutWidget):
         self._logo = None
         self._label = None
         self._logo_scale = 1.0
+        self._showPlaneNoInLabel = False
+        self._includeTimeInLabel = False
 
         self._drawingRawDigits = False
         # each drawer contains its own color gradient and levels
@@ -1314,7 +1377,11 @@ class WireView(pg.GraphicsLayoutWidget):
         # yLoc = yMax - 0.1*(yMax - yMin)
 
         label = f'RUN {self._gi.run()}, EVENT {self._gi.event()}\n'
-        label += self._gi.date()
+
+        if self._showPlaneNoInLabel:
+            label += f'PLANE {self._plane}\n'
+
+        label += self._gi.date(include_time=self._includeTimeInLabel)
 
         self._label = MovableLabel(label, anchor=(0., 0.))
         self._label.setPos(xLoc,yLoc)
@@ -1364,6 +1431,14 @@ class WireView(pg.GraphicsLayoutWidget):
     def setLabelFontSize(self, font_size):
         self._fontsize = font_size
         self.refreshScaleBar()
+        self.refreshLogo()
+
+    def showPlaneNoInLabel(self, show_plane):
+        self._showPlaneNoInLabel = show_plane
+        self.refreshLogo()
+
+    def includeTimeInLabel(self, include_time):
+        self._includeTimeInLabel = include_time
         self.refreshLogo()
 
     def showAnodeCathode(self,showAC):
