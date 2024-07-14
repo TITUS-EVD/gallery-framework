@@ -22,7 +22,7 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
       // If projections across TPCs don't match, we need to
       // swap plan U with V in TPC 1
       int plane_ = plane;
-      if (!projections_match) {
+      if (!_projections_match) {
         // swap plane 0 and 1 for TPC 1
         if (tpc == 1) { 
           if (plane != 2) {

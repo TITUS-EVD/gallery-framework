@@ -44,6 +44,7 @@ class Track(Drawable):
         self._product_name = 'track'
         self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._process._projections_match = geom.projectionsMatch()
+        print('self._process._projections_match?', self._process._projections_match)
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._geom = geom
         self._module = tpc_module
@@ -85,7 +86,7 @@ class Track(Drawable):
 
                 thisPoly = polyLine(points, color)
 
-                thisPoly.setToolTip(f'Length: {track.length():.2f};  Theta: {track.theta():.2f};  Phi: {track.phi():.2f}')
+                thisPoly.setToolTip(f'Length: {track.length():.2f} cm;  Theta: {track.theta():.2f};  Phi: {track.phi():.2f}')
 
                 view._view.addItem(thisPoly)
 
