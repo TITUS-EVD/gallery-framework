@@ -77,7 +77,6 @@ class Cluster(Drawable):
 
                 # draw the hits in this cluster:
                 cluster_box_coll.drawHits(view, cluster, geom, flip, shift)
-                break
 
 
 
