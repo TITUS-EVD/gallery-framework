@@ -125,7 +125,7 @@ class CrtHitsItem(pg.GraphicsObject):
             tfrac = (time - min_val) / val_range
             color = _CRT_COLORMAP.mapToQColor(tfrac)
             painter.setBrush(color)
-            painter.setOpacity(1.0 - 2.0 * np.abs(tfrac - 0.5))
+            painter.setOpacity(0.5)
             painter.setPen(color)
             painter.drawRect(QtCore.QRectF(x, y, l, w))
 
