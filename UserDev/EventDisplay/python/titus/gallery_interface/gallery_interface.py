@@ -138,7 +138,7 @@ class GalleryInterface(QtCore.QObject):
         # what data products are available
 
         # Open the file
-        f = TFile(file)
+        f = TFile.Open(file)
         e = f.Get("Events")
 
 
@@ -234,7 +234,7 @@ class GalleryInterface(QtCore.QObject):
         for file in files:
             # First, check that the file exists:
             try:
-                if not os.path.exists(file):
+                if not os.path.exists(file) and 'root://' not in file:
                     print(f"\033[91m WARNING\033[0m requested file {file} does not exist, skipping")
                     continue
             except (Exception, e):
@@ -260,7 +260,7 @@ class GalleryInterface(QtCore.QObject):
         # Have to figure out number of events available
         self._n_entries = 0
         for _f in _file_list:
-            _rf = TFile(str(_f))
+            _rf = TFile.Open(str(_f))
             _tree = _rf.Get("Events")
             self._n_entries += _tree.GetEntries()
             _rf.Close()

@@ -56,6 +56,7 @@ class geoBase(object):
         self._n_optical_offset = 0
         self._plane_mix = {}
         self._plane_flip = []
+        self._projections_match = False
 
         # crt-related
         # TODO these numbers are adjusted for SBND
@@ -240,6 +241,13 @@ class geoBase(object):
         if plane_id > len(self._plane_shift):
             raise Exception (f'{plane_id} not available.')
         return self._plane_shift[plane_id]
+
+    def projectionsMatch(self):
+        '''
+        Returns True if the current combination (planeMix)
+        gives the same projection across TPCs or not
+        '''
+        return self._projections_match
 
 
 class Geometry(geoBase):
@@ -451,6 +459,7 @@ class sbnd(Geometry):
         self._plane_mix = {0: [3], 1: [4], 2: [5]}
         self._plane_flip = [False, False, False, True, True, True]
         self._plane_shift = [False, False, False, False, False, False]
+        self._projections_match = False
 
         self._name = "sbnd"
         self._logo = LOGO_PATH / "SBND-color.png"

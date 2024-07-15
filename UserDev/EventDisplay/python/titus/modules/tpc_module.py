@@ -19,6 +19,7 @@ import titus.drawables as drawables
 
 
 # place any drawables associated with TPC view here
+# display name: (drawable class, producer name)
 _DRAWABLE_LIST = {
     'Hit': [drawables.Hit, "recob::Hit"],
     'Cluster': [drawables.Cluster, "recob::Cluster"],
@@ -36,19 +37,29 @@ _RECOB_WIRE = 'recob::Wire'
 _RECOB_CHANNELROI = 'recob::ChannelROI'
 _RAW_RAWDIGIT = 'raw::RawDigit'
 
-_MAX_WIRE_WAVEFORMS = 5
+_MAX_WIRE_WAVEFORMS = 10
 # tab10 from matplotlib
 _WIRE_COLOR_CYCLE = [QtGui.QColor(*ImageColor.getcolor(h, 'RGB')) for h in \
                     [ '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
                      '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf' ]]
 
+# TPC view setting strings
+_SET_N_WIRE_WAVEFORMS = 'TPC/Number of Waveforms'
+_SET_SCALE_BAR_LENGTH = 'TPC/Scale bar length (cm)'
+
+# setting to change the scale bar font size and logo size
+_SET_LABEL_FONT_SIZE = 'TPC/Label font size'
+_MAX_LABEL_FONT_SIZE = 50
+_SET_LOGO_SIZE = 'TPC/Logo size'
+
 
 class TpcModule(Module):
     def __init__(self, larsoft_module, geom_module):
         super().__init__()
+        self._name = 'TPC'
+
         self._lsm = larsoft_module
         self._gm = geom_module
-        self._name = 'TPC Module'
 
         self._central_widget = QtWidgets.QSplitter()
         self._central_widget.setOrientation(QtCore.Qt.Vertical)
@@ -62,10 +73,12 @@ class TpcModule(Module):
         self._waveform_dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea \
                                             | QtCore.Qt.LeftDockWidgetArea \
                                             | QtCore.Qt.RightDockWidgetArea)
+        self._mctruth_dock = QtWidgets.QDockWidget('MCTruth Info', self._gui, objectName='tpc_dock_mctruth')
+        self._mctruth_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
 
         # don't add waveform dock to this list since its visibility is set by
         # the controls in this gui
-        self._dock_widgets = set([self._draw_dock, self._view_dock])
+        self._dock_widgets = set([self._draw_dock, self._view_dock, self._mctruth_dock])
 
         self._draw_wires = False
         self._wire_drawer = None
@@ -78,18 +91,101 @@ class TpcModule(Module):
         self._current_wire_drawer = None
         self._current_wire = -1
 
+        self._wirePlot = None
+        self._wirePlotItems = {}
+
+        # user settings page
+        self._settings_defaults = {
+            _SET_N_WIRE_WAVEFORMS: 5,
+            _SET_SCALE_BAR_LENGTH: 30,
+            _SET_LABEL_FONT_SIZE: 20,
+            _SET_LOGO_SIZE: 1.0,
+        }
+        self._init_settings_page()
+
+    def _init_settings_page(self):
+        self._settings_layout = QtWidgets.QGridLayout()
+
+        label = QtWidgets.QLabel(_SET_N_WIRE_WAVEFORMS.split('/')[1])
+        self._settings_layout.addWidget(label, 0, 0, 1, 1)
+        self._n_wire_waveforms = QtWidgets.QSpinBox()
+        self._n_wire_waveforms.setRange(1, _MAX_WIRE_WAVEFORMS)
+        self._n_wire_waveforms.setSingleStep(1)
+        self._n_wire_waveforms.setValue(self._settings_defaults[_SET_N_WIRE_WAVEFORMS])
+        self._n_wire_waveforms.valueChanged.connect(
+            lambda x: self._update_n_wire_waveforms(x)
+        )
+        self._settings_layout.addWidget(self._n_wire_waveforms, 0, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_SCALE_BAR_LENGTH.split('/')[1])
+        self._settings_layout.addWidget(label, 1, 0, 1, 1)
+        self._scale_bar_length = QtWidgets.QSpinBox()
+        self._scale_bar_length.setRange(5, 200)
+        self._scale_bar_length.setSingleStep(5)
+        self._scale_bar_length.setValue(self._settings_defaults[_SET_SCALE_BAR_LENGTH])
+        self._scale_bar_length.valueChanged.connect(
+            lambda x: self._update_scale_bar_length(x)
+        )
+        self._settings_layout.addWidget(self._scale_bar_length, 1, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_LABEL_FONT_SIZE.split('/')[1])
+        self._settings_layout.addWidget(label, 2, 0, 1, 1)
+        self._label_font_size = QtWidgets.QSpinBox()
+        self._label_font_size.setRange(1, _MAX_LABEL_FONT_SIZE)
+        self._label_font_size.setSingleStep(1)
+        self._label_font_size.setValue(self._settings_defaults[_SET_LABEL_FONT_SIZE])
+        self._label_font_size.valueChanged.connect(
+            lambda x: self._update_label_font_size(x)
+        )
+        self._settings_layout.addWidget(self._label_font_size, 2, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_LOGO_SIZE.split('/')[1])
+        self._settings_layout.addWidget(label, 3, 0, 1, 1)
+        self._logo_size = QtWidgets.QDoubleSpinBox()
+        self._logo_size.setDecimals(1)
+        self._logo_size.setRange(1, 2)
+        self._logo_size.setSingleStep(0.1)
+        self._logo_size.setValue(self._settings_defaults[_SET_LOGO_SIZE])
+        self._logo_size.valueChanged.connect(
+            lambda x: self._update_logo_size(x)
+        )
+        self._settings_layout.addWidget(self._logo_size, 3, 1, 1, -1)
+
+        self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
+
+    def restore_from_settings(self):
+        ''' emitting forces the connected signal even if the value is the same '''
+        x = int(self._settings.value(_SET_N_WIRE_WAVEFORMS, self._settings_defaults[_SET_N_WIRE_WAVEFORMS]))
+        self._n_wire_waveforms.setValue(x)
+        self._n_wire_waveforms.valueChanged.emit(x)
+
+        x = int(self._settings.value(_SET_SCALE_BAR_LENGTH, self._settings_defaults[_SET_SCALE_BAR_LENGTH]))
+        self._scale_bar_length.setValue(x)
+        self._scale_bar_length.valueChanged.emit(x)
+
+        x = int(self._settings.value(_SET_LABEL_FONT_SIZE, self._settings_defaults[_SET_LABEL_FONT_SIZE]))
+        self._label_font_size.setValue(x)
+        self._label_font_size.valueChanged.emit(x)
+
+        x = float(self._settings.value(_SET_LOGO_SIZE, self._settings_defaults[_SET_LOGO_SIZE]))
+        self._logo_size.setValue(x)
+        self._logo_size.valueChanged.emit(x)
+
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
         self._gui.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._waveform_dock)
         self._gui.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._view_dock)
+        self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._mctruth_dock)
 
         self.init_wire_waveform()
+        self.init_mctruth()
 
         # main TPC view widget with multiple WireViews and waveform view
         # init once the geometry is selected so that None geometry doesn't do
         # anything
         self._gm.geometryChanged.connect(self.init_tpc_controls)
         self._gm.geometryChanged.connect(self.init_tpc_views)
+        self._gm.geometryChanged.connect(self.restore_from_settings)
 
     def init_tpc_views(self):
         # TODO remove wire views from central widget if they exist (in the case
@@ -413,6 +509,31 @@ class TpcModule(Module):
             # update even if the box's producer was none
             box.activated[str].emit(current_producer)
 
+    def init_mctruth(self):
+
+        frame = QtWidgets.QWidget(self._mctruth_dock)
+        main_layout = QtWidgets.QVBoxLayout()
+        frame.setLayout(main_layout)
+        self._mctruth_dock.setWidget(frame)
+
+        self._mctruth_text1 = QtWidgets.QLabel("Some text 1")
+        self._mctruth_text2 = QtWidgets.QLabel("Some text 2")
+        self._show_vertex = QtWidgets.QCheckBox("Show Neutrino Vertex")
+        self._show_vertex.setToolTip("Shows the neutrino vertex with a red x.")
+        self._show_vertex.setTristate(False)
+        self._show_vertex.setChecked(True)
+
+        text_layout = QtWidgets.QVBoxLayout()
+        text_layout.addStretch()
+        text_layout.addWidget(self._mctruth_text1)
+        text_layout.addWidget(self._mctruth_text2)
+        text_layout.addWidget(self._show_vertex)
+        text_layout.addStretch()
+        main_layout.addLayout(text_layout)
+
+        self._mctruth_dock.hide()
+
+
     def init_wire_waveform(self):
         # panel with buttons to draw objects on TPC view
         self._wire_waveform_widget = QtWidgets.QWidget(self._draw_dock)
@@ -490,6 +611,7 @@ class TpcModule(Module):
 
         if product is not None:
             self._product_box_map[sender].set_producer(product.full_name())
+            self._gi.process_event()
             self._product_box_map[sender].drawObjects()
             return
 
@@ -761,6 +883,56 @@ class TpcModule(Module):
                 view.toggleLogo(self._show_logo)
                 view.toggleScale(self._show_scale_bar)
 
+    def _update_scale_bar_length(self, x: int):
+        '''
+        update the scale bar length on all the views. expects cm while the
+        views expect wires
+        '''
+        self._settings.setValue(_SET_SCALE_BAR_LENGTH, x)
+        for _, view in self._wire_views.items():
+            view.scale_bar_nwires = x / self._gm.current_geom.wire2cm()
+
+    def _update_n_wire_waveforms(self, x: int):
+        '''
+        helper to update the drawn wire list in case the user changes the
+        number of wires to cycle through
+        '''
+        self._settings.setValue(_SET_N_WIRE_WAVEFORMS, x)
+        result = {}
+        for key in self._wirePlotItems.keys():
+            old_idx = self._wirePlotItems[key]['idx'] 
+            if old_idx >= x:
+                continue
+
+            # copy this wire to new dict and update idx
+            result[key] = self._wirePlotItems[key]
+            result[key]['idx'] = old_idx % x
+        self._wirePlotItems = result
+        self.refresh_wire_view()
+
+    def _update_label_font_size(self, font_size: int):
+        '''
+        helper to update the font size of the scale bar
+
+        args:
+            font_size (int): the font size in points
+        '''
+        self._settings.setValue(_SET_LABEL_FONT_SIZE, font_size)
+        for view in self._wire_views.values():
+            view.setLabelFontSize(font_size)
+
+    def _update_logo_size(self, size: float):
+        '''
+        helper to update the logo size on each view
+
+        args:
+            size (float): scale factor for the logo
+        '''
+        self._settings.setValue(_SET_LOGO_SIZE, size)
+        for view in self._wire_views.values():
+            view.logo_scale = size
+                
+
     def drawWireOnPlot(self, wireData, wire=None, plane=None, tpc=None, cryo=None, drawer=None, replace_idx=None):
         # for next & previous wire: set update_idx so that the wire isn't
         # treated as a new line & instead replaces the preceding wire
@@ -775,13 +947,14 @@ class TpcModule(Module):
             self._wireData = np.flip(self._wireData)
         
         # must store data of each selected wire for FFT
-        iwire = len(self._wirePlotItems) % _MAX_WIRE_WAVEFORMS
+        ncycle = self._settings.value(_SET_N_WIRE_WAVEFORMS, self._settings_defaults[_SET_N_WIRE_WAVEFORMS])
+        iwire = len(self._wirePlotItems) % ncycle
         if replace_idx is None:
             if (tpc, wire) in self._wirePlotItems:
                 # wire is already drawn
                 return
 
-            if len(self._wirePlotItems) + 1 > _MAX_WIRE_WAVEFORMS:
+            if len(self._wirePlotItems) + 1 > ncycle:
                 # removes the oldest wire from the plot
                 item = self._wirePlotItems.pop(next(iter(self._wirePlotItems)))
                 self._wirePlot.removeItem(item['plot'])
@@ -801,12 +974,26 @@ class TpcModule(Module):
             'idx': iwire
         }
 
-        # to keep the legend in the correct order...
+        self._wirePlotItems[(tpc, wire)]['plot'].setData(self._wireData)
+        self.refresh_wire_view()
+
+        # Store the viewport that just draw this
+        # as we might need it to increase and
+        # decrease the displayed wire
+        self._current_wire_drawer = drawer
+        self._current_wire = wire
+        self._current_tpc = tpc
+
+
+    def refresh_wire_view(self):
+        ''' Re-draw the wire waveform view without updating anything '''
+        if self._wirePlot is None:
+            return
+
         self._wirePlot.clear()
         for item in sorted(self._wirePlotItems.values(), key=lambda x: x['idx']):
             self._wirePlot.addItem(item['plot'])
 
-        self._wirePlotItems[(tpc, wire)]['plot'].setData(wireData)
         # update the label
         # name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
         # self._wirePlot.setTitle(name)
@@ -816,15 +1003,8 @@ class TpcModule(Module):
         self.plotFFT()
         if len(self._wirePlotItems) == 1:
             self._wirePlot.autoRange()
-
-
-        # Store the viewport that just draw this
-        # as we might need it to increase and
-        # decrease the displayed wire
-        self._current_wire_drawer = drawer
-        self._current_wire = wire
-        self._current_tpc = tpc
     
+
     def plotFFT(self):
         '''
         Take the fft of wire data and plot it in place of the wire signal
@@ -942,17 +1122,21 @@ class WireView(pg.GraphicsLayoutWidget):
         self._polyGraphicsItem = QtWidgets.QGraphicsPathItem(self._path)
         self._view.addItem(self._polyGraphicsItem)
 
+        self._fontsize = 20
+
         # Connect scale changes to handle the scale bar correctly
         self._view.sigYRangeChanged.connect(self.scaleHandler)
         self._view.sigXRangeChanged.connect(self.scaleHandler)
         self._xBar = None
         self.useScaleBar = False
+        self._scale_bar_nwires = 100
 
         self.setBackground('w')
 
         self._useLogo = False
         self._logo = None
         self._label = None
+        self._logo_scale = 1.0
 
         self._drawingRawDigits = False
         # each drawer contains its own color gradient and levels
@@ -1068,9 +1252,19 @@ class WireView(pg.GraphicsLayoutWidget):
         self.setColorMap(colormaptype)
 
     def toggleScale(self, scaleBool):
-        # If there is a scale, remove it:
         self.useScaleBar = scaleBool
         self.refreshScaleBar()
+
+    # logo
+
+    @property
+    def logo_scale(self):
+        return self._logo_scale
+
+    @logo_scale.setter
+    def logo_scale(self, x):
+        self._logo_scale = x
+        self.refreshLogo()
 
     def toggleLogo(self, logoBool):
         ''' Toggles the experiment's logo on and off '''
@@ -1088,36 +1282,46 @@ class WireView(pg.GraphicsLayoutWidget):
         if not self._useLogo:
             return
 
+        if self._logo in self.scene().items():
+            self.scene().removeItem(self._logo)
+
         self._logo = MovablePixmapItem(QtGui.QPixmap(self._geometry.logo()))
         self._logo.setX(self._geometry.logoPos()[0])
         self._logo.setY(self._geometry.logoPos()[1])
-        self._logo.setScale(self._geometry.logoScale())
+        self._logo.setScale(self._geometry.logoScale() * self._logo_scale)
         self._logo.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.scene().addItem(self._logo)
 
         self.drawEventNumber()
 
     def drawEventNumber(self):
+        if self._label in self.scene().items():
+            self.scene().removeItem(self._label)
 
-      dims = self._view.viewRange()
-      xMin = dims[0][0]
-      xMax = dims[0][1]
-      yMin = dims[1][0]
-      yMax = dims[1][1]
-      xLoc = xMin + 0.22*(xMax - xMin)
-      yLoc = yMax - 0.1*(yMax - yMin)
+        xLoc = 0
+        yLoc = 0
+        if self._logo:
+            xLoc = self._geometry.logoPos()[0] \
+                + (1.1 * self._logo.sceneBoundingRect().width())
+            yLoc = self._geometry.logoPos()[0]
 
-      if self._label in self._view.addedItems:
-        self._view.removeItem(self._label)
+        # dims = self._view.viewRange()
+        # xMin = dims[0][0]
+        # xMax = dims[0][1]
+        # yMin = dims[1][0]
+        # yMax = dims[1][1]
+        # xLoc = xMin + 0.22*(xMax - xMin)
+        # yLoc = yMax - 0.1*(yMax - yMin)
 
-      label = f'RUN {self._gi.run()}, EVENT {self._gi.event()}\n'
-      label += self._gi.date()
+        label = f'RUN {self._gi.run()}, EVENT {self._gi.event()}\n'
+        label += self._gi.date()
 
-      self._label = MovableLabel(label, anchor=(0., 0.5))
-      self._label.setPos(xLoc,yLoc)
-      self._label.setFont(QtGui.QFont("Helvetica", 15))
-      # self._label.setFlag(self._label.GraphicsItemFlag.ItemIgnoresTransformations)
-      self._view.addItem(self._label, ignoreBounds=True)
+        self._label = MovableLabel(label, anchor=(0., 0.))
+        self._label.setPos(xLoc,yLoc)
+        self._label.setFont(QtGui.QFont("Helvetica", self._fontsize))
+        # self._label.setFlag(self._label.GraphicsItemFlag.ItemIgnoresTransformations)
+        # self._view.addItem(self._label, ignoreBounds=True)
+        self.scene().addItem(self._label) #, ignoreBounds=True)
 
 
     def restoreDefaults(self):
@@ -1156,6 +1360,11 @@ class WireView(pg.GraphicsLayoutWidget):
     def useCM(self,useCMBool):
         self._cmSpace = useCMBool
         self.refreshScaleBar()
+
+    def setLabelFontSize(self, font_size):
+        self._fontsize = font_size
+        self.refreshScaleBar()
+        self.refreshLogo()
 
     def showAnodeCathode(self,showAC):
         self._showAnodeCathode = showAC
@@ -1402,21 +1611,32 @@ class WireView(pg.GraphicsLayoutWidget):
         self._view.setRange(xRange=xR,yRange=yR, padding=0.002)
 
 
+    # Scale bar
     def scaleHandler(self):
         if self.useScaleBar:
             self.refreshScaleBar()
 
+    @property
+    def scale_bar_nwires(self):
+        return self._scale_bar_nwires
 
-    def refreshScaleBar(self):
-        if not self.useScaleBar:
+    @scale_bar_nwires.setter
+    def scale_bar_nwires(self, x):
+        self._scale_bar_nwires = x
+        self.refreshScaleBar(force_redraw=True)
+
+    def refreshScaleBar(self, force_redraw=False):
+        if not self.useScaleBar or force_redraw:
+            # delete existing bar
             if self._xBar is not None:
                 self.scene().removeItem(self._xBar)
                 self._xBar = None
+
+        if not self.useScaleBar:
             return
 
-        nwires = 100
         if self._xBar is None:
-            self._xBar = MovableScaleBar(size=nwires, suffix='wires')
+            self._xBar = MovableScaleBar(size=self._scale_bar_nwires, suffix='wires')
             self._xBar.setParentItem(self._view)
             self._xBar.anchor((1, 1), (1, 1), offset=(-20, -20))
 
@@ -1424,6 +1644,9 @@ class WireView(pg.GraphicsLayoutWidget):
             self._xBar.setUnits(self._geometry.wire2cm(), suffix='cm')
         else:
             self._xBar.setUnits(1.0, suffix='wires')
+
+        if self._xBar is not None:
+            self._xBar.setFont(QtGui.QFont("Helvetica", self._fontsize))
 
 
     def plane(self):

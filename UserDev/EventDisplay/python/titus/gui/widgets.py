@@ -303,6 +303,9 @@ class MovableScaleBar(pg.ScaleBar):
     def setUnits(self, scale=1, suffix=''):
         self.text.setText(pg.functions.siFormat(self.size * scale, suffix=suffix))
 
+    def setFont(self, font):
+        self.text.setFont(font)
+
 
 class MovableLabel(pg.TextItem):
     """ GraphicsPixmapItem which can be clicked & dragged """
