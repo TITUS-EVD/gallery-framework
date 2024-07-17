@@ -440,6 +440,10 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                     continue
 
                 strip = self._crt_strip(mod, sipm)
+                if strip is None:
+                    print(f"Warning: Couldn't find strip with module={mod} sipm={sipm}")
+                    continue
+
                 pt_min, pt_max = self._crt_strip_world_bounds(strip)
                 draw_min = self._crt_draw_pos(pt_min)
                 draw_max = self._crt_draw_pos(pt_max)
