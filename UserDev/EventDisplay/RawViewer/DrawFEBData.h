@@ -27,6 +27,7 @@
 #include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
 #include "sbnobj/SBND/CRT/FEBData.hh"
+#include "sbnobj/SBND/Timing/DAQTimestamp.hh"
 
 struct _object;
 typedef _object PyObject;
@@ -61,7 +62,7 @@ namespace evd {
     virtual bool finalize() override;
 
     PyObject* getArray();
-    void setInput(std::string s){_producer = s;}
+    void setInput(std::string s){_feb_producer = s;}
 
   protected:
 
@@ -69,7 +70,8 @@ namespace evd {
     unsigned int _n_aux_dets;
 
 
-    std::string _producer;
+    std::string _feb_producer;
+    std::string _tdc_producer;
 
     // const detinfo::DetectorClocksData&     _det_clocks;
 

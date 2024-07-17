@@ -14,7 +14,8 @@ DrawFEBData::DrawFEBData(const geo::GeometryCore&               geometry,
 {
     // _det_clocks(detectorClocks)
     _name = "DrawFEBData";
-    _producer = "crtsim";
+    _feb_producer = "crtdecoder";
+    _tdc_producer = "tdcdecoder";
     _n_aux_dets = _geo_service.NAuxDets();
 
     _import_array();
@@ -36,33 +37,69 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
     // this is enough memory for each aux det to register 8 hits before resizing
     _feb_data.reserve(_n_aux_dets * 32);
 
-    art::InputTag feb_data_tag(_producer);
+    art::InputTag feb_data_tag(_feb_producer);
+    art::InputTag tdc_data_tag(_tdc_producer);
 
     const auto& febs
         = ev.getValidHandle<std::vector<sbnd::crt::FEBData> >(feb_data_tag);
 
+    const auto& tdcs
+        = ev.getValidHandle<std::vector<sbnd::timing::DAQTimestamp> >(tdc_data_tag);
+
+    uint64_t etrig_time = 0;
+
+    for(auto const& tdc : *tdcs)
+      {
+	if(tdc.Channel() == 4)
+	  {
+	    etrig_time = tdc.Timestamp() % static_cast<uint64_t>(1e9);
+	  }
+      }
+
     // int total_adc = 0;
     for (auto const& feb : *febs) {
+        // only want 'data' not resets
+        if(feb.Flags() != 3 && feb.Flags() != 1)
+          continue;
+
         uint32_t mac5 = feb.Mac5();
         // t0 is ???
         // t1 is the offset specific for this FEB
-        uint32_t t0 = feb.Ts0();
+        int64_t t0 = (int64_t)feb.Ts0() - etrig_time;
         uint32_t t1 = feb.Ts1();
 
-        // SiPM index that fired the trigger. Unused
-		// uint32_t coinc = feb.Coinc();
-        
         const auto& adc_arr = feb.ADC();
-        int isipm = 0;
+        float max_adc = -1.;
+        int isipm = 0, max_isipm = -1;
+
+        // Find which SiPM had the largest ADC
+        for (auto adc : adc_arr)
+          {
+            if(adc > max_adc)
+              {
+                max_adc = adc;
+                max_isipm = isipm;
+              }
+
+            ++isipm;
+          }
+
+        isipm = 0;
         for (auto adc : adc_arr) {
-            uint32_t idx = 32 * mac5 + isipm;
-            if (adc >= 0) {
-                _feb_data.push_back((float)idx);
-                _feb_data.push_back((float)t0);
-                _feb_data.push_back((float)t1);
-                _feb_data.push_back((float)adc);
+          if(isipm != max_isipm)
+            {
+              ++isipm;
+              continue;
             }
-            isipm++;
+
+          uint32_t idx = 32 * mac5 + isipm;
+          if (adc >= 0) {
+            _feb_data.push_back((float)idx);
+            _feb_data.push_back((float)t0);
+            _feb_data.push_back((float)t1);
+            _feb_data.push_back((float)adc);
+          }
+          isipm++;
         }
     }
 

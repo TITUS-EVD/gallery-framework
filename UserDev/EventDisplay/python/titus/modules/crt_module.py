@@ -39,14 +39,75 @@ class CrtModule(Module):
         self._crt_strip_drawer = None
         self._crt_view = None
 
+        self._dock =  QtWidgets.QDockWidget('CRT Controls', self._gui, objectName='crt_dock')
+        self._dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
+        self._dock_widgets = set([self._dock])
+
     def _initialize(self):
         self._gm.geometryChanged.connect(self.init_ui)
+        self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._dock)
 
     def init_ui(self):
         if self._gm.current_geom is None:
             return
         self._crt_view = CrtView(self._gm.current_geom)
         self._layout.addWidget(self._crt_view)
+
+        self.init_crt_controls()
+
+    def init_crt_controls(self):
+        frame = QtWidgets.QWidget(self._dock)
+        main_layout = QtWidgets.QVBoxLayout()
+        frame.setLayout(main_layout)
+        self._dock.setWidget(frame)
+
+        draw_group_box = QtWidgets.QGroupBox("Time Range")
+        _bg2 = QtWidgets.QButtonGroup(self)
+        self._min_time_btn = QtWidgets.QSpinBox()
+        self._max_time_btn = QtWidgets.QSpinBox()
+        self._min_time_btn.setRange(-30e6, 30e6)
+        self._min_time_btn.setValue(-30e6)
+        self._max_time_btn.setRange(-30e6, 30e6)
+        self._max_time_btn.setValue(30e6)
+
+        self._min_time_btn.setSingleStep(1e6)
+        self._max_time_btn.setSingleStep(1e6)
+
+        self._min_time_btn.valueChanged.connect(self._updated_min_time)
+        self._max_time_btn.valueChanged.connect(self._updated_max_time)
+
+        time_btn_layout = QtWidgets.QGridLayout()
+        time_btn_layout.addWidget(self._min_time_btn, 0, 0, 1, 1)
+        time_btn_layout.addWidget(self._max_time_btn, 1, 0, 1, 1)
+
+        draw_group_box.setLayout(time_btn_layout)
+        main_layout.addWidget(draw_group_box)
+
+        main_layout.addStretch()
+
+    def _updated_min_time(self, value):
+        self._crt_view._view_widget._clear_cache()
+
+        if value > self._crt_view._view_widget._max_time:
+            print("Min Time must be less than Max Time")
+            return
+
+        self._crt_view._view_widget._min_time = value
+        self._crt_view._time_widget._min_time = value
+
+        self._gi.process_event(True)
+
+    def _updated_max_time(self, value):
+        self._crt_view._view_widget._clear_cache()
+
+        if value < self._crt_view._view_widget._min_time:
+            print("Max Time must be greater than Min Time")
+            return
+
+        self._crt_view._view_widget._max_time = value
+        self._crt_view._time_widget._max_time = value
+
+        self._gi.process_event(True)
 
     def update(self):
         all_producers = self._gi.get_producers(_SBND_CRT_FEBDATA, self._lsm.current_stage)
@@ -63,6 +124,7 @@ class CrtModule(Module):
                 drawables.FEBData(self._gi, self._gm.current_geom)
             )
             self._crt_strip_drawer.set_producer(all_producers[0].full_name())
+            self._crt_strip_drawer.analyze()
 
         self._crt_view.drawCrtData(self._crt_strip_drawer.getData())
 
@@ -108,24 +170,15 @@ class CrtHitsItem(pg.GraphicsObject):
             painter.end()
             return
 
-        min_val = np.min([info[2] for info in coords])
-        max_val = np.max([info[2] for info in coords])
-        val_range = max_val - min_val
-
         for coord_info in coords:
-            coord_min, coord_max, time = coord_info
-
-            # don't draw low-adc hits
-            # if adc_idx < 50:
-            #     continue
+            coord_min, coord_max, tfrac = coord_info
 
             x, y = coord_min
             l = coord_max[0] - coord_min[0]
             w = coord_max[1] - coord_min[1]
-            tfrac = (time - min_val) / val_range
             color = _CRT_COLORMAP.mapToQColor(tfrac)
             painter.setBrush(color)
-            painter.setOpacity(1.0 - 2.0 * np.abs(tfrac - 0.5))
+            painter.setOpacity(0.5)
             painter.setPen(color)
             painter.drawRect(QtCore.QRectF(x, y, l, w))
 
@@ -161,6 +214,9 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         self._init_crt_strips()
         self.init_geometry()
         self._crt_hit_picture_cache = {}
+
+        self._min_time = -30e6
+        self._max_time = 30e6
 
     def _init_crt_strips(self):
         ''' create initial map of mac and strip ID to GDML objects '''
@@ -373,6 +429,13 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                 sipm = idx % 32 
                 adc = hit[3]
                 time = hit[1]
+
+                if time < self._min_time:
+                    continue
+
+                if time > self._max_time:
+                    continue
+
                 if adc <= 0:
                     continue
 
@@ -382,11 +445,11 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                 draw_max = self._crt_draw_pos(pt_max)
                 draw_min_sort = np.array([min(draw_min[i], draw_max[i]) for i in range(2)])
                 draw_max_sort = np.array([max(draw_min[i], draw_max[i]) for i in range(2)])
-                draw_coords.append((draw_min_sort, draw_max_sort, time))
+                tfrac = (time - self._min_time) / (self._max_time - self._min_time)
+                draw_coords.append((draw_min_sort, draw_max_sort, tfrac))
             
             picture.add_hits(draw_coords)
             self._crt_hit_picture_cache[key] = picture
-
                     
         self._plot.addItem(self._crt_hit_picture_cache[key])
         self._drawn_crt_hits = self._crt_hit_picture_cache[key]
@@ -412,13 +475,15 @@ class CrtTimeViewWidget(pg.GraphicsLayoutWidget):
         self._time_plot.setLabel(axis='bottom', text='Time (μs)')
         self.addItem(self._time_plot)
 
+        self._min_time = -30e6
+        self._max_time = 30e6
+
     def drawCrtHitTimes(self, crt_data):
         if crt_data is None:
             return
 
         if crt_data.size == 0:
             return
-
         times = crt_data[crt_data[:,3] > 0,1]
 
         # times are all zeros?
@@ -427,8 +492,8 @@ class CrtTimeViewWidget(pg.GraphicsLayoutWidget):
 
         self._time_plot.clear()
 
-        t_min = np.min(times)
-        t_max = np.max(times)
+        t_min = self._min_time
+        t_max = self._max_time
         n_bins = min(200, int(t_max - t_min))
 
         if len(crt_data) == 1:
