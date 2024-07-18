@@ -63,9 +63,10 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
           continue;
 
         uint32_t mac5 = feb.Mac5();
-        // t0 is ???
-        // t1 is the offset specific for this FEB
-        int64_t t0 = (int64_t)feb.Ts0() - etrig_time;
+
+        // Take the T0 time (time since PPS) reference to to the event trigger
+        // and apply stored cable delay in Coinc field.
+        int64_t t0 = (int64_t)feb.Ts0() - etrig_time + feb.Coinc();
         uint32_t t1 = feb.Ts1();
 
         const auto& adc_arr = feb.ADC();
