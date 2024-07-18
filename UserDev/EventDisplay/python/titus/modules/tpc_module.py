@@ -633,7 +633,6 @@ class TpcModule(Module):
         sender = self.sender()
         # Get the full product obj for this:
         product = sender.productObj(text, self._lsm.current_stage)
-        # print('reco_box_handler', text, sender.name(), product)
 
         visible = not (text == "--Select--" or text == "--None--" or text == None)
         if not visible:
@@ -1418,7 +1417,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._cmap.restoreState(self._colorMap)
 
     def mouseDrag(self):
-        print("mouse was dragged")
+        pass
 
     def getWidgetAndLayout(self):
         return self._widget,self._totalLayout
@@ -1481,15 +1480,12 @@ class WireView(pg.GraphicsLayoutWidget):
 
         for tpc in range(0, int(self._geometry.nTPCs())):
             # Take into account the distance between planes
-            print('self._geometry.triggerOffset()', self._geometry.triggerOffset())
             offset = self._geometry.triggerOffset() * self._geometry.time2cm() # - delta_plane
 
-            print('self._geometry.halfwidth()', self._geometry.halfwidth())
             hw = 100
             x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
             x_anode   = offset/self._geometry.time2cm()
 
-            print('x_cathode', x_cathode)
             # If we are changing the t0, shift the anode and cathode position
             x_cathode += self._manual_t0
             x_anode   += self._manual_t0

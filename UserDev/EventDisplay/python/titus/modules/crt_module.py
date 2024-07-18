@@ -89,7 +89,7 @@ class CrtModule(Module):
         self._crt_view._view_widget._clear_cache()
 
         if value > self._crt_view._view_widget._max_time:
-            print("Min Time must be less than Max Time")
+            print("Warning: CRT view Min Time must be less than Max Time")
             return
 
         self._crt_view._view_widget._min_time = value
@@ -101,7 +101,7 @@ class CrtModule(Module):
         self._crt_view._view_widget._clear_cache()
 
         if value < self._crt_view._view_widget._min_time:
-            print("Max Time must be greater than Min Time")
+            print("Warning: CRT view Max Time must be greater than Min Time")
             return
 
         self._crt_view._view_widget._max_time = value
@@ -389,7 +389,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
             if coord[0] < 0: 
                 return x, -y - 800
             return x, y + 800
-        print('invalid point', coord)
+        print('Warning: Got invalid point when trying to convert to CRT view ', coord)
 
 
     def init_geometry(self):
