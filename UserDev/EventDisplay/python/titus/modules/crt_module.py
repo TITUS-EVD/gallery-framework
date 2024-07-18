@@ -22,7 +22,7 @@ from titus.modules import Module
 import titus.drawables as drawables
 
 _SBND_CRT_FEBDATA = 'sbnd::crt::FEBData'
-_CRT_COLORMAP = pg.colormap.get('CET-D8')
+_CRT_COLORMAP = pg.colormap.get('CET-L17')
 # _CRT_COLORMAP.reverse()
 
 
@@ -178,7 +178,7 @@ class CrtHitsItem(pg.GraphicsObject):
             w = coord_max[1] - coord_min[1]
             color = _CRT_COLORMAP.mapToQColor(tfrac)
             painter.setBrush(color)
-            painter.setOpacity(0.5)
+            painter.setOpacity(0.8)
             painter.setPen(color)
             painter.drawRect(QtCore.QRectF(x, y, l, w))
 
@@ -476,7 +476,7 @@ class CrtTimeViewWidget(pg.GraphicsLayoutWidget):
         super().__init__()
         self._time_plot = pg.PlotItem(name="CRT Hit Times")
         self._time_plot.setLabel(axis='left', text='Hits')
-        self._time_plot.setLabel(axis='bottom', text='Time (μs)')
+        self._time_plot.setLabel(axis='bottom', text='Time (ns)')
         self.addItem(self._time_plot)
 
         self._min_time = -30e6
