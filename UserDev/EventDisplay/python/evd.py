@@ -14,6 +14,7 @@ from titus.modules import LArSoftModule, RunModule, GeometryModule, ViewSelectMo
     TpcModule, OpDetModule, CrtModule, HelpModule, TruthDumperModule
 from titus.gallery_interface import GalleryInterface
 
+from sbnd_commissioning import SBNDCommissioningModule
 
 def sigintHandler(*args):
     sys.stderr.write('\r')
@@ -70,6 +71,7 @@ def main():
     vm.add_module(OpDetModule(lsm, gm), view_name='Optical')
     if args.sbnd:
         vm.add_module(CrtModule(lsm, gm), view_name='CRT')
+        vm.add_module(SBNDCommissioningModule(lsm, gm), view_name='SBND Commissioning')
 
     # TODO
     # add other modules here. LArSoft module initiates a loading sequence which
