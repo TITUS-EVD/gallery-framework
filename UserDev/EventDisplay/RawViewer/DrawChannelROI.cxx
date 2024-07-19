@@ -1,27 +1,27 @@
-#ifndef EVD_DRAWWIRE_CXX
-#define EVD_DRAWWIRE_CXX
+#ifndef EVD_DRAWCHANNELROI_CXX
+#define EVD_DRAWCHANNELROI_CXX
 
 
-#include "DrawWire.h"
-#include "lardataobj/RecoBase/Wire.h"
+#include "DrawChannelROI.h"
+#include  "sbnobj/ICARUS/TPC/ChannelROI.h"
 
 namespace evd {
 
-DrawWire::DrawWire(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties) :
+DrawChannelROI::DrawChannelROI(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties) :
   RawBase(geometry, detectorProperties)
 {
-  _name = "DrawWire";
-  _producer = "caldata";
+  _name = "DrawChannelROI";
+  _producer = "roifinder";
 
 }
 
-void DrawWire::setPadding(size_t padding, size_t plane) {
+void DrawChannelROI::setPadding(size_t padding, size_t plane) {
   if (_padding_by_plane.size() > plane) {
     _padding_by_plane[plane] = padding;
   }
 }
 
-bool DrawWire::initialize() {
+bool DrawChannelROI::initialize() {
 
   //
   // This function is called in the beggining of event loop
@@ -47,7 +47,7 @@ bool DrawWire::initialize() {
 
 }
 
-bool DrawWire::analyze(const gallery::Event & ev) {
+bool DrawChannelROI::analyze(const gallery::Event & ev) {
 
   //
   // Do your event-by-event analysis here. This function is called for
@@ -71,21 +71,21 @@ bool DrawWire::analyze(const gallery::Event & ev) {
 
   // art::InputTag wires_tag(_producer);
   // auto const & wires
-  //   = ev -> getValidHandle<std::vector <recob::Wire> >(wires_tag);
+  //   = ev -> getValidHandle<std::vector <recob::ChannelROI> >(wires_tag);
 
-  std::vector<gallery::ValidHandle<std::vector<recob::Wire>>> wire_v;
+  std::vector<gallery::ValidHandle<std::vector<recob::ChannelROI>>> wire_v;
 
 
   if (_producer != "") {
-    std::cout << "Drawing Wires using producer " << _producer << std::endl;
+    std::cout << "Drawing ChannelROIs using producer " << _producer << std::endl;
     art::InputTag wires_tag(_producer);
-    auto const & wires = ev.getValidHandle<std::vector<recob::Wire>>(wires_tag);
+    auto const & wires = ev.getValidHandle<std::vector<recob::ChannelROI>>(wires_tag);
     wire_v.push_back(wires);
   } else {
     for (auto p : _producers) {
-      std::cout << "Drawing Wires using producer " << p << std::endl;
+      std::cout << "Drawing ChannelROIs using producer " << p << std::endl;
       art::InputTag wires_tag(p);
-      auto const & wires = ev.getValidHandle<std::vector<recob::Wire>>(wires_tag);
+      auto const & wires = ev.getValidHandle<std::vector<recob::ChannelROI>>(wires_tag);
       wire_v.push_back(wires);
     }
   }
@@ -98,7 +98,7 @@ bool DrawWire::analyze(const gallery::Event & ev) {
       unsigned int ch = wire.Channel();
       std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
       for (geo::WireID w_id : widVec) {
-        size_t detWire = w_id.Wire;
+        size_t detChannelROI = w_id.Wire;
         size_t plane   = w_id.Plane;
         size_t tpc     = w_id.TPC;
         size_t cryo    = w_id.Cryostat;
@@ -109,7 +109,7 @@ bool DrawWire::analyze(const gallery::Event & ev) {
         plane += tpc * _geo_service.Nplanes();
         plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
 
-        int offset = detWire * _y_dimensions[plane] + _padding_by_plane[plane];
+        int offset = detChannelROI * _y_dimensions[plane] + _padding_by_plane[plane];
 
         std::vector<float>&          planeData   = _planeData[plane];
         std::vector<float>::iterator wireDataItr = planeData.begin() + offset;
@@ -138,7 +138,7 @@ bool DrawWire::analyze(const gallery::Event & ev) {
   return true;
 }
 
-bool DrawWire::finalize() {
+bool DrawChannelROI::finalize() {
 
   // This function is called at the end of event loop.
   // Do all variable finalization you wish to do here.

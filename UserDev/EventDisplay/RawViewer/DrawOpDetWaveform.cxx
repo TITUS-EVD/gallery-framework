@@ -48,26 +48,26 @@ bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
     n_ticks = op_wvf.size();
     break;
   }
-  std::cout << "Waveform lenght: " << n_ticks << ", in us: " << n_ticks * _tick_period << std::endl;
+  std::cout << "Waveform length: " << n_ticks << ", in us: " << n_ticks * _tick_period << std::endl;
 
-  // if (n_ticks != _n_time_ticks) {
-  //   std::cout << "I see your waveform has " << n_ticks << " time ticks," << std::endl;
-  //   std::cout << "but from the optical clock service it should have " << _n_time_ticks << std::endl;
-  //   std::cout << "I will continue assuming " << n_ticks << std::endl;
-  //   _n_time_ticks = n_ticks;
-  // }
+  if (n_ticks != _n_time_ticks) {
+    std::cout << "I see your waveform has " << n_ticks << " time ticks," << std::endl;
+    std::cout << "but from the optical clock service it should have " << _n_time_ticks << std::endl;
+    std::cout << "I will continue assuming " << n_ticks << std::endl;
+    _n_time_ticks = n_ticks;
+  }
 
-  _wvf_data.clear();
   initDataHolder();
 
   for (auto const& op_wvf : *op_wvfs) {
     unsigned int       ch   = op_wvf.ChannelNumber();
     double             time = op_wvf.TimeStamp();
 
-
     // time offset is at -1250 mu s
     // time tick period is 0.002
     size_t time_in_ticks = (time + _time_offset) / _tick_period;
+
+    // fills output array at time index with each waveform sampling point adc
 
     int offset = ch * _n_time_ticks;
 
@@ -81,10 +81,21 @@ bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
 
     size_t i = 0;
     for (short adc : op_wvf) {
-      _wvf_data.at(offset + time_in_ticks + i) = (float)adc;
+      // _wvf_data.at(offset + time_in_ticks + i) = (float)adc;
+      _wvf_data.at(offset + i) = (float)adc;
       i++;
     }
 
+    /*
+    // Fill output array with channel, timestamp & adc of each hit
+    size_t i = 0;
+    for (short adc : op_wvf) {
+        _wvf_data.push_back((float)ch);
+        _wvf_data.push_back((float)(time_in_ticks + i));
+        _wvf_data.push_back((float)adc);
+        i++;
+    }
+    */
   }
 
   return true;
@@ -124,13 +135,13 @@ PyObject * DrawOpDetWaveform::getArray() {
     // int * dims = new int[n_dim];
     // int dims[2];
     const npy_intp dims[2] = {_n_op_channels, _n_time_ticks};
+    // const npy_intp dims[2] = { _wvf_data.size() / 3, 3 };
     // dims[0] = _n_op_channels;
     // dims[1] = _n_time_ticks;
     // int data_type = NPY_FLOAT;
 
     // std::cout << "Returning array, dims: " << dims[0] << ", " << dims[1] << ", n_dim: " << n_dim << ", data_type: " << data_type << std::endl;
 
-    // return (PyObject *) PyArray_FromDimsAndData(n_dim, dims, data_type, (char*) & ((_wvf_data)[0]) );
     return (PyObject *) PyArray_SimpleNewFromData(2, dims, NPY_FLOAT, _wvf_data.data());
   }
   catch ( ... ) {

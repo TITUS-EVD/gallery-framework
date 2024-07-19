@@ -1,0 +1,57 @@
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(NOARCH TRUE)
+
+find_package(cetmodules REQUIRED)
+project(gallery_framework LANGUAGES CXX VERSION 1.0.0)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# set rpath for shared libraries during install
+list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib )
+
+include(CetCMakeEnv)
+cet_cmake_env()
+cet_report_compiler_flags()
+
+message(STATUS "-------------------------------------")
+message(STATUS ${PROJECT_VERSION})
+message(STATUS "-------------------------------------")
+
+find_package(Boost REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+find_package(gallery REQUIRED)
+include_directories(${gallery_INCLUDE_DIRS})
+find_package(canvas REQUIRED)
+include_directories(${canvas_INCLUDE_DIRS})
+find_package(cetlib REQUIRED)
+include_directories(${cetlib_INCLUDE_DIRS})
+find_package(cetlib_except REQUIRED)
+include_directories(${cetlib_except_INCLUDE_DIRS})
+find_package(canvas_root_io REQUIRED)
+include_directories(${canvas_root_io_INCLUDE_DIRS})
+find_package(fhiclcpp REQUIRED)
+include_directories(${fhiclcpp_INCLUDE_DIRS})
+find_package(ROOT REQUIRED)
+include_directories(${ROOT_INCLUDE_DIRS})
+find_package(lardataobj REQUIRED)
+include_directories(${lardataobj_INCLUDE_DIRS})
+find_package(lardataalg REQUIRED)
+include_directories(${lardataalg_INCLUDE_DIRS})
+find_package(larcoreobj REQUIRED)
+include_directories(${larcoreobj_INCLUDE_DIRS})
+find_package(larcorealg REQUIRED)
+include_directories(${larcorealg_INCLUDE_DIRS})
+find_package(CLHEP REQUIRED)
+include_directories(${CLHEP_INCLUDE_DIRS})
+find_package(messagefacility REQUIRED)
+include_directories(${messagefacility_INCLUDE_DIRS})
+
+# generate ROOT dictionaries
+list(APPEND CMAKE_MODULE_PATH $ENV{ROOTSYS}/cmake)
+include(RootMacros)
+
+add_subdirectory(core)
+add_subdirectory(UserDev)
+
+cet_cmake_config()

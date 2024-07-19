@@ -78,6 +78,8 @@ public:
 
   virtual bool finalize();
 
+  bool _projections_match;
+
 private:
   Track2D getTrack2D(recob::Track track, unsigned int plane);
 

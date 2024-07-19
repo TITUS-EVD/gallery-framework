@@ -10,8 +10,6 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane) {
   MCTrack2D result;
   result._track.reserve(track.size());
 
-  std::cout << "[DrawMCTrack] track.size() " << track.size() << std::endl;
-
   for (unsigned int i = 0; i < track.size(); i++) {
     // project a point into 2D:
     auto point = geo_helper.Point_3Dto2D(track[i].X(), track[i].Y(), track[i].Z(), plane);

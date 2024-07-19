@@ -16,8 +16,23 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
     // project a point into 2D:
     if (track.HasValidPoint(i)) {
       auto loc = track.LocationAtPoint(i);
+
+      auto tpc = _geo_service.PositionToTPCID({loc.X(),loc.Y(),loc.Z()}).TPC;
+
+      // If projections across TPCs don't match, we need to
+      // swap plan U with V in TPC 1
+      int plane_ = plane;
+      if (!_projections_match) {
+        // swap plane 0 and 1 for TPC 1
+        if (tpc == 1) { 
+          if (plane != 2) {
+            plane_ = std::abs((int)plane - 1);
+          }
+        }
+      }
+
       TVector3 xyz(loc.X(),loc.Y(),loc.Z());
-      auto point = geo_helper.Point_3Dto2D(xyz, plane);
+      auto point = geo_helper.Point_3Dto2D(xyz, plane_);
       if (point.w != -9999) {
         result._track.push_back(std::make_pair(point.w, point.t));
         result._tpc.push_back(point.tpc);
@@ -36,6 +51,7 @@ DrawTrack::DrawTrack(const geo::GeometryCore&               geometry,
 {
   _name = "DrawTrack";
   _fout = 0;
+  _projections_match = true;
 }
 
 bool DrawTrack::initialize() {

@@ -1,7 +1,6 @@
 .DS_Store
 *.h5
 *.C
-*.txt
 *.o
 *Cint.h
 *Cint.cxx
