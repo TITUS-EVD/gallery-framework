@@ -441,7 +441,7 @@ class TpcModule(Module):
         self._uniteCathodes = QtWidgets.QCheckBox("Unite cathodes")
         self._uniteCathodes.setToolTip("Unites the cathodes waveforms.")
         self._uniteCathodes.setTristate(False)
-        # self._uniteCathodes.stateChanged.connect(self.uniteCathodesWorker)
+        self._uniteCathodes.stateChanged.connect(self.unite_cathodes)
 
         self._t0sliderLabelIntro = QtWidgets.QLabel("Set t<sub>0</sub>:")
         self._t0slider = QtWidgets.QSlider(0x1)
@@ -450,7 +450,7 @@ class TpcModule(Module):
             self._t0slider.setMinimum(-self._gm.current_geom.triggerOffset())
             self._t0slider.setMaximum(self._gm.current_geom.triggerOffset())
         self._t0slider.setSingleStep(10)
-        # self._t0slider.valueChanged.connect(self.t0sliderWorker)
+        self._t0slider.valueChanged.connect(self.t0slider_worker)
         self._t0sliderLabel = QtWidgets.QLabel("Current t<sub>0</sub> = 0")
 
         self._t0sliderLabelIntro.setVisible(False)
@@ -633,7 +633,6 @@ class TpcModule(Module):
         sender = self.sender()
         # Get the full product obj for this:
         product = sender.productObj(text, self._lsm.current_stage)
-        # print('reco_box_handler', text, sender.name(), product)
 
         visible = not (text == "--Select--" or text == "--None--" or text == None)
         if not visible:
@@ -844,6 +843,19 @@ class TpcModule(Module):
         self._separators[1].setVisible(show)
         for view in self._wire_views.values():
             view.showAnodeCathode(show)
+
+    def t0slider_worker(self):
+        t0 = self._t0slider.value()
+        t0_label = t0 * self._gm.current_geom.samplingRate() / 1000.
+        t0sliderLabel = "Current t<sub>0</sub> = " + str(t0_label) + " &mu;s"
+        self._t0sliderLabel.setText(t0sliderLabel)
+        for view in self._wire_views.values():
+            view.t0slide(t0)
+
+    def unite_cathodes(self):
+        for view in self._wire_views.values():
+            view.uniteCathodes(self._uniteCathodes.isChecked())
+
 
     def show_plane_frames(self):
         show = self._plane_frames.isChecked()
@@ -1405,7 +1417,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._cmap.restoreState(self._colorMap)
 
     def mouseDrag(self):
-        print("mouse was dragged")
+        pass
 
     def getWidgetAndLayout(self):
         return self._widget,self._totalLayout
@@ -1456,8 +1468,9 @@ class WireView(pg.GraphicsLayoutWidget):
 
     def refreshAnodeCathode(self):
         '''
-        Draws lines corresponding to the cathode and anode positions for t0 = 0 Red
-        line = anode Blue line = cathode
+        Draws lines corresponding to the cathode and anode positions for t0 = 0
+        Red line = anode
+        Blue line = cathode
         '''
 
         if not self._showAnodeCathode:
@@ -1469,6 +1482,7 @@ class WireView(pg.GraphicsLayoutWidget):
             # Take into account the distance between planes
             offset = self._geometry.triggerOffset() * self._geometry.time2cm() # - delta_plane
 
+            hw = 100
             x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
             x_anode   = offset/self._geometry.time2cm()
 
@@ -1510,9 +1524,16 @@ class WireView(pg.GraphicsLayoutWidget):
             self._view.addItem(line)
 
 
-    def uniteCathodes(self,uniteC):
+    def uniteCathodes(self, uniteC):
+        '''
+        '''
         self._uniteCathodes = uniteC
+
+        data = self._original_image
+        self._removed_entries = 0
+
         if self._uniteCathodes:
+
             x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
             x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
 
@@ -1538,12 +1559,9 @@ class WireView(pg.GraphicsLayoutWidget):
 
             data = np.delete(data, final_slice, axis=1)
             self.drawPlane(data)
-
-            self.showAnodeCathode(self._showAnodeCathode)
-        else:
-            self._removed_entries = 0
-            self.drawPlane(self._original_image)
-            self.showAnodeCathode(self._showAnodeCathode)
+        
+        self.drawPlane(data)
+        self.showAnodeCathode(self._showAnodeCathode)
 
 
     def t0slide(self, t0):

@@ -326,7 +326,6 @@ class OpDetModule(Module):
                
             self._flash_drawers = new_flash_drawers
             for producer, drawer in self._flash_drawers.items():
-                print('set producer', producer)
                 drawer.set_producer(producer)
 
     def exclude_uncoated(self):
