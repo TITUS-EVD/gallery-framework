@@ -76,7 +76,7 @@ class MCTruth(Drawable):
             if not self._geom.projectionsMatch():
                 # swap plane 0 and 1 for TPC 1
                 if tpc == 1:
-                    if plane is not 2:
+                    if plane != 2:
                         plane =  abs(plane - 1)
 
             vertexPoint = geo_helper.Point_3Dto2D(vertex, plane)
