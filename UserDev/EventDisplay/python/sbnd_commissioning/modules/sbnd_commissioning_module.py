@@ -26,13 +26,13 @@ sc = galleryUtils.SourceCode
 sc.loadHeaderFromUPS('larcorealg/Geometry/AuxDetSensitiveGeo.h')
 
 
-# _RAW_RAWDIGIT = 'raw::RawDigit'
-_RAW_RAWDIGIT = 'recob::Wire'
+_RAW_RAWDIGIT = 'raw::RawDigit'
+# _RAW_RAWDIGIT = 'recob::Wire'
 _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
 _SBND_CRT_FEBDATA = 'sbnd::crt::FEBData'
 
-_OPDET_COLORMAP = pg.colormap.get('CET-L4')
-# _OPDET_COLORMAP.reverse()
+_CRT_COLORMAP = pg.colormap.get('CET-L17')
+_OPDET_COLORMAP = pg.colormap.get('CET-L8')
 
 class SBNDCommissioningModule(Module):
     def __init__(self, larsoft_module, geom_module):
@@ -140,6 +140,45 @@ class SBNDCommissioningModule(Module):
         self._bottom_crt_checkbox.clicked.connect(self.show_bottom_crts)
         main_layout.addWidget(self._bottom_crt_checkbox)
 
+        draw_group_box = QtWidgets.QGroupBox("CRT time range")
+        self._min_time_btn = QtWidgets.QSpinBox()
+        self._max_time_btn = QtWidgets.QSpinBox()
+        self._min_time_btn.setRange(-30e6, 30e6)
+        self._min_time_btn.setValue(-30e6)
+        self._max_time_btn.setRange(-30e6, 30e6)
+        self._max_time_btn.setValue(30e6)
+
+        self._min_time_btn.setSingleStep(1e6)
+        self._max_time_btn.setSingleStep(1e6)
+
+        self._min_time_btn.valueChanged.connect(self._updated_min_time)
+        self._max_time_btn.valueChanged.connect(self._updated_max_time)
+
+        time_btn_layout = QtWidgets.QGridLayout()
+        time_btn_layout.addWidget(self._min_time_btn, 0, 0, 1, 1)
+        time_btn_layout.addWidget(self._max_time_btn, 1, 0, 1, 1)
+
+        draw_group_box.setLayout(time_btn_layout)
+        main_layout.addWidget(draw_group_box)
+
+        t0_group_box = QtWidgets.QGroupBox("TPC time offset")
+        t0_layout = QtWidgets.QVBoxLayout()
+        self._t0sliderLabelIntro = QtWidgets.QLabel("Set t<sub>0</sub>:")
+        self._t0slider = QtWidgets.QSlider(0x1)
+        self._t0slider.setToolTip("Change the t<sub>0</sub>.")
+        self._t0slider.setMinimum(-self._gm.current_geom.triggerOffset())
+        self._t0slider.setMaximum(self._gm.current_geom.triggerOffset())
+        self._t0slider.setSingleStep(10)
+        self._t0slider.valueChanged.connect(self._updated_t0)
+        self._t0sliderLabel = QtWidgets.QLabel("Current t<sub>0</sub> = 0")
+
+        t0_layout.addWidget(self._t0sliderLabelIntro)
+        t0_layout.addWidget(self._t0slider)
+        t0_layout.addWidget(self._t0sliderLabel)
+        t0_group_box.setLayout(t0_layout)
+        main_layout.addWidget(t0_group_box)
+
+
         main_layout.addStretch()
 
     def set_dilation(self):
@@ -160,6 +199,39 @@ class SBNDCommissioningModule(Module):
             if self._crt_checkbox.isChecked():
                 view.drawCrts(self._crt_drawer.getData())
 
+    def _updated_min_time(self, value):
+        view = self._wire_views[(2, 0)]
+        view._clear_cache()
+
+        if value > view.crt_max_time:
+            print("Warning: CRT view Min Time must be less than Max Time")
+            return
+
+        view.crt_min_time = value
+        view.drawCrts(self._crt_drawer.getData())
+
+
+    def _updated_max_time(self, value):
+        view = self._wire_views[(2, 0)]
+        view._clear_cache()
+
+        if value < view.crt_min_time:
+            print("Warning: CRT view Max Time must be greater than Min Time")
+            return
+
+        view.crt_max_time = value
+        view.drawCrts(self._crt_drawer.getData())
+
+    def _updated_t0(self):
+        t0 = self._t0slider.value()
+        t0_label = t0 * self._gm.current_geom.samplingRate() / 1000.
+        t0sliderLabel = "Current t<sub>0</sub> = " + str(t0_label) + " &mu;s"
+        self._t0sliderLabel.setText(t0sliderLabel)
+        for plane_cryo, view in self._wire_views.items():
+            view.t0slide(t0)
+            # TODO there must be a better way
+            view.drawPlane(self._wire_drawer.getPlane(*plane_cryo))
+            view.uniteCathodes(True)
 
     def draw_wires(self):
         if not self._wire_checkbox.isChecked():
@@ -182,8 +254,8 @@ class SBNDCommissioningModule(Module):
 
         if self._wire_drawer is None:
             self._wire_drawer = self.register_drawable(
-                # drawables.RawDigit(self._gi, self._gm.current_geom)
-                drawables.RecoWire(self._gi, self._gm.current_geom)
+                drawables.RawDigit(self._gi, self._gm.current_geom)
+                # drawables.RecoWire(self._gi, self._gm.current_geom)
             )
         producer = self._wire_choice.selected_products()[0]
         self._wire_drawer.set_producer(producer)
@@ -275,6 +347,8 @@ class XZDetectorView(WireView):
 
     def __init__(self, geometry, plane=-1, cryostat=0, tpc=0):
         super().__init__(geometry, plane, cryostat, tpc)
+        self._manual_t0 = 0
+
         self._optical_elements = []
         self._optical_names = ['pmt_coated', 'pmt_uncoated',
                                'arapuca_vuv', 'arapuca_vis',
@@ -295,6 +369,8 @@ class XZDetectorView(WireView):
         self._draw_crts = True
         self._draw_bot_crts = False
         self._draw_wall_crts = True
+        self.crt_min_time = -30e6
+        self.crt_max_time = 30e6
 
         self._init_crt_strips()
         self.init_crt_planes()
@@ -333,6 +409,10 @@ class XZDetectorView(WireView):
         self._draw_bot_crts = d
         self.draw_crt_planes(self._draw_crts)
 
+    def t0slide(self, t0):
+        self._manual_t0 = t0
+        # self.uniteCathodes(self._uniteCathodes)
+
     def uniteCathodes(self, uniteC):
         """ Override to remove anode and cathode parts of the waveform """
         self._uniteCathodes = uniteC
@@ -343,26 +423,28 @@ class XZDetectorView(WireView):
 
         data = self._item.image
         self._original_image = np.copy(data)
-
-        offset = self._geometry.offset(self._plane)
-        t_cathode = (2 * self._geometry.halfwidth() + offset) / self._geometry.time2cm()
-        t_anode = offset / self._geometry.time2cm()
-        porch = self._geometry.tRange() - t_cathode
         n_removed_entries = 0
 
+        offset = self._geometry.offset(self._plane)
+        x_cathode = (2 * self._geometry.halfwidth() + offset) / self._geometry.time2cm()
+        x_anode = offset / self._geometry.time2cm()
+        x_cathode += self._manual_t0
+        x_anode += self._manual_t0
+        porch = self._geometry.tRange() - x_cathode
+
         # remove from right TPC anode
-        slice_anode_right = slice(0, int(t_anode))
-        n_removed_entries += int(t_anode)
+        slice_anode_right = slice(0, int(x_anode))
+        n_removed_entries += int(x_anode)
 
         # remove between right and left TPC cathodes
-        start_removal = t_cathode
+        start_removal = x_cathode
         end_removal = start_removal + 2.0 * porch + self._geometry.cathodeGap()
         slice_cathode = slice(int(start_removal), int(end_removal))
         n_removed_entries += int(end_removal) - int(start_removal)
 
         # remove from left TPC anode
         start_removal = end_removal + (2.0 * self._geometry.halfwidth()) / self._geometry.time2cm()
-        end_removal = 2.0 * self._geometry.tRange() + self._geometry.cathodeGap() - t_anode
+        end_removal = 2.0 * self._geometry.tRange() + self._geometry.cathodeGap() - x_anode
         slice_anode_left = slice(int(start_removal), int(end_removal))
         n_removed_entries += int(end_removal) - int(start_removal)
 
@@ -378,7 +460,6 @@ class XZDetectorView(WireView):
         tr = QtGui.QTransform()
 
         # vertical scaling is done by the number of ticks after uniting the cathodes
-        # TODO not sure why this 1.08 fudge factor is needed. Probably a bug in the above slicing!
         tr.scale(self._geometry.wire2cm(), self._geometry.time2cm())
 
         # translation is in pre-scaled (time tick) units
@@ -661,6 +742,13 @@ class XZDetectorView(WireView):
                 sipm = idx % 32 
                 adc = hit[3]
                 time = hit[1]
+
+                if time < self.crt_min_time:
+                    continue
+
+                if time > self.crt_max_time:
+                    continue
+
                 if adc <= 0:
                     continue
 
@@ -690,8 +778,8 @@ class XZDetectorView(WireView):
                 if not bottom:
                     back = draw_min_sort[0] < self._geometry.crt_back_zmax
                     front = draw_max_sort[0] > self._geometry.crt_front_zmin
-                    left = draw_min_sort[1] > -381.3
-                    right = draw_min_sort[1] < 380.0
+                    left = draw_min_sort[1] > -380.0
+                    right = draw_min_sort[1] < 381.3
                     scale = 60
                     if back:
                         draw_min_sort[0] -= scale
@@ -702,7 +790,8 @@ class XZDetectorView(WireView):
                     elif right:
                         draw_min_sort[1] -= scale
 
-                draw_coords.append((draw_min_sort, draw_max_sort, time))
+                tfrac = (time - self.crt_min_time) / (self.crt_max_time - self.crt_min_time)
+                draw_coords.append((draw_min_sort, draw_max_sort, tfrac))
             
             picture.add_hits(draw_coords)
             self._crt_hit_picture_cache[key] = picture
