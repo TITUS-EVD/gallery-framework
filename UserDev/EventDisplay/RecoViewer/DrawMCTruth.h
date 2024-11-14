@@ -36,6 +36,7 @@ public:
   const int                 &nu_pdg() { return _nu_pdg; }
   const float               &nu_energy() { return _nu_energy; }
   const int                 &int_mode() { return _int_mode; }
+  const int                 &ccnc() { return _ccnc; }
   const std::vector<double> &vertex() { return _vertex; }
   const float               &nu_time() { return _nu_time; }
 
@@ -50,6 +51,7 @@ protected:
   std::vector<double> _vertex;      // Vertex of neutrino (if neutrino origin)
   float _nu_time = -9999;           // time of the neutrino (if neutrino origin)
   int _int_mode = -9999;            // interaction (if neutrino origin)
+  int _ccnc = -9999;                // 0: CC, 1: NC (if neutrino origin)
 
   std::vector<int> _finalstate_pdg;      // final state particle pdg (if neutrino origin)
   std::vector<float> _finalstate_energy; // final state particle energy (if neutrino origin)

@@ -556,6 +556,7 @@ class TpcModule(Module):
         frame.setLayout(main_layout)
         self._mctruth_dock.setWidget(frame)
 
+        self._mctruth_dropdown = QtWidgets.QComboBox()
         self._mctruth_text1 = QtWidgets.QLabel("Some text 1")
         self._mctruth_text2 = QtWidgets.QLabel("Some text 2")
         self._show_vertex = QtWidgets.QCheckBox("Show Neutrino Vertex")
@@ -565,6 +566,7 @@ class TpcModule(Module):
 
         text_layout = QtWidgets.QVBoxLayout()
         text_layout.addStretch()
+        text_layout.addWidget(self._mctruth_dropdown)
         text_layout.addWidget(self._mctruth_text1)
         text_layout.addWidget(self._mctruth_text2)
         text_layout.addWidget(self._show_vertex)

@@ -3,6 +3,9 @@ from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 from ROOT import evd, larutil
 import pyqtgraph as pg
 
+# Maximum number of final state particles to be displayed
+MAX_FS_PARS = 6
+
 pdg_to_name = {
     12: 'nue',
     -12: 'anue',
@@ -18,6 +21,11 @@ mode_to_name = {
     10: 'MEC'
 }
 
+inttype_to_name = {
+    0: 'CC',
+    1: 'NC'
+}
+
 class MCTruth(Drawable):
 
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
@@ -27,6 +35,7 @@ class MCTruth(Drawable):
         self._geom = geom
         self._module = tpc_module
         self._module._show_vertex.stateChanged.connect(self.toggle_cross)
+        self._mcts = None
         self.init()
 
     def getLabel(self):
@@ -51,15 +60,33 @@ class MCTruth(Drawable):
 
     def drawObjects(self):
 
-        # Just draw the vertex to start:
-        mcts = self._process.getData()
+        self._mcts = self._process.getData()
 
-        if len(mcts) == 0:
-            # print('No MCTruth available')
+        if len(self._mcts) == 0:
             return
 
-        # Only the first neutrino for now
-        mct = mcts[0]
+        # Start by drawing the fist one
+        self.draw_one_mctruth(self._mcts[0])
+
+        self._module._mctruth_dropdown.clear()
+        for i in range(len(self._mcts)):
+            self._module._mctruth_dropdown.addItem(f'Neutrino {i+1}')
+        self._module._mctruth_dropdown.currentIndexChanged.connect(self.on_selection_changed)
+
+
+    def on_selection_changed(self, index):
+
+        # Clear the current objects
+        self.clearDrawnObjects(hide=False)
+
+        # Draw the requestes mctruth
+        self.draw_one_mctruth(self._mcts[index])
+
+
+    def draw_one_mctruth(self, mct):
+        '''
+        Draws a single MCTruth object
+        '''
 
         vertex = mct.vertex()
 
@@ -118,16 +145,28 @@ class MCTruth(Drawable):
         tooltip = str()
 
         if mct.origin() == 1:
-            pdg = pdg_to_name.get(mct.nu_pdg(), mct.nu_pdg())
-            mode = mode_to_name.get(mct.int_mode(), mct.int_mode())
-            message += f'PDG: {mct.nu_pdg()}, Neutrino Energy: {mct.nu_energy():.3} GeV, mode: {mode}'
+            pdg = pdg_to_name.get(mct.nu_pdg(), 'NA')
+            mode = mode_to_name.get(mct.int_mode(), 'NA')
+            inttype = inttype_to_name.get(mct.ccnc(), 'NA')
+            message += f'PDG: {mct.nu_pdg()}, {inttype}, E: {mct.nu_energy():.3} GeV, mode: {mode}'
 
             fs_pdgs = mct.finalstate_pdg()
             fs_enes = mct.finalstate_energy()
-            tooltip += f'Vertex: x = {vertex[0]:.2f}, y = {vertex[1]:.2f}, z = {vertex[2]:.2f}\n\n'
-            tooltip += 'Final State Particles'
+
+            fs_pars_dropped = False
+            if len(fs_pdgs) > MAX_FS_PARS:
+                fs_pars_dropped = True
+                fs_pdgs = fs_pdgs[:MAX_FS_PARS]
+                fs_enes = fs_enes[:MAX_FS_PARS]
+
+            tooltip += f'Vertex: x = {vertex[0]:.2f}, y = {vertex[1]:.2f}, z = {vertex[2]:.2f}\n'
+            tooltip += 'Final State Particles:'
             for p, e in zip(fs_pdgs, fs_enes):
                 tooltip += f'\n  PDG: {p}, Energy: {e:.3} GeV'
+            if fs_pars_dropped:
+                tooltip += f'\n  ... [some particles not shown]'
+
+
 
         elif mct.origin() == 2:
             message += f'Cosmic Origin'
@@ -199,10 +238,11 @@ class MCTruth(Drawable):
                     obj.hide()
 
 
-    def clearDrawnObjects(self, obj_list=None):
+    def clearDrawnObjects(self, obj_list=None, hide=True):
         """ Override base class since our object list is nested """
         for view_objs in self._drawnObjects:
             for obj in view_objs:
                 obj.scene().removeItem(obj)
         self._drawnObjects = []
-        self._module._mctruth_dock.hide()
+        if hide:
+            self._module._mctruth_dock.hide()

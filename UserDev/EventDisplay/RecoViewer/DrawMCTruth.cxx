@@ -43,6 +43,7 @@ bool DrawMCTruth::analyze(const gallery::Event & ev) {
       mct._vertex = vtx;
       mct._nu_pdg = truth.GetNeutrino().Nu().PdgCode();
       mct._int_mode = truth.GetNeutrino().Mode();
+      mct._ccnc = truth.GetNeutrino().CCNC();
 
 
       std::vector<int> pdgs;
