@@ -13,6 +13,7 @@ from scipy.ndimage import grey_dilation, generate_binary_structure
 
 from titus.modules import Module
 from titus.modules import TpcModule, WireView, CrtHitsItem
+from titus.modules.opdet_module import parse_opdetwaveforms
 import titus.drawables as drawables
 from titus.gui.optical_elements import _bordercol_
 from titus.gui.widgets import MultiSelectionBox, recoBox
@@ -331,7 +332,9 @@ class SBNDCommissioningModule(Module):
         # TODO remove hard-coded cryo/plane
         view = self._wire_views[(2, 0)]
         if self._opdet_waveform_drawer is not None:
-            view.drawOpdetWaveforms(self._opdet_waveform_drawer.getData())
+            wvfms = parse_opdetwaveforms(self._opdet_waveform_drawer.getData(),
+                                          self._gm.current_geom, self._lsm.det_clock_service)
+            view.drawOpdetWaveforms(wvfms)
 
         if self._crt_drawer is not None:
             view.drawCrts(self._crt_drawer.getData())
@@ -692,7 +695,7 @@ class XZDetectorView(WireView):
         if data is None:
             return
 
-        if data.size == 0:
+        if len(data) == 0:
             return
 
         item_map = {}
@@ -701,7 +704,11 @@ class XZDetectorView(WireView):
             # flag to indicate there was at least one filled waveform for this group
             filled = False
             for i in [idx] + info["others"]:
-                wfm = data[i,:]
+                if i not in data:
+                    continue
+                wfm = data[i]['adc']
+                times = data[i]['time']
+                wfm = wfm[(times > -2) & (times < 2)]
                 if len(wfm) == 0:
                     continue
                 if wfm[0] == self._geometry.opdetDefaultValue():

@@ -197,36 +197,40 @@ class OpticalElements(pg.ScatterPlotItem):
     def set_raw_data(self, data):
         '''
         Sets raw waveform data and evaluates max and min of
-        based on waveform amplitudes
+        based on waveform amplitudes. data dict contains a list of waveforms
+        with timing offsets
         '''
         self._data = data
-
         self._pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
+
         for element in self._opdet_circles:
             ch = element['data']['id']
-            data_y = self._data[ch,:]
+            data_x = self._data[ch]['time']
+            data_y = self._data[ch]['adc']
 
             if len(data_y) == 0:
                 continue
 
-            if data_y[0] == self._geom.opdetDefaultValue():
+            if np.isnan(data_y[0]):
                 continue
 
             if 'uncoated' in self._opdets_name[ch] and self._exclude_uncoated:
                 continue
 
             if self._time_range_wf:
-                tick_min = int(self._time_range_wf[0])
-                tick_max = int(self._time_range_wf[1])
+                t_min = self._time_range_wf[0]
+                t_max = self._time_range_wf[1]
 
-                tick_min = np.maximum(tick_min, 0)
-                tick_max = np.minimum(tick_max, len(data_y))
+                t_min = np.maximum(t_min, 0)
+                t_max = np.minimum(t_max, len(data_y))
 
-                data_y_sel = data_y[tick_min:tick_max]
+                data_y_sel = data_y[(data_x > t_min) & (data_x < t_max)]
             else:
                 data_y_sel = data_y
 
-            amplitude = data_y_sel.max() - data_y_sel.min()
+            amplitude = 0
+            if len(data_y_sel) > 0:
+                amplitude = data_y_sel.max() - data_y_sel.min()
 
             self._pe_per_opdet[ch] = np.abs(amplitude)
 
