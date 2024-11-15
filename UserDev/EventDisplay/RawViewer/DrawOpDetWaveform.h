@@ -93,11 +93,13 @@ namespace evd {
     int _n_time_ticks;
     int _n_frames = 1;
     double _time_offset = 0;
+    const int _n_size_reduction = 10;
+    const int _n_max_chs = 360;
 
     std::string _producer;
 
     // sets up the _wvf_data data object
-    void initDataHolder();
+    void initDataHolder(int, int);
 
     const geo::GeometryCore&               _geo_service;
     const detinfo::DetectorPropertiesData& _det_prop;

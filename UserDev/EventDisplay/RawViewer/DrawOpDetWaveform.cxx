@@ -2,6 +2,7 @@
 #ifndef EVD_DRAWOPDETWAVEFORM_CXX
 #define EVD_DRAWOPDETWAVEFORM_CXX
 
+#include <numeric>
 
 #include "DrawOpDetWaveform.h"
 #include "LArUtil/DetectorProperties.h"
@@ -27,10 +28,11 @@ bool DrawOpDetWaveform::initialize() {
   _tick_period = _det_clocks.OpticalClock().TickPeriod();
   _n_op_channels = _geo_service.NOpDets();
   _n_time_ticks = _det_clocks.OpticalClock().FrameTicks() * _n_frames;
+  _n_time_ticks /= _n_size_reduction;
 
   std::cout << "DrawOpDetWaveform::initialize - n_frames: " << _n_frames << " tick_period: " << _tick_period << " # chan: " << _n_op_channels << ", time ticks: " << _n_time_ticks << std::endl;
 
-  initDataHolder();
+  initDataHolder(1, 1);
 
   return true;
 }
@@ -43,59 +45,52 @@ bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
 
   std::cout << "OpDetWaveform analyze, op_wvfs size: " << op_wvfs->size() << std::endl;
 
-  int n_ticks;
+  int n_ticks = -1;
+  int n_wvfs = op_wvfs->size();
   for (auto const& op_wvf : *op_wvfs) {
-    n_ticks = op_wvf.size();
-    break;
+    // expect all channels to be the same length
+    if (n_ticks == -1) {
+        n_ticks = op_wvf.size();
+    }
+    else if (op_wvf.size() != n_ticks) {
+        std::cerr << "WARNING: Different OpDetWaveform sizes " << n_ticks
+            << " and " << op_wvf.size() << ". Using the larger one.\n";
+        n_ticks = std::max((int)op_wvf.size(), n_ticks);
+    }
   }
+  n_ticks /= _n_size_reduction;
   std::cout << "Waveform length: " << n_ticks << ", in us: " << n_ticks * _tick_period << std::endl;
+  initDataHolder(n_ticks, n_wvfs);
+  _wvf_data.at(0) = n_wvfs;
+  _wvf_data.at(1) = _n_size_reduction;
 
-  if (n_ticks != _n_time_ticks) {
-    std::cout << "I see your waveform has " << n_ticks << " time ticks," << std::endl;
-    std::cout << "but from the optical clock service it should have " << _n_time_ticks << std::endl;
-    std::cout << "I will continue assuming " << n_ticks << std::endl;
-    _n_time_ticks = n_ticks;
-  }
-
-  initDataHolder();
-
+  int wvf_count = 0;
   for (auto const& op_wvf : *op_wvfs) {
-    unsigned int       ch   = op_wvf.ChannelNumber();
-    double             time = op_wvf.TimeStamp();
+    unsigned int ch   = op_wvf.ChannelNumber();
+    if (ch >= _n_max_chs) continue;
 
-    // time offset is at -1250 mu s
-    // time tick period is 0.002
-    size_t time_in_ticks = (time + _time_offset) / _tick_period;
+    double time = op_wvf.TimeStamp();
+    double time_in_ticks = (time + _time_offset); // / _tick_period;
 
-    // fills output array at time index with each waveform sampling point adc
+    // each waveform is n_ticks + 3 elements long
+    // first two elements are channel and time offset
+    // third element is the size reduction
+    int offset = 2 + wvf_count * (n_ticks + 3);
+    _wvf_data.at(offset) = (float)ch;
+    _wvf_data.at(offset + 1) = (float)time_in_ticks;
 
-    int offset = ch * _n_time_ticks;
-
-    // std::cout << "  - channel: " << ch << ", time: " << time << ", time_in_ticks: " << time_in_ticks << ", offset: " << offset << std::endl;
-
-    if (ch >= 360)
-    {
-        // std::cout << "  ==> ch: " << ch << " continuing" << std::endl;
-        continue;
-    }
-
+    // start waveform data after first three elements
+    // only use every nth element
     size_t i = 0;
     for (short adc : op_wvf) {
-      // _wvf_data.at(offset + time_in_ticks + i) = (float)adc;
-      _wvf_data.at(offset + i) = (float)adc;
-      i++;
+       i++;
+       if ((i - 1) % _n_size_reduction != 0) continue;
+      _wvf_data.at(offset + 2 + (i - 1) / _n_size_reduction) = (float)adc;
     }
 
-    /*
-    // Fill output array with channel, timestamp & adc of each hit
-    size_t i = 0;
-    for (short adc : op_wvf) {
-        _wvf_data.push_back((float)ch);
-        _wvf_data.push_back((float)(time_in_ticks + i));
-        _wvf_data.push_back((float)adc);
-        i++;
-    }
-    */
+    // NAN at the end to signal the end-of-waveform
+    _wvf_data.at(2 + (wvf_count + 1) * (n_ticks + 3) - 1) = NAN;
+    wvf_count++;
   }
 
   return true;
@@ -106,19 +101,14 @@ bool DrawOpDetWaveform::finalize() {
   return true;
 }
 
-void DrawOpDetWaveform::initDataHolder() {
-  // for now 3 windows of 1250 mu s
-  // there are 625000 time ticks per window
-  // so a tick period of 0.002 mu s
-  // int n_op_channels = 600;
-  float default_value = -9999.;
-  std::cout << "initializing, # channels: " << _n_op_channels << ", ticks: " << _n_time_ticks << " def: " << default_value << std::endl;
+void DrawOpDetWaveform::initDataHolder(int nticks, int nwvfms) {
+  float default_value = NAN;
+  std::cout << "initializing, # channels: " << nwvfms << ", ticks: " << nticks << " def: " << default_value << std::endl;
   _wvf_data.clear();
-  _wvf_data.resize(_n_op_channels * _n_time_ticks, default_value);
-  // for (size_t i = 0; i < n_op_channels; i++) {
-  //   _wvf_data.at(i).resize(_n_time_ticks);
-  // }
-  return;
+  // first "tick" in the output waveform will hold the waveform tick offset
+  // second "tick" in the output waveform will hold the waveform channel number
+  // last tick is NAN to signal end-of-waveform
+  _wvf_data.resize(2 + nwvfms * (nticks + 3), default_value);
 }
 
 
@@ -134,7 +124,8 @@ PyObject * DrawOpDetWaveform::getArray() {
     // int n_dim = 2;
     // int * dims = new int[n_dim];
     // int dims[2];
-    const npy_intp dims[2] = {_n_op_channels, _n_time_ticks};
+    //const npy_intp dims[2] = {_n_op_channels, _n_time_ticks};
+    const npy_intp dims[1] = { _wvf_data.size() };
     // const npy_intp dims[2] = { _wvf_data.size() / 3, 3 };
     // dims[0] = _n_op_channels;
     // dims[1] = _n_time_ticks;
@@ -142,7 +133,7 @@ PyObject * DrawOpDetWaveform::getArray() {
 
     // std::cout << "Returning array, dims: " << dims[0] << ", " << dims[1] << ", n_dim: " << n_dim << ", data_type: " << data_type << std::endl;
 
-    return (PyObject *) PyArray_SimpleNewFromData(2, dims, NPY_FLOAT, _wvf_data.data());
+    return (PyObject *) PyArray_SimpleNewFromData(1, dims, NPY_FLOAT, _wvf_data.data());
   }
   catch ( ... ) {
     std::cerr << "WARNING: CANNOT GET OP DET WAVEFORM.\n";
