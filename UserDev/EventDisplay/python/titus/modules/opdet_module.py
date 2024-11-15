@@ -473,7 +473,7 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
         self._data = None
 
-        self._time_range = [1500, 2300]
+        self._time_range = [-1500, 1500]
 
         self._wf_plot = pg.PlotItem(name="OpDetWaveform")
         self._wf_plot.setLabel(axis='left', text='ADC')
