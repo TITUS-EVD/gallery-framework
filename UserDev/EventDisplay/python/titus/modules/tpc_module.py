@@ -100,10 +100,10 @@ class TpcModule(Module):
         self._settings_defaults = {
             _SET_N_WIRE_WAVEFORMS: 5,
             _SET_SCALE_BAR_LENGTH: 30,
-            _SET_LABEL_FONT_SIZE: 20,
+            _SET_LABEL_FONT_SIZE: 16,
             _SET_LABEL_PLANE: QtCore.Qt.Unchecked,
             _SET_LABEL_TIME: QtCore.Qt.Unchecked,
-            _SET_LOGO_SIZE: 1.0,
+            _SET_LOGO_SIZE: 0.7,
         }
         self._init_settings_page()
 
@@ -167,7 +167,7 @@ class TpcModule(Module):
         self._settings_layout.addWidget(label, 5, 0, 1, 1)
         self._logo_size = QtWidgets.QDoubleSpinBox()
         self._logo_size.setDecimals(1)
-        self._logo_size.setRange(1, 2)
+        self._logo_size.setRange(0.2, 2)
         self._logo_size.setSingleStep(0.1)
         self._logo_size.setValue(self._settings_defaults[_SET_LOGO_SIZE])
         self._logo_size.valueChanged.connect(
@@ -175,7 +175,15 @@ class TpcModule(Module):
         )
         self._settings_layout.addWidget(self._logo_size, 5, 1, 1, -1)
 
+        restore_btn = QtWidgets.QPushButton("Restore Defaults")
+        restore_btn.clicked.connect(self.restore_settings_defaults)
+        self._settings_layout.addWidget(restore_btn, 6, 1, 1, -1)
+
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
+
+    def restore_settings_defaults(self):
+        self._settings.clear()
+        self.restore_from_settings()
 
     def restore_from_settings(self):
         ''' emitting forces the connected signal even if the value is the same '''
@@ -1377,8 +1385,9 @@ class WireView(pg.GraphicsLayoutWidget):
         yLoc = 0
         if self._logo:
             xLoc = self._geometry.logoPos()[0] \
-                + (1.1 * self._logo.sceneBoundingRect().width())
-            yLoc = self._geometry.logoPos()[0]
+                + (1.2 * self._logo.sceneBoundingRect().width())
+            yLoc = self._geometry.logoPos()[1] \
+                + self._logo.sceneBoundingRect().height() / 2
 
         # dims = self._view.viewRange()
         # xMin = dims[0][0]
@@ -1395,7 +1404,7 @@ class WireView(pg.GraphicsLayoutWidget):
 
         label += self._gi.date(include_time=self._includeTimeInLabel)
 
-        self._label = MovableLabel(label, anchor=(0., 0.))
+        self._label = MovableLabel(label, anchor=(0., 0.5))
         self._label.setPos(xLoc,yLoc)
         self._label.setFont(QtGui.QFont("Helvetica", self._fontsize))
         # self._label.setFlag(self._label.GraphicsItemFlag.ItemIgnoresTransformations)

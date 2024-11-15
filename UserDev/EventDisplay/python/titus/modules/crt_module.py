@@ -351,15 +351,15 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
                 return -x -600, y
             return x + 1200, y
 
-        left = coord[0] > -380.0
-        right = coord[0] < 381.3
+        left = coord[0] < -380.0
+        right = coord[0] > 381.3
         if left or right:
             # left or right side: z along xdir, y along ydir (side view)
             x = coord[2]
             y = coord[1]
             if coord[0] < 0: 
-                return x, y + 800
-            return x, -y - 800
+                return x, -y - 800
+            return x, y + 800
         print('Warning: Got invalid point when trying to convert to CRT view ', coord)
 
 
