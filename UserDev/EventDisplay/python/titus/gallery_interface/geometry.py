@@ -51,7 +51,7 @@ class geoBase(object):
         self._opdet_x = [0]
         self._opdet_y = [0]
         self._opdet_name = ['pmt']
-        self._opdet_default = -9999
+        self._opdet_default = np.nan
         self._n_optical_frames = 1
         self._n_optical_offset = 0
         self._plane_mix = {}
@@ -505,7 +505,7 @@ class sbnd(Geometry):
         self._colorScheme['grayscale'] = color_scheme
 
         self._n_optical_frames = 3
-        self._n_optical_offset = 1501 # 1250
+        self._n_optical_offset = 0 # 1250
 
         self._offset = []
         for v in range(0, self._nViews):

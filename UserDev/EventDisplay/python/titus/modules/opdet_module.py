@@ -23,9 +23,14 @@ _DRAWABLE_LIST = {
 }
 
 
+# Optical view setting strings
+_SET_WAVEFORM_COMPRESSION = 'Optical/Waveform compression factor'
+
+
 class OpDetModule(Module):
     def __init__(self, larsoft_module, geom_module):
         super().__init__()
+        self._name = 'Optical'
         self._gm = geom_module
         self._lsm = larsoft_module
         self._central_widget = QtWidgets.QWidget()
@@ -45,17 +50,55 @@ class OpDetModule(Module):
         self._flash_drawers = {}
         self._opdet_wf_drawer = None
 
+        # user settings page
+        self._settings_defaults = {
+            _SET_WAVEFORM_COMPRESSION: 10,
+        }
+        self._init_settings_page()
+
+    def _init_settings_page(self):
+        self._settings_layout = QtWidgets.QGridLayout()
+
+        label = QtWidgets.QLabel(_SET_WAVEFORM_COMPRESSION.split('/')[1])
+        self._settings_layout.addWidget(label, 0, 0, 1, 1)
+        self._waveform_compression_box = QtWidgets.QSpinBox()
+        self._waveform_compression_box.setRange(1, 100)
+        self._waveform_compression_box.setSingleStep(5)
+        self._waveform_compression_box.setValue(self._settings_defaults[_SET_WAVEFORM_COMPRESSION])
+        self._waveform_compression_box.valueChanged.connect(
+            lambda x: self._update_waveform_compression(x)
+        )
+        self._settings_layout.addWidget(self._waveform_compression_box, 0, 1, 1, -1)
+
+        restore_btn = QtWidgets.QPushButton("Restore Defaults")
+        restore_btn.clicked.connect(self.restore_settings_defaults)
+        self._settings_layout.addWidget(restore_btn, 1, 1, 1, -1)
+
+        self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
+
+    def restore_settings_defaults(self):
+        self._settings.clear()
+        self.restore_from_settings()
+
+    def restore_from_settings(self):
+        ''' emitting forces the connected signal even if the value is the same '''
+        x = int(self._settings.value(_SET_WAVEFORM_COMPRESSION,
+                                     self._settings_defaults[_SET_WAVEFORM_COMPRESSION]))
+        self._waveform_compression_box.setValue(x)
+        self._waveform_compression_box.valueChanged.emit(x)
+
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._view_dock)
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._dock)
 
         # geometry should be selected before creating buttons
         self._gm.geometryChanged.connect(self.init_ui)
+        self._gm.geometryChanged.connect(self.restore_from_settings)
 
     def init_ui(self):
         # Waveform View
         wfv_layout = QtWidgets.QHBoxLayout()
-        self._wf_view = waveform_view(self._gm.current_geom)
+        self._wf_view = waveform_view(self._gm.current_geom, self._lsm.det_clock_service)
         self._wf_view.timeWindowChanged.connect(self.time_range_wf_worker)
 
         name = VerticalLabel('Waveform Viewer')
@@ -227,6 +270,13 @@ class OpDetModule(Module):
             self._flash_choice.select(c)
         if not products and self._show_flash_btn.isChecked():
             self._show_none_btn.toggle()
+
+    def _update_waveform_compression(self, x: int):
+        self._settings.setValue(_SET_WAVEFORM_COMPRESSION, x)
+        if self._opdet_wf_drawer is None:
+            return
+        self._opdet_wf_drawer.set_compression_factor(x)
+        self._gi.process_event(True)
 
     def viewSelectionWorker(self):
         self._wf_view.setVisible(False)
@@ -401,21 +451,25 @@ class OpDetModule(Module):
         '''
         OpDet display shows raw waveform data
         '''
-        self._wf_view.drawOpDetWvf(data) # ???
-        if self._show_raw_btn.isChecked():
+        if not self._show_raw_btn.isChecked():
+            return
+        
+        result = parse_opdetwaveforms(data, self._gm.current_geom, self._lsm.det_clock_service)
 
-            max_scale = -1e12
-            min_scale = 1e12
+        self._wf_view.drawOpDetWvf(result)
 
-            for p in self._pmts:
-                min_sc, max_sc = p.set_raw_data(data)
-                max_scale = max(max_scale, max_sc)
-                min_scale = min(min_scale, min_sc)
+        max_scale = -1e12
+        min_scale = 1e12
 
-            for p in self._pmts:
-                p.show_raw_data(min_scale, max_scale, self._selected_ch)
+        for p in self._pmts:
+            min_sc, max_sc = p.set_raw_data(result)
+            max_scale = max(max_scale, max_sc)
+            min_scale = min(min_scale, min_sc)
 
-            # TODO: do the same for arapucas
+        for p in self._pmts:
+            p.show_raw_data(min_scale, max_scale, self._selected_ch)
+
+        # TODO: do the same for arapucas
 
 
     def setFlashesForPlane(self, p, flashes):
@@ -461,18 +515,19 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
     timeWindowChanged = QtCore.pyqtSignal(tuple)
     
-    def __init__(self, geometry, plane=-1):
+    def __init__(self, geometry, clock_service, plane=-1):
         super(waveform_view, self).__init__(border=None)
 
         self._geometry = geometry
+        self._clock_service = clock_service
 
         self._data = None
 
-        self._time_range = [1500, 2300]
+        self._time_range = [-1500, 1500]
 
         self._wf_plot = pg.PlotItem(name="OpDetWaveform")
         self._wf_plot.setLabel(axis='left', text='ADC')
-        self._wf_plot.setLabel(axis='bottom', text='Ticks')
+        self._wf_plot.setLabel(axis='bottom', text='Time (us)')
         self.addItem(self._wf_plot)
 
 
@@ -481,15 +536,13 @@ class waveform_view(pg.GraphicsLayoutWidget):
         self._wf_plot.addItem(self._time_window)
 
 
-
     def getWidget(self):
         return self._widget, self._layout
 
 
-
-    def drawOpDetWvf(self, data, offset=100):
+    def drawOpDetWvf(self, data):
+        """Update member variables needed to properly draw waveforms."""
         self._data = data
-
 
         self._wf_plot.autoRange()
 
@@ -502,23 +555,9 @@ class waveform_view(pg.GraphicsLayoutWidget):
             return
 
         self._wf_plot.clear()
-
-        # n_time_ticks = self._geometry.getDetectorClocks().OpticalClock().FrameTicks() * self._geometry.nOpticalFrames()
-        data_y = self._data[ch,:] 
-        ticks = len(data_y)
-        data_x = np.linspace(0, ticks - 1, ticks)
-        if data_y[0] == self._geometry.opdetDefaultValue():
-            return
-
-        # Remove the dafault values from the entries to be plotted
-
-        # self._wf_plot.plot(x=data_x, y=data_y, connect=False, symbol='o')
-        self._wf_plot.plot(x=data_x, y=data_y)
+        self._wf_plot.plot(x=self._data[ch]['time'], y=self._data[ch]['adc'])
         self._wf_plot.addItem(self._time_window)
-
         self._wf_plot.autoRange()
-
-
 
 
 class flash_time_view(pg.GraphicsLayoutWidget):
@@ -577,3 +616,53 @@ class flash_time_view(pg.GraphicsLayoutWidget):
         
         self._time_plot.addItem(self._time_window)
         self._time_plot.autoRange()
+
+
+def parse_opdetwaveforms(data, geometry, clock_service):
+    """Get waveforms & times from raw data returned by DrawOpDetWaveform."""
+    # unpack variable number of waveforms
+    n_waveforms = int(data[0])
+    compression_factor = int(data[1])
+
+    # waveform data follows first two elements. each waveform separated by
+    # a NaN. remove the last element (empty) after the split and then the
+    # leading NaN from each waveform
+    data = data[2:]
+    wvfm_breaks = np.where(np.isnan(data))[0]
+    wvfms = np.split(data, wvfm_breaks)[:-1]
+    for i in range(len(wvfms)):
+        wvfms[i] = wvfms[i][~np.isnan(wvfms[i])]
+
+    # result is a dict like
+    # channel: {'time': [t1, t2, ...], 'adc': [a1, a2, a3, ...]}
+    tick_period = clock_service.DataForJob().OpticalClock().TickPeriod()
+    result = {}
+    for w in wvfms:
+        ch = int(w[0])
+        offset = w[1]
+        wvfm = w[2:]
+
+        if wvfm[0] == geometry.opdetDefaultValue():
+            continue
+
+        ticks = len(wvfm)
+        # extra element for trailing NaN. The NaN prevents pyqtgraph from
+        # connecting waveform lines
+        xs = np.arange(0, ticks + 1, dtype=float)
+        xs *= compression_factor
+
+        # tick to timestamp
+        xs *= tick_period
+        xs += offset 
+
+        # TODO: Lots of appends. These create copies so would be better to
+        # pre-allocate somehow
+        xs[-1] = np.nan
+        wvfm = np.append(wvfm, np.nan)
+        try:
+            result[ch]['time'] = np.append(result[ch]['time'], xs)
+            result[ch]['adc'] = np.append(result[ch]['adc'], wvfm)
+        except KeyError:
+            result[ch] = {'time': xs, 'adc': wvfm}
+
+    return result
