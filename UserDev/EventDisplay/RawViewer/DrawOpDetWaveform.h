@@ -81,6 +81,7 @@ namespace evd {
 
     void set_n_frames(int n) {_n_frames = n;}
     void set_time_offset(double t) {_time_offset = t;}
+    void set_size_reduction(int n) { _n_size_reduction = std::max(1, n); }
 
 
   protected:
@@ -93,7 +94,7 @@ namespace evd {
     int _n_time_ticks;
     int _n_frames = 1;
     double _time_offset = 0;
-    const int _n_size_reduction = 10;
+    int _n_size_reduction = 10;
     const int _n_max_chs = 360;
 
     std::string _producer;
