@@ -23,9 +23,14 @@ _DRAWABLE_LIST = {
 }
 
 
+# Optical view setting strings
+_SET_WAVEFORM_COMPRESSION = 'Optical/Waveform compression factor'
+
+
 class OpDetModule(Module):
     def __init__(self, larsoft_module, geom_module):
         super().__init__()
+        self._name = 'Optical'
         self._gm = geom_module
         self._lsm = larsoft_module
         self._central_widget = QtWidgets.QWidget()
@@ -45,12 +50,50 @@ class OpDetModule(Module):
         self._flash_drawers = {}
         self._opdet_wf_drawer = None
 
+        # user settings page
+        self._settings_defaults = {
+            _SET_WAVEFORM_COMPRESSION: 10,
+        }
+        self._init_settings_page()
+
+    def _init_settings_page(self):
+        self._settings_layout = QtWidgets.QGridLayout()
+
+        label = QtWidgets.QLabel(_SET_WAVEFORM_COMPRESSION.split('/')[1])
+        self._settings_layout.addWidget(label, 0, 0, 1, 1)
+        self._waveform_compression_box = QtWidgets.QSpinBox()
+        self._waveform_compression_box.setRange(1, 100)
+        self._waveform_compression_box.setSingleStep(5)
+        self._waveform_compression_box.setValue(self._settings_defaults[_SET_WAVEFORM_COMPRESSION])
+        self._waveform_compression_box.valueChanged.connect(
+            lambda x: self._update_waveform_compression(x)
+        )
+        self._settings_layout.addWidget(self._waveform_compression_box, 0, 1, 1, -1)
+
+        restore_btn = QtWidgets.QPushButton("Restore Defaults")
+        restore_btn.clicked.connect(self.restore_settings_defaults)
+        self._settings_layout.addWidget(restore_btn, 1, 1, 1, -1)
+
+        self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
+
+    def restore_settings_defaults(self):
+        self._settings.clear()
+        self.restore_from_settings()
+
+    def restore_from_settings(self):
+        ''' emitting forces the connected signal even if the value is the same '''
+        x = int(self._settings.value(_SET_WAVEFORM_COMPRESSION,
+                                     self._settings_defaults[_SET_WAVEFORM_COMPRESSION]))
+        self._waveform_compression_box.setValue(x)
+        self._waveform_compression_box.valueChanged.emit(x)
+
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._view_dock)
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._dock)
 
         # geometry should be selected before creating buttons
         self._gm.geometryChanged.connect(self.init_ui)
+        self._gm.geometryChanged.connect(self.restore_from_settings)
 
     def init_ui(self):
         # Waveform View
@@ -227,6 +270,13 @@ class OpDetModule(Module):
             self._flash_choice.select(c)
         if not products and self._show_flash_btn.isChecked():
             self._show_none_btn.toggle()
+
+    def _update_waveform_compression(self, x: int):
+        self._settings.setValue(_SET_WAVEFORM_COMPRESSION, x)
+        if self._opdet_wf_drawer is None:
+            return
+        self._opdet_wf_drawer.set_compression_factor(x)
+        self._gi.process_event(True)
 
     def viewSelectionWorker(self):
         self._wf_view.setVisible(False)

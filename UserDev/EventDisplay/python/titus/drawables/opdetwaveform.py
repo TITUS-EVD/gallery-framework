@@ -19,6 +19,9 @@ class OpDetWaveform(Drawable):
         self._process.initialize()
         self._process.setInput(self._producer_name)
 
+    def set_compression_factor(self, x: int):
+        self._process.set_size_reduction(x)
+
     def set_producer(self, producer):
         """ override to call setInput instead of setProducer """
         self._producer_name = producer
