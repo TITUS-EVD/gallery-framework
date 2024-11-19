@@ -141,7 +141,7 @@ class SBNDCommissioningModule(Module):
         self._bottom_crt_checkbox.clicked.connect(self.show_bottom_crts)
         main_layout.addWidget(self._bottom_crt_checkbox)
 
-        draw_group_box = QtWidgets.QGroupBox("CRT time range")
+        draw_group_box = QtWidgets.QGroupBox("Optical/CRT time range (ns)")
         self._min_time_btn = QtWidgets.QSpinBox()
         self._max_time_btn = QtWidgets.QSpinBox()
         self._min_time_btn.setRange(-30e6, 30e6)
@@ -204,24 +204,26 @@ class SBNDCommissioningModule(Module):
         view = self._wire_views[(2, 0)]
         view._clear_cache()
 
-        if value > view.crt_max_time:
+        if value > view.draw_max_time:
             print("Warning: CRT view Min Time must be less than Max Time")
             return
 
-        view.crt_min_time = value
+        view.draw_min_time = value
         view.drawCrts(self._crt_drawer.getData())
+        view.drawOpdetWaveforms()
 
 
     def _updated_max_time(self, value):
         view = self._wire_views[(2, 0)]
         view._clear_cache()
 
-        if value < view.crt_min_time:
+        if value < view.draw_min_time:
             print("Warning: CRT view Max Time must be greater than Min Time")
             return
 
-        view.crt_max_time = value
+        view.draw_max_time = value
         view.drawCrts(self._crt_drawer.getData())
+        view.drawOpdetWaveforms()
 
     def _updated_t0(self):
         t0 = self._t0slider.value()
@@ -360,6 +362,7 @@ class XZDetectorView(WireView):
         self._opdet_circles = {}
         self._opdet_size = 10 # cm
         self._draw_opdets = True
+        self._opdet_data = None
         self.draw_opdets()
 
         self._crt_strips = {}
@@ -372,8 +375,11 @@ class XZDetectorView(WireView):
         self._draw_crts = True
         self._draw_bot_crts = False
         self._draw_wall_crts = True
-        self.crt_min_time = -30e6
-        self.crt_max_time = 30e6
+        self._min_time = -30e6
+        self._max_time = 30e6
+
+        self.draw_min_time = -30e6
+        self.draw_max_time = 30e6
 
         self._init_crt_strips()
         self.init_crt_planes()
@@ -690,12 +696,17 @@ class XZDetectorView(WireView):
             key = 'side' if not bottom else 'bottom'
             self._drawn_crt_modules[key].append(rect)
 
-    def drawOpdetWaveforms(self, data):
+    def drawOpdetWaveforms(self, data=None):
         """ sums adc counts for opdets """
+        # no "data" argument -> draw self._opdet_data
+        # "data" argument -> update self._opdet_data, then draw
         if data is None:
-            return
+            if self._opdet_data is None:
+                return
+        else:
+            self._opdet_data = data
 
-        if len(data) == 0:
+        if len(self._opdet_data) == 0:
             return
 
         item_map = {}
@@ -704,11 +715,14 @@ class XZDetectorView(WireView):
             # flag to indicate there was at least one filled waveform for this group
             filled = False
             for i in [idx] + info["others"]:
-                if i not in data:
+                if i not in self._opdet_data:
                     continue
-                wfm = data[i]['adc']
-                times = data[i]['time']
-                wfm = wfm[(times > -2) & (times < 2)]
+                wfm = self._opdet_data[i]['adc']
+                times = self._opdet_data[i]['time']
+
+                # opdetwaveform use us, not ns
+                wfm = wfm[(times > self.draw_min_time / 1e3) & (times < self.draw_max_time / 1e3)]
+
                 if len(wfm) == 0:
                     continue
                 if wfm[0] == self._geometry.opdetDefaultValue():
@@ -721,9 +735,16 @@ class XZDetectorView(WireView):
             else:
                 self._opdet_circles[idx]["item"].setBrush(_OPDET_COLORMAP.mapToQColor(0))
 
-        min_val = np.min(list(item_map.values()))
-        max_val = np.max(list(item_map.values()))
-        val_range = max_val - min_val
+        min_val = 0
+        max_val = 1e9
+        val_range = 1e9
+        if len(item_map.values()) > 0:
+            min_val = np.min(list(item_map.values()))
+            max_val = np.max(list(item_map.values()))
+            val_range = max_val - min_val
+            if val_range == 0:
+                val_range = 1e9
+
         for idx, adc in item_map.items():
             color = _OPDET_COLORMAP.mapToQColor((adc - min_val) / val_range)
             self._opdet_circles[idx]["item"].setBrush(color)
@@ -750,10 +771,10 @@ class XZDetectorView(WireView):
                 adc = hit[3]
                 time = hit[1]
 
-                if time < self.crt_min_time:
+                if time < self.draw_min_time:
                     continue
 
-                if time > self.crt_max_time:
+                if time > self.draw_max_time:
                     continue
 
                 if adc <= 0:
@@ -797,7 +818,7 @@ class XZDetectorView(WireView):
                     elif right:
                         draw_min_sort[1] -= scale
 
-                tfrac = (time - self.crt_min_time) / (self.crt_max_time - self.crt_min_time)
+                tfrac = (time - self._min_time) / (self._max_time - self._min_time)
                 draw_coords.append((draw_min_sort, draw_max_sort, tfrac))
             
             picture.add_hits(draw_coords)
