@@ -45,22 +45,35 @@ bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
 
   std::cout << "OpDetWaveform analyze, op_wvfs size: " << op_wvfs->size() << std::endl;
 
+  // figure out number of valid waveforms & max tick length for output array
   int n_ticks = -1;
-  int n_wvfs = op_wvfs->size();
+  int n_wvfs = 0;
   for (auto const& op_wvf : *op_wvfs) {
-    // expect all channels to be the same length
     if (n_ticks == -1) {
         n_ticks = op_wvf.size();
     }
     else if (op_wvf.size() != n_ticks) {
+        /*
+        // warning removed, variable opdetwaveforms are intended
         std::cerr << "WARNING: Different OpDetWaveform sizes " << n_ticks
             << " and " << op_wvf.size() << ". Using the larger one.\n";
+        */
         n_ticks = std::max((int)op_wvf.size(), n_ticks);
     }
+
+    // check how many valid waveforms we expect in the output
+    unsigned int ch   = op_wvf.ChannelNumber();
+    if (ch >= _n_max_chs) {
+        std::cout << "got ch=" << ch << " but its too high (max=" << _n_max_chs << "). Skipping!\n";
+        continue;
+    }
+    n_wvfs++;
   }
 
   int n_ticks_reduced = n_ticks / _n_size_reduction;
-  std::cout << "Waveform length: " << n_ticks << ", in us: " << n_ticks * _tick_period << std::endl;
+  std::cout << "NWaveforms: " << n_wvfs << " Waveform length: " << n_ticks
+      << ", in us: " << n_ticks * _tick_period << std::endl;
+
   initDataHolder(n_ticks_reduced, n_wvfs);
   _wvf_data.at(0) = n_wvfs;
   _wvf_data.at(1) = _n_size_reduction;
@@ -89,12 +102,13 @@ bool DrawOpDetWaveform::analyze(const gallery::Event & ev) {
     for (int i = 0; i < n_ticks; i++) {
        if ((i - 1) % _n_size_reduction != 0) continue;
 
+       size_t adc_idx = offset + 2 + (i - 1) / _n_size_reduction;
        if (i < this_opwvf_size) {
-           _wvf_data.at(offset + 2 + (i - 1) / _n_size_reduction) = (float)op_wvf.at(i);
+           _wvf_data.at(adc_idx) = (float)op_wvf.at(i);
        }
        else {
            // pad ends with 0s
-           _wvf_data.at(offset + 2 + (i - 1) / _n_size_reduction) = 0.;
+           _wvf_data.at(adc_idx) = 0.;
        }
     }
 
@@ -113,7 +127,7 @@ bool DrawOpDetWaveform::finalize() {
 
 void DrawOpDetWaveform::initDataHolder(int nticks, int nwvfms) {
   float default_value = NAN;
-  std::cout << "initializing, # channels: " << nwvfms << ", ticks: " << nticks << " default: " << default_value << std::endl;
+  std::cout << "initializing, # waveforms: " << nwvfms << ", ticks: " << nticks << " default: " << default_value << std::endl;
   _wvf_data.clear();
   // first "tick" in the output waveform will hold the waveform tick offset
   // second "tick" in the output waveform will hold the waveform channel number
