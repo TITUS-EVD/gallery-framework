@@ -205,8 +205,11 @@ class OpticalElements(pg.ScatterPlotItem):
 
         for element in self._opdet_circles:
             ch = element['data']['id']
-            data_x = self._data[ch]['time']
-            data_y = self._data[ch]['adc']
+            try:
+                data_x = self._data[ch]['time']
+                data_y = self._data[ch]['adc']
+            except KeyError:
+                continue
 
             if len(data_y) == 0:
                 continue
