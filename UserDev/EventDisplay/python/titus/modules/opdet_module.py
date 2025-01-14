@@ -628,6 +628,9 @@ def parse_opdetwaveforms(data, geometry, clock_service):
     # a NaN. remove the last element (empty) after the split and then the
     # leading NaN from each waveform
     data = data[2:]
+    if len(data) == 0:
+        return {}
+
     wvfm_breaks = np.where(np.isnan(data))[0]
     wvfms = np.split(data, wvfm_breaks)[:-1]
     for i in range(len(wvfms)):
@@ -640,7 +643,8 @@ def parse_opdetwaveforms(data, geometry, clock_service):
     for w in wvfms:
         ch = int(w[0])
         offset = w[1]
-        wvfm = w[2:]
+        # remove trailing zeros
+        wvfm = np.trim_zeros(w[2:], trim='b')
 
         if wvfm[0] == geometry.opdetDefaultValue():
             continue
