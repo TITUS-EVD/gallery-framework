@@ -90,6 +90,9 @@ class MCTruth(Drawable):
 
         vertex = mct.vertex()
 
+        if not len(vertex):
+            return
+
         for _, view in self._module._wire_views.items():
             self._drawnObjects.append([])
 
