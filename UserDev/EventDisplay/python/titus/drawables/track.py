@@ -44,7 +44,6 @@ class Track(Drawable):
         self._product_name = 'track'
         self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._process._projections_match = geom.projectionsMatch()
-        print('self._process._projections_match?', self._process._projections_match)
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._geom = geom
         self._module = tpc_module

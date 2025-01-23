@@ -32,11 +32,20 @@ class MCTrack(Drawable):
                     x = pair.first / self._geom.wire2cm()
                     y = pair.second / self._geom.time2cm()
 
-                    # If odd TPC, shift this piece of the track up
-                    if track.tpc()[i] % 2:
-                        y += 2 * self._geom.triggerOffset()
+                    if track.tpc()[i] == 1:
+                        # flip
+                        y = self._geom.tRange() - y
+                        # move up
+                        y += self._geom.tRange()
+                        # add cathode gap
                         y += self._geom.cathodeGap()
 
+                    # # If odd TPC, shift this piece of the track up
+                    # if track.tpc()[i] % 2:
+                    #     y += 2 * self._geom.triggerOffset()
+                    #     y += self._geom.cathodeGap()
+
+                    print(f'Track {i}, {x}, {y}')
                     points.append(QtCore.QPointF(x, y))
 
                 if len(points) == 0:
