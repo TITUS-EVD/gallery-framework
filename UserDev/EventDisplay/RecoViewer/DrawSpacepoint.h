@@ -17,6 +17,8 @@
 #include <iostream>
 #include "Analysis/ana_base.h"
 #include "lardataobj/RecoBase/SpacePoint.h"
+#include "canvas/Persistency/Common/FindMany.h"
+#include "lardataobj/RecoBase/Hit.h"
 
 #include "RecoBase.h"
 /**

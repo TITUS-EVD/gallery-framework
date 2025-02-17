@@ -35,10 +35,10 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
   art::InputTag sps_tag(_producer);
   auto const & spacepointHandle
         = ev.getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
-
+  art::FindMany<recob::Hit> hits_for_SpacePoints(spacepointHandle, ev, sps_tag);
   // geoHelper = larutil::GeometryHelper::GetME();
-
   // Clear out the data but reserve some space
+  //Space points can be multiple hits so we may need to alter this section
   for (unsigned int p = 0; p < total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(spacepointHandle -> size());
@@ -51,32 +51,56 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
   larutil::Point2D point;
 
   // Populate the spacepoint vector:
+  size_t sp_Index=0;
   for (auto & spt : *spacepointHandle) {
+    std::vector<recob::Hit const*> hits; //Vector to hold associated hits
+    hits_for_SpacePoints.get(sp_Index, hits);
+    //Loop over each hits associated with this space point and fill in _dataByPlane appropriately
+    for(size_t hitIndex=0; hitIndex<hits.size(); hitIndex++)
+    {
+      //Need to consutrct larutil::Point2D object
+      //Need point.w for wire,  point.t for time, and point.plane for plane. Should be straight forward to grab from hits
+      point.w = hits[hitIndex]->WireID().Wire;
+      point.t = hits[hitIndex]->PeakTime();
+      point.plane = hits[hitIndex]->WireID().Plane;
+      _dataByPlane.at(point.plane).push_back(point); //Probably works?
+
+      if (point.w / geo_helper.WireToCm() > _wireRange.at(point.plane).second)
+        _wireRange.at(point.plane).second = point.w / geo_helper.WireToCm();
+      if (point.w / geo_helper.WireToCm() < _wireRange.at(point.plane).first)
+        _wireRange.at(point.plane).first = point.w / geo_helper.WireToCm();
+      if (point.t / geo_helper.TimeToCm() > _timeRange.at(point.plane).second)
+        _timeRange.at(point.plane).second = point.t / geo_helper.TimeToCm();
+      if (point.t / geo_helper.TimeToCm() < _timeRange.at(point.plane).first)
+        _timeRange.at(point.plane).first = point.t / geo_helper.TimeToCm();
+
+    }
+    sp_Index++;
 
     // A spacepoint is a 3D object.  So take it and project it into each plane:
-    for (unsigned int p = 0; p < total_plane_number; p ++) {
+    //for (unsigned int p = 0; p < total_plane_number; p ++) {
 
 
-      try {
+    //  try {
         // point = geoHelper -> Point_3Dto2D(spt.XYZ(), p);
-        point = geo_helper.Point_3Dto2D(spt.XYZ(), p);
-      }
-      catch (const std::exception& e) {
-        std::cerr << e.what() << '\n';
-      }
-      _dataByPlane.at(p).push_back(point);
+    //    point = geo_helper.Point_3Dto2D(spt.XYZ(), p);
+    //  }
+    //  catch (const std::exception& e) {
+    //    std::cerr << e.what() << '\n';
+    //  }
+    //  _dataByPlane.at(p).push_back(point);
 
 
       // Determine if this hit should change the view range:
-      if (point.w / geo_helper.WireToCm() > _wireRange.at(p).second)
-        _wireRange.at(p).second = point.w / geo_helper.WireToCm();
-      if (point.w / geo_helper.WireToCm() < _wireRange.at(p).first)
-        _wireRange.at(p).first = point.w / geo_helper.WireToCm();
-      if (point.t / geo_helper.TimeToCm() > _timeRange.at(p).second)
-        _timeRange.at(p).second = point.t / geo_helper.TimeToCm();
-      if (point.t / geo_helper.TimeToCm() < _timeRange.at(p).first)
-        _timeRange.at(p).first = point.t / geo_helper.TimeToCm();
-    }
+    //  if (point.w / geo_helper.WireToCm() > _wireRange.at(p).second)
+    //    _wireRange.at(p).second = point.w / geo_helper.WireToCm();
+    //  if (point.w / geo_helper.WireToCm() < _wireRange.at(p).first)
+    //    _wireRange.at(p).first = point.w / geo_helper.WireToCm();
+    //  if (point.t / geo_helper.TimeToCm() > _timeRange.at(p).second)
+    //    _timeRange.at(p).second = point.t / geo_helper.TimeToCm();
+    //  if (point.t / geo_helper.TimeToCm() < _timeRange.at(p).first)
+    //    _timeRange.at(p).first = point.t / geo_helper.TimeToCm();
+    //}
   }
 
 
