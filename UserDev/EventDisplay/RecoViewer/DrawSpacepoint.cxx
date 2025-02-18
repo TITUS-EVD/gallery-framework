@@ -48,7 +48,7 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
     _wireRange.at(p).second = -1.0;
   }
 
-  larutil::Point2D point;
+  //larutil::Point2D point;
 
   // Populate the spacepoint vector:
   size_t sp_Index=0;
@@ -58,21 +58,23 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
     //Loop over each hits associated with this space point and fill in _dataByPlane appropriately
     for(size_t hitIndex=0; hitIndex<hits.size(); hitIndex++)
     {
+      //point.Clear();
+      //Same plane indexing as for Drawhits
+      unsigned int plane = hits[hitIndex]->WireID().Plane;
+      unsigned int tpc = hits[hitIndex]->WireID().TPC;
+      unsigned int cryo = hits[hitIndex]->WireID().Cryostat;
+      plane += tpc * _geo_service.Nplanes();
+      plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
       //Need to consutrct larutil::Point2D object
       //Need point.w for wire,  point.t for time, and point.plane for plane. Should be straight forward to grab from hits
-      point.w = hits[hitIndex]->WireID().Wire;
-      point.t = hits[hitIndex]->PeakTime();
-      point.plane = hits[hitIndex]->WireID().Plane;
-      _dataByPlane.at(point.plane).push_back(point); //Probably works?
-
-      if (point.w / geo_helper.WireToCm() > _wireRange.at(point.plane).second)
-        _wireRange.at(point.plane).second = point.w / geo_helper.WireToCm();
-      if (point.w / geo_helper.WireToCm() < _wireRange.at(point.plane).first)
-        _wireRange.at(point.plane).first = point.w / geo_helper.WireToCm();
-      if (point.t / geo_helper.TimeToCm() > _timeRange.at(point.plane).second)
-        _timeRange.at(point.plane).second = point.t / geo_helper.TimeToCm();
-      if (point.t / geo_helper.TimeToCm() < _timeRange.at(point.plane).first)
-        _timeRange.at(point.plane).first = point.t / geo_helper.TimeToCm();
+      //point.w = hits[hitIndex]->WireID().Wire;
+      //point.t = hits[hitIndex]->PeakTime();
+      //point.plane = plane;
+      //  _dataByPlane.at(p).push_back(point); //Forces interpretation as a 3D object which we are specifically sidestepping
+      std::cout << "drawing hit for space point " << sp_Index << " tpc " << tpc << " plane " << plane << 
+     " on wire " << hits[hitIndex]->WireID().Wire << " at time " << hits[hitIndex]->PeakTime() << std::endl;
+     _dataByPlane.at(plane).emplace_back(
+      HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime(), plane, tpc, cryo)  );
 
     }
     sp_Index++;

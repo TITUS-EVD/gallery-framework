@@ -16,34 +16,36 @@ class SpacePoint(Drawable):
         self._geom = geom
         self._module = tpc_module
         self.init()
+    
+    def genToolTip(self, SpacePoint):
+        return 'Time: {time:0.1f}\nSpace Point ID: {ID}'.format(
+            time=SpacePoint.time(),
+            ID=SpacePoint.SpacePointID())
 
     def drawObjects(self):
+        print("In Space point class drawObjects")
 
         for _, view in self._module._wire_views.items():
-
+            print("In a view ")
             thisPlane = view.plane()
             self._drawnObjects.append([])
             spts = self._process.getDataByPlane(thisPlane)
-
-
             radBigW = 0.2 / self._geom.wire2cm()
             radBigT = (0.2) / self._geom.time2cm()
             offset = self._geom.offset(thisPlane) / self._geom.time2cm()
-
+            print("Have ", len(spts), " space points")
             for i in range(len(spts)):
                 thisPoint = spts[i]
-
                 # Need to scale back into wire time coordinates:
-
-                
-                sW = thisPoint.w / self._geom.wire2cm()
-                sT = thisPoint.t / self._geom.time2cm() + offset
+                sW = thisPoint.wire() #/ self._geom.wire2cm()
+                sT = thisPoint.time() #/ self._geom.time2cm() + offset
+                print("Drawing space point at ", sW, " , " , sT)
                 r = QtWidgets.QGraphicsEllipseItem(
                     sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
-
                 r.setPen(pg.mkPen(255,0,255))
                 # r.setBrush(pg.mkColor(255,0,255))
                 # r.setBrush((0,0,0,opacity))
+                r.setToolTip(self.genToolTip(thisPoint))
                 self._drawnObjects[thisPlane].append(r)
                 view._view.addItem(r)
 
