@@ -65,16 +65,12 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
       unsigned int cryo = hits[hitIndex]->WireID().Cryostat;
       plane += tpc * _geo_service.Nplanes();
       plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
-      //Need to consutrct larutil::Point2D object
-      //Need point.w for wire,  point.t for time, and point.plane for plane. Should be straight forward to grab from hits
-      //point.w = hits[hitIndex]->WireID().Wire;
-      //point.t = hits[hitIndex]->PeakTime();
-      //point.plane = plane;
-      //  _dataByPlane.at(p).push_back(point); //Forces interpretation as a 3D object which we are specifically sidestepping
+      double NSigma = 2;
       std::cout << "drawing hit for space point " << sp_Index << " tpc " << tpc << " plane " << plane << 
      " on wire " << hits[hitIndex]->WireID().Wire << " at time " << hits[hitIndex]->PeakTime() << std::endl;
      _dataByPlane.at(plane).emplace_back(
-      HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime(), plane, tpc, cryo)  );
+      HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime() - hits[hitIndex]->RMS()*NSigma, plane, tpc, cryo, 
+      hits[hitIndex]->RMS()*NSigma*2 )  );
 
     }
     sp_Index++;
