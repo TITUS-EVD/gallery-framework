@@ -17,8 +17,11 @@
 #include <iostream>
 #include "Analysis/ana_base.h"
 #include "lardataobj/RecoBase/SpacePoint.h"
+#include "canvas/Persistency/Common/FindMany.h"
+#include "lardataobj/RecoBase/Hit.h"
 
 #include "RecoBase.h"
+#include "LArUtil/PxUtils.h"
 /**
    \class DrawSpacepoint
    User defined class DrawSpacepoint ... these comments are used to generate
@@ -28,9 +31,41 @@
 // typedef std::vector< std::pair<float,float> > evd::Track2d;
 
 namespace evd {
+  class HitFromSpacePoint {
+    public:
+        HitFromSpacePoint() {}
+        HitFromSpacePoint(int SPID, float w, float t, int p, int __tpc, int __cryo, float __duration) :
+        _SpacePointID(SPID),
+        _wire(w),
+        _time(t),
+        _plane(p),
+        _tpc( __tpc ),
+        _cryo(__cryo),
+        _duration(__duration)
+        {}
+        ~HitFromSpacePoint() {}
+        float _wire;
+        float _time;
+        int   _SpacePointID;
+        int   _plane;
+        int   _tpc;
+        int   _cryo;
+        float _duration;
+
+        float wire()   {return _wire;}
+        float time()   {return _time;}
+        int   plane()  {return _plane;}
+        int   tpc()  {return _tpc;}
+        int   cryo()  {return _cryo;}
+        int   SpacePointID() {return _SpacePointID;}
+        float duration() {return _duration;}
+
+        //Conversion functions
+        //operator larutil::PxPoint() const { return larutil::PxPoint(_plane, _wire, _time,_SpacePointID, _tpc, _cryo); }
+  };
 
 
-  class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<larutil::Point2D> {
+  class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<HitFromSpacePoint> {
 
 public:
 
