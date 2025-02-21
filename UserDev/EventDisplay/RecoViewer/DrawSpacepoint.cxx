@@ -66,8 +66,6 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
       plane += tpc * _geo_service.Nplanes();
       plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
       double NSigma = 2;
-      std::cout << "drawing hit for space point " << sp_Index << " tpc " << tpc << " plane " << plane << 
-     " on wire " << hits[hitIndex]->WireID().Wire << " at time " << hits[hitIndex]->PeakTime() << std::endl;
      _dataByPlane.at(plane).emplace_back(
       HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime() - hits[hitIndex]->RMS()*NSigma, plane, tpc, cryo, 
       hits[hitIndex]->RMS()*NSigma*2 )  );
