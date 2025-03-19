@@ -80,6 +80,7 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
   // Set the plane of the Point2D:
   returnPoint.plane = plane;
   returnPoint.t = returnPoint.t/fTimeToCm; //Back to time
+  std::cout << "About to draw " << returnPoint.w << "  " << returnPoint.t << " on plane " << returnPoint.plane << std::endl;
 
   return returnPoint;
 }
