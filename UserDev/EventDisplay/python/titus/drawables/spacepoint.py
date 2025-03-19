@@ -80,7 +80,7 @@ class SpacePoint(Drawable):
             radBigW = 0.2 / self._geom.wire2cm()
             radBigT = (0.2) / self._geom.time2cm()
             #offset = self._geom.offset(thisPlane) / self._geom.time2cm()
-            for i in range(0, len(spts)):
+            for i in range(len(spts)):
                 thisPoint = spts[i]
                 # Need to scale back into wire time coordinates:
                 sW = thisPoint.wire() / self._geom.wire2cm()
@@ -90,14 +90,12 @@ class SpacePoint(Drawable):
                 r.setPen(pg.mkPen(255,0,255))
                 r.setBrush(pg.mkColor(255,0,255, 100))
                 r.setToolTip(self.genToolTip(thisPoint))
-                FullDetectorItemGroups[thisPoint.SpacePointID()].add_Ellipse(r)
+                TempGroup = SpacePointGroup()
+                TempGroup.add_Ellipse(r)
                 # r.setBrush((0,0,0,opacity))
-                #self._drawnObjects[thisPlane].append(r)
-                #view._view.addItem(r)
-            for i in range(0, len(spts)):
-                thisPoint = spts[i]
-                view._view.addItem(FullDetectorItemGroups[thisPoint.SpacePointID()] )
-                self._drawnObjects[thisPlane].append(FullDetectorItemGroups[thisPoint.SpacePointID()])
+                self._drawnObjects[thisPlane].append(TempGroup)
+                FullDetectorItemGroups[thisPoint.SpacePointID()].add_Subgroup(TempGroup) #Probably need to add full detector item groups to draw objects too
+                view._view.addItem(TempGroup)
     def clearDrawnObjects(self, obj_list=None):
         """ Override base class since our object list is nested """
         for view_objs in self._drawnObjects:
