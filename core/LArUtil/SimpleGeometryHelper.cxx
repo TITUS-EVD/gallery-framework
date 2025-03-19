@@ -46,7 +46,9 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Get the tpc and cryo ids from the 3D point
   unsigned int tpc = geom.PositionToTPCID(loc).TPC;
   unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
-
+  if(plane>=3) tpc=1;
+  else tpc=0;
+  cryo=0;
   // std::cout << "*****  " << std::endl;
   // std::cout << "TPC  " << tpc << std::endl;
   // std::cout << "CRYO " << cryo << std::endl;
@@ -66,7 +68,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
   const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(cryo, tpc, plane));
-  returnPoint.w = planeGeo.WireCoordinate(_3D_position, plane); //* fWireToCm;
+  returnPoint.w = planeGeo.WireCoordinate(loc); //* fWireToCm;
 
 
   // The time position is the X coordinate, corrected for
