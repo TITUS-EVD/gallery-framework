@@ -1,7 +1,7 @@
 #ifndef EVD_DrawSpacepointHits_CXX
 #define EVD_DrawSpacepointHits_CXX
 
-#include "DrawSpacepointHits.h"
+#include "DrawSpacePointHits.h"
 #include "LArUtil/GeometryHelper.h"
 
 namespace evd {
