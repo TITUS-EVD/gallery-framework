@@ -50,10 +50,10 @@ class SpacePoint(Drawable):
         self._geom = geom
         self._module = tpc_module
         self.init()
-    def genToolTip(self, SpacePoint):
+    def genToolTip(self, Index, SpacePoint):
         return 'Time: {time:0.1f}\nSpace Point ID: {ID}'.format(
             time=SpacePoint.time(),
-            ID=SpacePoint.SpacePointID())
+            ID=Index)
 
     def drawObjects(self):
         #Annoying way to count the space points
@@ -90,7 +90,7 @@ class SpacePoint(Drawable):
                     sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
                 r.setPen(pg.mkPen(255,0,255))
                 r.setBrush(pg.mkColor(255,0,255, 100))
-                r.setToolTip(self.genToolTip(thisPoint))
+                r.setToolTip(self.genToolTip(i))
                 # r.setBrush((0,0,0,opacity))
                 self._drawnObjects[thisPlane].append(r)
                 FullDetectorItemGroups[i].add_Ellipse(r) #Probably need to add full detector item groups to draw objects too
