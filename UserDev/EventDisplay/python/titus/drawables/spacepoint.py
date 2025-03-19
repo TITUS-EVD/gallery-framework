@@ -30,7 +30,7 @@ class SpacePointGroup(QtWidgets.QGraphicsItemGroup):
     def Parent_hoverEnterEvent(self, e):
     #Change all the rectangles to yellow
         for i in range(0, len(self.EllipseList)):
-            self.EllipseList[i].setPen(pg.mkPen(255,255,0,255))
+            self.EllipseList[i].setPen(pg.mkPen(255,255,0))
             self.EllipseList[i].setBrush(pg.mkColor(255,255,0, 100))
         self.update()
     def Parent_hoverLeaveEvent(self, e):
