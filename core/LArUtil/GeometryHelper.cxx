@@ -30,7 +30,7 @@ void GeometryHelper::Reconfigure()
 // The next set of functions is the collection of functions to convert 3D Point to 2D point
 // The first function is maintained, and the rest convert their arguments and call it
 Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane) const {
-
+  std::cout << "In regular geometry helper point_3dto2d" << std::endl;
   // Make a check on the plane:
   if (plane > geom -> Nplanes()) {
     throw larutil::LArUtilException(Form("Can't project 3D point to unknown plane %u", plane));

@@ -66,13 +66,13 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
   const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(cryo, tpc, plane));
-  returnPoint.w = planeGeo.WireCoordinate(loc) * fWireToCm;
+  returnPoint.w = planeGeo.WireCoordinate(_3D_position, plane); //* fWireToCm;
 
 
   // The time position is the X coordinate, corrected for
   // trigger offset and the offset of the plane
   // auto detp = DetectorProperties::GetME();
-  returnPoint.t = _3D_position.X();
+  returnPoint.t = _3D_position.X(); //cm
   // Add in the trigger offset:
   // (Trigger offset is time that the data is recorded
   // before the actual spill.
@@ -84,7 +84,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
   // auto vtx = geom.Plane(plane, 0, cryo).GetCenter();
-  auto vtx = planeGeo.GetCenter();
+  auto vtx = planeGeo.GetCenter(); //Why center?
   // auto vtx = geom.Plane(plane).GetCenter();
   planeOrigin[0] = vtx.X();
   planeOrigin[1] = vtx.Y();
@@ -99,7 +99,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Therefore, subtract the offest (which is already
   // in centimeters)
   if (tpc == 0) {
-    returnPoint.t = returnPoint.t - planeOrigin[0];
+    returnPoint.t = returnPoint.t - planeOrigin[0]; //cm
   } else {
     returnPoint.t = planeOrigin[0] - returnPoint.t;
   }
@@ -107,13 +107,15 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
 
   // std::cout << "trigger_offset: " << trigger_offset(clocks) << std::endl;
   // std::cout << "fTimeToCm: " << fTimeToCm << std::endl;
-  returnPoint.t += trigger_offset(clocks) * fTimeToCm;
+  returnPoint.t += trigger_offset(clocks) * fTimeToCm; //cm 
   // std::cout << "returnPoint.t: " << returnPoint.t << std::endl;
 
   // Set the plane of the Point2D:
   returnPoint.plane = plane;
   returnPoint.tpc = tpc;
   returnPoint.cryo = cryo;
+  returnPoint.t = returnPoint.t/fTimeToCm; //Back to time
+  std::cout << "About to draw " << returnPoint.w << "  " << returnPoint.t << " on plane " << returnPoint.plane << std::endl;
 
   return returnPoint;
 }
