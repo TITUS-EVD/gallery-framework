@@ -90,7 +90,7 @@ class SpacePoint(Drawable):
                     sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
                 r.setPen(pg.mkPen(255,0,255))
                 r.setBrush(pg.mkColor(255,0,255, 100))
-                r.setToolTip(self.genToolTip(i))
+                r.setToolTip(self.genToolTip(thisPoint))
                 # r.setBrush((0,0,0,opacity))
                 self._drawnObjects[thisPlane].append(r)
                 FullDetectorItemGroups[i].add_Ellipse(r) #Probably need to add full detector item groups to draw objects too
