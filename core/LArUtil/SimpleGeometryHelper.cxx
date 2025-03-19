@@ -46,7 +46,11 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Get the tpc and cryo ids from the 3D point
   unsigned int tpc = geom.PositionToTPCID(loc).TPC;
   unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
-  if(plane>=3) tpc=1;
+  int PlaneOffset=0;
+  if(plane>=3) {
+    tpc=1;
+    PlaneOffset=3;
+  }
   else tpc=0;
   cryo=0;
   // std::cout << "*****  " << std::endl;
@@ -54,7 +58,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // std::cout << "CRYO " << cryo << std::endl;
 
   // Make a check on the plane:
-  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane >= geom.Nplanes(geo::TPCID(cryo, tpc))) {
+  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane-PlaneOffset >= geom.Nplanes(geo::TPCID(cryo, tpc))) {
     returnPoint.w = -9999;
     returnPoint.t = -9999;
     return returnPoint;
@@ -67,8 +71,8 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(cryo, tpc, plane));
-  returnPoint.w = planeGeo.WireCoordinate(loc); //* fWireToCm;
+  const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(cryo, tpc, plane-PlaneOffset));
+  returnPoint.w = planeGeo.WireCoordinate(loc)* fWireToCm;
 
 
   // The time position is the X coordinate, corrected for
@@ -116,7 +120,6 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   returnPoint.plane = plane;
   returnPoint.tpc = tpc;
   returnPoint.cryo = cryo;
-  returnPoint.t = returnPoint.t/fTimeToCm; //Back to time
   std::cout << "About to draw " << returnPoint.w << "  " << returnPoint.t << " on plane " << returnPoint.plane << std::endl;
 
   return returnPoint;
