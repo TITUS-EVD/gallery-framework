@@ -36,7 +36,8 @@ void SimpleGeometryHelper::Reconfigure()
 // The next set of functions is the collection of functions to convert 3D Point to 2D point
 // The first function is maintained, and the rest convert their arguments and call it
 Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane, unsigned int tpc_, unsigned int cryo_) const {
-
+  std::cout << "In Simple Geo Point_3dto2d with " <<  _3D_position[0] << "  " << _3D_position[1] << " " <<_3D_position[2] << 
+  " " << plane << " " << tpc_ << " " << cryo_ << std::endl;
   //initialize return value
   Point2D returnPoint;
 
