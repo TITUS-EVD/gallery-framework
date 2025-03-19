@@ -49,7 +49,7 @@ namespace evd {
         int   SpacePointID() {return _SpacePointID;}
   };
 
-  class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<larutil::Point2D> {
+  class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<HitFromSpacePoint> {
 
 public:
 
