@@ -33,13 +33,13 @@ namespace evd {
 
   class SpacePointInfo {
     public:
-        HitFromSpacePoint() {}
-        HitFromSpacePoint(int SPID, float w, float t) :
+        SpacePointInfo() {}
+        SpacePointInfo(int SPID, float w, float t) :
         _SpacePointID(SPID),
         _wire(w),
         _time(t)
         {}
-        ~HitFromSpacePoint() {}
+        ~SpacePointInfo() {}
         int   _SpacePointID;
         float _wire;
         float _time;
