@@ -59,6 +59,7 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
 
       try {
         // point = geoHelper -> Point_3Dto2D(spt.XYZ(), p);
+        std::cout << " just before Point_3Dto2D call " << std::endl;
         point = geo_helper.Point_3Dto2D(spt.XYZ(), p);
       }
       catch (const std::exception& e) {

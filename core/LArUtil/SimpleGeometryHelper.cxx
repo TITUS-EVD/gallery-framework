@@ -118,22 +118,27 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
 
 Point2D SimpleGeometryHelper::Point_3Dto2D(double * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
+  std::cout << "Overload 0 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(float * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
+  std::cout << "Overload 1 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(float x, float y, float z, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(x, y, z);
+  std::cout << "Overload 2 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
+  std::cout << "Overload 3 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
+  std::cout << "Overload 4 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 

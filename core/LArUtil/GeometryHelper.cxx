@@ -86,22 +86,27 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
 }
 
 Point2D GeometryHelper::Point_3Dto2D(double * xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 0 " << std::endl;
   TVector3 vec(xyz);
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(float * xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 1 " << std::endl;
   TVector3 vec(xyz);
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(float x, float y, float z, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 2 " << std::endl;
   TVector3 vec(x, y, z);
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 3 " << std::endl;
   TVector3 vec(&(xyz[0]));
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 4 " << std::endl;
   TVector3 vec(&(xyz[0]));
   return Point_3Dto2D(vec, plane);
 }
