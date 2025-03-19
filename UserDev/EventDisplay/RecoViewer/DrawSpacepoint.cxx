@@ -27,7 +27,8 @@ bool DrawSpacepoint::initialize() {
 
 bool DrawSpacepoint::analyze(const gallery::Event & ev) {
   size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  //larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  larutil::GeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
 
 
