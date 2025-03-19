@@ -27,8 +27,27 @@
 
 // typedef std::vector< std::pair<float,float> > evd::Track2d;
 
+
+
 namespace evd {
 
+  class SpacePointInfo {
+    public:
+        HitFromSpacePoint() {}
+        HitFromSpacePoint(int SPID, float w, float t) :
+        _SpacePointID(SPID),
+        _wire(w),
+        _time(t)
+        {}
+        ~HitFromSpacePoint() {}
+        int   _SpacePointID;
+        float _wire;
+        float _time;
+
+        float wire()   {return _wire;}
+        float time()   {return _time;}
+        int   SpacePointID() {return _SpacePointID;}
+  };
 
   class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<larutil::Point2D> {
 

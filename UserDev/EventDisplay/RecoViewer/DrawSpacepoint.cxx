@@ -50,6 +50,7 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
   larutil::Point2D point;
 
   // Populate the spacepoint vector:
+  int IndexTracker=0;
   for (auto & spt : *spacepointHandle) {
 
     // A spacepoint is a 3D object.  So take it and project it into each plane:
@@ -67,7 +68,7 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
         std::cout << "had an exception" << std::endl;
         std::cerr << e.what() << '\n';
       }
-      _dataByPlane.at(p).push_back(point);
+      _dataByPlane.at(p).emplace_back( SpacePointInfo(IndexTracker, point.w, point.t  ) );
 
 
       // Determine if this hit should change the view range:
@@ -80,6 +81,7 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
       //if (point.t / geo_helper.TimeToCm() < _timeRange.at(p).first)
       //  _timeRange.at(p).first = point.t / geo_helper.TimeToCm();
     }
+    IndexTracker++;
   }
 
 

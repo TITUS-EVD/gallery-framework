@@ -50,10 +50,10 @@ class SpacePoint(Drawable):
         self._geom = geom
         self._module = tpc_module
         self.init()
-    def genToolTip(self, Index, SpacePoint):
+    def genToolTip(self, SpacePoint):
         return 'Time: {time:0.1f}\nSpace Point ID: {ID}'.format(
             time=SpacePoint.time(),
-            ID=Index)
+            ID=SpacePoint.SpacePointID())
 
     def drawObjects(self):
         #Annoying way to count the space points
