@@ -15,6 +15,7 @@ SimpleGeometryHelper::SimpleGeometryHelper(const geo::GeometryCore&             
   clocks(detectorClocks)
 {
   Reconfigure();
+  std::cout << "I built my simple geometry guy" << std::endl;
 }
 
 // Function to load any parameters for convenience :

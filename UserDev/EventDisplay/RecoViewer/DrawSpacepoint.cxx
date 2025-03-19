@@ -61,8 +61,11 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
         // point = geoHelper -> Point_3Dto2D(spt.XYZ(), p);
         std::cout << " just before Point_3Dto2D call " << std::endl;
         point = geo_helper.Point_3Dto2D(spt.XYZ(), p);
+        std::cout << "Just after call" << std::endl;
+        std::cout << " Over here -- About to draw " << point.w << "  " << point.t << " on plane " << point.plane << std::endl;
       }
       catch (const std::exception& e) {
+        std::cout << "had an exception" << std::endl;
         std::cerr << e.what() << '\n';
       }
       _dataByPlane.at(p).push_back(point);
