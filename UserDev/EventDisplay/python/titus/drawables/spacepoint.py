@@ -97,6 +97,7 @@ class SpacePoint(Drawable):
             for i in range(0, len(spts)):
                 thisPoint = spts[i]
                 view._view.addItem(FullDetectorItemGroups[thisPoint.SpacePointID()] )
+                self._drawnObjects[thisPlane].append(FullDetectorItemGroups[thisPoint.SpacePointID()])
     def clearDrawnObjects(self, obj_list=None):
         """ Override base class since our object list is nested """
         for view_objs in self._drawnObjects:
