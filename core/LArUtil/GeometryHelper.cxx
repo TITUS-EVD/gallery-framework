@@ -46,19 +46,19 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  returnPoint.w = geom->WireCoordinate(_3D_position, plane) * fWireToCm;
+  returnPoint.w = geom->WireCoordinate(_3D_position, plane); //* fWireToCm;
   // std::cout << "wire is " << returnPoint.w << " (cm)" << std::endl;
 
   // The time position is the X coordinate, corrected for
   // trigger offset and the offset of the plane
   auto detp = DetectorProperties::GetME();
-  returnPoint.t = _3D_position.X();
+  returnPoint.t = _3D_position.X(); //in cm
   // Add in the trigger offset:
   // (Trigger offset is time that the data is recorded
   // before the actual spill.
   // So, it moves the "0" farther away from the actual
   // time and is an addition)
-  returnPoint.t += detp -> TriggerOffset() * fTimeToCm;
+  returnPoint.t += detp -> TriggerOffset() * fTimeToCm; //still in cm
   // std::cout << "trigger offset, plane " << plane
   //           << ": " << detp -> TriggerOffset() * fTimeToCm << std::endl;
   //
@@ -72,13 +72,14 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
   // beyond 0 needs to make the time coordinate larger
   // Therefore, subtract the offest (which is already
   // in centimeters)
-  returnPoint.t -= planeOrigin[0];
+  returnPoint.t -= planeOrigin[0]; //still in cm
 
 // std::cout << "origin offset, plane " << plane
 //             << ": " << planeOrigin[0] << std::endl;
 
   // Set the plane of the Point2D:
   returnPoint.plane = plane;
+  returnPoint.t = returnPoint.t/fTimeToCm; //Back to time
 
   return returnPoint;
 }
