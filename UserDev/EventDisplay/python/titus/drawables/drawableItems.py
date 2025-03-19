@@ -1,6 +1,6 @@
 from . import hit, shower, track, wire, cluster, \
     endpoint2d, vertex, mctrack, mctruth, mcshower, spacepoint, simch, opflash, \
-    seed, pfpart, numuselection, opflash
+    seed, pfpart, numuselection, opflash, spacepointhit
 
 # This is the class that maintains the list of drawable items.
 # If your class isn't here, it can't be drawn
@@ -27,7 +27,7 @@ class drawableItems(object):
         self._drawableClasses.update({'Endpoint 2D': [endpoint2d.endpoint2d,"recob::EndPoint2D"]})
         self._drawableClasses.update({'Vertex': [vertex.vertex,"recob::Vertex"]})
         self._drawableClasses.update({'SPS': [spacepoint.spacepoint,"recob::SpacePoint"]})
-        self._drawableClasses.update({'SPSHit': [spacepointhit.spacepointhit,"recob::SpacePoint"]})
+        self._drawableClasses.update({'SPSHit': [spacepointhit.spacepointhits,"recob::SpacePoint"]})
         # self._drawableClasses.update({'Numu Selection': [numuselection.numuselection, "recob::Trackrecob::Vertexvoidart::Assn"]})
         self._drawableClasses.update({'OpFlash': [opflash.opflash, "recob::OpFlash"]})
 
