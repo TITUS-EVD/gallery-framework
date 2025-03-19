@@ -30,7 +30,7 @@ _DRAWABLE_LIST = {
     'End Point 2D': [drawables.EndPoint2D, "recob::EndPoint2D"],
     'Vertex': [drawables.Vertex, "recob::Vertex"],
     'Space Point': [drawables.SpacePoint, "recob::SpacePoint"],
-    'Space Point Hits': [drawables.SpacePointHit, "recob::SpacePoint"]
+    'Space Point Hits': [drawables.SpacepointHits, "recob::SpacePoint"]
 }
 
 
