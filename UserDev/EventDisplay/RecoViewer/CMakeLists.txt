@@ -8,6 +8,7 @@ add_library(EventDisplay_RecoViewer SHARED
     DrawOpflash.cxx
     DrawShower.cxx
     DrawSpacepoint.cxx
+    DrawSpacePointHits.cxx
     DrawTrack.cxx
     DrawVertex.cxx
 )
@@ -48,6 +49,7 @@ ROOT_GENERATE_DICTIONARY(EventDisplay_RecoViewer_Dict
     DrawOpflash.h
     DrawShower.h
     DrawSpacepoint.h
+    DrawSpacePointHits.h
     DrawTrack.h
     DrawVertex.h
     RecoBase.h
