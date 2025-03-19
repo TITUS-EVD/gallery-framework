@@ -84,8 +84,8 @@ class SpacePoint(Drawable):
             for i in range(len(spts)):
                 thisPoint = spts[i]
                 # Need to scale back into wire time coordinates:
-                sW = thisPoint.w / self._geom.wire2cm()
-                sT = thisPoint.t / self._geom.time2cm() #+ offset
+                sW = thisPoint.wire() / self._geom.wire2cm()
+                sT = thisPoint.time() / self._geom.time2cm() #+ offset
                 r = QtWidgets.QGraphicsEllipseItem(
                     sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
                 r.setPen(pg.mkPen(255,0,255))
