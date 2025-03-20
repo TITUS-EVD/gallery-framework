@@ -59,7 +59,7 @@ class SpacePoint(Drawable):
         self.init()
     def genToolTip(self, SpacePoint, ActualTimeForText, OriginatingPlane):
         return 'Time: {time:0.1f}\nSpace Point ID: {ID} \nPlaneBeingPlotted: {OriginatingPlane}'.format(
-            time=SpacePoint.time(),
+            time=SpacePoint.time()/self._geom.time2cm(),
             ID=SpacePoint.SpacePointID(), OriginatingPlane=OriginatingPlane)
     def drawObjects(self):
         #Annoying way to count the space points
