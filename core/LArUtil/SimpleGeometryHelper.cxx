@@ -47,9 +47,11 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   //Each TPC has NViews worth of Values. Each cryo has NTPC, with Nviews each.
   //So for the core geometry processing to work we can calculate a simple plane offset
   int PlaneOffset=tpc*geom.Nviews()+cryo*geom.NTPC()*geom.Nviews();
-  // std::cout << "*****  " << std::endl;
-  // std::cout << "TPC  " << tpc << std::endl;
-  // std::cout << "CRYO " << cryo << std::endl;
+  std::cout << "Plane " << plane << std::endl;
+  std::cout << PlaneOffset << std::endl;
+   std::cout << "*****  " << std::endl;
+   std::cout << "TPC  " << tpc << std::endl;
+   std::cout << "CRYO " << cryo << std::endl;
 
   // Make a check on the plane:
   if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane-PlaneOffset >= geom.Nplanes()) {
