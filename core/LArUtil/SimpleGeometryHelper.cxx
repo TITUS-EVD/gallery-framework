@@ -86,7 +86,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
   // auto vtx = geom.Plane(plane, 0, cryo).GetCenter();
-  auto vtx = geom -> PlaneOriginVtx(plane, planeOrigin); //Why center?
+  auto vtx = geom.PlaneOriginVtx(plane, planeOrigin); //Why center?
   // auto vtx = geom.Plane(plane).GetCenter();
   planeOrigin[0] = vtx.X();
   planeOrigin[1] = vtx.Y();
