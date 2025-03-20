@@ -57,10 +57,10 @@ class SpacePoint(Drawable):
         self._geom = geom
         self._module = tpc_module
         self.init()
-    def genToolTip(self, SpacePoint, ActualTimeForText):
-        return 'Time: {time:0.1f}\nSpace Point ID: {ID}'.format(
+    def genToolTip(self, SpacePoint, ActualTimeForText, OriginatingPlane):
+        return 'Time: {time:0.1f}\nSpace Point ID: {ID} \nPlaneBeingPlotted: {OriginatingPlane}'.format(
             time=ActualTimeForText,
-            ID=SpacePoint.SpacePointID())
+            ID=SpacePoint.SpacePointID(), OriginatingPlane=OriginatingPlane)
     def drawObjects(self):
         #Annoying way to count the space points
         SpacePointIDs = []
@@ -107,7 +107,7 @@ class SpacePoint(Drawable):
                         sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
                     r.setPen(pg.mkPen(255,0,255))
                     r.setBrush(pg.mkColor(255,0,255, 100))
-                    r.setToolTip(self.genToolTip(thisPoint, sT))
+                    r.setToolTip(self.genToolTip(thisPoint, sT, Plane))
                     TempGroup = SpacePointGroup()
                     TempGroup.add_Ellipse(r)
                     # r.setBrush((0,0,0,opacity))
