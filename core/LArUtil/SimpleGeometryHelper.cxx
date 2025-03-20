@@ -15,7 +15,6 @@ SimpleGeometryHelper::SimpleGeometryHelper(const geo::GeometryCore&             
   clocks(detectorClocks)
 {
   Reconfigure();
-  std::cout << "I built my simple geometry guy" << std::endl;
 }
 
 // Function to load any parameters for convenience :
@@ -47,11 +46,11 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   //Each TPC has NViews worth of Values. Each cryo has NTPC, with Nviews each.
   //So for the core geometry processing to work we can calculate a simple plane offset
   int PlaneOffset=tpc*geom.Nviews()+cryo*geom.NTPC()*geom.Nviews();
-  std::cout << "Plane " << plane << std::endl;
-  std::cout << PlaneOffset << std::endl;
-   std::cout << "*****  " << std::endl;
-   std::cout << "TPC  " << tpc << std::endl;
-   std::cout << "CRYO " << cryo << std::endl;
+  //std::cout << "Plane " << plane << std::endl;
+  //std::cout << PlaneOffset << std::endl;
+   //std::cout << "*****  " << std::endl;
+   //std::cout << "TPC  " << tpc << std::endl;
+   //std::cout << "CRYO " << cryo << std::endl;
 
   // Make a check on the plane:
   if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane-PlaneOffset >= geom.Nplanes()) {
@@ -116,34 +115,28 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   returnPoint.plane = plane;
   returnPoint.tpc = tpc;
   returnPoint.cryo = cryo;
-  std::cout << "About to draw " << returnPoint.w << "  " << returnPoint.t << " on plane " << returnPoint.plane << std::endl;
 
   return returnPoint;
 }
 
 Point2D SimpleGeometryHelper::Point_3Dto2D(double * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
-  std::cout << "Overload 0 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(float * xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(xyz);
-  std::cout << "Overload 1 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(float x, float y, float z, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(x, y, z);
-  std::cout << "Overload 2 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
-  std::cout << "Overload 3 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 Point2D SimpleGeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane, unsigned int tpc, unsigned int cryo) const {
   TVector3 vec(&(xyz[0]));
-  std::cout << "Overload 4 " << std::endl;
   return Point_3Dto2D(vec, plane, tpc, cryo);
 }
 
