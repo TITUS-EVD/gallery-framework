@@ -95,6 +95,7 @@ class SpacePoint(Drawable):
                 # r.setBrush((0,0,0,opacity))
                 self._drawnObjects[thisPlane].append(TempGroup)
                 FullDetectorItemGroups[thisPoint.SpacePointID()].add_Subgroup(TempGroup) #Probably need to add full detector item groups to draw objects too
+                TempGroup.SetHoverParent(FullDetectorItemGroups[thisPoint.SpacePointID()])
                 view._view.addItem(TempGroup)
     def clearDrawnObjects(self, obj_list=None):
         """ Override base class since our object list is nested """
