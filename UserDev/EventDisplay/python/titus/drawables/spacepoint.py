@@ -90,7 +90,7 @@ class SpacePoint(Drawable):
                 thisPoint = spts[i]
                 # Need to scale back into wire time coordinates:
                 sW = thisPoint.wire() / self._geom.wire2cm()
-                sT = thisPoint.time() / self._geom.time2cm()  + self._geom.timeOffsetTicks(thisPlane) 
+                sT = thisPoint.time() / self._geom.time2cm()  #+ self._geom.timeOffsetTicks(thisPlane) 
                 if( thisPlane // self._geom.getGeometryCore().Nviews() == 1 ): 
                     # Flip the time
                     sT = self._geom.tRange() - sT
