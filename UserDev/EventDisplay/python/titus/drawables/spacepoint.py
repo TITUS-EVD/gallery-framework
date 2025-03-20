@@ -91,6 +91,7 @@ class SpacePoint(Drawable):
                 # Need to scale back into wire time coordinates:
                 sW = thisPoint.wire() / self._geom.wire2cm()
                 sT = thisPoint.time() / self._geom.time2cm()  #+ self._geom.timeOffsetTicks(thisPlane) 
+                print( "current plane", plane , self._geom.getGeometryCore().Nviews(), thisPlane // self._geom.getGeometryCore().Nviews() )
                 if( thisPlane // self._geom.getGeometryCore().Nviews() == 1 ): 
                     print("Doing various flips")
                     # Flip the time
