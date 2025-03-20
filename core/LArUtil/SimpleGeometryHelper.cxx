@@ -42,8 +42,8 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   geo::Point_t loc(_3D_position[0],_3D_position[1], _3D_position[2]);
 
   // Get the tpc and cryo ids from the 3D point
-  unsigned int tpc = geom.PositionToTPCID(loc).TPC;
-  unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
+  unsigned int tpc = plane/geom.Nviews(); //geom.PositionToTPCID(loc).TPC;
+  unsigned int cryo = plane/(geom.NTPC()*geom.Nviews()); //geom.PositionToCryostatID(loc).Cryostat;
   //Each TPC has NViews worth of Values. Each cryo has NTPC, with Nviews each.
   //So for the core geometry processing to work we can calculate a simple plane offset
   int PlaneOffset=tpc*geom.Nviews()+cryo*geom.NTPC()*geom.Nviews();
