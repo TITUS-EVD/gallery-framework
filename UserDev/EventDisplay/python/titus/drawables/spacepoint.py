@@ -47,6 +47,8 @@ class SpacePoint(Drawable):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'spacepoint'
         print("directory for geom objection in space point" , dir(geom))
+        print('nCryos', 'nPlanes', 'nTPCs', 'nViews', 'name')
+        print(geom.nCryos(), geom.nPlanes(), geom.nTPCs(), geom.nViews(), geom.name())
         self._process = evd.DrawSpacepoint(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._geom = geom
         self._module = tpc_module
