@@ -100,7 +100,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // beyond 0 needs to make the time coordinate larger
   // Therefore, subtract the offest (which is already
   // in centimeters)
-  std::cout << "Plane " << plane << " x origin " << planeOrigin[0];
+  std::cout << "Plane " << plane << " x origin " << planeOrigin[0] << " offset size (s) " << trigger_offset(clocks)  << std::endl;
   if (tpc == 0) {
     returnPoint.t = returnPoint.t - planeOrigin[0]; //cm
     returnPoint.t = returnPoint.t + trigger_offset(clocks) * fTimeToCm; //cm 
