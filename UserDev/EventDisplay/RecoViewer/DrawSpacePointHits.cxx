@@ -51,10 +51,9 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
   //larutil::Point2D point;
 
   // Populate the spacepoint vector:
-  size_t sp_Index=0;
   for (auto & spt : *spacepointHandle) {
     std::vector<recob::Hit const*> hits; //Vector to hold associated hits
-    hits_for_SpacePoints.get(sp_Index, hits);
+    hits_for_SpacePoints.get(spt.ID(), hits);
     //Loop over each hits associated with this space point and fill in _dataByPlane appropriately
     for(size_t hitIndex=0; hitIndex<hits.size(); hitIndex++)
     {
@@ -67,12 +66,9 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
       plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
       double NSigma = 2;
      _dataByPlane.at(plane).emplace_back(
-      HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime() - hits[hitIndex]->RMS()*NSigma, plane, tpc, cryo, 
+      HitFromSpacePoint( spt.ID(), hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime() - hits[hitIndex]->RMS()*NSigma, plane, tpc, cryo, 
       hits[hitIndex]->RMS()*NSigma*2 )  );
-
     }
-    sp_Index++;
-
     // A spacepoint is a 3D object.  So take it and project it into each plane:
     //for (unsigned int p = 0; p < total_plane_number; p ++) {
 
