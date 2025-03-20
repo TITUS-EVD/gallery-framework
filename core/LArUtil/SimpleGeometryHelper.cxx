@@ -103,14 +103,16 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   std::cout << "Plane " << plane << " x origin " << planeOrigin[0];
   if (tpc == 0) {
     returnPoint.t = returnPoint.t - planeOrigin[0]; //cm
+    returnPoint.t = returnPoint.t + trigger_offset(clocks) * fTimeToCm; //cm 
   } else {
     returnPoint.t = planeOrigin[0] - returnPoint.t;
+    returnPoint.t = returnPoint.t - trigger_offset(clocks) * fTimeToCm; //cm 
   }
   // std::cout << "returnPoint.t: " << returnPoint.t << std::endl;
 
   // std::cout << "trigger_offset: " << trigger_offset(clocks) << std::endl;
   // std::cout << "fTimeToCm: " << fTimeToCm << std::endl;
-  returnPoint.t += trigger_offset(clocks) * fTimeToCm; //cm 
+ 
   // std::cout << "returnPoint.t: " << returnPoint.t << std::endl;
 
   // Set the plane of the Point2D:
