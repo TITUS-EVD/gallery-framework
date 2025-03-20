@@ -49,8 +49,11 @@ class SpacePoint(Drawable):
         print("directory for geom objection in space point" , dir(geom))
         print('nCryos', 'nPlanes', 'nTPCs', 'nViews', 'name')
         print(geom.nCryos(), geom.nPlanes(), geom.nTPCs(), geom.nViews(), geom.name())
-        #self._process = evd.DrawSpacepoint(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
-        self._process = evd.DrawSpacepoint(geom, geom.getDetectorProperties(), geom.getDetectorClocks())
+        print("directory for geom core", dir(geom.getGeometryCore()))
+        print('nCryos', 'nPlanes', 'nTPCs', 'nViews', 'name')
+        print(geom.getGeometryCore().nCryos(), geom.getGeometryCore().nPlanes(), geom.getGeometryCore().nTPCs(), 
+              geom.getGeometryCore().nViews(), geom.getGeometryCore().name())
+        self._process = evd.DrawSpacepoint(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
         self._geom = geom
         self._module = tpc_module
         self.init()
