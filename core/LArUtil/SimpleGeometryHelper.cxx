@@ -101,7 +101,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Therefore, subtract the offest (which is already
   // in centimeters)
   std::cout << "Plane " << plane << " x origin " << planeOrigin[0];
-  if (tpc == 0) {
+  if (tpc == 0 || true) {
     returnPoint.t = returnPoint.t - planeOrigin[0]; //cm
   } else {
     returnPoint.t = planeOrigin[0] - returnPoint.t;
