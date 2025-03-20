@@ -86,6 +86,7 @@ class SpacePoint(Drawable):
             radBigW = 0.2 / self._geom.wire2cm()
             radBigT = (0.2) / self._geom.time2cm()
             CurrentPlanes = [thisPlane]
+            additional_planes = self._geom.getOtherPlanes(plane_id=thisPlane)
             for Plane in additional_planes:
                 CurrentPlanes.append(Plane)
             TPCCounter=0
