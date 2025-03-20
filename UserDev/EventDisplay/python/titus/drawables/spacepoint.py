@@ -83,35 +83,40 @@ class SpacePoint(Drawable):
         for _, view in self._module._wire_views.items():
             thisPlane = view.plane()
             self._drawnObjects.append([])
-            spts = self._process.getDataByPlane(thisPlane)
             radBigW = 0.2 / self._geom.wire2cm()
             radBigT = (0.2) / self._geom.time2cm()
-            for i in range(len(spts)):
-                thisPoint = spts[i]
-                # Need to scale back into wire time coordinates:
-                sW = thisPoint.wire() / self._geom.wire2cm()
-                sT = thisPoint.time() / self._geom.time2cm()  #+ self._geom.timeOffsetTicks(thisPlane) 
-                print( "current plane", thisPlane , self._geom.getGeometryCore().Nviews(), thisPlane // self._geom.getGeometryCore().Nviews() )
-                if( thisPlane // self._geom.getGeometryCore().Nviews() == 1 ): 
-                    print("Doing various flips")
-                    # Flip the time
-                    sT = self._geom.tRange() - sT
-                    # Shift up to the appropriate view
-                    sT = sT + self._geom.tRange()
-                    # Add the ad-hoc gap between TPCs
-                    sT = sT + self._geom.cathodeGap()-13 #Hardcoded offset to get blips to line up in west TPC. Talk to Marco about it
-                r = QtWidgets.QGraphicsEllipseItem(
-                    sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
-                r.setPen(pg.mkPen(255,0,255))
-                r.setBrush(pg.mkColor(255,0,255, 100))
-                r.setToolTip(self.genToolTip(thisPoint, sT))
-                TempGroup = SpacePointGroup()
-                TempGroup.add_Ellipse(r)
-                # r.setBrush((0,0,0,opacity))
-                self._drawnObjects[thisPlane].append(TempGroup)
-                FullDetectorItemGroups[thisPoint.SpacePointID()].add_Subgroup(TempGroup) #Probably need to add full detector item groups to draw objects too
-                TempGroup.SetHoverParent(FullDetectorItemGroups[thisPoint.SpacePointID()])
-                view._view.addItem(TempGroup)
+            CurrentPlanes = [thisPlane]
+            for Plane in additional_planes:
+                CurrentPlanes.append(Plane)
+            TPCCounter=0
+            for Plane in CurrentPlanes:
+                spts = self._process.getDataByPlane(Plane)
+                for i in range(len(spts)):
+                    thisPoint = spts[i]
+                    # Need to scale back into wire time coordinates:
+                    sW = thisPoint.wire() / self._geom.wire2cm()
+                    sT = thisPoint.time() / self._geom.time2cm()  #+ self._geom.timeOffsetTicks(thisPlane) 
+                    if( TPCCounter == 1 ): 
+                        print("Doing various flips")
+                        # Flip the time
+                        sT = self._geom.tRange() - sT
+                        # Shift up to the appropriate view
+                        sT = sT + self._geom.tRange()
+                        # Add the ad-hoc gap between TPCs
+                        sT = sT + self._geom.cathodeGap()-13 #Hardcoded offset to get blips to line up in west TPC. Talk to Marco about it
+                    r = QtWidgets.QGraphicsEllipseItem(
+                        sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
+                    r.setPen(pg.mkPen(255,0,255))
+                    r.setBrush(pg.mkColor(255,0,255, 100))
+                    r.setToolTip(self.genToolTip(thisPoint, sT))
+                    TempGroup = SpacePointGroup()
+                    TempGroup.add_Ellipse(r)
+                    # r.setBrush((0,0,0,opacity))
+                    self._drawnObjects[thisPlane].append(TempGroup)
+                    FullDetectorItemGroups[thisPoint.SpacePointID()].add_Subgroup(TempGroup) #Probably need to add full detector item groups to draw objects too
+                    TempGroup.SetHoverParent(FullDetectorItemGroups[thisPoint.SpacePointID()])
+                    view._view.addItem(TempGroup)
+                TPCCounter=TPCCounter+1
     def clearDrawnObjects(self, obj_list=None):
         """ Override base class since our object list is nested """
         for view_objs in self._drawnObjects:
