@@ -97,7 +97,6 @@ class SpacePoint(Drawable):
                     sW = thisPoint.wire() / self._geom.wire2cm()
                     sT = thisPoint.time() / self._geom.time2cm()  #+ self._geom.timeOffsetTicks(thisPlane) 
                     if( TPCCounter == 1 ): 
-                        print("Doing various flips")
                         # Flip the time
                         sT = self._geom.tRange() - sT
                         # Shift up to the appropriate view
