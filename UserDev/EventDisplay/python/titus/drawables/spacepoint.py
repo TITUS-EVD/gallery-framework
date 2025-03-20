@@ -90,7 +90,14 @@ class SpacePoint(Drawable):
                 thisPoint = spts[i]
                 # Need to scale back into wire time coordinates:
                 sW = thisPoint.wire() / self._geom.wire2cm()
-                sT = thisPoint.time() / self._geom.time2cm()  #+ self._geom.timeOffsetTicks(thisPlane) 
+                sT = thisPoint.time() / self._geom.time2cm()  + self._geom.timeOffsetTicks(thisPlane) 
+                if( thisPlane // geom.getGeometryCore().Nviews() == 1 ): 
+                    # Flip the time
+                    sT = self._geom.tRange() - sT
+                    # Shift up to the appropriate view
+                    sT = sT + self._geom.tRange()
+                    # Add the ad-hoc gap between TPCs
+                    sT = sT + self._geom.cathodeGap()-13 #Hardcoded offset to get blips to line up in west TPC. Talk to Marco about it
                 r = QtWidgets.QGraphicsEllipseItem(
                     sW -radBigW, sT-radBigT, 2*radBigW, 2*radBigT)
                 r.setPen(pg.mkPen(255,0,255))
