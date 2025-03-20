@@ -68,7 +68,7 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
         std::cout << "had an exception" << std::endl;
         std::cerr << e.what() << '\n';
       }
-      _dataByPlane.at(p).emplace_back( SpacePointInfo(spt.ID(), point.w, point.t  ) );
+      _dataByPlane.at(p).emplace_back( SpacePointInfo(IndexTracker, point.w, point.t  ) );
 
 
       // Determine if this hit should change the view range:

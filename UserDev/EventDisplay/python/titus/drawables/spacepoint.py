@@ -70,7 +70,6 @@ class SpacePoint(Drawable):
                 for i in range(0, len(spts)):
                     SpacePointIDs.append(spts[i].SpacePointID())
         TotalSpacePoints = len(set(SpacePointIDs)) #Used to initialize hits to form group holder
-        print(set(SpacePointIDs))
         FullDetectorItemGroups = []
         for i in range(0, TotalSpacePoints):
             FullDetectorItemGroups.append(SpacePointGroup())
