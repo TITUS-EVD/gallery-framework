@@ -30,6 +30,7 @@ typedef _object PyObject;
 
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
+#include "larcorealg/Geometry/WireReadoutGeom.h"
 #include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
 #include "LArUtil/SimpleGeometryHelper.h"
@@ -50,6 +51,7 @@ public:
   /// Default constructor
   RecoBase(const geo::GeometryCore&               geometry,
            const detinfo::DetectorPropertiesData& detectorProperties,
+           const geo::WireReadoutGeom&            wireReadout,
            const detinfo::DetectorClocksData&     detectorClocks);
 
   /// Default destructor
@@ -80,6 +82,7 @@ protected:
 
   const geo::GeometryCore&               _geo_service;
   const detinfo::DetectorPropertiesData& _det_prop;
+  const geo::wireReadoutGeom&            _wire_readout;
   const detinfo::DetectorClocksData&     _det_clock;
 
   std::string _producer;
@@ -103,9 +106,11 @@ protected:
 template <class DATA_TYPE>
 RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore&               geometry,
                                const detinfo::DetectorPropertiesData& detectorProperties,
+                               const geo::WireReadoutGeom&            wireReadout,
                                const detinfo::DetectorClocksData&     detectorClocks) :
   _geo_service(geometry),
   _det_prop(detectorProperties),
+  _wire_readout(wireReadout),
   _det_clock(detectorClocks)
 {
   // geoService = larutil::Geometry::GetME();
@@ -113,16 +118,16 @@ RecoBase <DATA_TYPE>::RecoBase(const geo::GeometryCore&               geometry,
   // detProp = larutil::DetectorProperties::GetME();
 
   // Set up default values of the _wire and _time range
-  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  int total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   _wireRange.resize(total_plane_number);
   _timeRange.resize(total_plane_number);
 
   size_t counter = 0;
   for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
     for (unsigned int t = 0; t < _geo_service.NTPC(geo::CryostatID(c)); t++) {
-      for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(c, t)); p++) {
+      for (unsigned int p = 0; p < _wire_readout.Nplanes(geo::TPCID(c, t)); p++) {
         _wireRange.at(counter).first  = 0;
-        _wireRange.at(counter).second = _geo_service.Nwires(geo::PlaneID(c, t, p));
+        _wireRange.at(counter).second = _wire_readout.Nwires(geo::PlaneID(c, t, p));
         _timeRange.at(counter).first  = 0;
         _timeRange.at(counter).second = _det_prop.ReadOutWindowSize();
         counter++;
@@ -145,7 +150,7 @@ void RecoBase <DATA_TYPE>::setProducer(std::string s) {
 
 template <class DATA_TYPE>
 std::pair<float, float> RecoBase<DATA_TYPE>::getWireRange(size_t p) {
-  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  int total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   static std::pair<float, float> returnNull;
   if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
@@ -165,7 +170,7 @@ std::pair<float, float> RecoBase<DATA_TYPE>::getWireRange(size_t p) {
 
 template <class DATA_TYPE>
 std::pair<float, float> RecoBase<DATA_TYPE>::getTimeRange(size_t p) {
-  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  int total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   static std::pair<float, float> returnNull;
   if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
@@ -184,7 +189,7 @@ std::pair<float, float> RecoBase<DATA_TYPE>::getTimeRange(size_t p) {
 
 template <class DATA_TYPE>
 const std::vector<DATA_TYPE> & RecoBase<DATA_TYPE>::getDataByPlane(size_t p) {
-  int total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  int total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   static std::vector<DATA_TYPE> returnNull;
   if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
