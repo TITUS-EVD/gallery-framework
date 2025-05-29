@@ -40,6 +40,7 @@ public:
      * @details Constructor is private.  To access this class, get a pointer using the SimpleGeometryHelper::GetME() function
      */
     SimpleGeometryHelper(const geo::GeometryCore&               geometry,
+                         const geo::WireReadoutGeom&            wireReadout,
                          const detinfo::DetectorPropertiesData& detectorProperties,
                          const detinfo::DetectorClocksData&     detectorClocks);
 
@@ -503,6 +504,7 @@ private:
 
     // services to be used
     const geo::GeometryCore               & geom;
+    const geo::WireReadoutGeom            & wire_readout;
     const detinfo::DetectorPropertiesData & detp;
     const detinfo::DetectorClocksData     & clocks;
 

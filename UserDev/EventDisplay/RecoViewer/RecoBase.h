@@ -82,7 +82,7 @@ protected:
 
   const geo::GeometryCore&               _geo_service;
   const detinfo::DetectorPropertiesData& _det_prop;
-  const geo::wireReadoutGeom&            _wire_readout;
+  const geo::WireReadoutGeom&            _wire_readout;
   const detinfo::DetectorClocksData&     _det_clock;
 
   std::string _producer;

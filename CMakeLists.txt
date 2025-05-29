@@ -20,6 +20,8 @@ message(STATUS "-------------------------------------")
 
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
+find_package(Range-v3 REQUIRED)
+include_directories(${Range-v3_INCLUDE_DIRS})
 find_package(gallery REQUIRED)
 include_directories(${gallery_INCLUDE_DIRS})
 find_package(canvas REQUIRED)
