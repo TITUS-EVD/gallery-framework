@@ -53,6 +53,7 @@ class LArSoftModule(Module):
         self.det_clock_service = None
         self.det_prop_service = None
         self.geom_service = None
+        self.readout_service = None
         self.lar_prop_service = None
 
         self._central_widget = QtWidgets.QWidget()
@@ -128,6 +129,7 @@ class LArSoftModule(Module):
 
         self.det_clock_service = self._worker.det_clock_service
         self.det_prop_service = self._worker.det_prop_service
+        self.readout_service = self._worker.readout_service
         self.geom_service = self._worker.geom_service
         self.lar_prop_service = self._worker.lar_prop_service
 
@@ -152,6 +154,7 @@ class ServiceLoaderWorker(QtCore.QObject):
         self.det_clock_service = services.ServiceManager('DetectorClocks')
         self.det_prop_service = services.ServiceManager('DetectorProperties')
         self.geom_service = services.ServiceManager('Geometry')
+        self.readout_service = services.ServiceManager('WireReadout')
         self.lar_prop_service = services.ServiceManager('LArProperties')
 
         # TODO is this necessary?

@@ -8,9 +8,11 @@ namespace larutil {
 // SimpleGeometryHelper* SimpleGeometryHelper::_me = 0;
 
 SimpleGeometryHelper::SimpleGeometryHelper(const geo::GeometryCore&               geometry,
+                                           const geo::WireReadoutGeom&            wireReadout,
                                            const detinfo::DetectorPropertiesData& detectorProperties,
                                            const detinfo::DetectorClocksData&     detectorClocks) :
   geom(geometry),
+  wire_readout(wireReadout),
   detp(detectorProperties),
   clocks(detectorClocks)
 {
@@ -21,13 +23,13 @@ SimpleGeometryHelper::SimpleGeometryHelper(const geo::GeometryCore&             
 void SimpleGeometryHelper::Reconfigure()
 {
 
-  fNPlanes = geom.Nplanes();
+  fNPlanes = wire_readout.Nplanes();
   // vertangle.resize(fNPlanes);
   // for (UInt_t ip = 0; ip < fNPlanes; ip++)
   //   vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
 
 
-  fWireToCm = geom.WirePitch(geo::PlaneID(0, 1, 0));
+  fWireToCm = wire_readout.Plane(geo::PlaneID(0, 1, 0)).WirePitch();
   fTimeToCm = sampling_rate(clocks) / 1.e3 * detp.DriftVelocity(detp.Efield(), detp.Temperature());
 }
 
@@ -53,7 +55,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
    //std::cout << "CRYO " << cryo << std::endl;
 
   // Make a check on the plane:
-  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane-PlaneOffset >= geom.Nplanes()) {
+  if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane >= wire_readout.Nplanes(geo::TPCID(cryo, tpc))) {
     returnPoint.w = -9999;
     returnPoint.t = -9999;
     return returnPoint;
@@ -66,8 +68,8 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  const geo::PlaneGeo& planeGeo = geom.Plane(geo::PlaneID(cryo, tpc, plane-PlaneOffset));
-  returnPoint.w = planeGeo.WireCoordinate(loc)* fWireToCm;
+  const geo::PlaneGeo& planeGeo = wire_readout.Plane(geo::PlaneID(cryo, tpc, plane));
+  returnPoint.w = planeGeo.WireCoordinate(loc) * fWireToCm;
 
 
   // The time position is the X coordinate, corrected for
@@ -182,7 +184,7 @@ float SimpleGeometryHelper::Slope_3Dto2D(const TVector3 & inputVector, unsigned 
   // Do this by projecting the line:
   // Generate a start point right in the middle of the detector:
   TVector3 startPoint3D(0, 0, 0);
-  startPoint3D.SetZ(0.5 * geom.DetLength());
+  startPoint3D.SetZ(0.5 * geom.Cryostat(geo::CryostatID(0)).Length());
   larutil::Point2D p1, slope;
   Line_3Dto2D(startPoint3D, inputVector, plane, tpc, cryo, p1, slope);
   return slope.t / slope.w;
@@ -424,12 +426,12 @@ double SimpleGeometryHelper::CalculatePitch(UInt_t pl, double phi, double theta)
 
   double pitch = -1.;
 
-  if (geom.View(geo::PlaneID(0, 0, pl)) == geo::View_t::kUnknown ||
-      geom.View(geo::PlaneID(0, 0, pl)) == geo::View_t::k3D) {
+  if (wire_readout.Plane(geo::PlaneID(0, 0, pl)).View() == geo::View_t::kUnknown ||
+      wire_readout.Plane(geo::PlaneID(0, 0, pl)).View() == geo::View_t::k3D) {
     galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for view %d", geom.View(pl)));
     return pitch;
   }
-  else if ( pl >= geom.Nplanes() ) {
+  else if ( pl >= wire_readout.Nplanes() ) {
     galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, "Plane number larger than max. number of planes");
     return pitch;
   }
@@ -438,8 +440,8 @@ double SimpleGeometryHelper::CalculatePitch(UInt_t pl, double phi, double theta)
     double pi = TMath::Pi();
     double fTheta = pi / 2 - theta;
     double fPhi = -(phi + pi / 2);
-    double wirePitch = geom.WirePitch(geo::PlaneID(0, 1, pl));
-    double angleToVert = 0.5 * TMath::Pi() - geom.WireAngleToVertical(geom.View(geo::PlaneID(0, 0, pl)), geo::TPCID(0, 0));
+    double wirePitch = wire_readout.Plane(geo::PlaneID(0, 1, pl)).WirePitch();
+    double angleToVert = 0.5 * TMath::Pi() - wire_readout.WireAngleToVertical(wire_readout.Plane(geo::PlaneID(0, 0, pl)).View(), geo::TPCID(0, 0));
     double cosgamma = TMath::Abs(TMath::Sin(angleToVert) * TMath::Cos(fTheta)
                                  + TMath::Cos(angleToVert) * TMath::Sin(fTheta) * TMath::Sin(fPhi));
 
@@ -460,8 +462,8 @@ double SimpleGeometryHelper::PitchInView(UInt_t plane, double phi, double theta)
   Double_t wirePitch   = 0.;
   Double_t angleToVert = 0.;
 
-  wirePitch = geom.WirePitch(geo::PlaneID(0, 1, plane));
-  angleToVert = geom.WireAngleToVertical(geom.View(geo::PlaneID(0, 0, plane)), geo::TPCID(0, 0)) - 0.5 * TMath::Pi();
+  wirePitch = wire_readout.Plane(geo::PlaneID(0, 1, plane)).WirePitch();
+  angleToVert = geom.WireAngleToVertical(wire_readout.Plane(geo::PlaneID(0, 0, plane)).View(), geo::TPCID(0, 0)) - 0.5 * TMath::Pi();
 
   //(sin(angleToVert),std::cos(angleToVert)) is the direction perpendicular to wire
   //fDir.front() is the direction of the track at the beginning of its trajectory
@@ -582,7 +584,7 @@ void SimpleGeometryHelper::SelectPolygonHitList(const std::vector<Hit2D> &inputH
   // Loop over hits and find corner points in the plane view
   // Also fill corner edge points
   std::vector<larutil::Point2D> edges(4, Point2D(plane, 0, 0));
-  double wire_max = geom.Nwires(geo::PlaneID(0, 0, plane)) * fWireToCm;
+  double wire_max = wire_readout.Plane(geo::PlaneID(0, 0, plane)).Nwires() * fWireToCm;
   double time_max = (detp.NumberTimeSamples()) * fTimeToCm;
 
   for (size_t index = 0; index < ordered_hits.size(); ++index) {
@@ -792,16 +794,16 @@ double SimpleGeometryHelper::PerpendicularDistance(const Point2D& pt,
 bool SimpleGeometryHelper::Point_isInTPC(const TVector3 & pointIn3D) const {
 
   // Check against the 3 coordinates:
-  if (pointIn3D.X() > geom.DetHalfWidth() + trigger_offset(clocks) * TimeToCm()
-      || pointIn3D.X() < - geom.DetHalfWidth() - trigger_offset(clocks) * TimeToCm())
+  if (pointIn3D.X() > geom.Cryostat(geo::CryostatID(0)).HalfWidth() + trigger_offset(clocks) * TimeToCm()
+      || pointIn3D.X() < - geom.Cryostat(geo::CryostatID(0)).HalfWidth() - trigger_offset(clocks) * TimeToCm())
   {
     return false;
   }
-  if (pointIn3D.Y() > geom.DetHalfHeight() || pointIn3D.Y() < - geom.DetHalfHeight() )
+  if (pointIn3D.Y() > geom.Cryostat(geo::CryostatID(0)).HalfHeight() || pointIn3D.Y() < - geom.Cryostat(geo::CryostatID(0)).HalfHeight() )
   {
     return false;
   }
-  if (pointIn3D.Z() > geom.DetLength() || pointIn3D.Z() < 0.0)
+  if (pointIn3D.Z() > geom.Cryostat(geo::CryostatID(0)).Length() || pointIn3D.Z() < 0.0)
   {
     return false;
   }
@@ -1010,7 +1012,7 @@ int SimpleGeometryHelper::GetXYZ(const Point2D *p0, const Point2D *p1, Double_t*
   Double_t pos[3] = {0.};
   // geom.PlaneOriginVtx(p0->plane, pos);
   int tpc = 0;
-  auto plane_center = geom.Plane(geo::PlaneID(0, tpc, p0->plane)).GetCenter();
+  auto plane_center = wire_readout.Plane(geo::PlaneID(0, tpc, p0->plane)).GetCenter();
   pos[0] = plane_center.X();
   pos[1] = plane_center.Y();
   pos[2] = plane_center.Z();
@@ -1043,12 +1045,12 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
               << "\033[93mWarning ends...\033[00m" << std::endl;
     z0 = 0;
   }
-  else if (z0 >= (int)(geom.Nwires(geo::PlaneID(0, 0, p0->plane)))) {
+  else if (z0 >= (int)(wire_readout.Plane(geo::PlaneID(0, 0, p0->plane)).Nwires())) {
     std::cout << "\033[93mWarning\033[00m \033[95m<<SimpleGeometryHelper::GetYZ>>\033[00m" << std::endl
-              << " 2D wire position " << p0->w << " [cm] exceeds max wire number " << (geom.Nwires(geo::PlaneID(0, 0, p0->plane)) - 1) << std::endl
+              << " 2D wire position " << p0->w << " [cm] exceeds max wire number " << (wire_readout.Plane(geo::PlaneID(0, 0, p0->plane)).Nwires() - 1) << std::endl
               << " Forcing it to the max wire number..." << std::endl
               << "\033[93mWarning ends...\033[00m" << std::endl;
-    z0 = geom.Nwires(geo::PlaneID(0, 0, p0->plane)) - 1;
+    z0 = wire_readout.Plane(geo::PlaneID(0, 0, p0->plane)).Nwires() - 1;
   }
   if (z1 < 0) {
     std::cout << "\033[93mWarning\033[00m \033[95m<<SimpleGeometryHelper::GetYZ>>\033[00m" << std::endl
@@ -1057,18 +1059,18 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
               << "\033[93mWarning ends...\033[00m" << std::endl;
     z1 = 0;
   }
-  if (z1 >= (int)(geom.Nwires(geo::PlaneID(0, 0, p1->plane)))) {
+  if (z1 >= (int)(wire_readout.Plane(geo::PlaneID(0, 0, p1->plane)).Nwires())) {
     std::cout << "\033[93mWarning\033[00m \033[95m<<SimpleGeometryHelper::GetYZ>>\033[00m" << std::endl
-              << " 2D wire position " << p1->w << " [cm] exceeds max wire number " << (geom.Nwires(geo::PlaneID(0, 0, p0->plane)) - 1) << std::endl
+              << " 2D wire position " << p1->w << " [cm] exceeds max wire number " << (wire_readout.Plane(geo::PlaneID(0, 0, p0->plane)).Nwires() - 1) << std::endl
               << " Forcing it to the max wire number..." << std::endl
               << "\033[93mWarning ends...\033[00m" << std::endl;
-    z1 = geom.Nwires(geo::PlaneID(0, 0, p1->plane)) - 1;
+    z1 = wire_readout.Plane(geo::PlaneID(0, 0, p1->plane)).Nwires() - 1;
   }
 
-  UInt_t chan1 = geom.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
-  UInt_t chan2 = geom.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
+  UInt_t chan1 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
+  UInt_t chan2 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
 
-  if (! geom.ChannelsIntersect(chan1, chan2, y, z) )
+  if (! wire_readout.ChannelsIntersect(chan1, chan2, y, z) )
     return -1;
 
 
@@ -1081,11 +1083,11 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
   bool SimpleGeometryHelper::ContainedYZ(const double& y, const double& z) const {
 
     // if y out of bounds
-    if ( (y < -geom.DetHalfHeight()) or (y> geom.DetHalfHeight()) )
+    if ( (y < -geom.Cryostat(geo::CryostatID(0)).HalfHeight()) or (y> geom.Cryostat(geo::CryostatID(0)).HalfHeight()) )
       return false;
 
     // if z out of bounds
-    if ( (z < 0) or (z > geom.DetLength()) )
+    if ( (z < 0) or (z > geom.Cryostat(geo::CryostatID(0)).Length()) )
       return false;
 
     return true;
@@ -1094,15 +1096,15 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
   bool SimpleGeometryHelper::Contained(const double& x, const double& y, const double& z) const {
 
     // if x out of bounds
-    if ( (x < 0) or (x > 2*geom.DetHalfWidth()) )
+    if ( (x < 0) or (x > 2*geom.Cryostat(geo::CryostatID(0)).HalfWidth()) )
       return false;
 
     // if y out of bounds
-    if ( (y < -geom.DetHalfHeight()) or (y> geom.DetHalfHeight()) )
+    if ( (y < -geom.Cryostat(geo::CryostatID(0)).HalfHeight()) or (y> geom.Cryostat(geo::CryostatID(0)).HalfHeight()) )
       return false;
 
     // if z out of bounds
-    if ( (z < 0) or (z > geom.DetLength()) )
+    if ( (z < 0) or (z > geom.Cryostat(geo::CryostatID(0)).Length()) )
       return false;
 
     return true;
