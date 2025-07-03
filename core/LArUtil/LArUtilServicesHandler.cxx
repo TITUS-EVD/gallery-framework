@@ -29,7 +29,7 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    const geo::GeometryCore* _geom = GetGeometry(fcl_file_name);
+    const std::unique_ptr<geo::GeometryCore> _geom = GetGeometry(fcl_file_name);
     std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupReadout<geo::WireReadoutSorter, geo::WireReadoutStandardGeom>
                       (config.get<fhicl::ParameterSet>("services.WireGeom"), _geom);
 
