@@ -8,8 +8,9 @@ namespace evd {
 
 DrawOpflash::DrawOpflash(const geo::GeometryCore&               geometry,
                          const detinfo::DetectorPropertiesData& detectorProperties,
+                         const geo::WireReadoutGeom&            wireReadout,
                          const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
 {
   _name = "DrawOpflash";
   _fout = 0;
@@ -80,7 +81,7 @@ bool DrawOpflash::analyze(const gallery::Event & ev) {
 
 int DrawOpflash::find_plane(int opch) {
 
-  auto xyz = _geo_service.OpDetGeoFromOpChannel(opch).GetCenter();
+  auto xyz = _geo_service.OpDetGeoFromOpDet(opch).GetCenter();
   if (_geo_service.DetectorName().find("icarus") != std::string::npos) {
     if (xyz.X() < -300) return 0;
     if (xyz.X() < 0 && xyz.X() > -300) return 1;
