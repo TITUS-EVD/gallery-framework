@@ -10,7 +10,7 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
   Track2D result;
   result._track.reserve(track.NumberTrajectoryPoints());
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
 
   for (unsigned int i = 0; i < track.NumberTrajectoryPoints(); i++) {
     // project a point into 2D:
@@ -46,8 +46,9 @@ Track2D DrawTrack::getTrack2D(recob::Track track, unsigned int plane) {
 
 DrawTrack::DrawTrack(const geo::GeometryCore&               geometry,
                      const detinfo::DetectorPropertiesData& detectorProperties,
+                     const geo::WireReadoutGeom&            wireReadout,
                      const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
 {
   _name = "DrawTrack";
   _fout = 0;
@@ -56,7 +57,7 @@ DrawTrack::DrawTrack(const geo::GeometryCore&               geometry,
 
 bool DrawTrack::initialize() {
 
-  _total_plane_number = _geo_service.Nplanes(); // * _geo_service.NTPC() * _geo_service.Ncryostats();
+  _total_plane_number = _wire_readout.Nplanes(); // * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   // Resize data holder
   if (_dataByPlane.size() != _total_plane_number) {
@@ -92,7 +93,7 @@ bool DrawTrack::analyze(const gallery::Event &ev) {
     std::vector<recob::Hit const*> hits;
     track_to_hits.get(index, hits);
 
-    for (unsigned int p = 0; p < _geo_service.Nplanes(); p++) {
+    for (unsigned int p = 0; p < _wire_readout.Nplanes(); p++) {
 
       auto tr = getTrack2D(track, p);
 
