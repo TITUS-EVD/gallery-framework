@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "larcorealg/Geometry/GeometryCore.h"
+#include "larcorealg/Geometry/WireReadoutGeom.h"
 #include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 
 
