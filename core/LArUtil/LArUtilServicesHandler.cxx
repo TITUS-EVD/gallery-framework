@@ -85,11 +85,6 @@ namespace larutil {
               static_cast<detinfo::LArProperties const*>(_larp.get())
            }
     );
-
-    testing::setupProvider<detinfo::DetectorPropertiesStandard>(
-      config.get<fhicl::ParameterSet>("services.DetectorPropertiesService"),
-      geom.get(),readout.get(), static_cast<detinfo::LArProperties const*>(larp.get()));
-
     return _detp;
   }
 
