@@ -35,7 +35,7 @@ bool DrawChannelROI::initialize() {
   for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
     for (unsigned int t = 0; t < _geo_service.NTPC(geo::CryostatID(c)); t++) {
       for (unsigned int p = 0; p < _wireReadout_service.Nplanes(geo::TPCID(c, t)); p++) {
-        setXDimension(_wireReadout_service.NWires(geo::PlaneID(c, t, p)), counter);
+        setXDimension(_wireReadout_service.Nwires(geo::PlaneID(c, t, p)), counter);
         setYDimension(_det_prop.ReadOutWindowSize(), counter);
         counter++;
       }
