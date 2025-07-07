@@ -103,7 +103,7 @@ namespace evd {
     std::vector<float> _pedestals;
 
     const geo::GeometryCore&               _geo_service;
-    const geo::wireReadout&               _wireReadout_service;
+    const geo::WireReadoutGeom&               _wireReadout_service;
     const detinfo::DetectorPropertiesData& _det_prop;
 
     std::string _producer; ///< The producer tag (if only one)
