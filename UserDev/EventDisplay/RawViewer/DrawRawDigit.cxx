@@ -29,12 +29,12 @@ bool DrawRawDigit::initialize() {
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
   //
-  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
+  _padding_by_plane.resize(_wireReadout_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
   int counter = 0;
   for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
     for (unsigned int t = 0; t < _geo_service.NTPC(geo::CryostatID(c)); t++) {
-      for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(c, t)); p++) {
-        setXDimension(_geo_service.Nwires(geo::PlaneID(c, t, p)), counter);
+      for (unsigned int p = 0; p < _wireReadout_service.Nplanes(geo::TPCID(c, t)); p++) {
+        setXDimension(_wireReadout_service.Nwires(geo::PlaneID(c, t, p)), counter);
         setYDimension(_det_prop.ReadOutWindowSize(), counter);
         counter++;
       }
@@ -91,7 +91,7 @@ bool DrawRawDigit::analyze(const gallery::Event &ev) {
 
   // if the tick-length set is different from what is actually stored in the ADC
   // vector -> fix.
-  size_t n_views = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t n_views = _wireReadout_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   if (raw_digits_v[0]->size() > 0) {
     for (size_t pl = 0; pl < n_views; pl++) {
@@ -133,7 +133,7 @@ bool DrawRawDigit::analyze(const gallery::Event &ev) {
       unsigned int ch  = rawdigit.Channel();
       float        ped = rawdigit.GetPedestal();
 
-      std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
+      std::vector<geo::WireID> widVec = _wireReadout_service.ChannelToWire(ch);
       for (geo::WireID w_id : widVec) {
         unsigned int wire = w_id.Wire;
         unsigned int plane = w_id.Plane;
@@ -142,15 +142,15 @@ bool DrawRawDigit::analyze(const gallery::Event &ev) {
 
         // std::cout << "RawDigit ch " << ch << ", wire " << wire << ", plane " << plane << ", tpc " << tpc << ", cryo " << cryo << std::endl;
 
-        if (wire > _geo_service.Nwires(geo::PlaneID(cryo, tpc, plane))) continue;
+        if (wire > _wireReadout_service.Nwires(geo::PlaneID(cryo, tpc, plane))) continue;
 
         if (_geo_service.DetectorName() == "microboone" && ch >= 8254) continue;
 
         // If a second TPC is present, its planes 0, 1 and 2 are
         // stored consecutively to those of the first TPC.
         // So we have planes 0, 1, 2, 3, 4, 5.
-        plane += tpc * _geo_service.Nplanes();
-        plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+        plane += tpc * _wireReadout_service.Nplanes();
+        plane += cryo * _wireReadout_service.Nplanes() * _geo_service.NTPC();
 
         int offset = wire * n_ticks;
 

@@ -20,7 +20,7 @@
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 
-
+#include "GeometryHelper.h"
 
 struct _object;
 typedef _object PyObject;
@@ -50,7 +50,7 @@ namespace evd {
     // RawBase();
 
     /// Default constructor
-    RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties);
+    RawBase(const geo::GeometryCore& geometry, const geo::WireReadoutGeom& wireReadout, const detinfo::DetectorPropertiesData& detectorProperties);
 
     /// Default destructor
     virtual ~RawBase();
@@ -103,6 +103,7 @@ namespace evd {
     std::vector<float> _pedestals;
 
     const geo::GeometryCore&               _geo_service;
+    const geo::wireReadout&               _wireReadout_service;
     const detinfo::DetectorPropertiesData& _det_prop;
 
     std::string _producer; ///< The producer tag (if only one)

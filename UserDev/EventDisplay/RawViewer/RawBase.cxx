@@ -6,8 +6,9 @@
 namespace evd {
 
 
-RawBase::RawBase(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties) :
+RawBase::RawBase(const geo::GeometryCore& geometry, const geo::WireReadoutGeom& wireReadout, const detinfo::DetectorPropertiesData& detectorProperties) :
   _geo_service(geometry),
+  _wireReadout_service(wireReadout),
   _det_prop(detectorProperties)
 {
   _import_array();
