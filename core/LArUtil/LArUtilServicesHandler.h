@@ -35,6 +35,7 @@
 #include "larcorealg/Geometry/WireReadoutGeom.h"
 #include "larcorealg/Geometry/GeoObjectSorterStandard.h"
 #include "larcorealg/Geometry/WireReadoutSorterStandard.h"
+#include "larcorealg/Geometry/WireReadoutStandardGeom.h"
 
 // - DetectorClocks
 #include "lardataalg/DetectorInfo/DetectorClocksStandardTestHelpers.h"
