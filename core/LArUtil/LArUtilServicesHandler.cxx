@@ -69,18 +69,26 @@ namespace larutil {
             (config.get<fhicl::ParameterSet>("services.LArPropertiesService"));
 
     // DetectorClocks setup
-    std::unique_ptr<detinfo::DetectorClocksStandard> _detclk = testing::setupProvider<detinfo::DetectorClocksStandard>
-              (config.get<fhicl::ParameterSet>("services.DetectorClocksService"));
+    //std::unique_ptr<detinfo::DetectorClocksStandard> _detclk = testing::setupProvider<detinfo::DetectorClocksStandard>
+    //          (config.get<fhicl::ParameterSet>("services.DetectorClocksService"));
+  
+    //wire Readout setup
+    std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupReadout<geo::WireReadoutSorterStandard, geo::WireReadoutStandardGeom>
+                      (config.get<fhicl::ParameterSet>("services.WireGeom"), &(*_geom));
 
     // DetectorProperties setup
     std::unique_ptr<detinfo::DetectorPropertiesStandard> _detp = testing::setupProvider<detinfo::DetectorPropertiesStandard>(
             config.get<fhicl::ParameterSet>("services.DetectorPropertiesService"),
             detinfo::DetectorPropertiesStandard::providers_type{
               _geom.get(),
-              _larp.get(),
-              _detclk.get()
+              _wire_readout.get(),
+              static_cast<detinfo::LArProperties const*>(_larp.get())
            }
     );
+
+    testing::setupProvider<detinfo::DetectorPropertiesStandard>(
+      config.get<fhicl::ParameterSet>("services.DetectorPropertiesService"),
+      geom.get(),readout.get(), static_cast<detinfo::LArProperties const*>(larp.get()));
 
     return _detp;
   }
