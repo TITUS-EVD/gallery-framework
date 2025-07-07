@@ -61,7 +61,7 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    std::unique_ptr<::geo::GeometryCore> _geom = lar::standalone::SetupGeometry<geo::GeometryCore>
+    std::unique_ptr<::geo::GeometryCore> _geom = lar::standalone::SetupGeometry<geo::GeoObjectSorterStandard>
             (config.get<fhicl::ParameterSet>("services.Geometry"));
 
     // LArProperties setup
