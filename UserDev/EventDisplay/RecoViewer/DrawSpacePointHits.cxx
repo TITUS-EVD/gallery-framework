@@ -9,8 +9,9 @@ namespace evd {
 
 DrawSpacepointHits::DrawSpacepointHits(const geo::GeometryCore&               geometry,
                                const detinfo::DetectorPropertiesData& detectorProperties,
+                               const geo::WireReadoutGeom&            wireReadout,
                                const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawSpacepointHits";
   _fout = 0;
@@ -18,7 +19,7 @@ DrawSpacepointHits::DrawSpacepointHits(const geo::GeometryCore&               ge
 }
 
 bool DrawSpacepointHits::initialize() {
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != total_plane_number) {
     _dataByPlane.resize(total_plane_number);
   }
@@ -26,8 +27,8 @@ bool DrawSpacepointHits::initialize() {
 }
 
 bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
 
 
 
@@ -63,8 +64,8 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
       unsigned int plane = hits[hitIndex]->WireID().Plane;
       unsigned int tpc = hits[hitIndex]->WireID().TPC;
       unsigned int cryo = hits[hitIndex]->WireID().Cryostat;
-      plane += tpc * _geo_service.Nplanes();
-      plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+      plane += tpc * _wire_readout.Nplanes();
+      plane += cryo * _wire_readout.Nplanes() * _geo_service.NTPC();
       double NSigma = 2;
      _dataByPlane.at(plane).emplace_back(
       HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime() - hits[hitIndex]->RMS()*NSigma, plane, tpc, cryo, 
