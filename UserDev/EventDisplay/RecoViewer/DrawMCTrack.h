@@ -56,6 +56,7 @@ public:
   /// Default constructor
   DrawMCTrack(const geo::GeometryCore&               geometry,
               const detinfo::DetectorPropertiesData& detectorProperties,
+              const geo::WireReadoutGeom&            wireReadout,
               const detinfo::DetectorClocksData&     detectorClocks);
 
   /// Default destructor

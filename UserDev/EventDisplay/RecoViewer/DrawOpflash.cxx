@@ -8,6 +8,7 @@ namespace evd {
 
 DrawOpflash::DrawOpflash(const geo::GeometryCore&               geometry,
                          const detinfo::DetectorPropertiesData& detectorProperties,
+                         const geo::WireReadoutGeom&            wireReadout,
                          const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
