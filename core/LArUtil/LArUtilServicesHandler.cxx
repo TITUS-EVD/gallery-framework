@@ -13,15 +13,14 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    std::unique_ptr<geo::GeometryCore> _geom = lar::standalone::SetupGeometry<geo::GeometryCore>
-            (config.get<fhicl::ParameterSet>("services.Geometry"));
+    std::unique_ptr<geo::GeometryCore> _geom = lar::standalone::SetupGeometry(config);
 
     return _geom;
 
   }
 
 
-  std::unique_ptr<geo::GeometryCore> LArUtilServicesHandler::GetWireReadout(std::string fcl_file_name)
+  std::unique_ptr<geo::WireReadoutGeom> LArUtilServicesHandler::GetWireReadout(std::string fcl_file_name)
   {
     std::string configFile = fcl_file_name;
     fhicl::ParameterSet config;
@@ -29,8 +28,9 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupGeometry<geo::WireReadoutGeom>
-            (config.get<fhicl::ParameterSet>("services.Geometry"));
+    std::unique_ptr<geo::GeometryCore> _geom = GetGeometry(fcl_file_name);
+
+    std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupReadout(config, _geom.get());
 
     return _wire_readout;
 
@@ -60,8 +60,7 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    std::unique_ptr<::geo::GeometryCore> _geom = lar::standalone::SetupGeometry<geo::GeometryCore>
-            (config.get<fhicl::ParameterSet>("services.Geometry"));
+    std::unique_ptr<geo::GeometryCore> _geom = lar::standalone::SetupGeometry(config);
 
     // LArProperties setup
     std::unique_ptr<detinfo::LArPropertiesStandard> _larp = testing::setupProvider<detinfo::LArPropertiesStandard>
