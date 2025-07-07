@@ -23,7 +23,7 @@ bool DrawCluster::initialize() {
   // If you have a histogram to fill in the event loop, for example,
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
-  _total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  _total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   // Resize data holder
   if (_dataByPlane.size() != _total_plane_number) {
@@ -122,8 +122,8 @@ bool DrawCluster::analyze(const gallery::Event & ev) {
     // stored consecutively to those of the first TPC.
     // So we have planes 0, 1, 2, 3, 4, 5.
     // view = plane + tpc * (geoService->Nplanes() / geoService->NTPC());
-    plane += tpc * _geo_service.Nplanes();
-    plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+    plane += tpc * _wire_readout.Nplanes();
+    plane += cryo * _wire_readout.Nplanes() * _geo_service.NTPC();
 
     // Make a new cluster in the data:
     _dataByPlane.at(plane).push_back(Cluster2D());
@@ -163,8 +163,8 @@ bool DrawCluster::analyze(const gallery::Event & ev) {
       // If a second TPC is present, its planes 0, 1 and 2 are
       // stored consecutively to those of the first TPC.
       // So we have planes 0, 1, 2, 3, 4, 5.
-      hit_plane += hit_tpc * _geo_service.Nplanes();
-      hit_plane += hit_cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+      hit_plane += hit_tpc * _wire_readout.Nplanes();
+      hit_plane += hit_cryo * _wire_readout.Nplanes() * _geo_service.NTPC();
 
       _dataByPlane.at(hit_plane).back().emplace_back(
         Hit2D(hit->WireID().Wire,
