@@ -53,7 +53,7 @@ namespace evd {
 
     /// Default constructor
     DrawFEBData(const geo::GeometryCore&               geometry,
-                const geo::AuxDetGeometryCore& wireReadout,
+                const geo::WireReadoutGeom& wireReadout,
                 const geo::AuxDetGeometryCore& auxDetGeometry,
                 const detinfo::DetectorPropertiesData& detectorProperties);
 
