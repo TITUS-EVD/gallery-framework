@@ -8,7 +8,7 @@ namespace evd {
 NumuSelection2D DrawNumuSelection::getNumuSelection2D(
     recob::Vertex vtx, std::vector<recob::Track> tracks, unsigned int plane) {
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
 
 
   NumuSelection2D result;
@@ -62,8 +62,9 @@ NumuSelection2D DrawNumuSelection::getNumuSelection2D(
 
 DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore&               geometry,
                                      const detinfo::DetectorPropertiesData& detectorProperties,
+                                     const geo::WireReadoutGeom&            wireReadout,
                                      const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
 {
   _name = "DrawNumuSelection";
   _fout = 0;
@@ -72,7 +73,7 @@ DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore&               geom
 bool DrawNumuSelection::initialize() {
 
   // Resize data holder
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != total_plane_number) {
     _dataByPlane.resize(total_plane_number);
   }
@@ -99,7 +100,7 @@ bool DrawNumuSelection::analyze(const gallery::Event & ev) {
   //
 
   // std::cout << "Producer is " << _producer << std::endl;
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   std::vector<recob::Vertex> vertices;
   std::vector<recob::Track> tracks;
