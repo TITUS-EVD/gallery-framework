@@ -428,7 +428,8 @@ double SimpleGeometryHelper::CalculatePitch(UInt_t pl, double phi, double theta)
 
   if (wire_readout.Plane(geo::PlaneID(0, 0, pl)).View() == geo::View_t::kUnknown ||
       wire_readout.Plane(geo::PlaneID(0, 0, pl)).View() == geo::View_t::k3D) {
-    galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for view %d", geom.View(pl)));
+    //galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for view %d", geom.View(pl)));
+    galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for plane %d", pl));
     return pitch;
   }
   else if ( pl >= wire_readout.Nplanes() ) {
@@ -1067,10 +1068,12 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
     z1 = wire_readout.Plane(geo::PlaneID(0, 0, p1->plane)).Nwires() - 1;
   }
 
-  UInt_t chan1 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
-  UInt_t chan2 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
+  //UInt_t chan1 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
+  //UInt_t chan2 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
+  geo::WireID wire1 (0, 0, p0->plane, z0);
+  geo::WireID wire2 (0, 0, p0->plane, z0);
   geo::Point_t intsec_p;
-  if (! wire_readout.WireIDsIntersect(chan1,chan2,intsec_p) )
+  if (! wire_readout.WireIDsIntersect(wire1,wire2,intsec_p) )
     return -1;
   yz[0] = intsec_p.Y();
   yz[1] = intsec_p.Z();
