@@ -33,6 +33,8 @@
 #include "larcorealg/Geometry/StandaloneGeometrySetup.h"
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "larcorealg/Geometry/WireReadoutGeom.h"
+#include "larcorealg/Geometry/GeoObjectSorterStandard.h"
+#include "larcorealg/Geometry/WireReadoutSorterStandard.h"
 
 // - DetectorClocks
 #include "lardataalg/DetectorInfo/DetectorClocksStandardTestHelpers.h"
