@@ -8,6 +8,7 @@ namespace evd {
 
 DrawHit::DrawHit(const geo::GeometryCore&               geometry,
                  const detinfo::DetectorPropertiesData& detectorProperties,
+                 const geo::WireReadoutGeom&            wireReadout,
                  const detinfo::DetectorClocksData&     detectorClocks) :
     RecoBase(geometry, detectorProperties, detectorClocks)
 {
@@ -17,7 +18,7 @@ DrawHit::DrawHit(const geo::GeometryCore&               geometry,
 
 bool DrawHit::initialize() {
   // Resize data holder to accommodate planes and wires:
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != total_plane_number) {
     _dataByPlane.resize(total_plane_number);
     _maxCharge.resize(total_plane_number);
@@ -53,7 +54,7 @@ bool DrawHit::analyze(const gallery::Event & ev) {
 
 
   // Clear out the hit data but reserve some space for the hits
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   for (unsigned int p = 0; p < total_plane_number; p ++) {
     _dataByPlane.at(p).clear();
     _dataByPlane.at(p).reserve(hitHandle->size());
@@ -77,8 +78,8 @@ bool DrawHit::analyze(const gallery::Event & ev) {
     // If a second TPC is present, its planes 0, 1 and 2 are
     // stored consecutively to those of the first TPC.
     // So we have planes 0, 1, 2, 3, 4, 5.
-    plane += tpc * _geo_service.Nplanes();
-    plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+    plane += tpc * _wire_readout.Nplanes();
+    plane += cryo * _wire_readout.Nplanes() * _geo_service.NTPC();
 
     _dataByPlane.at(plane).emplace_back(
       Hit2D(hit.WireID().Wire,
@@ -118,7 +119,7 @@ bool DrawHit::analyze(const gallery::Event & ev) {
 }
 
 float DrawHit::maxCharge(size_t p) {
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (p >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << p << std::endl;
     return 1.0;
@@ -138,7 +139,7 @@ float DrawHit::maxCharge(size_t p) {
 
 std::vector<Hit2D> DrawHit::getHitsOnWirePlane(size_t wire, size_t plane) {
   std::vector<Hit2D> result;
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   if (plane >= total_plane_number) {
     std::cerr << "ERROR: Request for nonexistent plane " << plane << std::endl;
