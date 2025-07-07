@@ -20,7 +20,6 @@
 #include "larcorealg/Geometry/GeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 
-#include "GeometryHelper.h"
 
 struct _object;
 typedef _object PyObject;
