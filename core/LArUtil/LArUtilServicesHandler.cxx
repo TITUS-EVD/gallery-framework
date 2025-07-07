@@ -30,8 +30,10 @@ namespace larutil {
 
     // geometry setup (it's special)
     const std::unique_ptr<geo::GeometryCore> _geom = GetGeometry(fcl_file_name);
+    const geo::GeometryCore* TempGeom = new (*_geom);
     std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupReadout<geo::WireReadoutSorter, geo::WireReadoutStandardGeom>
                       (config.get<fhicl::ParameterSet>("services.WireGeom"), _geom);
+    delete TempGeom; //may break the wireReadout object
 
     return _wire_readout;
 
