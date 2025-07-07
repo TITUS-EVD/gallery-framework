@@ -23,6 +23,7 @@
 #include "gallery/Event.h"
 
 #include "larcorealg/Geometry/GeometryCore.h"
+#include "larcorealg/Geometry/AuxDetGeometryCore.h"
 #include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 #include "lardataalg/DetectorInfo/DetectorClocksData.h"
 
@@ -52,7 +53,8 @@ namespace evd {
 
     /// Default constructor
     DrawFEBData(const geo::GeometryCore&               geometry,
-                const geo::WireReadoutGeom& wireReadout,
+                const geo::AuxDetGeometryCore& wireReadout,
+                const geo::AuxDetGeometryCore& auxDetGeometry,
                 const detinfo::DetectorPropertiesData& detectorProperties);
 
     /// Default destructor
