@@ -26,7 +26,7 @@ void SimpleGeometryHelper::Reconfigure()
   fNPlanes = wire_readout.Nplanes();
   // vertangle.resize(fNPlanes);
   // for (UInt_t ip = 0; ip < fNPlanes; ip++)
-  //   vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
+  //   vertangle[ip] = wire_readout.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
 
 
   fWireToCm = wire_readout.Plane(geo::PlaneID(0, 1, 0)).WirePitch();
@@ -43,11 +43,11 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   geo::Point_t loc(_3D_position[0],_3D_position[1], _3D_position[2]);
 
   // Get the tpc and cryo ids from the 3D point
-  unsigned int tpc = plane/geom.Nviews(); //geom.PositionToTPCID(loc).TPC;
-  unsigned int cryo = plane/(geom.NTPC()*geom.Nviews()); //geom.PositionToCryostatID(loc).Cryostat;
+  unsigned int tpc = plane/wire_readout.Nviews(); //geom.PositionToTPCID(loc).TPC;
+  unsigned int cryo = plane/(geom.NTPC()*wire_readout.Nviews()); //geom.PositionToCryostatID(loc).Cryostat;
   //Each TPC has NViews worth of Values. Each cryo has NTPC, with Nviews each.
   //So for the core geometry processing to work we can calculate a simple plane offset
-  int PlaneOffset=tpc*geom.Nviews()+cryo*geom.NTPC()*geom.Nviews();
+  int PlaneOffset=tpc*wire_readout.Nviews()+cryo*geom.NTPC()*wire_readout.Nviews();
   //std::cout << "Plane " << plane << std::endl;
   //std::cout << PlaneOffset << std::endl;
    //std::cout << "*****  " << std::endl;
@@ -463,7 +463,7 @@ double SimpleGeometryHelper::PitchInView(UInt_t plane, double phi, double theta)
   Double_t angleToVert = 0.;
 
   wirePitch = wire_readout.Plane(geo::PlaneID(0, 1, plane)).WirePitch();
-  angleToVert = geom.WireAngleToVertical(wire_readout.Plane(geo::PlaneID(0, 0, plane)).View(), geo::TPCID(0, 0)) - 0.5 * TMath::Pi();
+  angleToVert = wire_readout.WireAngleToVertical(wire_readout.Plane(geo::PlaneID(0, 0, plane)).View(), geo::TPCID(0, 0)) - 0.5 * TMath::Pi();
 
   //(sin(angleToVert),std::cos(angleToVert)) is the direction perpendicular to wire
   //fDir.front() is the direction of the track at the beginning of its trajectory
@@ -879,7 +879,7 @@ std::vector<unsigned int> SimpleGeometryHelper::SelectLocalPointList( const std:
 //   std::vector<double> vertangle;
 //   vertangle.resize(geom.Nplanes());
 //   for (UInt_t ip = 0; ip < geom.Nplanes(); ip++)
-//     vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
+//     vertangle[ip] = wire_readout.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
 
 //   // y, z, x coordinates
 //   Double_t ln(0), mn(0), nn(0);
@@ -1069,13 +1069,11 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
 
   UInt_t chan1 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
   UInt_t chan2 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
-
-  if (! wire_readout.ChannelsIntersect(chan1, chan2, y, z) )
+  geo::Point_t intsec_p;
+  if (! wire_readout.WireIDsIntersect(chan1,chan2,intsec_p) )
     return -1;
-
-
-  yz[0] = y;
-  yz[1] = z;
+  yz[0] = intsec_p.Y();
+  yz[1] = intsec_p.Z();
 
   return 0;
 }
