@@ -10,7 +10,7 @@ DrawHit::DrawHit(const geo::GeometryCore&               geometry,
                  const detinfo::DetectorPropertiesData& detectorProperties,
                  const geo::WireReadoutGeom&            wireReadout,
                  const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
 {
   _name = "DrawHit";
   _fout = 0;
