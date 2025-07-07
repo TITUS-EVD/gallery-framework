@@ -7,8 +7,9 @@ namespace evd {
 
 DrawVertex::DrawVertex(const geo::GeometryCore&               geometry,
                        const detinfo::DetectorPropertiesData& detectorProperties,
+                       const geo::WireReadoutGeom&            wireReadout,
                        const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
 {
   _name = "DrawVertex";
   _fout = 0;
@@ -23,7 +24,7 @@ bool DrawVertex::initialize() {
   // If you have a histogram to fill in the event loop, for example,
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != total_plane_number) {
     _dataByPlane.resize(total_plane_number);
   }
@@ -35,7 +36,7 @@ bool DrawVertex::analyze(const gallery::Event & ev) {
 
   larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
 
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   art::InputTag vertex_tag(_producer);
   auto const & vertexHandle
