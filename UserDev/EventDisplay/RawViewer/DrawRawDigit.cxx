@@ -5,8 +5,8 @@
 
 namespace evd {
 
-DrawRawDigit::DrawRawDigit(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties) :
-  RawBase(geometry, detectorProperties)
+DrawRawDigit::DrawRawDigit(const geo::GeometryCore& geometry, const geo::WireReadoutGeom& wireReadout, const detinfo::DetectorPropertiesData& detectorProperties) :
+  RawBase(geometry,wireReadout, detectorProperties)
 {
   _name = "DrawRawDigit";
   _producer = "daq";
