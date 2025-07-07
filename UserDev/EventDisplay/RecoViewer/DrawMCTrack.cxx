@@ -6,7 +6,7 @@
 namespace evd {
 
 MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane) {
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
   MCTrack2D result;
   result._track.reserve(track.size());
 
@@ -24,8 +24,9 @@ MCTrack2D DrawMCTrack::getMCTrack2D(sim::MCTrack track, unsigned int plane) {
 
 DrawMCTrack::DrawMCTrack(const geo::GeometryCore&               geometry,
                          const detinfo::DetectorPropertiesData& detectorProperties,
+                         const geo::WireReadoutGeom&            wireReadout,
                          const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawMCTrack";
   _fout = 0;
@@ -34,7 +35,7 @@ DrawMCTrack::DrawMCTrack(const geo::GeometryCore&               geometry,
 bool DrawMCTrack::initialize() {
 
   // Resize data holder
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != total_plane_number) {
     _dataByPlane.resize(total_plane_number);
   }
@@ -43,7 +44,7 @@ bool DrawMCTrack::initialize() {
 
 bool DrawMCTrack::analyze(const gallery::Event & ev) {
 
-  size_t total_plane_number = _geo_service.Nplanes(); // * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes(); // * _geo_service.NTPC() * _geo_service.Ncryostats();
 
   // get a handle to the tracks
   art::InputTag tracks_tag(_producer);
