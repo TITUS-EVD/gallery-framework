@@ -10,11 +10,7 @@ DrawShower::DrawShower(const geo::GeometryCore&               geometry,
                        const detinfo::DetectorPropertiesData& detectorProperties,
                        const geo::WireReadoutGeom&            wireReadout,
                        const detinfo::DetectorClocksData&     detectorClocks) :
-<<<<<<< HEAD
-    RecoBase<Shower2D>(geometry, detectorProperties,wireReadout, detectorClocks)
-=======
     RecoBase<Shower2D>(geometry, detectorProperties, wireReadout, detectorClocks)
->>>>>>> feature/larsoft_v10
 {
   _name = "DrawShower";
   _fout = 0;
