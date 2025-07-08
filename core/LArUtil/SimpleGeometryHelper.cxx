@@ -1064,21 +1064,15 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
     z1 = wire_readout.Plane(geo::PlaneID(0, 0, p1->plane)).Nwires() - 1;
   }
 
-  UInt_t chan1 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
-  UInt_t chan2 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
+  geo::WireID wire1 (0, 0, p0->plane, z0);
+  geo::WireID wire2 (0, 0, p0->plane, z0);
+  geo::Point_t intsec_p;
+  if (! wire_readout.WireIDsIntersect(wire1,wire2,intsec_p) )
+    return -1;
+  yz[0] = intsec_p.Y();
+  yz[1] = intsec_p.Z();
 
-  auto result = wire_readout.ChannelsIntersect(chan1, chan2);
-  try {
-      auto intersection = result.value();
-      yz[0] = intersection.y;
-      yz[1] = intersection.z;
-
-      return 0;
-  }
-  catch (const std::bad_optional_access& e)
-  {
-      return -1;
-  }
+  return 0;
 }
 
   bool SimpleGeometryHelper::ContainedYZ(const double& y, const double& z) const {
