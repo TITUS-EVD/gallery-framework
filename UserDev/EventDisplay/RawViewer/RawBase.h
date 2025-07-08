@@ -105,7 +105,6 @@ namespace evd {
     std::vector<float> _pedestals;
 
     const geo::GeometryCore&               _geo_service;
-    const geo::WireReadoutGeom&               _wireReadout_service;
     const detinfo::DetectorPropertiesData& _det_prop;
     const geo::WireReadoutGeom&            _wire_readout;
 
