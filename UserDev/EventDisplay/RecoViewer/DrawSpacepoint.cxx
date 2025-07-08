@@ -9,8 +9,9 @@ namespace evd {
 
 DrawSpacepoint::DrawSpacepoint(const geo::GeometryCore&               geometry,
                                const detinfo::DetectorPropertiesData& detectorProperties,
+                               const geo::WireReadoutGeom&            wireReadout,
                                const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawSpacepoint";
   _fout = 0;
@@ -18,7 +19,7 @@ DrawSpacepoint::DrawSpacepoint(const geo::GeometryCore&               geometry,
 }
 
 bool DrawSpacepoint::initialize() {
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != total_plane_number) {
     _dataByPlane.resize(total_plane_number);
   }
@@ -26,8 +27,8 @@ bool DrawSpacepoint::initialize() {
 }
 
 bool DrawSpacepoint::analyze(const gallery::Event & ev) {
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
 
 
 

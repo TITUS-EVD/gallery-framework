@@ -9,14 +9,16 @@
 namespace evd {
 
 DrawFEBData::DrawFEBData(const geo::GeometryCore&               geometry,
-                         const detinfo::DetectorPropertiesData& detectorProperties) :
-    RawBase(geometry, detectorProperties)
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const geo::WireReadoutGeom&            wireReadout,
+                         const geo::AuxDetGeometryCore& auxDetGeometry) :
+    RawBase(geometry, detectorProperties, wireReadout), _auxdet_geo(auxDetGeometry)
 {
     // _det_clocks(detectorClocks)
     _name = "DrawFEBData";
     _feb_producer = "crtdecoder";
     _tdc_producer = "tdcdecoder";
-    _n_aux_dets = _geo_service.NAuxDets();
+    _n_aux_dets = _auxdet_geo.NAuxDets();
 
     _import_array();
 }

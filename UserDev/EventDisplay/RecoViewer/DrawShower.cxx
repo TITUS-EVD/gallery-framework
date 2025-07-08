@@ -8,8 +8,9 @@ namespace evd {
 
 DrawShower::DrawShower(const geo::GeometryCore&               geometry,
                        const detinfo::DetectorPropertiesData& detectorProperties,
+                       const geo::WireReadoutGeom&            wireReadout,
                        const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase<Shower2D>(geometry, detectorProperties, detectorClocks)
+    RecoBase<Shower2D>(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawShower";
   _fout = 0;
@@ -19,7 +20,7 @@ DrawShower::DrawShower(const geo::GeometryCore&               geometry,
 bool DrawShower::initialize() {
 
   // // Resize data holder to accommodate planes and wires:
-  size_t _total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t _total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != _total_plane_number) {
     _dataByPlane.resize(_total_plane_number);
   }
@@ -29,7 +30,7 @@ bool DrawShower::initialize() {
 
 bool DrawShower::analyze(const gallery::Event & ev) {
 
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
 
   // get a handle to the showers
@@ -74,10 +75,10 @@ bool DrawShower::analyze(const gallery::Event & ev) {
       shower_cryo = hits.at(0)->WireID().Cryostat;
     }
 
-    for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(shower_cryo, shower_tpc)); p++) {
+    for (unsigned int p = 0; p < _wire_readout.Nplanes(geo::TPCID(shower_cryo, shower_tpc)); p++) {
 
-      int plane = p + shower_tpc * _geo_service.Nplanes();
-      plane += shower_cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+      int plane = p + shower_tpc * _wire_readout.Nplanes();
+      plane += shower_cryo * _wire_readout.Nplanes() * _geo_service.NTPC();
 
       auto sh = getShower2d(shower, p, shower_tpc, shower_cryo);
       sh._tpc = shower_tpc;
@@ -107,7 +108,7 @@ bool DrawShower::finalize() {
 
 Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _det_prop, _det_clock);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
 
   Shower2D result;
   result._is_good = false;

@@ -52,7 +52,9 @@ namespace evd {
 
     /// Default constructor
     DrawFEBData(const geo::GeometryCore&               geometry,
-                const detinfo::DetectorPropertiesData& detectorProperties);
+                const detinfo::DetectorPropertiesData& detectorProperties,
+                const geo::WireReadoutGeom&            wireReadout,
+                const geo::AuxDetGeometryCore& auxDetGeometry);
 
     /// Default destructor
     virtual ~DrawFEBData(){}
@@ -74,6 +76,7 @@ namespace evd {
     std::string _tdc_producer;
 
     // const detinfo::DetectorClocksData&     _det_clocks;
+    const geo::AuxDetGeometryCore& _auxdet_geo;
 
   };
 }
