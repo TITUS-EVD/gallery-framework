@@ -13,8 +13,7 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    std::unique_ptr<geo::GeometryCore> _geom = lar::standalone::SetupGeometry<geo::GeoObjectSorterStandard>
-            (config.get<fhicl::ParameterSet>("services.Geometry"));
+    std::unique_ptr<geo::GeometryCore> _geom = lar::standalone::SetupGeometry(config);
 
     return _geom;
 
@@ -29,9 +28,9 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    const std::unique_ptr<geo::GeometryCore> _geom = GetGeometry(configFile);
-    std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupReadout<geo::WireReadoutSorterStandard, geo::WireReadoutStandardGeom>
-                      (config.get<fhicl::ParameterSet>("services.WireGeom"), &(*_geom));
+    std::unique_ptr<geo::GeometryCore> _geom = GetGeometry(fcl_file_name);
+
+    std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupReadout(config, _geom.get());
 
     return _wire_readout;
 
@@ -61,12 +60,14 @@ namespace larutil {
     fhicl::make_ParameterSet(configFile, policy, config);
 
     // geometry setup (it's special)
-    std::unique_ptr<::geo::GeometryCore> _geom = lar::standalone::SetupGeometry<geo::GeoObjectSorterStandard>
-            (config.get<fhicl::ParameterSet>("services.Geometry"));
+    std::unique_ptr<geo::GeometryCore> _geom = lar::standalone::SetupGeometry(config);
 
     // LArProperties setup
     std::unique_ptr<detinfo::LArPropertiesStandard> _larp = testing::setupProvider<detinfo::LArPropertiesStandard>
             (config.get<fhicl::ParameterSet>("services.LArPropertiesService"));
+
+    // WireReadout setup
+    std::unique_ptr<geo::WireReadoutGeom> _wire_readout = lar::standalone::SetupReadout(config, _geom.get());
 
     // DetectorClocks setup
     //std::unique_ptr<detinfo::DetectorClocksStandard> _detclk = testing::setupProvider<detinfo::DetectorClocksStandard>
@@ -82,7 +83,8 @@ namespace larutil {
             detinfo::DetectorPropertiesStandard::providers_type{
               _geom.get(),
               _wire_readout.get(),
-              static_cast<detinfo::LArProperties const*>(_larp.get())
+              _larp.get(),
+              // _detclk.get()
            }
     );
     return _detp;

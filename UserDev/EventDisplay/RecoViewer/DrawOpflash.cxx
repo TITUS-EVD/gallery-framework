@@ -10,7 +10,7 @@ DrawOpflash::DrawOpflash(const geo::GeometryCore&               geometry,
                          const detinfo::DetectorPropertiesData& detectorProperties,
                          const geo::WireReadoutGeom&            wireReadout,
                          const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
+    RecoBase(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawOpflash";
   _fout = 0;

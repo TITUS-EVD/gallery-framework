@@ -64,7 +64,7 @@ DrawNumuSelection::DrawNumuSelection(const geo::GeometryCore&               geom
                                      const detinfo::DetectorPropertiesData& detectorProperties,
                                      const geo::WireReadoutGeom&            wireReadout,
                                      const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
+    RecoBase(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawNumuSelection";
   _fout = 0;

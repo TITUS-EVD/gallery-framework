@@ -428,8 +428,7 @@ double SimpleGeometryHelper::CalculatePitch(UInt_t pl, double phi, double theta)
 
   if (wire_readout.Plane(geo::PlaneID(0, 0, pl)).View() == geo::View_t::kUnknown ||
       wire_readout.Plane(geo::PlaneID(0, 0, pl)).View() == geo::View_t::k3D) {
-    //galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for view %d", geom.View(pl)));
-    galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for plane %d", pl));
+    galleryfmwk::Message::send(galleryfmwk::msg::kERROR, __FUNCTION__, Form("Warning :  no Pitch foreseen for view %d", wire_readout.Plane(geo::PlaneID(0, 0, pl)).View()));
     return pitch;
   }
   else if ( pl >= wire_readout.Nplanes() ) {

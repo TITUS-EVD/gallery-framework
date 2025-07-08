@@ -6,10 +6,12 @@
 namespace evd {
 
 
-RawBase::RawBase(const geo::GeometryCore& geometry, const geo::WireReadoutGeom& wireReadout, const detinfo::DetectorPropertiesData& detectorProperties) :
+RawBase::RawBase(const geo::GeometryCore& geometry,
+                 const detinfo::DetectorPropertiesData& detectorProperties,
+                 const geo::WireReadoutGeom&            wireReadout) :
   _geo_service(geometry),
-  _wireReadout_service(wireReadout),
-  _det_prop(detectorProperties)
+  _det_prop(detectorProperties),
+  _wire_readout(wireReadout)
 {
   _import_array();
 }
@@ -21,7 +23,7 @@ RawBase::~RawBase() {
 
 const std::vector<float> & RawBase::getDataByPlane(unsigned int p) const {
   static std::vector<float> returnNull;
-  unsigned int n_views = _wireReadout_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  unsigned int n_views = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (p >= n_views) {
     std::cerr << "ERROR: Request for nonexistant plane " << p << std::endl;
     return returnNull;
@@ -46,7 +48,7 @@ bool RawBase::fileExists(std::string s){
 PyObject * RawBase::getArrayByPlane(unsigned int p) {
 
   PyObject * returnNull = nullptr;
-  unsigned int n_views = _wireReadout_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  unsigned int n_views = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (p >= n_views) {
     std::cerr << "ERROR: Request for nonexistant plane " << p << std::endl;
     return returnNull;

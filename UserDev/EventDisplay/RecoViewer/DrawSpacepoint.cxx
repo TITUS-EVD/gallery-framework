@@ -11,7 +11,7 @@ DrawSpacepoint::DrawSpacepoint(const geo::GeometryCore&               geometry,
                                const detinfo::DetectorPropertiesData& detectorProperties,
                                const geo::WireReadoutGeom&            wireReadout,
                                const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties,wireReadout, detectorClocks)
+    RecoBase(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawSpacepoint";
   _fout = 0;
@@ -28,7 +28,8 @@ bool DrawSpacepoint::initialize() {
 
 bool DrawSpacepoint::analyze(const gallery::Event & ev) {
   size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
-  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout,_det_prop, _det_clock);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
+
 
 
   // get a handle to the tracks

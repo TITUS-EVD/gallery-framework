@@ -9,16 +9,16 @@
 namespace evd {
 
 DrawFEBData::DrawFEBData(const geo::GeometryCore&               geometry,
-                          const geo::WireReadoutGeom& wireReadout,
-                          const geo::AuxDetGeometryCore& auxDetGeometry,
-                         const detinfo::DetectorPropertiesData& detectorProperties) :
-    RawBase(geometry,wireReadout, detectorProperties)
+                         const detinfo::DetectorPropertiesData& detectorProperties,
+                         const geo::WireReadoutGeom&            wireReadout,
+                         const geo::AuxDetGeometryCore& auxDetGeometry) :
+    RawBase(geometry, detectorProperties, wireReadout), _auxdet_geo(auxDetGeometry)
 {
     // _det_clocks(detectorClocks)
     _name = "DrawFEBData";
     _feb_producer = "crtdecoder";
     _tdc_producer = "tdcdecoder";
-    _n_aux_dets = auxDetGeometry.NAuxDets();
+    _n_aux_dets = _auxdet_geo.NAuxDets();
 
     _import_array();
 }
@@ -48,13 +48,14 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
     const auto& tdcs
         = ev.getValidHandle<std::vector<sbnd::timing::DAQTimestamp> >(tdc_data_tag);
 
-    uint64_t etrig_time = 0;
+    uint32_t etrig_s = 0, etrig_ns = 0;
 
     for(auto const& tdc : *tdcs)
       {
 	if(tdc.Channel() == 4)
 	  {
-	    etrig_time = tdc.Timestamp() % static_cast<uint64_t>(1e9);
+	    etrig_s  = tdc.Timestamp() / static_cast<uint64_t>(1e9);
+	    etrig_ns = tdc.Timestamp() % static_cast<uint64_t>(1e9);
 	  }
       }
 
@@ -68,7 +69,23 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
 
         // Take the T0 time (time since PPS) reference to to the event trigger
         // and apply stored cable delay in Coinc field.
-        int64_t t0 = (int64_t)feb.Ts0() - etrig_time + feb.Coinc();
+        int64_t t0 = (int64_t)feb.Ts0() + feb.Coinc();
+
+        uint32_t feb_unixs = (uint32_t) feb.UnixS();
+        int64_t unix_diff = static_cast<int64_t>(etrig_s) - static_cast<int64_t>(feb_unixs);
+
+        if(unix_diff < -1 || unix_diff > 1)
+          {
+            throw std::runtime_error(Form("Unix timestamps differ by more than 1 (%li)", unix_diff));
+          }
+
+        if(unix_diff == 1)
+          t0 -= 1e9;
+        else if(unix_diff == -1)
+          t0 += 1e9;
+
+        t0 -= etrig_ns;
+
         uint32_t t1 = feb.Ts1();
 
         const auto& adc_arr = feb.ADC();

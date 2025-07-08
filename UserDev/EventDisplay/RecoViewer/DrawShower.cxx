@@ -10,7 +10,11 @@ DrawShower::DrawShower(const geo::GeometryCore&               geometry,
                        const detinfo::DetectorPropertiesData& detectorProperties,
                        const geo::WireReadoutGeom&            wireReadout,
                        const detinfo::DetectorClocksData&     detectorClocks) :
+<<<<<<< HEAD
     RecoBase<Shower2D>(geometry, detectorProperties,wireReadout, detectorClocks)
+=======
+    RecoBase<Shower2D>(geometry, detectorProperties, wireReadout, detectorClocks)
+>>>>>>> feature/larsoft_v10
 {
   _name = "DrawShower";
   _fout = 0;
@@ -108,7 +112,7 @@ bool DrawShower::finalize() {
 
 Shower2D DrawShower::getShower2d(recob::Shower shower, unsigned int plane, unsigned int tpc, unsigned int cryostat) {
 
-  larutil::SimpleGeometryHelper geo_helper(_geo_service,_wire_readout, _det_prop, _det_clock);
+  larutil::SimpleGeometryHelper geo_helper(_geo_service, _wire_readout, _det_prop, _det_clock);
 
   Shower2D result;
   result._is_good = false;
