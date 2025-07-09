@@ -156,6 +156,7 @@ class ServiceLoaderWorker(QtCore.QObject):
         self.geom_service = services.ServiceManager('Geometry')
         self.readout_service = services.ServiceManager('WireReadout')
         self.lar_prop_service = services.ServiceManager('LArProperties')
+        self.auxDetGeometryCore = services.ServiceManager('AuxDetGeometry')
 
         # TODO is this necessary?
         self.det_prop_service.DataFor(self.det_clock_service.DataForJob())

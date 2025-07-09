@@ -46,7 +46,7 @@ class SpacepointHits(Drawable):
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'spacepointhits'
-        self._process = evd.DrawSpacepointHits(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
+        self._process = evd.DrawSpacepointHits(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getWireReadout(), geom.getDetectorClocks())
         self._geom = geom
         self._module = tpc_module
         self.init()
