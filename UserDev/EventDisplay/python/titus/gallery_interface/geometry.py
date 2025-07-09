@@ -341,7 +341,7 @@ class Geometry(geoBase):
             self._opdet_name.append(larutil.Geometry.GetME().OpDetNameFromOpChannel(d))
 
 
-    def configure(self, geometryCore, detProperties, readoutProperties, detClocks, lar_properties, wireReadout):
+    def configure(self, geometryCore, detProperties, readoutProperties, detClocks, lar_properties):
         '''
         This is a new implementation that
         uses LArSoft services to get the
@@ -358,7 +358,7 @@ class Geometry(geoBase):
         self._detectorProperties = detProperties.DataFor(self._detectorClocks)
         self._readout_properties = readoutProperties
         self._lar_properties = lar_properties
-        self._wireReadout = wireReadout
+        self._wireReadout = readoutProperties #We have two names for this now
 
         print(readoutProperties)
         print(dir(readoutProperties))
@@ -449,7 +449,7 @@ class Geometry(geoBase):
 class sbnd(Geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, wireReadout=None):
+    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(sbnd, self).__init__()
@@ -556,7 +556,7 @@ class sbnd(Geometry):
 class icarus(Geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, no_split_wire=False, wireReadout=None):
+    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, no_split_wire=False):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()

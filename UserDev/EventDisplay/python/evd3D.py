@@ -90,9 +90,9 @@ def main():
     elif args.lariat:
         geom = geometry.lariat()
     elif args.sbnd:
-        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties, wireReadout)
+        geom = geometry.sbnd(geometryCore,detProperties,wireReadout,detClocks,lar_properties)
     elif args.icarus:
-        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties, wireReadout)
+        geom = geometry.icarus(geometryCore,detProperties,wireReadout,detClocks,lar_properties)
     else:
         geom = geometry.argoneut()
 
