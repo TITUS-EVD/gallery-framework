@@ -154,11 +154,12 @@ class ServiceLoaderWorker(QtCore.QObject):
     def run(self):
         print(dir(services))
         print("\n\n\n\n\n\n")
+        print(services.ServiceManager)
         print(inspect.getsource(services.ServiceManager))
         self.det_clock_service = services.ServiceManager('DetectorClocks')
         self.det_prop_service = services.ServiceManager('DetectorProperties')
         self.geom_service = services.ServiceManager('Geometry')
-        self.readout_service = services.ServiceManager('wireReadout')
+        self.readout_service = services.ServiceManager('WireReadout')
         self.lar_prop_service = services.ServiceManager('LArProperties')
 
         # TODO is this necessary?
