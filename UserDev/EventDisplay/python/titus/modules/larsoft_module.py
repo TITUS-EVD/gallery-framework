@@ -55,6 +55,7 @@ class LArSoftModule(Module):
         self.geom_service = None
         self.readout_service = None
         self.lar_prop_service = None
+        self.auxDetGeometryCore = None
 
         self._central_widget = QtWidgets.QWidget()
         waiting_layout = QtWidgets.QHBoxLayout()
@@ -132,6 +133,7 @@ class LArSoftModule(Module):
         self.readout_service = self._worker.readout_service
         self.geom_service = self._worker.geom_service
         self.lar_prop_service = self._worker.lar_prop_service
+        self.auxDetGeometryCore = self._worker.auxDetGeometryCore
 
         self._gui.setEnabled(True)
         self._worker.deleteLater()
