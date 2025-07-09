@@ -101,7 +101,7 @@ def main():
     detProperties   = services.ServiceManager('DetectorProperties')
     detClocks       = services.ServiceManager('DetectorClocks')
     lar_properties  = services.ServiceManager('LArProperties')
-    wireReadout    = services.ServiceManager('WireReadout')
+    wireReadout    = services.wireReadout
 
     app = QtGui.QApplication(sys.argv)
 

@@ -83,7 +83,7 @@ def main():
     detProperties   = services.ServiceManager('DetectorProperties')
     detClocks       = services.ServiceManager('DetectorClocks')
     lar_properties  = services.ServiceManager('LArProperties')
-    wireReadout    = services.ServiceManager('WireReadout')
+    wireReadout    = services.wireReadout
 
     if args.uboone:
         geom = geometry.microboone()
