@@ -83,15 +83,16 @@ def main():
     detProperties   = services.ServiceManager('DetectorProperties')
     detClocks       = services.ServiceManager('DetectorClocks')
     lar_properties  = services.ServiceManager('LArProperties')
+    wireReadout    = services.ServiceManager('WireGeom')
 
     if args.uboone:
         geom = geometry.microboone()
     elif args.lariat:
         geom = geometry.lariat()
     elif args.sbnd:
-        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties, wireReadout)
     elif args.icarus:
-        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties)
+        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties, wireReadout)
     else:
         geom = geometry.argoneut()
 
