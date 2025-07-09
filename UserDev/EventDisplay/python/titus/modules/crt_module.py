@@ -224,7 +224,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         Aux_geo_core = self._geometry.getAuxDetGeometryCore() 
         for ad_i in range(Aux_geo_core.NAuxDets()):
             # Get module from parent of the aux det in the GDML
-            ad = geo_core.AuxDet(ad_i)
+            ad = Aux_geo_core.AuxDet(ad_i)
             ad_name = ad.TotalVolume().GetName()
             # FindAllVolumePaths needs a C++ set argument, can't initialize in one
             # line for some reason
