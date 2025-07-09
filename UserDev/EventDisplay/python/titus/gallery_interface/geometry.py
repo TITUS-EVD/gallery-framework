@@ -347,7 +347,7 @@ class Geometry(geoBase):
         uses LArSoft services to get the
         GeometryCore and DetectorProperties
         '''
-        if geometryCore is None or detProperties is None or detClocks is None or wireReadout is None:
+        if geometryCore is None or detProperties is None or detClocks is None or readoutProperties is None:
             self.configure()
             return
 
