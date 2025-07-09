@@ -154,7 +154,7 @@ class ServiceLoaderWorker(QtCore.QObject):
     def run(self):
         print(dir(services))
         print("\n\n\n\n\n\n")
-        print(services.ServiceManager)
+        print(inspect.isclass(services.ServiceManager))
         print(inspect.getsource(services.ServiceManager))
         self.det_clock_service = services.ServiceManager('DetectorClocks')
         self.det_prop_service = services.ServiceManager('DetectorProperties')
