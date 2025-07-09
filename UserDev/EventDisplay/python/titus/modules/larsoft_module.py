@@ -10,7 +10,6 @@ maintains a dictionary of LArSoft products present at each stage
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from .module import Module
-import inspect
 
 
 SUPPORTED_SERVICES = {
@@ -152,16 +151,10 @@ class ServiceLoaderWorker(QtCore.QObject):
         super().__init__()
 
     def run(self):
-        print(dir(services))
-        print("\n\n\n\n\n\n")
-        print(inspect.isclass(services.ServiceManager))
-        print(inspect.isfunction(services.ServiceManager))
-        print(inspect.ismodule(services))
-        print(inspect.getsource(services))
         self.det_clock_service = services.ServiceManager('DetectorClocks')
         self.det_prop_service = services.ServiceManager('DetectorProperties')
         self.geom_service = services.ServiceManager('Geometry')
-        self.readout_service = services.ServiceManager('WireReadout')
+        self.readout_service = services.wireReadout #similar method can be used for geometry
         self.lar_prop_service = services.ServiceManager('LArProperties')
 
         # TODO is this necessary?
