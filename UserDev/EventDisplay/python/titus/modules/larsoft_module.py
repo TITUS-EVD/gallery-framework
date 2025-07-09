@@ -154,7 +154,7 @@ class ServiceLoaderWorker(QtCore.QObject):
         self.det_clock_service = services.ServiceManager('DetectorClocks')
         self.det_prop_service = services.ServiceManager('DetectorProperties')
         self.geom_service = services.ServiceManager('Geometry')
-        self.readout_service = services.ServiceManager('WireGeom')
+        self.readout_service = services.ServiceManager('WireReadout')
         self.lar_prop_service = services.ServiceManager('LArProperties')
 
         # TODO is this necessary?
