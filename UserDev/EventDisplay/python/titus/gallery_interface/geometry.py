@@ -454,7 +454,7 @@ class sbnd(Geometry):
         # and then call the base class __init__
         super(sbnd, self).__init__()
         # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
-        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties, wireReadout)
+        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties)
 
         # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
         # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
