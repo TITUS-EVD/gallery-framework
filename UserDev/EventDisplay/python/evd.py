@@ -49,11 +49,9 @@ def main():
     det_service_name = 'sbnd'
     if args.icarus:
         det_service_name = 'icarus'
-    print("Im am running for ", det_service_name)
     # add other services here...
-    print("lsm?")
+
     lsm = LArSoftModule(det_service_name, args.timerange)
-    print("gm?")
     gm = GeometryModule(lsm)
     
 
