@@ -221,7 +221,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
     def _init_crt_strips(self):
         ''' create initial map of mac and strip ID to GDML objects '''
         #geo_core = self._geometry.getGeometryCore()
-        geo_core = self._geometry.getAuxDetGeometryCore
+        geo_core = self._geometry.getAuxDetGeometryCore()
         for ad_i in range(geo_core.NAuxDets()):
             # Get module from parent of the aux det in the GDML
             ad = geo_core.AuxDet(ad_i)
@@ -284,7 +284,7 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
 
         # AuxDets are the CRT strip arrays. The GDML mother of the AuxDets is the CRT module
         #geo_core = self._geometry.getGeometryCore()
-        geo_core = self._geometry.getAuxDetGeometryCore
+        geo_core = self._geometry.getAuxDetGeometryCore()
         nauxdet = geo_core.NAuxDets()
         for ad_i in range(nauxdet):
             ad = geo_core.AuxDet(ad_i)
