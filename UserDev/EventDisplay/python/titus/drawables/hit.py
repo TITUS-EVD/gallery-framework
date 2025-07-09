@@ -50,7 +50,7 @@ class Hit(Drawable):
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'hit'
-        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
+        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getWireReadout(), geom.getDetectorClocks())
         self._brush = (0, 0, 0)
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._n_tpcs = geom.nTPCs()

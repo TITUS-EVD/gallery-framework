@@ -93,7 +93,7 @@ class RecoWire(Wire):
         self._plane_mix = geom.planeMix()
         self._plane_flip = geom.planeFlip()
         self._split_wire = geom.splitWire()
-        self._process = evd.DrawWire(geom.getGeometryCore(), geom.getDetectorProperties())
+        self._process = evd.DrawWire(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getWireReadout())
         self._process.initialize()
         self._process.setInput(self._producer_name)
         for plane in range(geom.nViews() * geom.nTPCs()):

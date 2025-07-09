@@ -22,7 +22,6 @@
 #include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 
 
-
 struct _object;
 typedef _object PyObject;
 

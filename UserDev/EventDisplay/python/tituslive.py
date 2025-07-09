@@ -101,6 +101,7 @@ def main():
     detProperties   = services.ServiceManager('DetectorProperties')
     detClocks       = services.ServiceManager('DetectorClocks')
     lar_properties  = services.ServiceManager('LArProperties')
+    wireReadout    = services.wireReadout
 
     app = QtGui.QApplication(sys.argv)
 
@@ -117,15 +118,15 @@ def main():
         exit()
         geom = geometry.lariat()
     elif args.sbnd:
-        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+        geom = geometry.sbnd(geometryCore,detProperties,wireReadout, detClocks,lar_properties)
     elif args.sbnd3:
-        geom = geometry.sbnd(geometryCore,detProperties,detClocks,lar_properties)
+        geom = geometry.sbnd(geometryCore,detProperties,wireReadout, detClocks,lar_properties)
         geom._tRange = 7500
         geom._triggerOffset = 2500
         geom._readoutWindowSize = 7500
         geom.recalculateOffsets()
     elif args.icarus:
-        geom = geometry.icarus(geometryCore,detProperties,detClocks,lar_properties,args.no_split_wire)
+        geom = geometry.icarus(geometryCore,detProperties,wireReadout,detClocks,lar_properties,args.no_split_wire)
     else:
         print('TITUS Live is not available for ArgoNeuT.')
         exit()

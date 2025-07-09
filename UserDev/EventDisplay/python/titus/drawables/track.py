@@ -42,7 +42,7 @@ class Track(Drawable):
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'track'
-        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getDetectorClocks())
+        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(),geom.getWireReadout(), geom.getDetectorClocks())
         self._process._projections_match = geom.projectionsMatch()
         self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._geom = geom

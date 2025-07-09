@@ -212,6 +212,12 @@ class geoBase(object):
     def crt_back_zmax(self):
         return self._crt_back_zmax
 
+    def getWireReadout(self):
+        return self._wireReadout
+
+    def getAuxDetGeometryCore(self):
+        return self._auxDetGeometryCore
+    
     def getGeometryCore(self):
         return self._geometryCore
 
@@ -341,13 +347,13 @@ class Geometry(geoBase):
             self._opdet_name.append(larutil.Geometry.GetME().OpDetNameFromOpChannel(d))
 
 
-    def configure(self, geometryCore, detProperties, readoutProperties, detClocks, lar_properties):
+    def configure(self, geometryCore, detProperties, readoutProperties, detClocks, lar_properties, auxDetGeometryCore):
         '''
         This is a new implementation that
         uses LArSoft services to get the
         GeometryCore and DetectorProperties
         '''
-        if geometryCore is None or detProperties is None or detClocks is None:
+        if geometryCore is None or detProperties is None or detClocks is None or readoutProperties is None or auxDetGeometryCore is None:
             self.configure()
             return
 
@@ -358,6 +364,8 @@ class Geometry(geoBase):
         self._detectorProperties = detProperties.DataFor(self._detectorClocks)
         self._readout_properties = readoutProperties
         self._lar_properties = lar_properties
+        self._wireReadout = readoutProperties #We have two names for this now
+        self._auxDetGeometryCore = auxDetGeometryCore
 
         print(readoutProperties)
         print(dir(readoutProperties))
@@ -448,12 +456,12 @@ class Geometry(geoBase):
 class sbnd(Geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None):
+    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, auxDetGeometryCore=None):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(sbnd, self).__init__()
         # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
-        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties)
+        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties, auxDetGeometryCore)
 
         # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
         # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
@@ -555,11 +563,11 @@ class sbnd(Geometry):
 class icarus(Geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, no_split_wire=False):
+    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, no_split_wire=False, auxDetGeometryCore=None):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()
-        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties)
+        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties, auxDetGeometryCore)
 
         self._pedestals = [0, 0, 0, 0, 0, 0]
         self._levels = [(100, 0), (0, 100), (0, 100), (100, 0), (0, 100), (0, 100)]
