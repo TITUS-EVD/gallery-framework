@@ -45,19 +45,25 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
     const auto& febs
         = ev.getValidHandle<std::vector<sbnd::crt::FEBData> >(feb_data_tag);
 
-    const auto& tdcs
-        = ev.getValidHandle<std::vector<sbnd::timing::DAQTimestamp> >(tdc_data_tag);
+    gallery::Handle<std::vector<sbnd::timing::DAQTimestamp>> tdcs;
+    ev.getByLabel(tdc_data_tag, tdcs);
+    bool has_tdcs = tdcs.isValid();
 
     uint32_t etrig_s = 0, etrig_ns = 0;
 
-    for(auto const& tdc : *tdcs)
-      {
-	if(tdc.Channel() == 4)
-	  {
-	    etrig_s  = tdc.Timestamp() / static_cast<uint64_t>(1e9);
-	    etrig_ns = tdc.Timestamp() % static_cast<uint64_t>(1e9);
-	  }
-      }
+    if (has_tdcs) {
+        for(auto const& tdc : *tdcs)
+        {
+            if(tdc.Channel() == 4)
+            {
+                etrig_s  = tdc.Timestamp() / static_cast<uint64_t>(1e9);
+                etrig_ns = tdc.Timestamp() % static_cast<uint64_t>(1e9);
+            }
+        }
+    }
+    else {
+        fprintf(stderr, "Warning: No TDCS data found, will use uncorrected times for CRT hits. This is expected for MC events.");
+    }
 
     // int total_adc = 0;
     for (auto const& feb : *febs) {
@@ -74,17 +80,19 @@ bool DrawFEBData::analyze(const gallery::Event & ev) {
         uint32_t feb_unixs = (uint32_t) feb.UnixS();
         int64_t unix_diff = static_cast<int64_t>(etrig_s) - static_cast<int64_t>(feb_unixs);
 
-        if(unix_diff < -1 || unix_diff > 1)
-          {
-            throw std::runtime_error(Form("Unix timestamps differ by more than 1 (%li)", unix_diff));
-          }
+        if (has_tdcs) {
+            if(unix_diff < -1 || unix_diff > 1)
+            {
+                throw std::runtime_error(Form("Unix timestamps differ by more than 1 (%li)", unix_diff));
+            }
 
-        if(unix_diff == 1)
-          t0 -= 1e9;
-        else if(unix_diff == -1)
-          t0 += 1e9;
+            if(unix_diff == 1)
+                t0 -= 1e9;
+            else if(unix_diff == -1)
+                t0 += 1e9;
 
-        t0 -= etrig_ns;
+            t0 -= etrig_ns;
+        }
 
         uint32_t t1 = feb.Ts1();
 
