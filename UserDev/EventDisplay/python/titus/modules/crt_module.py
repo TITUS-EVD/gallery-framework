@@ -61,7 +61,7 @@ class CrtModule(Module):
         frame.setLayout(main_layout)
         self._dock.setWidget(frame)
 
-        draw_group_box = QtWidgets.QGroupBox("Time Range")
+        draw_group_box = QtWidgets.QGroupBox("Time Range (ns)")
         _bg2 = QtWidgets.QButtonGroup(self)
         self._min_time_btn = QtWidgets.QSpinBox()
         self._max_time_btn = QtWidgets.QSpinBox()

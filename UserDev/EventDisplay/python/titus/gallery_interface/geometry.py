@@ -563,7 +563,7 @@ class sbnd(Geometry):
 class icarus(Geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, no_split_wire=False, auxDetGeometryCore=None):
+    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, auxDetGeometryCore=None, no_split_wire=False, ):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()
