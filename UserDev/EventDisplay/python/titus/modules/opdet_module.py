@@ -634,6 +634,7 @@ def parse_opdetwaveforms(data, geometry, clock_service):
     # leading NaN from each waveform
     n_waveforms = int(data[0])
     compression_factor = int(data[1])
+    data = data[2:]
 
     wvfm_breaks = np.where(np.isnan(data))[0]
     wvfms = np.split(data, wvfm_breaks)[:-1]

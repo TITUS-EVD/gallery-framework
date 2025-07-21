@@ -367,9 +367,6 @@ class Geometry(geoBase):
         self._wireReadout = readoutProperties #We have two names for this now
         self._auxDetGeometryCore = auxDetGeometryCore
 
-        print(readoutProperties)
-        print(dir(readoutProperties))
-
         self._halfwidth = geometryCore.Cryostat(0).HalfWidth()
         self._halfheight = geometryCore.Cryostat(0).HalfHeight()
         self._length = geometryCore.Cryostat(0).Length()
