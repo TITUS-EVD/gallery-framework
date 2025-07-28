@@ -67,7 +67,9 @@ class geoBase(object):
 
         self._geometryCore = None
         self._detectorProperties = None
+        self._readout_properties = None
         self._clockProperties = None
+        self._detectorClocks = None
         self._lar_properties = None
 
     def name(self):
@@ -210,6 +212,12 @@ class geoBase(object):
     def crt_back_zmax(self):
         return self._crt_back_zmax
 
+    def getWireReadout(self):
+        return self._wireReadout
+
+    def getAuxDetGeometryCore(self):
+        return self._auxDetGeometryCore
+    
     def getGeometryCore(self):
         return self._geometryCore
 
@@ -339,13 +347,13 @@ class Geometry(geoBase):
             self._opdet_name.append(larutil.Geometry.GetME().OpDetNameFromOpChannel(d))
 
 
-    def configure(self, geometryCore, detProperties, detClocks, lar_properties):
+    def configure(self, geometryCore, detProperties, readoutProperties, detClocks, lar_properties, auxDetGeometryCore):
         '''
         This is a new implementation that
         uses LArSoft services to get the
         GeometryCore and DetectorProperties
         '''
-        if geometryCore is None or detProperties is None or detClocks is None:
+        if geometryCore is None or detProperties is None or detClocks is None or readoutProperties is None or auxDetGeometryCore is None:
             self.configure()
             return
 
@@ -354,18 +362,21 @@ class Geometry(geoBase):
         self._geometryCore = geometryCore
         self._detectorClocks = detClocks.DataForJob()
         self._detectorProperties = detProperties.DataFor(self._detectorClocks)
+        self._readout_properties = readoutProperties
         self._lar_properties = lar_properties
+        self._wireReadout = readoutProperties #We have two names for this now
+        self._auxDetGeometryCore = auxDetGeometryCore
 
-        self._halfwidth = geometryCore.DetHalfWidth()
-        self._halfheight = geometryCore.DetHalfHeight()
-        self._length = geometryCore.DetLength()
+        self._halfwidth = geometryCore.Cryostat(0).HalfWidth()
+        self._halfheight = geometryCore.Cryostat(0).HalfHeight()
+        self._length = geometryCore.Cryostat(0).Length()
         #self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
         self._time2Cm = self._detectorClocks.TPCClock().TickPeriod() * self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature())
-        self._wire2Cm = geometryCore.WirePitch()
+        self._wire2Cm = readoutProperties.Plane(ROOT.geo.TPCID(0, 0), 0).WirePitch()
         self._samplingRate = self._detectorClocks.TPCClock().TickPeriod() * 1000. #detProperties.SamplingRate()
         self._aspectRatio = self._wire2Cm / self._time2Cm
-        self._nViews = geometryCore.Nviews() * geometryCore.NTPC() * geometryCore.Ncryostats()
-        self._nPlanes = geometryCore.Nplanes()
+        self._nViews = readoutProperties.Nviews() * geometryCore.NTPC() * geometryCore.Ncryostats()
+        self._nPlanes = readoutProperties.Nplanes()
         self._nTPCs = int(geometryCore.NTPC())
         self._nCryos = int(geometryCore.Ncryostats())
         self._tRange = self._detectorProperties.NumberTimeSamples()
@@ -376,18 +387,18 @@ class Geometry(geoBase):
         self._wRange = []
         self._offset = []
         for v in range(0, self._nViews):
-            self._wRange.append(geometryCore.Nwires(ROOT.geo.PlaneID(0, 0, v)))
+            self._wRange.append(readoutProperties.Nwires(ROOT.geo.PlaneID(0, 0, v)))
 
         self._opdet_x = []
         self._opdet_y = []
         self._opdet_z = []
         self._opdet_name = []
         for opch in range(0, geometryCore.NOpDets()):
-            xyz = geometryCore.OpDetGeoFromOpChannel(opch).GetCenter();
+            xyz = readoutProperties.OpDetGeoFromOpChannel(opch).GetCenter();
             self._opdet_x.append(xyz.X())
             self._opdet_y.append(xyz.Y())
             self._opdet_z.append(xyz.Z())
-            shape_name = geometryCore.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName()
+            shape_name = readoutProperties.OpDetGeoFromOpChannel(opch).Shape().IsA().GetName()
             if shape_name == 'TGeoSphere':
                 self._opdet_name.append('pmt_coated')
             elif shape_name == 'TGeoBBox':
@@ -442,12 +453,12 @@ class Geometry(geoBase):
 class sbnd(Geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None):
+    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, auxDetGeometryCore=None):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(sbnd, self).__init__()
         # larutil.LArUtilManager.Reconfigure(galleryfmwk.geo.kSBND)
-        self.configure(geometryCore, detProperties, detClocks, lar_properties)
+        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties, auxDetGeometryCore)
 
         # self._pedestals = [2048, 2048, 400, 2048, 2048, 400]
         # self._levels = [[-100, 10], [-10, 100], [-10, 200], [-100, 10], [-10, 100], [-10, 200]]
@@ -549,11 +560,11 @@ class sbnd(Geometry):
 class icarus(Geometry):
 
 
-    def __init__(self, geometryCore=None, detProperties=None, detClocks=None, lar_properties=None, no_split_wire=False):
+    def __init__(self, geometryCore=None, detProperties=None, readoutProperties=None, detClocks=None, lar_properties=None, auxDetGeometryCore=None, no_split_wire=False, ):
         # Try to get the values from the geometry file.  Configure for sbnd
         # and then call the base class __init__
         super(icarus, self).__init__()
-        self.configure(geometryCore, detProperties, detClocks, lar_properties)
+        self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties, auxDetGeometryCore)
 
         self._pedestals = [0, 0, 0, 0, 0, 0]
         self._levels = [(100, 0), (0, 100), (0, 100), (100, 0), (0, 100), (0, 100)]

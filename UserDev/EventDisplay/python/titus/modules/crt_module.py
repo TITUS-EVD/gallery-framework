@@ -61,7 +61,7 @@ class CrtModule(Module):
         frame.setLayout(main_layout)
         self._dock.setWidget(frame)
 
-        draw_group_box = QtWidgets.QGroupBox("Time Range")
+        draw_group_box = QtWidgets.QGroupBox("Time Range (ns)")
         _bg2 = QtWidgets.QButtonGroup(self)
         self._min_time_btn = QtWidgets.QSpinBox()
         self._max_time_btn = QtWidgets.QSpinBox()
@@ -111,6 +111,7 @@ class CrtModule(Module):
 
     def update(self):
         all_producers = self._gi.get_producers(_SBND_CRT_FEBDATA, self._lsm.current_stage)
+        print(all_producers[0].producer())
         if all_producers is None:
             self._draw_crt_strips = False
             if self._crt_strip_drawer is not None:
@@ -221,9 +222,10 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
     def _init_crt_strips(self):
         ''' create initial map of mac and strip ID to GDML objects '''
         geo_core = self._geometry.getGeometryCore()
-        for ad_i in range(geo_core.NAuxDets()):
+        Aux_geo_core = self._geometry.getAuxDetGeometryCore() 
+        for ad_i in range(Aux_geo_core.NAuxDets()):
             # Get module from parent of the aux det in the GDML
-            ad = geo_core.AuxDet(ad_i)
+            ad = Aux_geo_core.AuxDet(ad_i)
             ad_name = ad.TotalVolume().GetName()
             # FindAllVolumePaths needs a C++ set argument, can't initialize in one
             # line for some reason
@@ -283,9 +285,10 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
 
         # AuxDets are the CRT strip arrays. The GDML mother of the AuxDets is the CRT module
         geo_core = self._geometry.getGeometryCore()
-        nauxdet = geo_core.NAuxDets()
+        Aux_geo_core = self._geometry.getAuxDetGeometryCore()
+        nauxdet = Aux_geo_core.NAuxDets()
         for ad_i in range(nauxdet):
-            ad = geo_core.AuxDet(ad_i)
+            ad = Aux_geo_core.AuxDet(ad_i)
             nstrip = ad.NSensitiveVolume()
 
             ad_name = ad.TotalVolume().GetName()

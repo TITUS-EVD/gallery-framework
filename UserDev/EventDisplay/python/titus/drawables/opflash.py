@@ -13,6 +13,7 @@ class OpFlash(Drawable):
         self._process = evd.DrawOpflash(
             geom.getGeometryCore(),
             geom.getDetectorProperties(),
+            geom.getWireReadout(),
             geom.getDetectorClocks()
         )
         self._geom = geom

@@ -338,8 +338,10 @@ class OpDetModule(Module):
                 self._opdet_wf_drawer = self.register_drawable(
                     _DRAWABLE_LIST['OpDetWaveform'][0](self._gi, self._gm.current_geom)
                 )
-            producer = self._wfm_choice.selected_products()[0]
-            self._opdet_wf_drawer.set_producer(producer)
+            selected_products = self._wfm_choice.selected_products()
+            if len(selected_products) > 0:
+                producer = self._wfm_choice.selected_products()[0]
+                self._opdet_wf_drawer.set_producer(producer)
 
         elif product == _RECOB_OPFLASH:
             if all_producers is None:
@@ -620,16 +622,19 @@ class flash_time_view(pg.GraphicsLayoutWidget):
 
 def parse_opdetwaveforms(data, geometry, clock_service):
     """Get waveforms & times from raw data returned by DrawOpDetWaveform."""
-    # unpack variable number of waveforms
-    n_waveforms = int(data[0])
-    compression_factor = int(data[1])
+    if len(data) < 3:
+        return {}
 
+    if np.isnan(data[0]):
+        return {}
+
+    # unpack variable number of waveforms
     # waveform data follows first two elements. each waveform separated by
     # a NaN. remove the last element (empty) after the split and then the
     # leading NaN from each waveform
+    n_waveforms = int(data[0])
+    compression_factor = int(data[1])
     data = data[2:]
-    if len(data) == 0:
-        return {}
 
     wvfm_breaks = np.where(np.isnan(data))[0]
     wvfms = np.split(data, wvfm_breaks)[:-1]

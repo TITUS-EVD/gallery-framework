@@ -32,7 +32,10 @@
 // - Geometry
 #include "larcorealg/Geometry/StandaloneGeometrySetup.h"
 #include "larcorealg/Geometry/GeometryCore.h"
-#include "larcorealg/Geometry/ChannelMapStandardAlg.h"
+#include "larcorealg/Geometry/WireReadoutGeom.h"
+#include "larcorealg/Geometry/GeoObjectSorterStandard.h"
+#include "larcorealg/Geometry/WireReadoutSorterStandard.h"
+#include "larcorealg/Geometry/WireReadoutStandardGeom.h"
 
 // - DetectorClocks
 #include "lardataalg/DetectorInfo/DetectorClocksStandardTestHelpers.h"
@@ -65,7 +68,8 @@ namespace larutil {
   public:
 
     /// Method to get geometry
-    static std::unique_ptr<::geo::GeometryCore> GetGeometry(std::string fcl_file_name);
+    static std::unique_ptr<geo::GeometryCore> GetGeometry(std::string fcl_file_name);
+    static std::unique_ptr<geo::WireReadoutGeom> GetWireReadout(std::string fcl_file_name);
     static std::unique_ptr<detinfo::LArPropertiesStandard>  GetLArProperties(std::string fcl_file_name);
     static std::unique_ptr<detinfo::DetectorPropertiesStandard>  GetDetProperties(std::string fcl_file_name);
 

@@ -7,8 +7,9 @@ namespace evd {
 
 DrawEndpoint::DrawEndpoint(const geo::GeometryCore&               geometry,
                            const detinfo::DetectorPropertiesData& detectorProperties,
+                           const geo::WireReadoutGeom&            wireReadout,
                            const detinfo::DetectorClocksData&     detectorClocks) :
-    RecoBase(geometry, detectorProperties, detectorClocks)
+    RecoBase(geometry, detectorProperties, wireReadout, detectorClocks)
 {
   _name = "DrawEndpoint";
   _fout = 0;
@@ -22,7 +23,7 @@ bool DrawEndpoint::initialize() {
   // If you have a histogram to fill in the event loop, for example,
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
   if (_dataByPlane.size() != total_plane_number) {
     _dataByPlane.resize(total_plane_number);
   }
@@ -52,7 +53,7 @@ bool DrawEndpoint::analyze(const gallery::Event & ev) {
   // Obtain event-wise data object pointers
   //
 
-  size_t total_plane_number = _geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
+  size_t total_plane_number = _wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats();
 
 
   art::InputTag end2d_tag(_producer);

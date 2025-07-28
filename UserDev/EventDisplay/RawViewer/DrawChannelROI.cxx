@@ -7,8 +7,11 @@
 
 namespace evd {
 
-DrawChannelROI::DrawChannelROI(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& detectorProperties) :
-  RawBase(geometry, detectorProperties)
+DrawChannelROI::DrawChannelROI(
+        const geo::GeometryCore& geometry, 
+        const detinfo::DetectorPropertiesData& detectorProperties,
+        const geo::WireReadoutGeom&            wireReadout) :
+  RawBase(geometry, detectorProperties, wireReadout)
 {
   _name = "DrawChannelROI";
   _producer = "roifinder";
@@ -30,12 +33,12 @@ bool DrawChannelROI::initialize() {
   // here is a good place to create one on the heap (i.e. "new TH1D").
   //
   //
-  _padding_by_plane.resize(_geo_service.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
+  _padding_by_plane.resize(_wire_readout.Nplanes() * _geo_service.NTPC() * _geo_service.Ncryostats());
   int counter = 0;
   for (unsigned int c = 0; c < _geo_service.Ncryostats(); c++) {
     for (unsigned int t = 0; t < _geo_service.NTPC(geo::CryostatID(c)); t++) {
-      for (unsigned int p = 0; p < _geo_service.Nplanes(geo::TPCID(c, t)); p++) {
-        setXDimension(_geo_service.Nwires(geo::PlaneID(c, t, p)), counter);
+      for (unsigned int p = 0; p < _wire_readout.Nplanes(geo::TPCID(c, t)); p++) {
+        setXDimension(_wire_readout.Nwires(geo::PlaneID(c, t, p)), counter);
         setYDimension(_det_prop.ReadOutWindowSize(), counter);
         counter++;
       }
@@ -96,7 +99,7 @@ bool DrawChannelROI::analyze(const gallery::Event & ev) {
   for (auto const &wires : wire_v) {
     for (auto const& wire : *wires) {
       unsigned int ch = wire.Channel();
-      std::vector<geo::WireID> widVec = _geo_service.ChannelToWire(ch);
+      std::vector<geo::WireID> widVec = _wire_readout.ChannelToWire(ch);
       for (geo::WireID w_id : widVec) {
         size_t detChannelROI = w_id.Wire;
         size_t plane   = w_id.Plane;
@@ -106,8 +109,8 @@ bool DrawChannelROI::analyze(const gallery::Event & ev) {
         // If a second TPC is present, its planes 0, 1 and 2 are
         // stored consecutively to those of the first TPC.
         // So we have planes 0, 1, 2, 3, 4, 5.
-        plane += tpc * _geo_service.Nplanes();
-        plane += cryo * _geo_service.Nplanes() * _geo_service.NTPC();
+        plane += tpc * _wire_readout.Nplanes();
+        plane += cryo * _wire_readout.Nplanes() * _geo_service.NTPC();
 
         int offset = detChannelROI * _y_dimensions[plane] + _padding_by_plane[plane];
 

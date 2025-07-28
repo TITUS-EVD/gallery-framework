@@ -13,7 +13,7 @@ add_library(EventDisplay_RecoViewer SHARED
 )
 
 
-target_link_libraries(EventDisplay_RawViewer
+target_link_libraries(EventDisplay_RecoViewer
     ${gallery_LIBRARY_DIR}/libgallery.so
     ${ROOT_LIBRARIES}
     ${CLHEP_LIBRARIES}

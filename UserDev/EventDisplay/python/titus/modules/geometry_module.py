@@ -85,13 +85,13 @@ class GeometryModule(Module):
         """
         if self._lsm.configured_for == 'sbnd':
             self._available_geoms = [
-                geometry.sbnd(self._lsm.geom_service, self._lsm.det_prop_service,
-                              self._lsm.det_clock_service, self._lsm.lar_prop_service)
+                geometry.sbnd(self._lsm.geom_service, self._lsm.det_prop_service, self._lsm.readout_service,
+                              self._lsm.det_clock_service, self._lsm.lar_prop_service, self._lsm.auxDetGeometryCore)
             ]
         elif self._lsm.configured_for == 'icarus':
             self._available_geoms = [
-                geometry.icarus(self._lsm.geom_service, self._lsm.det_prop_service,
-                              self._lsm.det_clock_service, self._lsm.lar_prop_service)
+                geometry.icarus(self._lsm.geom_service, self._lsm.det_prop_service, self._lsm.readout_service,
+                              self._lsm.det_clock_service, self._lsm.lar_prop_service, self._lsm.auxDetGeometryCore)
             ]
 
         if self._time_range is not None:

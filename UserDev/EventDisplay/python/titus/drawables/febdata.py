@@ -6,7 +6,9 @@ class FEBData(Drawable):
     def __init__(self, gallery_interface, geom):
         super().__init__(gallery_interface)
         self._process = evd.DrawFEBData(geom.getGeometryCore(),
-                                        geom.getDetectorProperties())
+                                        geom.getDetectorProperties(), 
+                                        geom.getWireReadout(), 
+                                        geom.getAuxDetGeometryCore())
         self._process.initialize()
 
     def getData(self):

@@ -38,7 +38,10 @@ namespace evd {
   public:
 
     /// Default constructor
-    DrawChannelROI(const geo::GeometryCore& geometry, const detinfo::DetectorPropertiesData& DetectorProperties);
+    DrawChannelROI(
+            const geo::GeometryCore& geometry,
+            const detinfo::DetectorPropertiesData& DetectorProperties,
+            const geo::WireReadoutGeom&            wireReadout);
 
     /// Default destructor
     virtual ~DrawChannelROI(){}
