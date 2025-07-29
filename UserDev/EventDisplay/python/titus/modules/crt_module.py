@@ -61,7 +61,7 @@ class CrtModule(Module):
         frame.setLayout(main_layout)
         self._dock.setWidget(frame)
 
-        draw_group_box = QtWidgets.QGroupBox("Time Range")
+        draw_group_box = QtWidgets.QGroupBox("Time Range (ns)")
         _bg2 = QtWidgets.QButtonGroup(self)
         self._min_time_btn = QtWidgets.QSpinBox()
         self._max_time_btn = QtWidgets.QSpinBox()
@@ -111,6 +111,7 @@ class CrtModule(Module):
 
     def update(self):
         all_producers = self._gi.get_producers(_SBND_CRT_FEBDATA, self._lsm.current_stage)
+        print(all_producers[0].producer())
         if all_producers is None:
             self._draw_crt_strips = False
             if self._crt_strip_drawer is not None:

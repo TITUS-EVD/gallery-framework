@@ -1067,8 +1067,6 @@ int SimpleGeometryHelper::GetYZ(const Point2D *p0, const Point2D *p1, Double_t* 
     z1 = wire_readout.Plane(geo::PlaneID(0, 0, p1->plane)).Nwires() - 1;
   }
 
-  //UInt_t chan1 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p0->plane, z0));
-  //UInt_t chan2 = wire_readout.PlaneWireToChannel(geo::WireID(0, 0, p1->plane, z1));
   geo::WireID wire1 (0, 0, p0->plane, z0);
   geo::WireID wire2 (0, 0, p0->plane, z0);
   geo::Point_t intsec_p;
