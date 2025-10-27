@@ -297,7 +297,7 @@ class TpcModule(Module):
             default_products = self._gi.get_default_products(_RECOB_CHANNELROI)
             self._channel_roi_choice = MultiSelectionBox(self, _RECOB_CHANNELROI, products, default_products)
             self._channel_roi_choice.activated.connect(self.change_wire_choice)
-            
+
             wire_choice_layout.addWidget(self._channel_roi_button, 3, 0, 1, 1)
             wire_choice_layout.addWidget(self._channel_roi_choice, 3, 1, 1, 1)
             self._channel_roi_choice.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
@@ -788,7 +788,7 @@ class TpcModule(Module):
             if producers is not None:
                 producer = producers
             elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
-                producer = [p.full_name() for p in all_producers[:3]]
+                producer = [p.full_name() for p in all_producers[:4]]
             else:
                 producer = self._wire_choice.selected_products()[0]
 
@@ -1264,8 +1264,8 @@ class WireView(pg.GraphicsLayoutWidget):
         self._viewport_name_low.setStyleSheet('color: rgb(169,169,169);')
         self._viewport_name_low.setMaximumWidth(25)
 
-        self._geometry.planeMix()[plane][0] - self._geometry.nPlanes()
-        name = f'TPC West, Plane {plane}'
+        self._other_plane = self._geometry.planeMix()[plane][0] % self._geometry.nPlanes()
+        name = f'TPC West, Plane {self._other_plane}'
         self._viewport_name_up = VerticalLabel(name)
         self._viewport_name_up.setStyleSheet('color: rgb(169,169,169);')
         self._viewport_name_up.setMaximumWidth(25)
@@ -1482,6 +1482,7 @@ class WireView(pg.GraphicsLayoutWidget):
         Draws lines corresponding to the cathode and anode positions for t0 = 0
         Red line = anode
         Blue line = cathode
+        use ticks, since that's how the array is stored
         '''
 
         if not self._showAnodeCathode:
@@ -1493,9 +1494,8 @@ class WireView(pg.GraphicsLayoutWidget):
             # Take into account the distance between planes
             offset = self._geometry.triggerOffset() * self._geometry.time2cm() # - delta_plane
 
-            hw = 100
-            x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
-            x_anode   = offset/self._geometry.time2cm()
+            x_cathode = (self._geometry.halfwidth() + offset)/self._geometry.time2cm()
+            x_anode   = offset / self._geometry.time2cm()
 
             # If we are changing the t0, shift the anode and cathode position
             x_cathode += self._manual_t0
@@ -1506,7 +1506,6 @@ class WireView(pg.GraphicsLayoutWidget):
                 x_cathode = self._geometry.tRange() - x_cathode
                 x_anode   = self._geometry.tRange() - x_anode
 
-
             # Add the ad-hoc gap between TPCs
             x_cathode += tpc * self._geometry.cathodeGap()
             x_anode   += tpc * self._geometry.cathodeGap()
@@ -1516,9 +1515,8 @@ class WireView(pg.GraphicsLayoutWidget):
             x_anode   += tpc * self._geometry.tRange()
 
             # If we are deleting entries to see the cathodes together, do it here too
-            x_cathode = x_cathode - 2 * tpc * self._removed_entries
-            x_anode   = x_anode - 2 * tpc * self._removed_entries
-
+            x_cathode -= 2 * tpc * self._removed_entries
+            x_anode   -= 2 * tpc * self._removed_entries
 
             # Construct the cathode line and append it
             line = QtWidgets.QGraphicsLineItem()
@@ -1544,8 +1542,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._removed_entries = 0
 
         if self._uniteCathodes:
-
-            x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
+            x_cathode = (self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
             x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
 
             x_cathode += self._manual_t0
@@ -1570,7 +1567,7 @@ class WireView(pg.GraphicsLayoutWidget):
 
             data = np.delete(data, final_slice, axis=1)
             self.drawPlane(data)
-        
+
         self.drawPlane(data)
         self.showAnodeCathode(self._showAnodeCathode)
 
@@ -1609,7 +1606,7 @@ class WireView(pg.GraphicsLayoutWidget):
             else:
                 message += "W: "
                 message += str(int(self.q.x()))
-        
+
         if self._cmSpace:
             if type(message) != str:
                 message.append(", Y: ")
@@ -1669,18 +1666,15 @@ class WireView(pg.GraphicsLayoutWidget):
             data = self._item.image
             if wire < 0 or wire >= len(data):
                 return
-            
+
             self._wireData = data[wire]
             self._wireData = self._wireData[self._first_entry:self._last_entry]
 
             # Here we want to display the real plane number, not the view.
             # So, make sure that if you are in an odd TPC we display the right number.
             plane = self._plane
-            if tpc %2 != 0:
-                if self._plane == 0:
-                    plane = 1
-                elif self._plane == 1:
-                    plane = 0
+            if tpc % 2 != 0:
+                plane = self._other_plane
 
             self._wdf(wireData=self._wireData, wire=wire, plane=plane, tpc=tpc,\
                       cryo=self._cryostat, drawer=self, replace_idx=replace_idx)
