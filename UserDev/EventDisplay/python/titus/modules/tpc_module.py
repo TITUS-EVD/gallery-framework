@@ -1494,7 +1494,7 @@ class WireView(pg.GraphicsLayoutWidget):
             # Take into account the distance between planes
             offset = self._geometry.triggerOffset() * self._geometry.time2cm() # - delta_plane
 
-            x_cathode = (self._geometry.halfwidth() + offset)/self._geometry.time2cm()
+            x_cathode = (2.0 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
             x_anode   = offset / self._geometry.time2cm()
 
             # If we are changing the t0, shift the anode and cathode position
@@ -1542,7 +1542,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._removed_entries = 0
 
         if self._uniteCathodes:
-            x_cathode = (self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
+            x_cathode = (2.0 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
             x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
 
             x_cathode += self._manual_t0

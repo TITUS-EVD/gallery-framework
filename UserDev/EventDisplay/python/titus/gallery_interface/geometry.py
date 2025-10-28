@@ -217,7 +217,7 @@ class geoBase(object):
 
     def getAuxDetGeometryCore(self):
         return self._auxDetGeometryCore
-    
+
     def getGeometryCore(self):
         return self._geometryCore
 
@@ -367,9 +367,9 @@ class Geometry(geoBase):
         self._wireReadout = readoutProperties #We have two names for this now
         self._auxDetGeometryCore = auxDetGeometryCore
 
-        self._halfwidth = geometryCore.Cryostat(0).HalfWidth()
-        self._halfheight = geometryCore.Cryostat(0).HalfHeight()
-        self._length = geometryCore.Cryostat(0).Length()
+        self._halfwidth = geometryCore.TPC().HalfWidth()
+        self._halfheight = geometryCore.TPC().HalfHeight()
+        self._length = geometryCore.TPC().Length()
         #self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
         self._time2Cm = self._detectorClocks.TPCClock().TickPeriod() * self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature())
         self._wire2Cm = readoutProperties.Plane(ROOT.geo.TPCID(0, 0), 0).WirePitch()
