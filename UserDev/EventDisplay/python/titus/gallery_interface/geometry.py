@@ -217,7 +217,7 @@ class geoBase(object):
 
     def getAuxDetGeometryCore(self):
         return self._auxDetGeometryCore
-    
+
     def getGeometryCore(self):
         return self._geometryCore
 
@@ -367,9 +367,9 @@ class Geometry(geoBase):
         self._wireReadout = readoutProperties #We have two names for this now
         self._auxDetGeometryCore = auxDetGeometryCore
 
-        self._halfwidth = geometryCore.Cryostat(0).HalfWidth()
-        self._halfheight = geometryCore.Cryostat(0).HalfHeight()
-        self._length = geometryCore.Cryostat(0).Length()
+        self._halfwidth = geometryCore.TPC().HalfWidth()
+        self._halfheight = geometryCore.TPC().HalfHeight()
+        self._length = geometryCore.TPC().Length()
         #self._time2Cm = detProperties.SamplingRate() / 1000.0 * detProperties.DriftVelocity(detProperties.Efield(), detProperties.Temperature())
         self._time2Cm = self._detectorClocks.TPCClock().TickPeriod() * self._detectorProperties.DriftVelocity(self._detectorProperties.Efield(), self._detectorProperties.Temperature())
         self._wire2Cm = readoutProperties.Plane(ROOT.geo.TPCID(0, 0), 0).WirePitch()
@@ -466,7 +466,6 @@ class sbnd(Geometry):
         self._levels = [(100, -10), (-10, 100), (-10, 200)]
 
         self._view_names = ['U', 'V', 'Y']
-        # self._plane_mix = {0: [4], 1: [3], 2: [5]}
         self._plane_mix = {0: [3], 1: [4], 2: [5]}
         self._plane_flip = [False, False, False, True, True, True]
         self._plane_shift = [False, False, False, False, False, False]
@@ -567,9 +566,8 @@ class icarus(Geometry):
         self.configure(geometryCore, detProperties, readoutProperties, detClocks, lar_properties, auxDetGeometryCore)
 
         self._pedestals = [0, 0, 0, 0, 0, 0]
-        self._levels = [(100, 0), (0, 100), (0, 100), (100, 0), (0, 100), (0, 100)]
+        self._levels = [(40000, 0), (0, 40000), (0, 40000), (40000, 0), (0, 40000), (0, 40000)]
         self._view_names = ['H', 'U', 'V']
-        # self._plane_mix = {0: [3, 6, 9], 1: [5, 8, 11], 2: [4, 7, 10]}
         self._plane_mix = {0: [3], 1: [5], 2: [4], 6: [9], 7: [11], 8: [10]}
         self._plane_flip = [False, False, False, True, True, True, False, False, False, True, True, True]
 
