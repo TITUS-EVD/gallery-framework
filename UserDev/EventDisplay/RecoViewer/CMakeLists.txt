@@ -13,6 +13,7 @@ add_library(EventDisplay_RecoViewer SHARED
 )
 
 
+find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
 target_link_libraries(EventDisplay_RecoViewer
     ${gallery_LIBRARY_DIR}/libgallery.so
     ${ROOT_LIBRARIES}
@@ -26,17 +27,14 @@ target_link_libraries(EventDisplay_RecoViewer
     gallery_framework_Base
     gallery_framework_Analysis
     gallery_framework_LArUtil
+    Python::NumPy
 )
 
 target_include_directories(EventDisplay_RecoViewer PRIVATE ${PROJECT_SOURCE_DIR}/core)
 
 find_package(nusimdata REQUIRED)
 target_include_directories(EventDisplay_RecoViewer PRIVATE ${nusimdata_INCLUDE_DIRS})
-
-find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
 target_include_directories(EventDisplay_RecoViewer PRIVATE ${Python_INCLUDE_DIRS})
-
-target_link_libraries(EventDisplay_RecoViewer Python::NumPy)
 
 ROOT_GENERATE_DICTIONARY(EventDisplay_RecoViewer_Dict
     DrawCluster.h
