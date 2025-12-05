@@ -54,7 +54,7 @@ class SpacepointHits(Drawable):
         return 'Time: {time:0.1f}\nSpace Point ID: {ID}\nPDG: {}'.format(
             time=SpacePoint.time(),
             ID=SpacePoint.SpacePointID(), 
-            SpacePoints.blipPDG())
+            SpacePoint.blipPDG())
     def drawObjects(self):
         #Do initialization of objects necessary for core loop over space point ID
         SpacePointIDs = []
