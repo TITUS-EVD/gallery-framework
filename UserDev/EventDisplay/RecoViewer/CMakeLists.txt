@@ -33,6 +33,9 @@ target_include_directories(EventDisplay_RecoViewer PRIVATE ${PROJECT_SOURCE_DIR}
 find_package(nusimdata REQUIRED)
 target_include_directories(EventDisplay_RecoViewer PRIVATE ${nusimdata_INCLUDE_DIRS})
 
+find_package(sbndcode REQUIRED)
+target_include_directories(EventDisplay_RecoViewer PRIVATE ${sbndcode_INCLUDE_DIRS})
+
 find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
 target_include_directories(EventDisplay_RecoViewer PRIVATE ${Python_INCLUDE_DIRS})
 
