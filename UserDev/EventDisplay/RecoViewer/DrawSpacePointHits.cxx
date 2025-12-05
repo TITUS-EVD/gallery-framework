@@ -37,7 +37,7 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
   art::InputTag blip_tag(_producer);
   auto const & spacepointHandle
         = ev.getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
-  auto const & blipHandle
+  auto blipHandle
         = ev.getValidHandle<std::vector <blip::Blip> >(blip_tag);
   bool drawingBlips = blipHandle->isValid();
   art::FindMany<recob::Hit> hits_for_SpacePoints(spacepointHandle, ev, sps_tag);
