@@ -1,0 +1,110 @@
+/**
+ * \file DrawSpacepointHits.h
+ *
+ * \ingroup RecoViewer
+ *
+ * \brief Class def header for a class DrawSpacepointHits
+ *
+ * @author cadams
+ */
+
+/** \addtogroup RecoViewer
+
+    @{*/
+#ifndef EVD_DrawSpacepointHITS_H
+#define EVD_DrawSpacepointHITS_H
+
+#include <iostream>
+#include "Analysis/ana_base.h"
+#include "lardataobj/RecoBase/SpacePoint.h"
+#include "canvas/Persistency/Common/FindMany.h"
+#include "lardataobj/RecoBase/Hit.h"
+#include "sbndcode/BlipRecoSBND/Utils/DataTypes.h"
+
+#include "RecoBase.h"
+#include "LArUtil/PxUtils.h"
+/**
+   \class DrawSpacepointHits
+   User defined class DrawSpacepointHits ... these comments are used to generate
+   doxygen documentation!
+ */
+
+// typedef std::vector< std::pair<float,float> > evd::Track2d;
+
+namespace evd {
+  class HitFromSpacePoint {
+    public:
+        HitFromSpacePoint() {}
+        HitFromSpacePoint(int SPID, float w, float t, int p, int __tpc, int __cryo, float __duration, int __BlipPDG) :
+        _SpacePointID(SPID),
+        _wire(w),
+        _time(t),
+        _plane(p),
+        _tpc( __tpc ),
+        _cryo(__cryo),
+        _duration(__duration),
+        _blipPDG(__BlipPDG)
+        {}
+        ~HitFromSpacePoint() {}
+        float _wire;
+        float _time;
+        int   _SpacePointID;
+        int   _plane;
+        int   _tpc;
+        int   _cryo;
+        float _duration;
+        int _blipPDG;
+
+        float wire()   {return _wire;}
+        float time()   {return _time;}
+        int   plane()  {return _plane;}
+        int   tpc()  {return _tpc;}
+        int   cryo()  {return _cryo;}
+        int   SpacePointID() {return _SpacePointID;}
+        float duration() {return _duration;}
+        int blipPDG() {return _blipPDG;}
+
+        //Conversion functions
+        //operator larutil::PxPoint() const { return larutil::PxPoint(_plane, _wire, _time,_SpacePointID, _tpc, _cryo); }
+  };
+
+
+  class DrawSpacepointHits : public galleryfmwk::ana_base, public RecoBase<HitFromSpacePoint> {
+
+public:
+
+    /// Default constructor
+    DrawSpacepointHits(const geo::GeometryCore&               geometry,
+                   const detinfo::DetectorPropertiesData& detectorProperties,
+                   const geo::WireReadoutGeom&            wireReadout,
+                   const detinfo::DetectorClocksData&     detectorClocks);
+
+    /// Default destructor
+    ~DrawSpacepointHits();
+
+    /** IMPLEMENT in DrawCluster.cc!
+        Initialization method to be called before the analysis event loop.
+    */
+    virtual bool initialize();
+
+    /** IMPLEMENT in DrawCluster.cc!
+        Analyze a data event-by-event
+    */
+    virtual bool analyze(const gallery::Event &event);
+
+    /** IMPLEMENT in DrawCluster.cc!
+        Finalize method to be called after all events processed.
+    */
+    virtual bool finalize();
+
+
+private:
+
+
+};
+
+} // evd
+
+#endif
+/** @} */ // end of doxygen group
+

@@ -52,6 +52,7 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
   larutil::Point2D point;
 
   // Populate the spacepoint vector:
+  int IndexTracker=0;
   for (auto & spt : *spacepointHandle) {
 
     // A spacepoint is a 3D object.  So take it and project it into each plane:
@@ -65,19 +66,20 @@ bool DrawSpacepoint::analyze(const gallery::Event & ev) {
       catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
       }
-      _dataByPlane.at(p).push_back(point);
+      _dataByPlane.at(p).emplace_back( SpacePointInfo(IndexTracker, point.w, point.t  ) );
 
 
       // Determine if this hit should change the view range:
-      if (point.w / geo_helper.WireToCm() > _wireRange.at(p).second)
-        _wireRange.at(p).second = point.w / geo_helper.WireToCm();
-      if (point.w / geo_helper.WireToCm() < _wireRange.at(p).first)
-        _wireRange.at(p).first = point.w / geo_helper.WireToCm();
-      if (point.t / geo_helper.TimeToCm() > _timeRange.at(p).second)
-        _timeRange.at(p).second = point.t / geo_helper.TimeToCm();
-      if (point.t / geo_helper.TimeToCm() < _timeRange.at(p).first)
-        _timeRange.at(p).first = point.t / geo_helper.TimeToCm();
+      //if (point.w / geo_helper.WireToCm() > _wireRange.at(p).second)
+      //  _wireRange.at(p).second = point.w / geo_helper.WireToCm();
+      //if (point.w / geo_helper.WireToCm() < _wireRange.at(p).first)
+      //  _wireRange.at(p).first = point.w / geo_helper.WireToCm();
+      //if (point.t / geo_helper.TimeToCm() > _timeRange.at(p).second)
+      //  _timeRange.at(p).second = point.t / geo_helper.TimeToCm();
+      //if (point.t / geo_helper.TimeToCm() < _timeRange.at(p).first)
+      //  _timeRange.at(p).first = point.t / geo_helper.TimeToCm();
     }
+    IndexTracker++;
   }
 
 

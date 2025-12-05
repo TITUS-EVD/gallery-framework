@@ -30,7 +30,7 @@ void GeometryHelper::Reconfigure()
 // The next set of functions is the collection of functions to convert 3D Point to 2D point
 // The first function is maintained, and the rest convert their arguments and call it
 Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane) const {
-
+  std::cout << "In regular geometry helper point_3dto2d" << std::endl;
   // Make a check on the plane:
   if (plane > geom -> Nplanes()) {
     throw larutil::LArUtilException(Form("Can't project 3D point to unknown plane %u", plane));
@@ -46,19 +46,19 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
   // Previously used nearest wire functions, but they are
   // slightly inaccurate
   // If you want the nearest wire, use the nearest wire function!
-  returnPoint.w = geom->WireCoordinate(_3D_position, plane) * fWireToCm;
+  returnPoint.w = geom->WireCoordinate(_3D_position, plane); //* fWireToCm;
   // std::cout << "wire is " << returnPoint.w << " (cm)" << std::endl;
 
   // The time position is the X coordinate, corrected for
   // trigger offset and the offset of the plane
   auto detp = DetectorProperties::GetME();
-  returnPoint.t = _3D_position.X();
+  returnPoint.t = _3D_position.X(); //in cm
   // Add in the trigger offset:
   // (Trigger offset is time that the data is recorded
   // before the actual spill.
   // So, it moves the "0" farther away from the actual
   // time and is an addition)
-  returnPoint.t += detp -> TriggerOffset() * fTimeToCm;
+  returnPoint.t += detp -> TriggerOffset() * fTimeToCm; //still in cm
   // std::cout << "trigger offset, plane " << plane
   //           << ": " << detp -> TriggerOffset() * fTimeToCm << std::endl;
   //
@@ -72,34 +72,41 @@ Point2D GeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int
   // beyond 0 needs to make the time coordinate larger
   // Therefore, subtract the offest (which is already
   // in centimeters)
-  returnPoint.t -= planeOrigin[0];
+  returnPoint.t -= planeOrigin[0]; //still in cm
 
 // std::cout << "origin offset, plane " << plane
 //             << ": " << planeOrigin[0] << std::endl;
 
   // Set the plane of the Point2D:
   returnPoint.plane = plane;
+  returnPoint.t = returnPoint.t/fTimeToCm; //Back to time
+  std::cout << "About to draw " << returnPoint.w << "  " << returnPoint.t << " on plane " << returnPoint.plane << std::endl;
 
   return returnPoint;
 }
 
 Point2D GeometryHelper::Point_3Dto2D(double * xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 0 " << std::endl;
   TVector3 vec(xyz);
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(float * xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 1 " << std::endl;
   TVector3 vec(xyz);
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(float x, float y, float z, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 2 " << std::endl;
   TVector3 vec(x, y, z);
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(const std::vector<double> & xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 3 " << std::endl;
   TVector3 vec(&(xyz[0]));
   return Point_3Dto2D(vec, plane);
 }
 Point2D GeometryHelper::Point_3Dto2D(const std::vector<float> & xyz, unsigned int plane) const {
+  std::cout << "Overload -- Not simple 4 " << std::endl;
   TVector3 vec(&(xyz[0]));
   return Point_3Dto2D(vec, plane);
 }

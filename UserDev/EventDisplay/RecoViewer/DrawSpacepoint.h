@@ -27,10 +27,29 @@
 
 // typedef std::vector< std::pair<float,float> > evd::Track2d;
 
+
+
 namespace evd {
 
+  class SpacePointInfo {
+    public:
+        SpacePointInfo() {}
+        SpacePointInfo(int SPID, float w, float t) :
+        _SpacePointID(SPID),
+        _wire(w),
+        _time(t)
+        {}
+        ~SpacePointInfo() {}
+        int   _SpacePointID;
+        float _wire;
+        float _time;
 
-  class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<larutil::Point2D> {
+        float wire()   {return _wire;}
+        float time()   {return _time;}
+        int   SpacePointID() {return _SpacePointID;}
+  };
+
+  class DrawSpacepoint : public galleryfmwk::ana_base, public RecoBase<SpacePointInfo> {
 
 public:
 
@@ -68,4 +87,3 @@ private:
 
 #endif
 /** @} */ // end of doxygen group
-

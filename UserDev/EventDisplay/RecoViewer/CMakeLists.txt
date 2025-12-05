@@ -8,11 +8,10 @@ add_library(EventDisplay_RecoViewer SHARED
     DrawOpflash.cxx
     DrawShower.cxx
     DrawSpacepoint.cxx
+    DrawSpacePointHits.cxx
     DrawTrack.cxx
     DrawVertex.cxx
 )
-
-
 target_link_libraries(EventDisplay_RecoViewer
     ${gallery_LIBRARY_DIR}/libgallery.so
     ${ROOT_LIBRARIES}
@@ -23,6 +22,7 @@ target_link_libraries(EventDisplay_RecoViewer
     ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
     ${lardataalg_LIBRARY_DIR}/liblardataalg_DetectorInfo.so
     ${cetlib_except_LIBRARY_DIR}/libcetlib_except.so 
+    /cvmfs/sbnd.opensciencegrid.org/products/sbnd/sbndcode/v10_14_00/slf7.x86_64.e26.prof/lib/libsbndcode_BlipUtils.so
     gallery_framework_Base
     gallery_framework_Analysis
     gallery_framework_LArUtil
@@ -32,6 +32,9 @@ target_include_directories(EventDisplay_RecoViewer PRIVATE ${PROJECT_SOURCE_DIR}
 
 find_package(nusimdata REQUIRED)
 target_include_directories(EventDisplay_RecoViewer PRIVATE ${nusimdata_INCLUDE_DIRS})
+
+find_package(sbndcode REQUIRED)
+target_include_directories(EventDisplay_RecoViewer PRIVATE ${sbndcode_INCLUDE_DIRS})
 
 find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
 target_include_directories(EventDisplay_RecoViewer PRIVATE ${Python_INCLUDE_DIRS})
@@ -48,6 +51,7 @@ ROOT_GENERATE_DICTIONARY(EventDisplay_RecoViewer_Dict
     DrawOpflash.h
     DrawShower.h
     DrawSpacepoint.h
+    DrawSpacePointHits.h
     DrawTrack.h
     DrawVertex.h
     RecoBase.h

@@ -26,7 +26,7 @@ void SimpleGeometryHelper::Reconfigure()
   fNPlanes = wire_readout.Nplanes();
   // vertangle.resize(fNPlanes);
   // for (UInt_t ip = 0; ip < fNPlanes; ip++)
-  //   vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
+  //   vertangle[ip] = wire_readout.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
 
 
   fWireToCm = wire_readout.Plane(geo::PlaneID(0, 1, 0)).WirePitch();
@@ -37,19 +37,22 @@ void SimpleGeometryHelper::Reconfigure()
 // The next set of functions is the collection of functions to convert 3D Point to 2D point
 // The first function is maintained, and the rest convert their arguments and call it
 Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsigned int plane, unsigned int tpc_, unsigned int cryo_) const {
-
   //initialize return value
   Point2D returnPoint;
 
   geo::Point_t loc(_3D_position[0],_3D_position[1], _3D_position[2]);
 
   // Get the tpc and cryo ids from the 3D point
-  unsigned int tpc = geom.PositionToTPCID(loc).TPC;
-  unsigned int cryo = geom.PositionToCryostatID(loc).Cryostat;
-
-  // std::cout << "*****  " << std::endl;
-  // std::cout << "TPC  " << tpc << std::endl;
-  // std::cout << "CRYO " << cryo << std::endl;
+  unsigned int tpc = plane/wire_readout.Nviews(); //geom.PositionToTPCID(loc).TPC;
+  unsigned int cryo = plane/(geom.NTPC()*wire_readout.Nviews()); //geom.PositionToCryostatID(loc).Cryostat;
+  //Each TPC has NViews worth of Values. Each cryo has NTPC, with Nviews each.
+  //So for the core geometry processing to work we can calculate a simple plane offset
+  int PlaneOffset=tpc*wire_readout.Nviews()+cryo*geom.NTPC()*wire_readout.Nviews();
+  //std::cout << "Plane " << plane << std::endl;
+  //std::cout << PlaneOffset << std::endl;
+   //std::cout << "*****  " << std::endl;
+   //std::cout << "TPC  " << tpc << std::endl;
+   //std::cout << "CRYO " << cryo << std::endl;
 
   // Make a check on the plane:
   if (cryo >= geom.Ncryostats() || tpc >= geom.NTPC(geo::CryostatID(cryo)) || plane >= wire_readout.Nplanes(geo::TPCID(cryo, tpc))) {
@@ -72,7 +75,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // The time position is the X coordinate, corrected for
   // trigger offset and the offset of the plane
   // auto detp = DetectorProperties::GetME();
-  returnPoint.t = _3D_position.X();
+  returnPoint.t = _3D_position.X(); //cm
   // Add in the trigger offset:
   // (Trigger offset is time that the data is recorded
   // before the actual spill.
@@ -84,7 +87,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   Double_t planeOrigin[3];
   // geom -> PlaneOriginVtx(plane, planeOrigin);
   // auto vtx = geom.Plane(plane, 0, cryo).GetCenter();
-  auto vtx = planeGeo.GetCenter();
+  auto vtx = planeGeo.GetCenter(); //Why center?
   // auto vtx = geom.Plane(plane).GetCenter();
   planeOrigin[0] = vtx.X();
   planeOrigin[1] = vtx.Y();
@@ -99,7 +102,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
   // Therefore, subtract the offest (which is already
   // in centimeters)
   if (tpc == 0) {
-    returnPoint.t = returnPoint.t - planeOrigin[0];
+    returnPoint.t = returnPoint.t - planeOrigin[0]; //cm
   } else {
     returnPoint.t = planeOrigin[0] - returnPoint.t;
   }
@@ -107,7 +110,7 @@ Point2D SimpleGeometryHelper::Point_3Dto2D(const TVector3 & _3D_position, unsign
 
   // std::cout << "trigger_offset: " << trigger_offset(clocks) << std::endl;
   // std::cout << "fTimeToCm: " << fTimeToCm << std::endl;
-  returnPoint.t += trigger_offset(clocks) * fTimeToCm;
+  returnPoint.t += trigger_offset(clocks) * fTimeToCm; //cm 
   // std::cout << "returnPoint.t: " << returnPoint.t << std::endl;
 
   // Set the plane of the Point2D:
@@ -876,7 +879,7 @@ std::vector<unsigned int> SimpleGeometryHelper::SelectLocalPointList( const std:
 //   std::vector<double> vertangle;
 //   vertangle.resize(geom.Nplanes());
 //   for (UInt_t ip = 0; ip < geom.Nplanes(); ip++)
-//     vertangle[ip] = geom.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
+//     vertangle[ip] = wire_readout.WireAngleToVertical(geom.View(ip)) - TMath::Pi() / 2; // wire angle
 
 //   // y, z, x coordinates
 //   Double_t ln(0), mn(0), nn(0);
