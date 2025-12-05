@@ -19,6 +19,7 @@
 #include "lardataobj/RecoBase/SpacePoint.h"
 #include "canvas/Persistency/Common/FindMany.h"
 #include "lardataobj/RecoBase/Hit.h"
+#include "sbndcode/BlipRecoSBND/Utils/DataTypes.h"
 
 #include "RecoBase.h"
 #include "LArUtil/PxUtils.h"
@@ -34,14 +35,15 @@ namespace evd {
   class HitFromSpacePoint {
     public:
         HitFromSpacePoint() {}
-        HitFromSpacePoint(int SPID, float w, float t, int p, int __tpc, int __cryo, float __duration) :
+        HitFromSpacePoint(int SPID, float w, float t, int p, int __tpc, int __cryo, float __duration, int __BlipPDG) :
         _SpacePointID(SPID),
         _wire(w),
         _time(t),
         _plane(p),
         _tpc( __tpc ),
         _cryo(__cryo),
-        _duration(__duration)
+        _duration(__duration),
+        _blipPDG(__BlipPDG)
         {}
         ~HitFromSpacePoint() {}
         float _wire;
@@ -51,6 +53,7 @@ namespace evd {
         int   _tpc;
         int   _cryo;
         float _duration;
+        int _blipPDG;
 
         float wire()   {return _wire;}
         float time()   {return _time;}
@@ -59,6 +62,7 @@ namespace evd {
         int   cryo()  {return _cryo;}
         int   SpacePointID() {return _SpacePointID;}
         float duration() {return _duration;}
+        int blipPDG() {return _blipPDG;}
 
         //Conversion functions
         //operator larutil::PxPoint() const { return larutil::PxPoint(_plane, _wire, _time,_SpacePointID, _tpc, _cryo); }

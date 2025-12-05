@@ -34,8 +34,12 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
 
   // get a handle to the tracks
   art::InputTag sps_tag(_producer);
+  art::InputTag blip_tag(_producer);
   auto const & spacepointHandle
         = ev.getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
+  auto const & blipHandle
+        = ev.getValidHandle<std::vector <blip::Blip> >(blip_tag);
+  bool drawingBlips = blipHandle->isValid();
   art::FindMany<recob::Hit> hits_for_SpacePoints(spacepointHandle, ev, sps_tag);
   // geoHelper = larutil::GeometryHelper::GetME();
   // Clear out the data but reserve some space
@@ -67,9 +71,14 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
       plane += tpc * _wire_readout.Nplanes();
       plane += cryo * _wire_readout.Nplanes() * _geo_service.NTPC();
       double NSigma = 2;
+      int BlipPDG = 0;
+      if(drawingBlips)
+      {
+        BlipPDG = (*blipHandle)[sp_Index].truth.LeadG4PDG;
+      }
      _dataByPlane.at(plane).emplace_back(
       HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime() - hits[hitIndex]->RMS()*NSigma, plane, tpc, cryo, 
-      hits[hitIndex]->RMS()*NSigma*2 )  );
+      hits[hitIndex]->RMS()*NSigma*2 ), BlipPDG  );
 
     }
     sp_Index++;
