@@ -13,7 +13,7 @@ add_library(EventDisplay_RecoViewer SHARED
     DrawVertex.cxx
 )
 
-message(${sbndcode_LIBRARY_DIR})
+MESSAGE("${sbndcode_LIBRARY_DIR}")
 target_link_libraries(EventDisplay_RecoViewer
     ${gallery_LIBRARY_DIR}/libgallery.so
     ${ROOT_LIBRARIES}
