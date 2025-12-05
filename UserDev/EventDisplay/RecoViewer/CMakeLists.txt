@@ -12,7 +12,7 @@ add_library(EventDisplay_RecoViewer SHARED
     DrawTrack.cxx
     DrawVertex.cxx
 )
-
+MESSAGE("${lardataobj_LIBRARY_DIR}")
 MESSAGE("${sbndcode_LIBRARY_DIR}")
 target_link_libraries(EventDisplay_RecoViewer
     ${gallery_LIBRARY_DIR}/libgallery.so
