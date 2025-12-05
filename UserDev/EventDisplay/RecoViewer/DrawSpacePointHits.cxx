@@ -39,7 +39,7 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
         = ev.getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
   gallery::ValidHandle<std::vector<blip::Blip>> blipHandle
     = ev.getValidHandle<std::vector <blip::Blip> >(blip_tag); //why not a handle. Why a vector?
-  bool drawingBlips = blipHandle->size()==0;
+  bool drawingBlips = (blipHandle->size()!=0);
   art::FindMany<recob::Hit> hits_for_SpacePoints(spacepointHandle, ev, sps_tag);
   // geoHelper = larutil::GeometryHelper::GetME();
   // Clear out the data but reserve some space
