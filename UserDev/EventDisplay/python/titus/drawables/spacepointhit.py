@@ -51,10 +51,10 @@ class SpacepointHits(Drawable):
         self._module = tpc_module
         self.init()
     def genToolTip(self, SpacePoint):
-        return 'Time: {time:0.1f}\nSpace Point ID: {ID}\nPDG: {}'.format(
+        return 'Time: {time:0.1f}\nSpace Point ID: {ID}\nPDG: {PDG}'.format(
             time=SpacePoint.time(),
             ID=SpacePoint.SpacePointID(), 
-            SpacePoint.blipPDG())
+            PDG=SpacePoint.blipPDG())
     def drawObjects(self):
         #Do initialization of objects necessary for core loop over space point ID
         SpacePointIDs = []
