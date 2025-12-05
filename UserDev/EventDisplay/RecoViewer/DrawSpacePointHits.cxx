@@ -37,9 +37,9 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
   art::InputTag blip_tag(_producer);
   auto const & spacepointHandle
         = ev.getValidHandle<std::vector <recob::SpacePoint> >(sps_tag);
-  auto blipHandle
-        = ev.getValidHandle<std::vector <blip::Blip> >(blip_tag);
-  bool drawingBlips = blipHandle->isValid();
+  gallery::ValidHandle<std::vector<blip::Blip>> blipHandle
+    = ev.getValidHandle<std::vector <blip::Blip> >(blip_tag); //why not a handle. Why a vector?
+  bool drawingBlips = blipHandle->size()==0;
   art::FindMany<recob::Hit> hits_for_SpacePoints(spacepointHandle, ev, sps_tag);
   // geoHelper = larutil::GeometryHelper::GetME();
   // Clear out the data but reserve some space
@@ -78,7 +78,7 @@ bool DrawSpacepointHits::analyze(const gallery::Event & ev) {
       }
      _dataByPlane.at(plane).emplace_back(
       HitFromSpacePoint( sp_Index, hits[hitIndex]->WireID().Wire , hits[hitIndex]->PeakTime() - hits[hitIndex]->RMS()*NSigma, plane, tpc, cryo, 
-      hits[hitIndex]->RMS()*NSigma*2 ), BlipPDG  );
+			 hits[hitIndex]->RMS()*NSigma*2, BlipPDG  ) ) ;
 
     }
     sp_Index++;
