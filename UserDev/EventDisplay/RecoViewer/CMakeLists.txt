@@ -13,7 +13,7 @@ add_library(EventDisplay_RecoViewer SHARED
     DrawVertex.cxx
 )
 
-
+message(${sbndcode_LIBRARY_DIR})
 target_link_libraries(EventDisplay_RecoViewer
     ${gallery_LIBRARY_DIR}/libgallery.so
     ${ROOT_LIBRARIES}
@@ -24,6 +24,7 @@ target_link_libraries(EventDisplay_RecoViewer
     ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
     ${lardataalg_LIBRARY_DIR}/liblardataalg_DetectorInfo.so
     ${cetlib_except_LIBRARY_DIR}/libcetlib_except.so 
+    libsbndcode_BlipUtils.so
     gallery_framework_Base
     gallery_framework_Analysis
     gallery_framework_LArUtil
