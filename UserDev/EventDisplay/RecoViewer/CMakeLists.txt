@@ -24,6 +24,7 @@ target_link_libraries(EventDisplay_RecoViewer
     ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
     ${lardataalg_LIBRARY_DIR}/liblardataalg_DetectorInfo.so
     ${cetlib_except_LIBRARY_DIR}/libcetlib_except.so 
+    ${sbndcode_LIBRARY_DIR}/sbndcode_BlipUtils.so
     gallery_framework_Base
     gallery_framework_Analysis
     gallery_framework_LArUtil
