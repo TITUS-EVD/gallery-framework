@@ -33,7 +33,7 @@ _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
 _SBND_CRT_FEBDATA = 'sbnd::crt::FEBData'
 
 _CRT_COLORMAP = pg.colormap.get('CET-L17')
-_OPDET_COLORMAP = pg.colormap.get('CET-L8')
+_OPDET_COLORMAP = pg.colormap.get('CET-L4')
 
 class SBNDCommissioningModule(Module):
     def __init__(self, larsoft_module, geom_module):
