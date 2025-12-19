@@ -141,26 +141,47 @@ class SBNDCommissioningModule(Module):
         self._bottom_crt_checkbox.clicked.connect(self.show_bottom_crts)
         main_layout.addWidget(self._bottom_crt_checkbox)
 
-        draw_group_box = QtWidgets.QGroupBox("Optical/CRT time range (ns)")
-        self._min_time_btn = QtWidgets.QSpinBox()
-        self._max_time_btn = QtWidgets.QSpinBox()
-        self._min_time_btn.setRange(-30e6, 30e6)
-        self._min_time_btn.setValue(-30e6)
-        self._max_time_btn.setRange(-30e6, 30e6)
-        self._max_time_btn.setValue(30e6)
+        draw_group_box_optical = QtWidgets.QGroupBox("Optical time range (ns)")
+        self._min_time_btn_optical = QtWidgets.QSpinBox()
+        self._max_time_btn_optical = QtWidgets.QSpinBox()
+        self._min_time_btn_optical.setRange(-2e6, 2e6)
+        self._min_time_btn_optical.setValue(-1.5e3)
+        self._max_time_btn_optical.setRange(-2e6, 2e6)
+        self._max_time_btn_optical.setValue(-5e2)
 
-        self._min_time_btn.setSingleStep(1e6)
-        self._max_time_btn.setSingleStep(1e6)
+        self._min_time_btn_optical.setSingleStep(2e5)
+        self._max_time_btn_optical.setSingleStep(2e5)
 
-        self._min_time_btn.valueChanged.connect(self._updated_min_time)
-        self._max_time_btn.valueChanged.connect(self._updated_max_time)
+        self._min_time_btn_optical.valueChanged.connect(self._updated_min_time_optical)
+        self._max_time_btn_optical.valueChanged.connect(self._updated_max_time_optical)
 
-        time_btn_layout = QtWidgets.QGridLayout()
-        time_btn_layout.addWidget(self._min_time_btn, 0, 0, 1, 1)
-        time_btn_layout.addWidget(self._max_time_btn, 1, 0, 1, 1)
+        time_btn_optical_layout = QtWidgets.QGridLayout()
+        time_btn_optical_layout.addWidget(self._min_time_btn_optical, 0, 0, 1, 1)
+        time_btn_optical_layout.addWidget(self._max_time_btn_optical, 1, 0, 1, 1)
 
-        draw_group_box.setLayout(time_btn_layout)
-        main_layout.addWidget(draw_group_box)
+        draw_group_box_optical.setLayout(time_btn_optical_layout)
+        main_layout.addWidget(draw_group_box_optical)
+
+        draw_group_box_crt = QtWidgets.QGroupBox("CRT time range (ns)")
+        self._min_time_btn_crt = QtWidgets.QSpinBox()
+        self._max_time_btn_crt = QtWidgets.QSpinBox()
+        self._min_time_btn_crt.setRange(-30e6, 30e6)
+        self._min_time_btn_crt.setValue(-2e3)
+        self._max_time_btn_crt.setRange(-30e6, 30e6)
+        self._max_time_btn_crt.setValue(0)
+
+        self._min_time_btn_crt.setSingleStep(1e6)
+        self._max_time_btn_crt.setSingleStep(1e6)
+
+        self._min_time_btn_crt.valueChanged.connect(self._updated_min_time_crt)
+        self._max_time_btn_crt.valueChanged.connect(self._updated_max_time_crt)
+
+        time_btn_crt_layout = QtWidgets.QGridLayout()
+        time_btn_crt_layout.addWidget(self._min_time_btn_crt, 0, 0, 1, 1)
+        time_btn_crt_layout.addWidget(self._max_time_btn_crt, 1, 0, 1, 1)
+
+        draw_group_box_crt.setLayout(time_btn_crt_layout)
+        main_layout.addWidget(draw_group_box_crt)
 
         t0_group_box = QtWidgets.QGroupBox("TPC time offset")
         t0_layout = QtWidgets.QVBoxLayout()
@@ -200,30 +221,47 @@ class SBNDCommissioningModule(Module):
             if self._crt_checkbox.isChecked():
                 view.drawCrts(self._crt_drawer.getData())
 
-    def _updated_min_time(self, value):
+    def _updated_min_time_optical(self, value):
+        view = self._wire_views[(2, 0)]
+
+        if value > view.draw_max_time_optical:
+            print("Warning: Optical view Min Time must be less than Max Time")
+            return
+
+        view.draw_min_time_optical = value
+        view.drawOpdetWaveforms()
+
+    def _updated_max_time_optical(self, value):
+        view = self._wire_views[(2, 0)]
+
+        if value < view.draw_min_time_optical:
+            print("Warning: Optical view Max Time must be greater than Min Time")
+            return
+
+        view.draw_max_time_optical = value
+        view.drawOpdetWaveforms()
+
+    def _updated_min_time_crt(self, value):
         view = self._wire_views[(2, 0)]
         view._clear_cache()
 
-        if value > view.draw_max_time:
+        if value > view.draw_max_time_crt:
             print("Warning: CRT view Min Time must be less than Max Time")
             return
 
-        view.draw_min_time = value
+        view.draw_min_time_crt = value
         view.drawCrts(self._crt_drawer.getData())
-        view.drawOpdetWaveforms()
 
-
-    def _updated_max_time(self, value):
+    def _updated_max_time_crt(self, value):
         view = self._wire_views[(2, 0)]
         view._clear_cache()
 
-        if value < view.draw_min_time:
+        if value < view.draw_min_time_crt:
             print("Warning: CRT view Max Time must be greater than Min Time")
             return
 
-        view.draw_max_time = value
+        view.draw_max_time_crt = value
         view.drawCrts(self._crt_drawer.getData())
-        view.drawOpdetWaveforms()
 
     def _updated_t0(self):
         t0 = self._t0slider.value()
@@ -375,11 +413,11 @@ class XZDetectorView(WireView):
         self._draw_crts = True
         self._draw_bot_crts = False
         self._draw_wall_crts = True
-        self._min_time = -30e6
-        self._max_time = 30e6
 
-        self.draw_min_time = -30e6
-        self.draw_max_time = 30e6
+        self.draw_min_time_optical = -1.5e3
+        self.draw_max_time_optical = -5e2
+        self.draw_min_time_crt = -2e3
+        self.draw_max_time_crt = 0
 
         self._init_crt_strips()
         self.init_crt_planes()
@@ -721,7 +759,7 @@ class XZDetectorView(WireView):
                 times = self._opdet_data[i]['time']
 
                 # opdetwaveform use us, not ns
-                wfm = wfm[(times > self.draw_min_time / 1e3) & (times < self.draw_max_time / 1e3)]
+                wfm = wfm[(times > self.draw_min_time_optical / 1e3) & (times < self.draw_max_time_optical / 1e3)]
 
                 if len(wfm) == 0:
                     continue
@@ -771,10 +809,10 @@ class XZDetectorView(WireView):
                 adc = hit[3]
                 time = hit[1]
 
-                if time < self.draw_min_time:
+                if time < self.draw_min_time_crt:
                     continue
 
-                if time > self.draw_max_time:
+                if time > self.draw_max_time_crt:
                     continue
 
                 if adc <= 0:
@@ -818,7 +856,7 @@ class XZDetectorView(WireView):
                     elif right:
                         draw_min_sort[1] -= scale
 
-                tfrac = (time - self._min_time) / (self._max_time - self._min_time)
+                tfrac = (time - self.draw_min_time_crt) / (self.draw_max_time_crt - self.draw_min_time_crt)
                 draw_coords.append((draw_min_sort, draw_max_sort, tfrac))
             
             picture.add_hits(draw_coords)
