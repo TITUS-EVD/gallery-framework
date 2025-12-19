@@ -398,7 +398,7 @@ class XZDetectorView(WireView):
                                'xarapuca_vuv', 'xarapuca_vis']
         
         self._opdet_circles = {}
-        self._opdet_size = 10 # cm
+        self._opdet_size = 15 # cm
         self._draw_opdets = True
         self._opdet_data = None
         self.draw_opdets()
@@ -512,9 +512,7 @@ class XZDetectorView(WireView):
         # translation is in pre-scaled (time tick) units
         ticks = 2.0 * self._geometry.tRange() + self._geometry.cathodeGap() - self._removed_entries
         tr.translate(0, -data.shape[1] / 2.)
-
         self._item.setTransform(tr)
-
 
     def draw_opdets(self, draw=True):
         if not self._draw_opdets or not draw:
@@ -535,11 +533,17 @@ class XZDetectorView(WireView):
             if opdets_name[d] not in self._optical_names:
                 continue
 
+            if "arapuca" in opdets_name[d]:
+                continue
 
             opdet_draw_x = opdets_z[d] - self._opdet_size / 2.
-            opdet_draw_y = opdets_x[d] - self._opdet_size / 2.
-            
+            if opdets_x[d] > 0:
+                opdet_draw_y = opdets_x[d] + (opdets_y[d] + 200) / 2.8
+            else:
+                opdet_draw_y = opdets_x[d] - 2. * self._opdet_size / 2. - (opdets_y[d] + 200) / 2.8
+
             opdet_draw_pos = (opdet_draw_x, opdet_draw_y)
+
             if opdet_draw_pos in used_opdets.keys():
                 idx = used_opdets[opdet_draw_pos]
                 if self._opdet_circles[idx]["name"] == opdets_name[d]:
