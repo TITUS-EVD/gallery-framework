@@ -491,7 +491,7 @@ class XZDetectorView(WireView):
 
         # remove from left TPC anode
         start_removal = end_removal + (2.0 * self._geometry.halfwidth()) / self._geometry.time2cm()
-        end_removal = 2.0 * self._geometry.tRange() + self._geometry.cathodeGap() - x_anode
+        end_removal = 2.0 * self._geometry.tRange() + self._geometry.cathodeGap()
         slice_anode_left = slice(int(start_removal), int(end_removal))
         n_removed_entries += int(end_removal) - int(start_removal)
 
@@ -511,7 +511,7 @@ class XZDetectorView(WireView):
 
         # translation is in pre-scaled (time tick) units
         ticks = 2.0 * self._geometry.tRange() + self._geometry.cathodeGap() - self._removed_entries
-        tr.translate(0, -ticks / 2.)
+        tr.translate(0, -data.shape[1] / 2.)
 
         self._item.setTransform(tr)
 
