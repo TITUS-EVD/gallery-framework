@@ -702,6 +702,73 @@ class XZDetectorView(WireView):
 
         return result
 
+    def _crt_plane_world_bounds_taggers(self):
+        '''
+        an alternative drawing of the CRT taggers for the detector paper event display
+        'stylised' such that, the taggers look thicker and the messy modules on the north
+        wall are ignored
+        '''
+        plane_number = 0
+        tagger_set = set()
+        result = {}
+
+        # AuxDets are the CRT strip arrays. The GDML mother of the AuxDets is the CRT module
+        geo_core = self._geometry.getGeometryCore()
+        nauxdet = geo_core.NAuxDets()
+        for ad_i in range(nauxdet):
+            ad = geo_core.AuxDet(ad_i)
+            nstrip = ad.NSensitiveVolume()
+
+            ad_name = ad.TotalVolume().GetName()
+            name_set = ROOTset(string)()
+            name_set.insert(ad_name)
+            geo_paths = geo_core.FindAllVolumePaths(name_set)
+
+            path = ''
+            for p in geo_paths[0]:
+                path += p.GetName()
+                path += '/'
+            # remove trailing /
+            path = path[:-1]
+
+            manager = geo_core.ROOTGeoManager()
+            manager.cd(path)
+            tagger_node = manager.GetMother(2)
+            det_node = manager.GetMother(3)
+
+            if tagger_node.GetName() in tagger_set:
+                continue;
+
+            tagger_set.add(tagger_node.GetName())
+
+            hw = tagger_node.GetVolume().GetShape().GetDX();
+            hh = tagger_node.GetVolume().GetShape().GetDY();
+            hl = 3;
+            limits_min = np.array([-hw, -hh, -hl])
+            limits_max = np.array([hw, hh, hl])
+
+            if tagger_node.GetName() == "volTaggerNorth_0":
+                limits_min[2] = 6.8;
+                limits_max[2] = 12.8;
+
+            def to_world_coord(limits):
+                for node in [tagger_node, det_node]:
+                    new_limits = np.zeros(3)
+                    node.LocalToMaster(limits, new_limits)
+                    limits = new_limits.copy()
+                return limits
+
+            bounds = [to_world_coord(limits_min), to_world_coord(limits_max)]
+            bottom = bounds[0][1] <= self._geometry.crt_bot_ymax
+            # here we cut non-vertically-oriented planes
+            if np.abs(bounds[0][1] - bounds[1][1]) < 8.0:
+                continue
+
+            result[plane_number] = bounds
+            plane_number += 1
+
+        return result
+
     def draw_crt_planes(self, show=True):
         self._draw_crts = show
         for region, plane_list in self._drawn_crt_modules.items():
@@ -716,7 +783,7 @@ class XZDetectorView(WireView):
     def init_crt_planes(self):
         ''' draw the permanent CRT module outlines '''
         self._drawn_crt_modules = {'bottom': [], 'side': []}
-        plane_bounds = self._crt_plane_world_bounds()
+        plane_bounds = self._crt_plane_world_bounds_taggers()
         for plane, bounds in plane_bounds.items():
             pt_min, pt_max = bounds
             bottom = False
@@ -735,6 +802,7 @@ class XZDetectorView(WireView):
 
             rect = QtWidgets.QGraphicsRectItem(QtCore.QRectF(draw_min_sort[0], draw_min_sort[1], w, h))
             rect.setPen(QtGui.QColor(0, 0, 0))
+            rect.setBrush(QtGui.QColor(0, 0, 0))
             key = 'side' if not bottom else 'bottom'
             self._drawn_crt_modules[key].append(rect)
 
