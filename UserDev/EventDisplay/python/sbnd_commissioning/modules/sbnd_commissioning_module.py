@@ -918,15 +918,20 @@ class XZDetectorView(WireView):
                     front = draw_max_sort[0] > self._geometry.crt_front_zmin
                     left = draw_min_sort[1] > -380.0
                     right = draw_min_sort[1] < 381.3
-                    scale = 60
+                    scale = 50
+                    offset = 4.5
                     if back:
-                        draw_min_sort[0] -= scale
+                        draw_min_sort[0] += (offset + scale)
+                        draw_max_sort[0] += offset
                     elif front:
-                        draw_max_sort[0] += scale
+                        draw_max_sort[0] -= (offset + scale)
+                        draw_min_sort[0] -= offset
                     elif left:
-                        draw_max_sort[1] += scale
+                        draw_max_sort[1] -= (offset + scale)
+                        draw_min_sort[1] -= offset
                     elif right:
-                        draw_min_sort[1] -= scale
+                        draw_min_sort[1] += (offset + scale)
+                        draw_max_sort[1] += offset
 
                 tfrac = (time - self.draw_min_time_crt) / (self.draw_max_time_crt - self.draw_min_time_crt)
                 draw_coords.append((draw_min_sort, draw_max_sort, tfrac))

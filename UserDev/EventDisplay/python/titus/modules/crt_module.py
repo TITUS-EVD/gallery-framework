@@ -133,7 +133,7 @@ class CrtHitsItem(pg.GraphicsObject):
             w = coord_max[1] - coord_min[1]
             color = _CRT_COLORMAP.mapToQColor(tfrac)
             painter.setBrush(color)
-            painter.setOpacity(0.8)
+            painter.setOpacity(1)
             painter.setPen(color)
             painter.drawRect(QtCore.QRectF(x, y, l, w))
 
