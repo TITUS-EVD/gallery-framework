@@ -1786,7 +1786,6 @@ class WireView(pg.GraphicsLayoutWidget):
         line_width = 1
 
         for tpc in range(1, self._geometry.nTPCs()):
-
             x_tpc = tpc * self._geometry.tRange()              # Place it at the end of one TPC
             x_tpc += (tpc - 1) * self._geometry.cathodeGap()   # Add the gap accumulated previously
             x_tpc += self._geometry.cathodeGap() / 2           # Add half the gap between the 2 TPCs
@@ -1794,10 +1793,14 @@ class WireView(pg.GraphicsLayoutWidget):
 
             # Draw the line and append it
             line = QtWidgets.QGraphicsRectItem()
-            line.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
-            line.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
+            line.setPen(pg.mkPen('black')) # pg.mkPen((169,169,169))) # dark grey
+            line.setBrush(pg.mkBrush('black')) # pg.mkBrush((169,169,169))) # dark grey
             # Remove half a pixel (line_width/2), that would otherwise cover half a time tick
-            line.setRect(0 + line_width/2, x_tpc - self._geometry.cathodeGap() / 2 + line_width/2, max_wire - line_width/2, self._geometry.cathodeGap() - line_width/2)
+            line.setRect(0,
+                         -(self._geometry.cathodeGap()*self._geometry.time2cm())/2,
+                         max_wire*self._geometry.wire2cm(),
+                         self._geometry.cathodeGap()*self._geometry.time2cm())
+
             self._view.addItem(line)
             self._tpc_div_lines.append(line)
 
@@ -1815,6 +1818,7 @@ class WireView(pg.GraphicsLayoutWidget):
                          0 + line_width/2,
                          self._geometry.cathodeGap(),
                          self._geometry.tRange() * 2 + self._geometry.cathodeGap()  - line_width/2)
+
             self._view.addItem(line)
             self._tpc_div_lines.append(line)
 
