@@ -103,7 +103,6 @@ class SBNDCommissioningModule(Module):
 
         # opdets
         self._opdet_checkbox = QtWidgets.QCheckBox('OpDets')
-        self._opdet_checkbox.toggle()
         self._opdet_checkbox.clicked.connect(self.draw_opdet_waveforms)
         products = self._gi.get_products(_RAW_OPDETWAVEFORM)
         default_products = self._gi.get_default_products(_RAW_OPDETWAVEFORM)
@@ -379,7 +378,6 @@ class SBNDCommissioningModule(Module):
         if self._crt_drawer is not None:
             view.drawCrts(self._crt_drawer.getData())
 
-
 class XZDetectorView(WireView):
     """
     Class for drawing TPC, optical, and CRT systems in XZ view. Inherits from
@@ -538,9 +536,9 @@ class XZDetectorView(WireView):
 
             opdet_draw_x = opdets_z[d] - self._opdet_size / 2.
             if opdets_x[d] > 0:
-                opdet_draw_y = opdets_x[d] + (opdets_y[d] + 200) / 2.8
+                opdet_draw_y = opdets_x[d] + (opdets_y[d] + 176) / 2.5
             else:
-                opdet_draw_y = opdets_x[d] - 2. * self._opdet_size / 2. - (opdets_y[d] + 200) / 2.8
+                opdet_draw_y = opdets_x[d] - self._opdet_size - (opdets_y[d] + 176) / 2.5
 
             opdet_draw_pos = (opdet_draw_x, opdet_draw_y)
 
@@ -557,7 +555,7 @@ class XZDetectorView(WireView):
 
             ellipse = QtWidgets.QGraphicsEllipseItem(*opdet_draw_pos,
                 self._opdet_size, self._opdet_size)
-            ellipse.setPen(pg.mkPen((0, 0, 0, 100)))
+            ellipse.setPen(pg.mkPen((255, 255, 255)))
             ellipse.setBrush(pg.mkBrush((int(255 * np.random.uniform()), 50, 50)))
             self._view.addItem(ellipse)
             self._opdet_circles[d]["item"] = ellipse
@@ -918,8 +916,9 @@ class XZDetectorView(WireView):
                     front = draw_max_sort[0] > self._geometry.crt_front_zmin
                     left = draw_min_sort[1] > -380.0
                     right = draw_min_sort[1] < 381.3
-                    scale = 50
-                    offset = 4.5
+                    scale = 10 #7 #50
+                    offset = -4.1 #-2.6 #4.5
+
                     if back:
                         draw_min_sort[0] += (offset + scale)
                         draw_max_sort[0] += offset

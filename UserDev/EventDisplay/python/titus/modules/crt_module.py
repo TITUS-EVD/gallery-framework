@@ -131,7 +131,8 @@ class CrtHitsItem(pg.GraphicsObject):
             x, y = coord_min
             l = coord_max[0] - coord_min[0]
             w = coord_max[1] - coord_min[1]
-            color = _CRT_COLORMAP.mapToQColor(tfrac)
+            #color = _CRT_COLORMAP.mapToQColor(tfrac)
+            color = QtGui.QColor(255, 0, 0)
             painter.setBrush(color)
             painter.setOpacity(1)
             painter.setPen(color)
