@@ -50,7 +50,7 @@ class Drawable:
 
         if self._producer_name == _NULL_NAME:
             return
-        
+
         self._process.analyze(self._gi.event_handle())
 
     def set_producer(self, producer):
@@ -78,7 +78,7 @@ class Drawable:
                     self._process.addInput(p)
             else:
                 self._process.setInput(str(producer))
-        
+
         self._producer_name = producer
 
     def init(self):
