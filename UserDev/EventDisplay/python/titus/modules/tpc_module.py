@@ -55,6 +55,10 @@ _SET_LABEL_TIME = 'TPC/Show event time in label'
 _SET_LOGO_SIZE = 'TPC/Logo size'
 
 
+# icarus wires/channel ROIs are stored as four products with different labels
+# use this list to iterate through them
+_ICARUS_CRYO_LABELS = ('EE', 'WE', 'EW', 'WW')
+
 class TpcModule(Module):
     def __init__(self, larsoft_module, geom_module):
         super().__init__()
@@ -771,7 +775,13 @@ class TpcModule(Module):
             if producers is not None:
                 producer = producers
             elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
-                producer = [p.full_name() for p in all_producers[:3]]
+                # filter for EE EW, WE, WW variations. Extract prefix+suffix of
+                # the product, then check for variations
+                stem = self._wire_choice.selected_products()[0]
+                for cryo_str in _ICARUS_CRYO_LABELS:
+                    stem = stem.replace(f'{cryo_str}:', '_CRYO_')
+                prefix, suffix = stem.split('_CRYO_')
+                producer = [f'{prefix}{label}:{suffix}' for label in _ICARUS_CRYO_LABELS]
             else:
                 producer = self._wire_choice.selected_products()[0]
 
@@ -788,7 +798,13 @@ class TpcModule(Module):
             if producers is not None:
                 producer = producers
             elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
-                producer = [p.full_name() for p in all_producers[:4]]
+                # filter for EE EW, WE, WW variations. Extract prefix+suffix of
+                # the product, then check for variations
+                stem = self._channel_roi_choice.selected_products()[0]
+                for cryo_str in _ICARUS_CRYO_LABELS:
+                    stem = stem.replace(f'{cryo_str}:', '_CRYO_')
+                prefix, suffix = stem.split('_CRYO_')
+                producer = [f'{prefix}{label}:{suffix}' for label in _ICARUS_CRYO_LABELS]
             else:
                 producer = self._wire_choice.selected_products()[0]
 
