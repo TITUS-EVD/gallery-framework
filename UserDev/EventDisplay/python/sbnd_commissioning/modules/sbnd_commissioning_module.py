@@ -35,6 +35,8 @@ _SBND_CRT_FEBDATA = 'sbnd::crt::FEBData'
 _CRT_COLORMAP = pg.colormap.get('CET-L17')
 _OPDET_COLORMAP = pg.colormap.get('CET-L4')
 
+_SET_LOGO_SIZE = 'TPC/Logo size'
+
 class SBNDCommissioningModule(Module):
     def __init__(self, larsoft_module, geom_module):
         super().__init__()
@@ -48,6 +50,7 @@ class SBNDCommissioningModule(Module):
         # tpc-related
         self._wire_drawer = None
         self._wire_views = {}
+        self._show_logo = False
 
         # optical-related
         self._opdet_waveform_drawer = None
@@ -78,7 +81,7 @@ class SBNDCommissioningModule(Module):
             return
 
         # for p in range(self._gm.current_geom.nPlanes()):
-        view = XZDetectorView(self._gm.current_geom, 2, 0)
+        view = XZDetectorView(self._gm.current_geom, 2, 0, 0, self._gi)
         view.connectStatusBar(self._gui.statusBar())
         self._wire_views[(2, 0)] = view
         self._layout.addWidget(view.getWidgetAndLayout()[0])
@@ -103,6 +106,7 @@ class SBNDCommissioningModule(Module):
 
         # opdets
         self._opdet_checkbox = QtWidgets.QCheckBox('OpDets')
+        self._opdet_checkbox.toggle()
         self._opdet_checkbox.clicked.connect(self.draw_opdet_waveforms)
         products = self._gi.get_products(_RAW_OPDETWAVEFORM)
         default_products = self._gi.get_default_products(_RAW_OPDETWAVEFORM)
@@ -199,8 +203,20 @@ class SBNDCommissioningModule(Module):
         t0_group_box.setLayout(t0_layout)
         main_layout.addWidget(t0_group_box)
 
+        self._logoOption = QtWidgets.QCheckBox("Draw Logo")
+        self._logoOption.setToolTip("Display the experiment logo on the window.")
+        self._logoOption.setTristate(False)
+        self._logoOption.stateChanged.connect(self.draw_logo)
+        main_layout.addWidget(self._logoOption)
 
         main_layout.addStretch()
+
+    def draw_logo(self, logostate):
+        self._show_logo = logostate
+        for view in self._wire_views.values():
+            view.toggleLogo(logostate)
+            view.setLabelFontSize(12)
+            view.logo_scale = 0.7
 
     def set_dilation(self):
         for plane_cryo, view in self._wire_views.items():
@@ -386,8 +402,8 @@ class XZDetectorView(WireView):
     systems align with wire coordinates including a cathode gap
     """
 
-    def __init__(self, geometry, plane=-1, cryostat=0, tpc=0):
-        super().__init__(geometry, plane, cryostat, tpc)
+    def __init__(self, geometry, plane=-1, cryostat=0, tpc=0, gallery_interface=None):
+        super().__init__(geometry, plane, cryostat, tpc, gallery_interface)
         self._manual_t0 = 0
 
         self._optical_elements = []
@@ -916,8 +932,8 @@ class XZDetectorView(WireView):
                     front = draw_max_sort[0] > self._geometry.crt_front_zmin
                     left = draw_min_sort[1] > -380.0
                     right = draw_min_sort[1] < 381.3
-                    scale = 10 #7 #50
-                    offset = -4.1 #-2.6 #4.5
+                    scale = 20 #7 #50
+                    offset = -9.1 #-2.6 #4.5
 
                     if back:
                         draw_min_sort[0] += (offset + scale)
