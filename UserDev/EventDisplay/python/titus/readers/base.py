@@ -54,6 +54,13 @@ class EventReader(ABC):
         """ source description: input file, detector, ... """
         return {}
 
+    def entry_of(self, run, subrun, event):
+        """ index of an event in events """
+        try:
+            return self.events.index(EventID(run, subrun, event))
+        except ValueError:
+            raise LookupError(f'event {run}:{subrun}:{event} not found') from None
+
     def get(self, entry, kind, tag):
         if kind not in KINDS:
             raise ValueError(f'unknown product kind {kind!r}, expected one of {sorted(KINDS)}')

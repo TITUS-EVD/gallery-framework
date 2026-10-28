@@ -18,6 +18,17 @@ def plane_index_table(geom):
     return table
 
 
+def image_n_ticks(geom, *signals):
+    """
+    Samples per waveform for a view image: the readout window, or longer if the
+    data is (SBND v10_14 files hold 3427 ticks, the v10_06 detector description
+    says 3400). ChannelROI waveforms end at the last ROI, which would shorten
+    the image and misplace flipped TPCs, so these are padded.
+    """
+    lengths = [int(s.n_ticks.max()) for s in signals if len(s)]
+    return max([int(geom.readoutWindowSize())] + lengths)
+
+
 def wire_image(layout, signals, channel_map):
     """
     View image (wires, ticks) of WireSignals (recob::Wire or ChannelROI).

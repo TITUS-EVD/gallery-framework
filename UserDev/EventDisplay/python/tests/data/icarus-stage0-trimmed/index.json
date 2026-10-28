@@ -1,0 +1,43 @@
+{
+ "schema_version": 1,
+ "meta": {
+  "detector": "icarus",
+  "source_files": [
+   "stage0-020-data_run13190_EventBuilder8_art1_12_fstrmOffBeamBNBMAJORITY_20250606T022757.root"
+  ],
+  "created": "2026-10-28T16:48:43+00:00",
+  "root_version": "6.28/12",
+  "tool": "dump_products.py",
+  "args": [
+   "/pnfs/sbn/data/sbn_fd/polaris/run4/offbeam/stage0/000081/stage0-020-data_run13190_EventBuilder8_art1_12_fstrmOffBeamBNBMAJORITY_20250606T022757.root",
+   "--detector",
+   "icarus",
+   "--outdir",
+   "dumps/icarus-reco1"
+  ],
+  "errors": [],
+  "trimmed_from": "icarus-reco1",
+  "trim": {
+   "events": "0",
+   "wires": "0:30"
+  }
+ },
+ "events": [
+  {
+   "id": [
+    13190,
+    1,
+    35743
+   ],
+   "file": "event_0000.npz",
+   "products": {
+    "channel_rois": [
+     "wire2channelroi2d:PHYSCRATEDATATPCEE:stage0",
+     "wire2channelroi2d:PHYSCRATEDATATPCEW:stage0",
+     "wire2channelroi2d:PHYSCRATEDATATPCWE:stage0",
+     "wire2channelroi2d:PHYSCRATEDATATPCWW:stage0"
+    ]
+   }
+  }
+ ]
+}

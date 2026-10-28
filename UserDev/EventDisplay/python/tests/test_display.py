@@ -10,11 +10,12 @@ import pathlib
 import numpy as np
 import pytest
 
-from titus.display import ViewLayout, hit_positions, plane_index_table, wire_image
+from titus.display import ViewLayout, hit_positions, image_n_ticks, plane_index_table, wire_image
 from titus.geometry import Geometry
 from titus.readers import DumpReader, Hits, WireSignals
 
 DUMP = pathlib.Path(__file__).parent / 'data' / 'sbnd-reco1-trimmed'
+ICARUS_DUMP = pathlib.Path(__file__).parent / 'data' / 'icarus-stage0-trimmed'
 
 
 @pytest.fixture(scope='module', params=['sbnd', 'icarus'])
@@ -149,6 +150,37 @@ def test_wire_image_matches_legacy_on_data(sbnd, dump):
         image = wire_image(ViewLayout(sbnd, plane, cryo, n_ticks=n_ticks), signals, sbnd.detector.channel_map)
         assert image.any()
         np.testing.assert_array_equal(image, legacy_get_plane(sbnd, arrays, plane, cryo))
+
+
+def test_icarus_channel_rois_match_legacy_on_data():
+    """ one ChannelROI product per drift volume, added into the split-wire views """
+    icarus = Geometry.load('icarus')
+    reader = DumpReader(ICARUS_DUMP)
+    products = [reader.channel_rois(0, tag) for tag in reader.tags('channel_rois', 0)]
+    assert len(products) == 4
+    n_ticks = image_n_ticks(icarus, *products)
+    assert n_ticks == 4096
+    per_product = [legacy_plane_arrays(icarus, signals, n_ticks) for signals in products]
+    arrays = [sum(a[i] for a in per_product) for i in range(len(icarus.detector.planes))]
+    filled = []
+    for plane, cryo in views(icarus):
+        layout = ViewLayout(icarus, plane, cryo, n_ticks=n_ticks)
+        image = sum(wire_image(layout, signals, icarus.detector.channel_map) for signals in products)
+        filled += [icarus.detector.planes[b.plane_index].id[:2] for b in layout.blocks
+                   if image[layout.block_slices(b.plane_index)].any()]
+        np.testing.assert_array_equal(image, legacy_get_plane(icarus, arrays, plane, cryo))
+    # every TPC of both cryostats contributes signal to some view
+    assert set(filled) == {(c, t) for c in range(2) for t in range(4)}
+
+
+def test_image_n_ticks(sbnd):
+    full = WireSignals.from_rois([1], [3427], [[(0, [1.])]])
+    short = WireSignals.from_rois([1, 2], [10, 0], [[(5, [1.] * 5)], []])
+    assert image_n_ticks(sbnd) == 3400
+    assert image_n_ticks(sbnd, full) == 3427
+    # a ChannelROI waveform ends at its last ROI: never shrink the window
+    assert image_n_ticks(sbnd, short) == 3400
+    assert image_n_ticks(sbnd, WireSignals.empty()) == 3400
 
 
 def test_wire_image_drops_samples_past_window(sbnd):

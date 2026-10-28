@@ -71,7 +71,8 @@ class Hits(Columns):
 class WireSignals(Columns):
     """
     recob::Wire or recob::ChannelROI: per channel, regions of interest of a
-    waveform n_ticks long. ROI j belongs to row roi_row[j], starts at tick
+    waveform n_ticks long. n_ticks is the stored length: the readout window
+    for recob::Wire, but where the last ROI ends for ChannelROI. ROI j belongs to row roi_row[j], starts at tick
     roi_start[j] and holds values[roi_offset[j]:roi_offset[j + 1]].
     """
     DTYPES: ClassVar[Dict[str, str]] = {
