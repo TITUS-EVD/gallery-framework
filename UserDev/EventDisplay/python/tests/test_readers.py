@@ -24,7 +24,7 @@ def make_hits(n, plane=0):
     return Hits(channel=np.arange(n), cryostat=np.zeros(n), tpc=np.arange(n) % 2,
                 plane=np.full(n, plane), wire=np.arange(n) * 3, peak_time=rng.uniform(0, 3400, n),
                 rms=rng.uniform(1, 5, n), integral=rng.uniform(10, 500, n),
-                peak_amplitude=rng.uniform(5, 50, n), summed_adc=rng.uniform(10, 500, n),
+                peak_amplitude=rng.uniform(5, 50, n),
                 start_tick=np.zeros(n), end_tick=np.full(n, 10))
 
 
@@ -171,7 +171,7 @@ def fake(**methods):
 def test_extract_hits():
     wid = SimpleNamespace(Cryostat=0, TPC=1, Plane=2, Wire=100)
     hit = fake(WireID=wid, Channel=7, PeakTime=1234.5, RMS=2.5, Integral=300., PeakAmplitude=40.,
-               SummedADC=310., StartTick=1230, EndTick=1240)
+               StartTick=1230, EndTick=1240)
     hits = dump_products.extract_hits([hit, hit])
     assert len(hits) == 2
     assert (hits.tpc[0], hits.plane[0], hits.wire[0], hits.peak_time[0]) == (1, 2, 100, 1234.5)

@@ -50,7 +50,6 @@ def extract_hits(hits):
         columns['rms'].append(h.RMS())
         columns['integral'].append(h.Integral())
         columns['peak_amplitude'].append(h.PeakAmplitude())
-        columns['summed_adc'].append(h.SummedADC())
         columns['start_tick'].append(h.StartTick())
         columns['end_tick'].append(h.EndTick())
     return Hits(**columns)

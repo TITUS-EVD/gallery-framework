@@ -45,7 +45,7 @@ class Hits(Columns):
     DTYPES: ClassVar[Dict[str, str]] = {
         'channel': 'u4', 'cryostat': 'i4', 'tpc': 'i4', 'plane': 'i4', 'wire': 'i4',
         'peak_time': 'f4', 'rms': 'f4', 'integral': 'f4', 'peak_amplitude': 'f4',
-        'summed_adc': 'f4', 'start_tick': 'i4', 'end_tick': 'i4',
+        'start_tick': 'i4', 'end_tick': 'i4',
     }
     channel: np.ndarray
     cryostat: np.ndarray
@@ -56,7 +56,6 @@ class Hits(Columns):
     rms: np.ndarray
     integral: np.ndarray
     peak_amplitude: np.ndarray
-    summed_adc: np.ndarray
     start_tick: np.ndarray
     end_tick: np.ndarray
 
