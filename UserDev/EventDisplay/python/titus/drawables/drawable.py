@@ -9,7 +9,9 @@ import sys
 from PyQt5 import QtCore
 
 from titus.readers import ProductNotFound
-from titus.readers.gallery import read_event_product, titusio
+from titus.readers.products import ASSOCIATIONS
+from titus.readers.gallery import (association_candidates, file_products, read_event_product, string_vector,
+                                   titusio)
 
 _NULL_NAME = "null"
 
@@ -148,6 +150,8 @@ class ReaderDrawable(Drawable):
     def __init__(self, gallery_interface, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
         self._data = []
+        # {(kind, tag): C++ type} of the current file, read when first needed
+        self._file_products = None
 
     def init(self):
         pass
@@ -182,6 +186,33 @@ class ReaderDrawable(Drawable):
     def on_data(self):
         """ called after analyze() reads the products; derived classes may convert them """
         pass
+
+    def on_file_changed(self):
+        self._file_products = None
+
+    def file_products(self):
+        if self._file_products is None:
+            ev = self._gi.event_handle()
+            self._file_products = {} if ev is None else file_products(ev)
+        return self._file_products
+
+    def read_optional(self, kind, tag):
+        """
+        Another product of the current event, e.g. an association: None if
+        the file or event has no such product (full tag), or it can't be read
+        """
+        products = self.file_products()
+        ev = self._gi.event_handle()
+        if ev is None or not tag or (kind, tag) not in products:
+            return None
+        try:
+            if kind in ASSOCIATIONS:
+                return read_event_product(titusio(), ev, kind, tag, cpp_type=products[(kind, tag)],
+                                          candidate_tags=string_vector(association_candidates(products)))
+            return read_event_product(titusio(), ev, kind, tag)
+        except Exception as e:
+            print(f'Warning: could not read {kind} {tag}: {e}')
+            return None
 
 
 class LazyDrawable:

@@ -1,24 +1,22 @@
-from titus.drawables import Drawable
+import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
-from ROOT import evd
 import pyqtgraph as pg
+
+from titus.display import ViewLayout, track_correction, track_segments, track_t0s
+from titus.drawables.drawable import ReaderDrawable
 
 
 class polyLine(QtWidgets.QGraphicsPathItem):
-    def __init__(self, points, color=None, *args):
+    def __init__(self, points, color=None, style=QtCore.Qt.SolidLine, *args):
         super(polyLine, self).__init__()
         self.setAcceptHoverEvents(True)
         self._points = points
-        self._color = color
+        self._color = color if color is not None else (0, 0, 0)
+        self._style = style
 
         # Initialize a path:
         path = QtGui.QPainterPath()
-        if self._color is None:
-            pen = QtGui.QPen(QtCore.Qt.black)
-            self._color = (0, 0, 0)
-        else:
-            pen = pg.mkPen(color, width=2)
-        self.setPen(pen)
+        self.setPen(self._pen(2))
 
         # Fill the path:
         path.moveTo(points[0])
@@ -26,174 +24,91 @@ class polyLine(QtWidgets.QGraphicsPathItem):
             path.lineTo(points[i+1])
         self.setPath(path)
 
+    def _pen(self, width):
+        return pg.mkPen(self._color, width=width, style=self._style)
 
     def hoverEnterEvent(self, e):
         QtWidgets.QGraphicsPathItem.hoverEnterEvent(self, e)
-        self.setPen(pg.mkPen(self._color, width=5))
+        self.setPen(self._pen(5))
         self.update()
 
     def hoverLeaveEvent(self, e):
         QtWidgets.QGraphicsPathItem.hoverLeaveEvent(self, e)
-        self.setPen(pg.mkPen(self._color, width=2))
+        self.setPen(self._pen(2))
         self.update()
 
 
-class Track(Drawable):
+class Track(ReaderDrawable):
+    '''
+    recob::Track trajectories projected into the wire views
+    (titus.display.projection). Drawn as stored, or corrected to lie on
+    their hits, as the TPC module's "Correct 3D objects" option says:
+    Pandora's T0 shift is undone and each point is drawn in its hits' TPC,
+    using the T0s and track-hit associations in the file. Corrected tracks
+    are dashed, and their tooltip says what was changed.
+    '''
+    KIND = 'tracks'
+    COLOR = (130, 0, 0)
+
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'track'
-        self._process = evd.DrawTrack(geom.getGeometryCore(), geom.getDetectorProperties(),geom.getWireReadout(), geom.getDetectorClocks())
-        self._process._projections_match = geom.projectionsMatch()
-        self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
         self._geom = geom
         self._module = tpc_module
-        self.init()
+        # per producer: what the corrections need, and the corrections once computed
+        self._inputs = []
+        self._corrections = []
 
+    def on_data(self):
+        self._inputs = [self._correction_inputs(tag, tracks) for tag, tracks in zip(self.producers(), self._data)]
+        self._corrections = [{} for _ in self._data]
 
-    def drawObjects(self, on_both_tpcs=False):
-        for _, view in self._module._wire_views.items():
-            self._drawnObjects.append([])
-            tracks = self._process.getDataByPlane(view.plane())
+    def _correction_inputs(self, tag, tracks):
+        ''' T0 per track and the track-hit associations, from the products related to these tracks '''
+        tag = str(tag)
+        track_hits = self.read_optional('track_hits', tag)
+        hits = None
+        if track_hits is not None and len(track_hits):
+            hits = self.read_optional('hits', track_hits.product_tags[track_hits.right_product[0]])
 
-            plane = view.plane()
+        pfp_tracks = self.read_optional('pfp_tracks', tag)
+        pfp_t0s = t0s = None
+        if pfp_tracks is not None and len(pfp_tracks):
+            pfp_tag = pfp_tracks.product_tags[pfp_tracks.left_product[0]]
+            pfp_t0s = self.read_optional('pfp_t0s', pfp_tag)
+            if pfp_t0s is not None and len(pfp_t0s):
+                t0s = self.read_optional('t0s', pfp_t0s.product_tags[pfp_t0s.right_product[0]])
+        return {'t0': track_t0s(len(tracks), pfp_tracks, pfp_t0s, t0s),
+                'track_hits': track_hits if hits is not None else None, 'hits': hits}
 
-            for i in range(len(tracks)):
-                track = tracks[i]
+    def _correction(self, producer, row, layout):
+        cache = self._corrections[producer]
+        if row not in cache:
+            inputs = self._inputs[producer]
+            cache[row] = track_correction(layout, self._data[producer], row, inputs['t0'][row],
+                                          inputs['track_hits'], inputs['hits'])
+        return cache[row]
 
-                # construct a polygon for this track:
-                points = []
-                # Remeber - everything is in cm, but the display is in
-                # wire/time!
-                for i, pair in enumerate(track.track()):
-                    x = pair.first / self._geom.wire2cm()
-                    y = pair.second / self._geom.time2cm()
+    def corrected(self):
+        return getattr(self._module, 'correct_3d_objects', lambda: True)()
 
-                    if track.tpc()[i] == 1:
-                        # flip
-                        y = self._geom.tRange() - y
-                        # move up
-                        y += self._geom.tRange()
-                        # add cathode gap
-                        y += self._geom.cathodeGap()
+    def drawObjects(self):
+        corrected = self.corrected()
+        for view in self._module._wire_views.values():
+            layout = ViewLayout(self._geom, plane=view.plane(), cryostat=view.cryostat())
+            for producer, tracks in enumerate(self._data):
+                for row in range(len(tracks)):
+                    correction = self._correction(producer, row, layout) if corrected else None
+                    for segment in track_segments(layout, tracks, row, correction):
+                        points = [QtCore.QPointF(x, y) for x, y in zip(segment.x, segment.y)]
+                        moved = correction is not None and correction.corrected
+                        line = polyLine(points, self.COLOR, QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine)
+                        line.setToolTip(self.genToolTip(tracks, row, correction))
+                        view._view.addItem(line)
+                        self._drawnObjects.append(line)
 
-                    points.append(QtCore.QPointF(x, y))
-
-                if len(points) == 0:
-                    continue
-
-                color = (130,0,0) # red
-
-                thisPoly = polyLine(points, color)
-
-                thisPoly.setToolTip(f'Length: {track.length():.2f} cm;  Theta: {track.theta():.2f};  Phi: {track.phi():.2f}')
-
-                view._view.addItem(thisPoly)
-
-                self._drawnObjects[view.plane()].append(thisPoly)
-
-
-    def drawTracks(self, view, tracks, offset, plane, geom, color=(130,0,0)):
-
-        if len(tracks) == 0:
-            return
-
-        print ('  Cool. We have', len(tracks), ' tracks.')
-
-        for i in range(len(tracks)):
-            track = tracks[i]
-            # construct a polygon for this track:
-            points = []
-
-            location = track.tpc()
-
-            # Remeber - everything is in cm, but the display is in
-            # wire/time!
-            for pair in track.track():
-                x = pair.first / geom.wire2cm()
-                y = pair.second / geom.time2cm() + offset
-
-                # cathode_x = geom.getGeometryCore().Plane(0, track.tpc(), track.cryo()).GetCenter().X() - 2 * geom.getGeometryCore().DetHalfWidth()
-                # print ('cathode_x', cathode_x)
-                # y -= cathode_x
-
-                plane_x = geom.getGeometryCore().Plane(view.plane(), track.tpc(), track.cryo()).GetCenter().X()
-                plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
-
-                y -= location * (2 * geom.halfwidth()) / geom.time2cm()
-                y += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
-                y += location * (geom.tRange() + geom.cathodeGap())
-                y -= location * 185
-
-
-                points.append(QtCore.QPointF(x, y))
-
-            # self._drawnObjects[view.plane()].append(thisPoly)
-
-            thisPoly = polyLine(points, color)
-            # pen = pg.mkPen(color, width=2)
-            # thisPoly.setPen(pen)
-            # polyLine.draw(view._view)
-
-            thisPoly.setToolTip('Temp')
-
-            view._view.addItem(thisPoly)
-
-            self._drawnObjects[plane].append(thisPoly)
-
-    def clearDrawnObjects(self, obj_list=None):
-        """ Override base class since our object list is nested """
-        for view_objs in self._drawnObjects:
-            for obj in view_objs:
-                obj.scene().removeItem(obj)
-        self._drawnObjects = []
-
-
-
-
-try:
-    from gallery_interface.datatypes.database import recoBase3D
-    import pyqtgraph.opengl as gl
-    import numpy as np
-    class track3D(recoBase3D):
-
-        def __init__(self):
-            super(track3D, self).__init__()
-            self._productName = 'track3D'
-            self._process = evd.DrawTrack3D(geom.getGeometryCore(), geom.getDetectrorProperties())
-            self.init()
-
-
-        def drawObjects(self, view_manager):
-            geom = view_manager._geometry
-            view = view_manager.getView()
-
-            self
-            tracks = self._process.getData()
-
-            for track in tracks:
-
-                # construct a line for this track:
-                points = track.track()
-                x = np.zeros(points.size())
-                y = np.zeros(points.size())
-                z = np.zeros(points.size())
-                # x = numpy.ndarray()
-                # x = numpy.ndarray()
-                i = 0
-                for point in points:
-                    x[i] = point.X()
-                    y[i] = point.Y()
-                    z[i] = point.Z()
-                    i+= 1
-
-                pts = np.vstack([x,y,z]).transpose()
-                pen = pg.mkPen((255,0,0), width=2)
-                line = gl.GLLinePlotItem(pos=pts,color=(255,0,0,255), width=4)
-                view.addItem(line)
-                self._drawnObjects.append(line)
-
-
-
-except:
-    pass
-
+    def genToolTip(self, tracks, row, correction):
+        points = tracks.points(row)
+        length = np.linalg.norm(np.diff(points, axis=0), axis=1).sum() if len(points) > 1 else 0.
+        what = correction.describe() if correction is not None else 'drawn as stored'
+        return f'Track {tracks.id[row]}: length {length:.1f} cm, {len(points)} points\n{what}'

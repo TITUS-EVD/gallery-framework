@@ -84,6 +84,35 @@ def read_event_product(lib, ev, kind, tag, columns=None, cpp_type=None, candidat
     return columns_to_container(kind, columns)
 
 
+def file_products(ev):
+    """
+    {(kind, tag): C++ product type} of the products TITUS reads in the
+    current file of a gallery.Event, from its branch names
+    """
+    types = {}
+    for branch in ev.getTFile().Get('Events').GetListOfBranches():
+        parsed = parse_branch(branch.GetName())
+        if parsed is None or parsed[0] is None:
+            continue
+        kind, tag, cpp_type = parsed
+        # a producer may store an association with and without metadata
+        # (Pandora's track-hit associations): prefer the kind's first type
+        previous = types.get((kind, tag))
+        if previous is None or KINDS[kind].types.index(cpp_type) < KINDS[kind].types.index(previous):
+            types[(kind, tag)] = cpp_type
+    return types
+
+
+def association_candidates(types):
+    """ tags of the non-association products, which associations may point into """
+    return list(dict.fromkeys(tag for (kind, tag) in types if kind not in ASSOCIATIONS))
+
+
+def string_vector(values):
+    """ a std::vector<std::string>, e.g. association candidate tags """
+    return _import_root().std.vector['string'](list(values))
+
+
 def titusio():
     """ the titusio library, loaded through ROOT """
     return _import_root().titusio
@@ -121,18 +150,10 @@ class GalleryReader(EventReader):
 
     @staticmethod
     def _product_tags(ev):
-        tags, types = {}, {}
-        for branch in ev.getTFile().Get('Events').GetListOfBranches():
-            parsed = parse_branch(branch.GetName())
-            if parsed is None or parsed[0] is None:
-                continue
-            kind, tag, cpp_type = parsed
-            # a producer may store an association with and without metadata
-            # (Pandora's track-hit associations): prefer the kind's first type
-            previous = types.get((kind, tag))
-            if previous is None or KINDS[kind].types.index(cpp_type) < KINDS[kind].types.index(previous):
-                types[(kind, tag)] = cpp_type
-            tags.setdefault(kind, set()).add(tag)
+        types = file_products(ev)
+        tags = {}
+        for kind, tag in types:
+            tags.setdefault(kind, []).append(tag)
         return {kind: sorted(t) for kind, t in tags.items()}, types
 
     @property
@@ -176,8 +197,7 @@ class GalleryReader(EventReader):
             file_index = self._entries[entry][0]
             cpp_type = self._file_types[file_index][(kind, tag)]
             # every non-association product of the file: the ones pointed into are among them
-            candidates = self._ROOT.std.vector['string'](list(dict.fromkeys(
-                t for (k, t) in self._file_types[file_index] if k not in ASSOCIATIONS)))
+            candidates = self._ROOT.std.vector['string'](association_candidates(self._file_types[file_index]))
         try:
             return read_event_product(self._lib, self.event_handle(entry), kind, tag, self._columns.get(kind),
                                       cpp_type, candidates)

@@ -18,8 +18,8 @@ pg = pytest.importorskip('pyqtgraph')
 from PyQt5 import QtCore  # noqa: E402
 
 import titus.drawables.drawable as drawable_module  # noqa: E402
-from titus.display import ViewLayout, wire_image  # noqa: E402
-from titus.drawables import Hit, RawDigit, RecoWire, recoChannelROI  # noqa: E402
+from titus.display import ViewLayout, track_correction, track_segments, track_t0s, wire_image  # noqa: E402
+from titus.drawables import Hit, RawDigit, RecoWire, Track, recoChannelROI  # noqa: E402
 from titus.geometry import Geometry  # noqa: E402
 from titus.readers import DumpReader, ProductNotFound, RawDigits  # noqa: E402
 
@@ -39,13 +39,16 @@ def products(monkeypatch):
     """ {(kind, tag): container} served by read_event_product """
     served = {}
 
-    def read(lib, ev, kind, tag, columns=None):
+    def read(lib, ev, kind, tag, columns=None, cpp_type=None, candidate_tags=None):
         if (kind, tag) not in served:
             raise ProductNotFound(f'{kind} {tag} not in this event')
         return served[(kind, tag)]
 
     monkeypatch.setattr(drawable_module, 'read_event_product', read)
     monkeypatch.setattr(drawable_module, 'titusio', lambda: None)
+    # the file's products: whatever is served
+    monkeypatch.setattr(drawable_module, 'file_products', lambda ev: {key: 'type' for key in served})
+    monkeypatch.setattr(drawable_module, 'string_vector', list)
     return served
 
 
@@ -238,3 +241,68 @@ def test_lazy_drawable_created_on_first_producer():
     drawable.set_producer.assert_called_with(None)
     lazy.set_producer('pandoraTrack::Reco2')
     assert len(created) == 1
+
+
+
+def serve_reco2(products, entry, with_associations=True):
+    dump = DumpReader(DATA / 'sbnd-reco2-tracks')
+    products[('tracks', 'pandoraTrack::Reco2')] = dump.get(entry, 'tracks', 'pandoraTrack')
+    products[('hits', 'gaushit::Reco1')] = dump.hits(entry, 'gaushit')
+    if with_associations:
+        for kind, tag in [('track_hits', 'pandoraTrack::Reco2'), ('pfp_tracks', 'pandoraTrack::Reco2'),
+                          ('pfp_t0s', 'pandora::Reco2'), ('t0s', 'pandora::Reco2')]:
+            products[(kind, tag)] = dump.get(entry, kind, tag)
+    return dump
+
+
+def draw_tracks(tpc_module, sbnd, corrected=True):
+    tpc_module.correct_3d_objects = lambda: corrected
+    drawer = Track(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('pandoraTrack::Reco2')
+    drawer.analyze()
+    drawer.drawObjects()
+    return drawer
+
+
+def test_tracks_corrected(qtbot, products, sbnd, tpc_module, capsys):
+    dump = serve_reco2(products, 1)
+    drawer = draw_tracks(tpc_module, sbnd)
+    # every related product was read
+    assert 'Warning' not in capsys.readouterr().out
+    tracks = dump.get(1, 'tracks', 'pandoraTrack')
+    t0s = track_t0s(len(tracks), dump.get(1, 'pfp_tracks', 'pandoraTrack'),
+                    dump.get(1, 'pfp_t0s', 'pandora'), dump.get(1, 't0s', 'pandora'))
+    lines = drawer._drawnObjects
+    dashed = [l for l in lines if l.pen().style() == QtCore.Qt.DashLine]
+    assert lines and dashed
+    assert any('T0 ' in l.toolTip() for l in dashed)
+    # the collection view: same paths as the display code computes
+    layout = ViewLayout(sbnd, plane=2)
+    expected = [s for row in range(len(tracks))
+                for s in track_segments(layout, tracks, row, track_correction(
+                    layout, tracks, row, t0s[row], dump.get(1, 'track_hits', 'pandoraTrack'),
+                    dump.hits(1, 'gaushit')))]
+    view_lines = [l for l in lines if l in tpc_module._wire_views[(2, 0)]._view.addedItems]
+    assert len(view_lines) == len(expected)
+    first = view_lines[0].path().elementAt(0)
+    assert (first.x, first.y) == pytest.approx((expected[0].x[0], expected[0].y[0]))
+
+    drawer.clearDrawnObjects()
+    assert drawer._drawnObjects == []
+
+
+def test_tracks_as_stored(qtbot, products, sbnd, tpc_module):
+    serve_reco2(products, 1)
+    drawer = draw_tracks(tpc_module, sbnd, corrected=False)
+    lines = drawer._drawnObjects
+    assert lines and all(l.pen().style() == QtCore.Qt.SolidLine for l in lines)
+    assert all('drawn as stored' in l.toolTip() for l in lines)
+
+
+def test_tracks_without_associations(qtbot, products, sbnd, tpc_module, capsys):
+    """ no T0s or track-hit associations in the file: no shift, TPC by readout window """
+    serve_reco2(products, 1, with_associations=False)
+    drawer = draw_tracks(tpc_module, sbnd)
+    assert drawer._drawnObjects
+    assert not any('T0 ' in l.toolTip() for l in drawer._drawnObjects)
+    assert 'Warning' not in capsys.readouterr().out

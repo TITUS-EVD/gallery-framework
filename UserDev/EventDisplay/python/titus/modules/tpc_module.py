@@ -482,6 +482,15 @@ class TpcModule(Module):
         # self._spliTracksOption.stateChanged.connect(self.splitTracksWorker)
         self._spliTracksOption.setVisible(False)
 
+        self._correct_3d = QtWidgets.QCheckBox("Correct 3D objects")
+        self._correct_3d.setToolTip(
+            "Draw 3D objects (tracks) on their hits, using what the reconstruction stored: undo\n"
+            "Pandora's T0 shift and draw each point in the TPC of its hits. Corrected objects are\n"
+            "dashed and their tooltip says what changed. Unchecked: drawn where they were stored.")
+        self._correct_3d.setTristate(False)
+        self._correct_3d.setChecked(True)
+        self._correct_3d.stateChanged.connect(self.redraw_3d_objects)
+
         self._plane_frames = QtWidgets.QCheckBox("Plane frames")
         self._plane_frames.setToolTip("Show or hide the scale back frame.")
         self._plane_frames.setTristate(False)
@@ -502,6 +511,7 @@ class TpcModule(Module):
         options_layout.addLayout(self._scaleBarLayout)
         options_layout.addWidget(self._logoOption)
         options_layout.addWidget(self._plane_frames)
+        options_layout.addWidget(self._correct_3d)
         options_layout.addWidget(self._spliTracksOption)
         options_layout.addWidget(self._maxRangeButton)
         options_layout.addLayout(self._clearEvalPointsLayout)
@@ -641,6 +651,15 @@ class TpcModule(Module):
         self._waveform_dock.visibilityChanged.connect(
             lambda: self._drawWireOption.setChecked(self._waveform_dock.isVisible())
         )
+
+    def correct_3d_objects(self):
+        ''' whether 3D objects are drawn corrected to lie on their hits '''
+        return self._correct_3d.isChecked()
+
+    def redraw_3d_objects(self):
+        for drawable in self._product_box_map.values():
+            drawable.clearDrawnObjects()
+            drawable.drawObjects()
 
     def reco_box_handler(self, text):
         sender = self.sender()
