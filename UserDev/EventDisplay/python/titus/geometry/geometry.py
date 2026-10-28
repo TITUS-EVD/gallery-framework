@@ -15,6 +15,7 @@ TITUS plane index: position of a plane in Detector.planes, i.e. ordered by
 import copy
 import json
 import pathlib
+import traceback
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
@@ -364,6 +365,8 @@ class Geometry:
     def _service(self, name):
         service = getattr(self.services, name)
         if service is None and self._service_loader is not None:
+            caller = traceback.extract_stack(limit=3)[0]
+            print(f'LArSoft service {name!r} requested by {caller.filename}:{caller.lineno}, loading services')
             loader, self._service_loader = self._service_loader, None
             self.services = loader()
             service = getattr(self.services, name)

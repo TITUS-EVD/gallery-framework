@@ -1,5 +1,5 @@
 # List drawable objects
-from titus.drawables.drawable import Drawable
+from titus.drawables.drawable import Drawable, LazyDrawable
 from titus.drawables.wire import RecoWire
 from titus.drawables.wire import RawDigit
 from titus.drawables.wire import recoChannelROI

@@ -203,3 +203,38 @@ def test_services_load_only_when_asked(qtbot, monkeypatch, sbnd):
     assert geom.getGeometryCore() is lsm.geom_service
     geom.getDetectorClocks()
     assert len(created) == 6 and loaded == [1]
+
+
+def test_lazy_drawable_created_on_first_producer():
+    from titus.drawables import LazyDrawable
+
+    created = []
+
+    def factory():
+        drawable = mock.Mock()
+        created.append(drawable)
+        return drawable
+
+    lazy = LazyDrawable(factory, 'recob::Track')
+    lazy.parent_module = 'module'
+    # the module analyzes, draws and clears all its drawables every event
+    lazy.analyze()
+    lazy.drawObjects()
+    lazy.clearDrawnObjects()
+    lazy.set_producer(None)
+    assert created == [] and lazy.product_name == 'recob::Track'
+    with pytest.raises(AttributeError, match='not created yet'):
+        lazy.getHitsOnWire
+
+    lazy.set_producer('pandoraTrack::Reco2')
+    (drawable,) = created
+    assert drawable.parent_module == 'module'
+    drawable.set_producer.assert_called_with('pandoraTrack::Reco2')
+    lazy.analyze()
+    lazy.drawObjects()
+    drawable.analyze.assert_called_once()
+    drawable.drawObjects.assert_called_once()
+    lazy.set_producer(None)
+    drawable.set_producer.assert_called_with(None)
+    lazy.set_producer('pandoraTrack::Reco2')
+    assert len(created) == 1

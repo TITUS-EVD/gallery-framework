@@ -182,3 +182,50 @@ class ReaderDrawable(Drawable):
     def on_data(self):
         """ called after analyze() reads the products; derived classes may convert them """
         pass
+
+
+class LazyDrawable:
+    '''
+    Stands in for a drawable until a producer is selected, so that drawables
+    building C++ drawers (and with them the LArSoft services) aren't created
+    at startup. factory() creates the drawable.
+    '''
+
+    def __init__(self, factory, product_name):
+        self._factory = factory
+        self._drawable = None
+        self.product_name = product_name
+        self.parent_module = None
+
+    @property
+    def drawable(self):
+        return self._drawable
+
+    def set_producer(self, producer):
+        if producer is None or producer == _NULL_NAME:
+            if self._drawable is not None:
+                self._drawable.set_producer(None)
+            return
+        if self._drawable is None:
+            self._drawable = self._factory()
+            self._drawable.parent_module = self.parent_module
+        self._drawable.set_producer(producer)
+
+    def analyze(self):
+        if self._drawable is not None:
+            self._drawable.analyze()
+
+    def drawObjects(self):
+        if self._drawable is not None:
+            self._drawable.drawObjects()
+
+    def clearDrawnObjects(self, obj_list=None):
+        if self._drawable is not None:
+            self._drawable.clearDrawnObjects()
+
+    def __getattr__(self, name):
+        # anything else is the drawable's, once it exists
+        drawable = self.__dict__.get('_drawable')
+        if drawable is None:
+            raise AttributeError(f'{name!r}: drawable for {self.product_name} not created yet')
+        return getattr(drawable, name)

@@ -323,8 +323,11 @@ class TpcModule(Module):
             prod_class, product = product_info
             producers = self._gi.get_producers(product, self._lsm.current_stage)
             thisBox = recoBox(self, product_name, product, producers)
+            # created when a producer is selected: most still need the services
             self._product_box_map[thisBox] = self.register_drawable(
-                prod_class(self._gi, self._gm.current_geom, self)
+                drawables.LazyDrawable(
+                    lambda prod_class=prod_class: prod_class(self._gi, self._gm.current_geom, self),
+                    product)
             )
 
             thisBox.activated[str].connect(self.reco_box_handler)
