@@ -250,11 +250,54 @@ class Associations(Columns):
         return self.right[self.left == left_row]
 
 
+@dataclass(frozen=True)
+class PFParticles(Columns):
+    """ recob::PFParticle: Self() index, PDG code and parent (-1 for primaries) """
+    DTYPES: ClassVar[Dict[str, str]] = {'self_index': 'i4', 'pdg': 'i4', 'parent': 'i4'}
+    self_index: np.ndarray
+    pdg: np.ndarray
+    parent: np.ndarray
+
+    def __len__(self):
+        return len(self.self_index)
+
+
+@dataclass(frozen=True)
+class T0s(Columns):
+    """ anab::T0: time in ns, trigger type and ID """
+    DTYPES: ClassVar[Dict[str, str]] = {'time': 'f8', 'trigger_type': 'i4', 'id': 'i4'}
+    time: np.ndarray
+    trigger_type: np.ndarray
+    id: np.ndarray
+
+    def __len__(self):
+        return len(self.time)
+
+
 class ProductKind(NamedTuple):
     name: str
     container: type
     # C++ product types read as this kind
     types: Tuple[str, ...]
+
+
+# association kinds: (left type, right type, metadata types). art may store
+# either order; readers always return left = the first type here
+ASSOCIATIONS = {
+    'track_hits': ('recob::Track', 'recob::Hit', ('recob::TrackHitMeta', 'void')),
+    'pfp_tracks': ('recob::PFParticle', 'recob::Track', ('void',)),
+    'pfp_t0s': ('recob::PFParticle', 'anab::T0', ('void',)),
+}
+
+
+def _association_types(left, right, metas):
+    return tuple(f'art::Assns<{a},{b},{d}>' for d in metas for a, b in ((left, right), (right, left)))
+
+
+def association_is_swapped(kind, cpp_type):
+    """ True if an association product type has the kind's two types in reverse order """
+    left = ASSOCIATIONS[kind][0]
+    return not cpp_type.startswith(f'art::Assns<{left},')
 
 
 KINDS = {k.name: k for k in [
@@ -266,9 +309,9 @@ KINDS = {k.name: k for k in [
     ProductKind('vertices', Points, ('std::vector<recob::Vertex>',)),
     ProductKind('spacepoints', Points, ('std::vector<recob::SpacePoint>',)),
     ProductKind('showers', Showers, ('std::vector<recob::Shower>',)),
-    ProductKind('track_hits', Associations, ('art::Assns<recob::Track,recob::Hit,recob::TrackHitMeta>',
-                                             'art::Assns<recob::Track,recob::Hit,void>')),
-]}
+    ProductKind('pfparticles', PFParticles, ('std::vector<recob::PFParticle>',)),
+    ProductKind('t0s', T0s, ('std::vector<anab::T0>',)),
+] + [ProductKind(kind, Associations, _association_types(*types)) for kind, types in ASSOCIATIONS.items()]}
 
 
 def friendly_name(cpp_type):

@@ -14,7 +14,8 @@ Run inside the SBN environment (gpvm), from this directory:
 
 By default every product TITUS reads (titus.readers.KINDS) found in the file
 is dumped: hits, wires, channel ROIs, tracks with their hit associations,
-vertices, spacepoints and showers. Raw digits (large) only with
+vertices, spacepoints, showers, and the PFParticles and T0s (with their
+track associations) to undo Pandora's T0 shift. Raw digits (large) only with
 --raw-digits. Failures are recorded in the dump's index.json and listed at
 the end instead of aborting.
 """
@@ -30,15 +31,15 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from dump_detector import Errors  # noqa: E402
-from titus.readers import (KINDS, Associations, DumpWriter, Hits, Points, RawDigits, Showers,  # noqa: E402
-                           Tracks, WireSignals)
-from titus.readers.products import parse_branch  # noqa: E402
-
-DEFAULT_KINDS = ('hits', 'wires', 'channel_rois', 'tracks', 'vertices', 'spacepoints', 'showers',
-                 'track_hits')
+from titus.readers import (ASSOCIATIONS, KINDS, Associations, DumpWriter, Hits, PFParticles,  # noqa: E402
+                           Points, RawDigits, Showers, T0s, Tracks, WireSignals)
+from titus.readers.products import association_is_swapped, parse_branch  # noqa: E402
 
 # kinds read through associations, after the products they refer to
-ASSOCIATION_KINDS = ('track_hits',)
+ASSOCIATION_KINDS = tuple(ASSOCIATIONS)
+
+DEFAULT_KINDS = ('hits', 'wires', 'channel_rois', 'tracks', 'vertices', 'spacepoints', 'showers',
+                 'pfparticles', 't0s') + ASSOCIATION_KINDS
 
 # raw::Compress_t
 COMPRESSION_NONE = 0
@@ -152,11 +153,26 @@ def extract_showers(showers):
     return Showers(**columns)
 
 
-def extract_associations(assns, tag_of_product, has_meta):
+def extract_pfparticles(pfparticles):
+    rows = [(p.Self(), p.PdgCode(), p.Parent()) for p in pfparticles]
+    columns = list(zip(*rows)) if rows else [[], [], []]
+    # recob::PFParticle::kPFParticlePrimary is the largest size_t
+    parent = [-1 if q > 2 ** 31 else q for q in columns[2]]
+    return PFParticles(self_index=columns[0], pdg=columns[1], parent=parent)
+
+
+def extract_t0s(t0s):
+    rows = [(t.Time(), t.TriggerType(), t.ID()) for t in t0s]
+    columns = list(zip(*rows)) if rows else [[], [], []]
+    return T0s(time=columns[0], trigger_type=columns[1], id=columns[2])
+
+
+def extract_associations(assns, tag_of_product, has_meta, swapped=False):
     """
     art::Assns via its pairs of art::Ptr. tag_of_product(ProductID) -> input
     tag of the product a Ptr points into ('' if unknown). has_meta: the
-    association carries recob::TrackHitMeta.
+    association carries recob::TrackHitMeta. swapped: the product has the
+    kind's two types in reverse order; left and right are swapped back.
     """
     tags = []
 
@@ -169,6 +185,8 @@ def extract_associations(assns, tag_of_product, has_meta):
     columns = {name: [] for name in ('left', 'right', 'left_product', 'right_product', 'meta_index')}
     for i in range(assns.size()):
         left, right = assns[i].first, assns[i].second
+        if swapped:
+            left, right = right, left
         columns['left'].append(left.key())
         columns['right'].append(right.key())
         columns['left_product'].append(product_index(left))
@@ -184,15 +202,21 @@ def discover_tags(ROOT, path, kinds, labels=None):
     f = ROOT.TFile.Open(path)
     if not f or f.IsZombie():
         raise OSError(f'cannot open {path}')
-    found = []
+    found, other_assns = [], []
     for branch in f.Get('Events').GetListOfBranches():
         parsed = parse_branch(branch.GetName())
+        if parsed is not None and parsed[0] is None and 'art::Assns' in branch.GetName():
+            other_assns.append(branch.GetName())
         if parsed is None or parsed[0] not in kinds:
             continue
         if labels and parsed[1].split(':')[0] not in labels:
             continue
         found.append(parsed)
     f.Close()
+    if other_assns:
+        print('Associations not dumped:')
+        for name in sorted(other_assns):
+            print(f'  {name}')
     # associations last: they refer to the products read before them
     return sorted(found, key=lambda p: (p[0] in ASSOCIATION_KINDS, p[0], p[1]))
 
@@ -240,6 +264,8 @@ def main():
         'vertices': extract_vertices,
         'spacepoints': extract_spacepoints,
         'showers': extract_showers,
+        'pfparticles': extract_pfparticles,
+        't0s': extract_t0s,
     }
     errors = Errors()
     meta = {
@@ -276,7 +302,8 @@ def main():
                     handle = ev.getValidHandle[cpp_type](ROOT.art.InputTag(tag))
                     if kind in ASSOCIATION_KINDS:
                         container = extract_associations(handle.product(), tag_of_product,
-                                                         has_meta='TrackHitMeta' in cpp_type)
+                                                         has_meta='TrackHitMeta' in cpp_type,
+                                                         swapped=association_is_swapped(kind, cpp_type))
                     else:
                         container = extractors[kind](handle.product())
                         try:

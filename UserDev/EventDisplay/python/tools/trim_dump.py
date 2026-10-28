@@ -8,6 +8,8 @@ ROOT).
 
     python trim_dump.py dumps/sbnd-reco1 ../tests/data/sbnd-reco1-trimmed \
         --detector sbnd --events 0 --wires 800:1000
+    python trim_dump.py dumps/sbnd-reco2 ../tests/data/sbnd-reco2-tracks \
+        --detector sbnd --events 0 --kinds hits,tracks --tags gaushit,pandoraTrack
 """
 
 import argparse
@@ -61,21 +63,28 @@ def main():
     parser.add_argument('destination')
     parser.add_argument('--detector', required=True, help='detector description for the channel map')
     parser.add_argument('--events', default='0', help='comma-separated entries to keep')
-    parser.add_argument('--wires', required=True, help='wire range first:last (exclusive)')
+    parser.add_argument('--wires', help='wire range first:last (exclusive); default all')
+    parser.add_argument('--kinds', help='comma-separated product kinds to keep; default all')
+    parser.add_argument('--tags', help='comma-separated module labels to keep; default all')
     args = parser.parse_args()
 
-    first, last = map(int, args.wires.split(':'))
     cm = load_detector(args.detector).channel_map
+    first, last = map(int, args.wires.split(':')) if args.wires else (0, cm.wire.max() + 1)
     channels = np.unique(cm.channel[(cm.wire >= first) & (cm.wire < last)])
+    kinds = args.kinds.split(',') if args.kinds else list(KINDS)
+    labels = set(args.tags.split(',')) if args.tags else None
 
     reader = DumpReader(args.source)
     meta = dict(reader.meta, trimmed_from=os.path.basename(os.path.normpath(args.source)),
-                trim={'events': args.events, 'wires': args.wires})
+                trim={'events': args.events, 'wires': args.wires, 'kinds': args.kinds,
+                      'tags': args.tags})
     with DumpWriter(args.destination, meta) as writer:
         for entry in map(int, args.events.split(',')):
             products, kept = {}, {}
-            for kind in KINDS:
+            for kind in kinds:
                 for tag in reader.tags(kind, entry):
+                    if labels and tag.split(':')[0] not in labels:
+                        continue
                     container = reader.get(entry, kind, tag)
                     if hasattr(container, 'channel'):
                         keep = np.isin(container.channel, channels)

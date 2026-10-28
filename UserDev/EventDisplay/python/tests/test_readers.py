@@ -131,7 +131,7 @@ def test_dump_products_per_event(dump):
         dump.hits(0, 'fasthit')
     assert len(dump.hits(1, 'fasthit')) == 2
     with pytest.raises(ValueError, match='unknown product kind'):
-        dump.get(0, 'pfparticles', 'pandora')
+        dump.get(0, 'clusters', 'pandora')
     with pytest.raises(IndexError):
         dump.hits(2, 'gaushit')
 
@@ -343,3 +343,32 @@ def test_trim_renumbers_associations():
     assert trimmed.left.tolist() == [0, 1] and trimmed.right.tolist() == [1, 0]
     assert trimmed.meta_index.tolist() == [1, 0]
     assert trimmed.product_tags.tolist() == make_track_hits().product_tags.tolist()
+
+
+def test_extract_pfparticles_and_t0s():
+    primary = 2 ** 64 - 1  # recob::PFParticle::kPFParticlePrimary
+    pfps = dump_products.extract_pfparticles([fake(Self=0, PdgCode=13, Parent=primary),
+                                              fake(Self=1, PdgCode=11, Parent=0)])
+    assert pfps.parent.tolist() == [-1, 0] and pfps.pdg.tolist() == [13, 11]
+    t0s = dump_products.extract_t0s([fake(Time=-867000.5, TriggerType=3, ID=0)])
+    assert t0s.time.tolist() == [-867000.5] and t0s.time.dtype == np.float64
+
+
+def test_extract_swapped_associations():
+    """ stored as Assns<Hit, Track>: returned with tracks on the left """
+    tags = {10: 'pandoraTrack::Reco2', 20: 'gaushit::Reco1'}
+    assns = FakeAssns([((20, 5), (10, 0)), ((20, 6), (10, 1))], meta=[3, 4])
+    result = dump_products.extract_associations(assns, tags.get, has_meta=True, swapped=True)
+    assert result.left.tolist() == [0, 1] and result.right.tolist() == [5, 6]
+    assert result.product_tags[result.left_product[0]] == 'pandoraTrack::Reco2'
+
+
+@pytest.mark.parametrize('branch, kind', [
+    ('recob::Hitrecob::Trackrecob::TrackHitMetaart::Assns_pandoraTrack__Reco2.', 'track_hits'),
+    ('recob::PFParticlerecob::Trackvoidart::Assns_pandoraTrack__Reco2.', 'pfp_tracks'),
+    ('anab::T0recob::PFParticlevoidart::Assns_pandora__Reco2.', 'pfp_t0s'),
+    ('anab::T0s_pandora__Reco2.', 't0s'),
+    ('recob::PFParticles_pandora__Reco2.', 'pfparticles'),
+])
+def test_parse_reco2_branches(branch, kind):
+    assert parse_branch(branch)[0] == kind

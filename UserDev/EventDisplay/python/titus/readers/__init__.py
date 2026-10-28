@@ -7,5 +7,5 @@ GalleryReader reads art-root files through gallery.
 from .base import EventReader, ProductNotFound, resolve_tag
 from .dump import DumpReader, DumpWriter
 from .gallery import GalleryReader
-from .products import (KINDS, Associations, EventID, Hits, Points, RawDigits, Showers, Tracks,
-                       WireSignals, parse_branch_name)
+from .products import (ASSOCIATIONS, KINDS, Associations, EventID, Hits, PFParticles, Points, RawDigits,
+                       Showers, T0s, Tracks, WireSignals, parse_branch_name)
