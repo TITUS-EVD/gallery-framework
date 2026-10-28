@@ -1,0 +1,32 @@
+[project]
+name = "titus"
+version = "0.1.0"
+description = "TITUS event display for SBN"
+readme = "README"
+# keep compatible with the python provided by the SBN software stack
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pyqtgraph",
+    "PyQt5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-qt",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["titus*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyqt5"
+
+[tool.setuptools.package-data]
+titus = ["detectors/*.json", "detectors/*.json.gz"]
