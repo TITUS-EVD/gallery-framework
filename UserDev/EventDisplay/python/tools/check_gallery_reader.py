@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 
 import dump_products  # noqa: E402
 from titus.readers import KINDS, GalleryReader  # noqa: E402
+from titus.readers.gallery import EXTRACTORS  # noqa: E402
 
 
 def compare(kind, expected, actual):
@@ -53,7 +54,9 @@ def main():
     print(f'GalleryReader({args.file}): {len(reader.events)} events, {time.perf_counter() - start:.2f} s')
     print(f'ChannelROI support: {bool(ROOT.titusio.hasChannelROISupport())}')
 
-    kinds = dump_products.DEFAULT_KINDS + (('raw_digits',) if args.raw_digits else ())
+    # the kinds the titusio library reads so far
+    kinds = [k for k in dump_products.DEFAULT_KINDS if k in EXTRACTORS]
+    kinds += ['raw_digits'] if args.raw_digits else []
     labels = set(args.tags.split(',')) if args.tags else None
     products = [(k, t) for k in kinds for t in reader.tags(k)
                 if labels is None or t.split(':')[0] in labels]
@@ -75,7 +78,7 @@ def main():
 
                 start = time.perf_counter()
                 ev = reader.event_handle(entry)
-                handle = ev.getValidHandle[f'std::vector<{KINDS[kind].cpp_type}>'](ROOT.art.InputTag(tag))
+                handle = ev.getValidHandle[KINDS[kind].types[0]](ROOT.art.InputTag(tag))
                 expected = extractors[kind](handle.product())
                 t_pyroot = time.perf_counter() - start
             except Exception as e:

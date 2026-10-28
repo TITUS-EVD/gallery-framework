@@ -52,6 +52,8 @@ def read_event_product(lib, ev, kind, tag, columns=None):
     (ROOT.titusio). tag: full 'label:instance:process' or as accepted by
     art::InputTag. columns: a reusable titusio column struct.
     """
+    if kind not in EXTRACTORS:
+        raise NotImplementedError(f'{kind} products are not read by the titusio library yet')
     function, struct = EXTRACTORS[kind]
     if columns is None:
         columns = getattr(lib, struct)()
@@ -134,10 +136,10 @@ class GalleryReader(EventReader):
         return ev
 
     def _read(self, entry, kind, tag):
-        if kind not in self._columns:
+        if kind not in self._columns and kind in EXTRACTORS:
             # reused between events: the conversion copies
             self._columns[kind] = getattr(self._lib, EXTRACTORS[kind][1])()
         try:
-            return read_event_product(self._lib, self.event_handle(entry), kind, tag, self._columns[kind])
+            return read_event_product(self._lib, self.event_handle(entry), kind, tag, self._columns.get(kind))
         except ProductNotFound:
             raise ProductNotFound(f'{kind} {tag} not in event {self._events[entry]}') from None

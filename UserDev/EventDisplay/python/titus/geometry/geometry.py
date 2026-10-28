@@ -3,8 +3,8 @@ The geometry interface used by the TITUS GUI and drawables, built from a
 Detector description plus display settings (<detector>.display.json) instead
 of per-detector subclasses and the LArSoft services.
 
-Method names follow the legacy titus.gallery_interface.geometry classes so
-existing callers keep working. Everything that follows from the detector
+Method names follow the legacy per-detector geometry classes (formerly
+titus/gallery_interface/geometry.py) so existing callers keep working. Everything that follows from the detector
 itself (plane numbering, flips, shifts, plane pairing across TPCs) is computed
 from the Detector; the display settings only hold preferences.
 

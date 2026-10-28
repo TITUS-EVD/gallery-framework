@@ -131,7 +131,7 @@ def test_dump_products_per_event(dump):
         dump.hits(0, 'fasthit')
     assert len(dump.hits(1, 'fasthit')) == 2
     with pytest.raises(ValueError, match='unknown product kind'):
-        dump.get(0, 'tracks', 'pandora')
+        dump.get(0, 'pfparticles', 'pandora')
     with pytest.raises(IndexError):
         dump.hits(2, 'gaushit')
 
@@ -202,3 +202,144 @@ def test_extract_raw_digits():
 def test_import_readers_without_root():
     code = 'import sys, titus.readers; assert "ROOT" not in sys.modules'
     subprocess.run([sys.executable, '-c', code], check=True)
+
+
+# --- reco2 products ---
+
+from titus.readers import Associations, Points, Showers, Tracks  # noqa: E402
+from titus.readers.products import friendly_name, parse_branch  # noqa: E402
+
+import trim_dump  # noqa: E402
+
+
+def make_tracks():
+    return Tracks.from_points(ids=[4, 7], points=[[[0, 0, 0], [1, 2, 3], [-999, -999, -999]], [[5, 5, 5]]],
+                              valid=[[True, True, False], [True]])
+
+
+def make_track_hits():
+    return Associations(left=[0, 0, 1], right=[2, 4, 1], left_product=[0, 0, 0], right_product=[1, 1, 1],
+                        meta_index=[0, 1, 0], product_tags=['pandoraTrack::Reco2', 'gaushit::Reco1'])
+
+
+def test_tracks():
+    tracks = make_tracks()
+    assert len(tracks) == 2 and tracks.point_offset.tolist() == [0, 3, 4]
+    assert tracks.points(0).tolist() == [[0, 0, 0], [1, 2, 3]]
+    assert len(tracks.points(0, valid_only=False)) == 3
+    assert tracks.points(1).tolist() == [[5, 5, 5]]
+    assert len(Tracks.empty()) == 0 and len(Tracks.from_points([], [])) == 0
+
+
+def test_associations():
+    assns = make_track_hits()
+    assert assns.right_of(0).tolist() == [2, 4] and assns.right_of(1).tolist() == [1]
+    assert assns.product_tags[assns.right_product[0]] == 'gaushit::Reco1'
+
+
+def test_reco2_dump_roundtrip(tmp_path):
+    points = Points(id=[1], x=[1.5], y=[2.5], z=[3.5])
+    showers = Showers(id=[0], start_x=[1], start_y=[2], start_z=[3], dir_x=[0], dir_y=[0], dir_z=[1],
+                      length=[50], open_angle=[0.1], best_plane=[2])
+    with DumpWriter(tmp_path) as w:
+        w.add_event((1, 1, 1), {('tracks', 'pandoraTrack::Reco2'): make_tracks(),
+                                ('track_hits', 'pandoraTrack::Reco2'): make_track_hits(),
+                                ('vertices', 'pandora::Reco2'): points,
+                                ('showers', 'pandoraShower::Reco2'): showers})
+    reader = DumpReader(tmp_path)
+    assert reader.get(0, 'tracks', 'pandoraTrack').points(0).tolist() == [[0, 0, 0], [1, 2, 3]]
+    assns = reader.get(0, 'track_hits', 'pandoraTrack')
+    assert assns.product_tags.tolist() == ['pandoraTrack::Reco2', 'gaushit::Reco1']
+    assert reader.get(0, 'vertices', 'pandora').xyz.tolist() == [[1.5, 2.5, 3.5]]
+    assert reader.get(0, 'showers', 'pandoraShower').best_plane.tolist() == [2]
+
+
+@pytest.mark.parametrize('branch, expected', [
+    ('recob::Tracks_pandoraTrack__Reco2.', ('tracks', 'pandoraTrack::Reco2', 'std::vector<recob::Track>')),
+    ('recob::Trackrecob::Hitrecob::TrackHitMetaart::Assns_pandoraTrack__Reco2.',
+     ('track_hits', 'pandoraTrack::Reco2', 'art::Assns<recob::Track,recob::Hit,recob::TrackHitMeta>')),
+    ('recob::Trackrecob::Hitvoidart::Assns_trajcluster__Reco2.',
+     ('track_hits', 'trajcluster::Reco2', 'art::Assns<recob::Track,recob::Hit,void>')),
+    ('recob::Hitrecob::Wirevoidart::Assns_gaushit__Reco1.', (None, 'gaushit::Reco1', None)),
+])
+def test_parse_branch(branch, expected):
+    assert parse_branch(branch) == expected
+
+
+def test_friendly_name():
+    assert friendly_name('std::vector<recob::SpacePoint>') == 'recob::SpacePoints'
+    assert friendly_name('art::Assns<recob::Track,recob::Hit,void>') == 'recob::Trackrecob::Hitvoidart::Assns'
+
+
+class FakePoint:
+    def __init__(self, x, y, z):
+        self._xyz = (x, y, z)
+
+    def X(self):
+        return self._xyz[0]
+
+    def Y(self):
+        return self._xyz[1]
+
+    def Z(self):
+        return self._xyz[2]
+
+
+def test_extract_tracks():
+    points = [FakePoint(0, 0, 0), FakePoint(1, 1, 1), FakePoint(-999, -999, -999)]
+    track = SimpleNamespace(ID=lambda: 3, NumberTrajectoryPoints=lambda: 3,
+                            LocationAtPoint=lambda i: points[i], HasValidPoint=lambda i: i < 2)
+    tracks = dump_products.extract_tracks([track])
+    assert tracks.id.tolist() == [3] and tracks.points(0).tolist() == [[0, 0, 0], [1, 1, 1]]
+
+
+def test_extract_points_and_showers():
+    vertices = dump_products.extract_vertices([fake(ID=2, position=FakePoint(1, 2, 3))])
+    assert vertices.xyz.tolist() == [[1, 2, 3]] and vertices.id.tolist() == [2]
+    spacepoints = dump_products.extract_spacepoints([fake(ID=5, XYZ=[4., 5., 6.])])
+    assert spacepoints.xyz.tolist() == [[4, 5, 6]]
+    assert len(dump_products.extract_vertices([])) == 0
+    shower = fake(ID=1, ShowerStart=FakePoint(1, 2, 3), Direction=FakePoint(0, 0, 1), Length=40.,
+                  OpenAngle=0.2, best_plane=2)
+    showers = dump_products.extract_showers([shower])
+    assert (showers.start_z[0], showers.dir_z[0], showers.length[0], showers.best_plane[0]) == (3, 1, 40, 2)
+
+
+class FakeAssns:
+    """ art::Assns: pairs of Ptrs (ProductID, key) and optional metadata """
+
+    def __init__(self, pairs, meta=None):
+        self._pairs, self._meta = pairs, meta
+
+    def size(self):
+        return len(self._pairs)
+
+    def __getitem__(self, i):
+        def ptr(product, key):
+            return fake(id=product, key=key)
+        (lp, lk), (rp, rk) = self._pairs[i]
+        return SimpleNamespace(first=ptr(lp, lk), second=ptr(rp, rk))
+
+    def data(self, i):
+        return fake(Index=self._meta[i])
+
+
+def test_extract_associations():
+    tags = {10: 'pandoraTrack::Reco2', 20: 'gaushit::Reco1'}
+    assns = FakeAssns([((10, 0), (20, 5)), ((10, 0), (20, 6)), ((10, 1), (99, 2))], meta=[0, 1, 0])
+    result = dump_products.extract_associations(assns, lambda pid: tags.get(pid, ''), has_meta=True)
+    assert result.left.tolist() == [0, 0, 1] and result.right.tolist() == [5, 6, 2]
+    assert result.meta_index.tolist() == [0, 1, 0]
+    # the hits of an unknown product (not read) have an empty tag
+    assert [result.product_tags[i] for i in result.right_product] == ['gaushit::Reco1', 'gaushit::Reco1', '']
+    void = dump_products.extract_associations(FakeAssns([((10, 0), (20, 1))]), tags.get, has_meta=False)
+    assert void.meta_index.tolist() == [-1]
+
+
+def test_trim_renumbers_associations():
+    kept = {'gaushit::Reco1': np.array([1, 4, 6])}
+    trimmed = trim_dump.renumber(make_track_hits(), kept)
+    # hits 2 dropped; hit 4 -> 1, hit 1 -> 0
+    assert trimmed.left.tolist() == [0, 1] and trimmed.right.tolist() == [1, 0]
+    assert trimmed.meta_index.tolist() == [1, 0]
+    assert trimmed.product_tags.tolist() == make_track_hits().product_tags.tolist()

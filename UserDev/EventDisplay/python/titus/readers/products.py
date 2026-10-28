@@ -143,30 +143,166 @@ class RawDigits(Columns):
         return len(self.channel)
 
 
+@dataclass(frozen=True)
+class Tracks(Columns):
+    """
+    recob::Track trajectories: track i has points point_offset[i] to
+    point_offset[i + 1]; valid marks points with a valid position.
+    """
+    DTYPES: ClassVar[Dict[str, str]] = {
+        'id': 'i4', 'point_offset': 'i8', 'x': 'f4', 'y': 'f4', 'z': 'f4', 'valid': '?',
+    }
+    id: np.ndarray
+    point_offset: np.ndarray
+    x: np.ndarray
+    y: np.ndarray
+    z: np.ndarray
+    valid: np.ndarray
+
+    def __len__(self):
+        return len(self.id)
+
+    @classmethod
+    def empty(cls):
+        return cls(id=[], point_offset=[0], x=[], y=[], z=[], valid=[])
+
+    @classmethod
+    def from_points(cls, ids, points, valid=None):
+        """ points: per track an (n, 3) array; valid: per track (n,) booleans """
+        points = [np.asarray(p, dtype='f4').reshape(-1, 3) for p in points]
+        valid = [np.ones(len(p), dtype=bool) for p in points] if valid is None else valid
+        offsets = np.concatenate([[0], np.cumsum([len(p) for p in points], dtype='i8')])
+        xyz = np.concatenate(points) if points else np.zeros((0, 3), dtype='f4')
+        return cls(id=ids, point_offset=offsets, x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2],
+                   valid=np.concatenate(valid) if valid else [])
+
+    def points(self, row, valid_only=True) -> np.ndarray:
+        """ (n, 3) trajectory points of a track """
+        sl = slice(self.point_offset[row], self.point_offset[row + 1])
+        xyz = np.stack([self.x[sl], self.y[sl], self.z[sl]], axis=1)
+        return xyz[self.valid[sl]] if valid_only else xyz
+
+
+@dataclass(frozen=True)
+class Points(Columns):
+    """ recob::Vertex or recob::SpacePoint positions """
+    DTYPES: ClassVar[Dict[str, str]] = {'id': 'i4', 'x': 'f4', 'y': 'f4', 'z': 'f4'}
+    id: np.ndarray
+    x: np.ndarray
+    y: np.ndarray
+    z: np.ndarray
+
+    def __len__(self):
+        return len(self.id)
+
+    @property
+    def xyz(self) -> np.ndarray:
+        return np.stack([self.x, self.y, self.z], axis=1)
+
+
+@dataclass(frozen=True)
+class Showers(Columns):
+    """ recob::Shower: start point, unit direction, length and opening angle """
+    DTYPES: ClassVar[Dict[str, str]] = {
+        'id': 'i4', 'start_x': 'f4', 'start_y': 'f4', 'start_z': 'f4',
+        'dir_x': 'f4', 'dir_y': 'f4', 'dir_z': 'f4', 'length': 'f4', 'open_angle': 'f4',
+        'best_plane': 'i4',
+    }
+    id: np.ndarray
+    start_x: np.ndarray
+    start_y: np.ndarray
+    start_z: np.ndarray
+    dir_x: np.ndarray
+    dir_y: np.ndarray
+    dir_z: np.ndarray
+    length: np.ndarray
+    open_angle: np.ndarray
+    best_plane: np.ndarray
+
+    def __len__(self):
+        return len(self.id)
+
+
+@dataclass(frozen=True)
+class Associations(Columns):
+    """
+    art::Assns: row j links element left[j] of product product_tags[left_product[j]]
+    to element right[j] of product product_tags[right_product[j]]. An empty
+    tag means the product couldn't be identified. meta_index is the
+    recob::TrackHitMeta index (the trajectory point of the hit), or -1.
+    """
+    DTYPES: ClassVar[Dict[str, str]] = {
+        'left': 'i4', 'right': 'i4', 'left_product': 'i4', 'right_product': 'i4',
+        'meta_index': 'i4', 'product_tags': 'U',
+    }
+    left: np.ndarray
+    right: np.ndarray
+    left_product: np.ndarray
+    right_product: np.ndarray
+    meta_index: np.ndarray
+    product_tags: np.ndarray
+
+    def __len__(self):
+        return len(self.left)
+
+    def right_of(self, left_row) -> np.ndarray:
+        """ right elements associated with a left element """
+        return self.right[self.left == left_row]
+
+
 class ProductKind(NamedTuple):
     name: str
-    cpp_type: str
     container: type
+    # C++ product types read as this kind
+    types: Tuple[str, ...]
 
 
 KINDS = {k.name: k for k in [
-    ProductKind('hits', 'recob::Hit', Hits),
-    ProductKind('wires', 'recob::Wire', WireSignals),
-    ProductKind('channel_rois', 'recob::ChannelROI', WireSignals),
-    ProductKind('raw_digits', 'raw::RawDigit', RawDigits),
+    ProductKind('hits', Hits, ('std::vector<recob::Hit>',)),
+    ProductKind('wires', WireSignals, ('std::vector<recob::Wire>',)),
+    ProductKind('channel_rois', WireSignals, ('std::vector<recob::ChannelROI>',)),
+    ProductKind('raw_digits', RawDigits, ('std::vector<raw::RawDigit>',)),
+    ProductKind('tracks', Tracks, ('std::vector<recob::Track>',)),
+    ProductKind('vertices', Points, ('std::vector<recob::Vertex>',)),
+    ProductKind('spacepoints', Points, ('std::vector<recob::SpacePoint>',)),
+    ProductKind('showers', Showers, ('std::vector<recob::Shower>',)),
+    ProductKind('track_hits', Associations, ('art::Assns<recob::Track,recob::Hit,recob::TrackHitMeta>',
+                                             'art::Assns<recob::Track,recob::Hit,void>')),
 ]}
 
 
-def parse_branch_name(branch):
+def friendly_name(cpp_type):
+    """
+    art's branch name prefix for a product type: 'std::vector<recob::Hit>' ->
+    'recob::Hits', 'art::Assns<A,B,D>' -> 'ABDart::Assns'
+    """
+    if cpp_type.startswith('std::vector<'):
+        return cpp_type[len('std::vector<'):-1] + 's'
+    if cpp_type.startswith('art::Assns<'):
+        return ''.join(cpp_type[len('art::Assns<'):-1].split(',')) + 'art::Assns'
+    raise ValueError(f'no friendly name rule for {cpp_type}')
+
+
+_BY_FRIENDLY_NAME = {friendly_name(t): (k.name, t) for k in KINDS.values() for t in k.types}
+
+
+def parse_branch(branch):
     """
     Split an art product branch name, e.g. 'recob::Hits_gaushit__Reco1.', into
-    (kind name or None, input tag 'label:instance:process'). art forbids
-    underscores in labels, instances and process names. Returns None for
-    branches that aren't products (e.g. EventAuxiliary).
+    (kind name, input tag 'label:instance:process', C++ product type); kind and
+    type are None for products TITUS doesn't read. art forbids underscores in
+    labels, instances and process names. Returns None for branches that
+    aren't products (e.g. EventAuxiliary).
     """
     parts = branch.rstrip('.').rsplit('_', 3)
     if len(parts) != 4:
         return None
     friendly, label, instance, process = parts
-    kind = next((k.name for k in KINDS.values() if friendly == k.cpp_type + 's'), None)
-    return kind, f'{label}:{instance}:{process}'
+    kind, cpp_type = _BY_FRIENDLY_NAME.get(friendly, (None, None))
+    return kind, f'{label}:{instance}:{process}', cpp_type
+
+
+def parse_branch_name(branch):
+    """ (kind name or None, input tag) of a product branch, see parse_branch """
+    parsed = parse_branch(branch)
+    return None if parsed is None else parsed[:2]

@@ -1,7 +1,8 @@
 """
 Regression tests: the Geometry built from detector JSON + display settings
-must reproduce the hand-coded values of the legacy sbnd/icarus classes in
-titus/gallery_interface/geometry.py (ICARUS in its default split-wire mode).
+must reproduce the hand-coded values of the legacy sbnd/icarus classes,
+formerly titus/gallery_interface/geometry.py (ICARUS in its default
+split-wire mode).
 Deliberate differences are marked with LEGACY_DIFFERS.
 """
 
@@ -12,7 +13,7 @@ import pytest
 
 from titus.geometry import Geometry, ServiceHandles
 
-# values copied from titus/gallery_interface/geometry.py
+# values copied from the legacy classes before they were removed
 LEGACY = {
     'sbnd': {
         'planeid_map_size': 6,
