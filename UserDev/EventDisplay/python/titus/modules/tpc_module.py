@@ -673,9 +673,12 @@ class TpcModule(Module):
             product = None
 
         if product is not None:
-            self._product_box_map[sender].set_producer(product.full_name())
-            self._gi.process_event()
-            self._product_box_map[sender].drawObjects()
+            drawable = self._product_box_map[sender]
+            drawable.set_producer(product.full_name())
+            # read this producer in the current event (process_event() only
+            # re-processes when the event changed) and draw it
+            drawable.analyze()
+            drawable.drawObjects()
             return
 
         # TODO untested if automatic event switching when reco products drawn
