@@ -40,7 +40,9 @@ FILES = {
     },
     'c.root': {
         'branches': ['recob::Hits_gaushit__Reco1.', 'recob::Tracks_pandoraTrack__Reco2.',
-                     'recob::Hitrecob::Trackrecob::TrackHitMetaart::Assns_pandoraTrack__Reco2.'],
+                     'recob::Hitrecob::Trackrecob::TrackHitMetaart::Assns_pandoraTrack__Reco2.',
+                     # Pandora also stores the association without metadata
+                     'recob::Hitrecob::Trackvoidart::Assns_pandoraTrack__Reco2.'],
         'events': [((3, 1, 1), {('hits', 'gaushit::Reco1'): hit_columns(2),
                                 ('tracks', 'pandoraTrack::Reco2'): TRACK_COLUMNS,
                                 ('track_hits', 'pandoraTrack::Reco2'): ASSOCIATION_COLUMNS})],
@@ -208,6 +210,7 @@ def test_tracks_and_associations():
     reader = GalleryReader(['c.root'], root=root)
     tracks = reader.get(0, 'tracks', 'pandoraTrack')
     assert tracks.points(0).tolist() == [[0, 0, 0]] and tracks.valid.tolist() == [True, False]
+    assert reader.tags('track_hits') == ['pandoraTrack::Reco2']
     assns = reader.get(0, 'track_hits', 'pandoraTrack')
     assert assns.right_of(0).tolist() == [0, 1]
     assert assns.product_tags.tolist() == ['pandoraTrack::Reco2', 'gaushit::Reco1']

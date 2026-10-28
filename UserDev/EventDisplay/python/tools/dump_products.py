@@ -123,12 +123,21 @@ def extract_vertices(vertices):
     return _points(rows)
 
 
+def _spacepoint_xyz(sp):
+    """
+    recob::SpacePoint position. XYZ() returns a Double32_t pointer, which
+    PyROOT reads as integers holding the doubles' bits: prefer position(),
+    else reinterpret them
+    """
+    try:
+        return _xyz(sp.position())
+    except AttributeError:
+        xyz = np.array([sp.XYZ()[i] for i in range(3)])
+        return tuple(xyz.astype('i8').view('f8') if xyz.dtype.kind in 'iu' else xyz)
+
+
 def extract_spacepoints(spacepoints):
-    rows = []
-    for sp in spacepoints:
-        xyz = sp.XYZ()
-        rows.append((sp.ID(), xyz[0], xyz[1], xyz[2]))
-    return _points(rows)
+    return _points([(sp.ID(),) + tuple(_spacepoint_xyz(sp)) for sp in spacepoints])
 
 
 def _points(rows):
@@ -213,12 +222,27 @@ def discover_tags(ROOT, path, kinds, labels=None):
             continue
         found.append(parsed)
     f.Close()
+    found = prefer_types(found)
     if other_assns:
         print('Associations not dumped:')
         for name in sorted(other_assns):
             print(f'  {name}')
     # associations last: they refer to the products read before them
     return sorted(found, key=lambda p: (p[0] in ASSOCIATION_KINDS, p[0], p[1]))
+
+
+def prefer_types(found):
+    """
+    One (kind, tag, type) per (kind, tag): a producer may store an
+    association both with and without metadata (Pandora's track-hit
+    associations); keep the type listed first for the kind
+    """
+    best = {}
+    for kind, tag, cpp_type in found:
+        order = KINDS[kind].types.index(cpp_type)
+        if (kind, tag) not in best or order < best[(kind, tag)][0]:
+            best[(kind, tag)] = (order, cpp_type)
+    return [(kind, tag, cpp_type) for (kind, tag), (_, cpp_type) in best.items()]
 
 
 def make_uncompress(ROOT):

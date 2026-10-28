@@ -124,10 +124,15 @@ class GalleryReader(EventReader):
         tags, types = {}, {}
         for branch in ev.getTFile().Get('Events').GetListOfBranches():
             parsed = parse_branch(branch.GetName())
-            if parsed is not None and parsed[0] is not None:
-                kind, tag, cpp_type = parsed
-                tags.setdefault(kind, []).append(tag)
+            if parsed is None or parsed[0] is None:
+                continue
+            kind, tag, cpp_type = parsed
+            # a producer may store an association with and without metadata
+            # (Pandora's track-hit associations): prefer the kind's first type
+            previous = types.get((kind, tag))
+            if previous is None or KINDS[kind].types.index(cpp_type) < KINDS[kind].types.index(previous):
                 types[(kind, tag)] = cpp_type
+            tags.setdefault(kind, set()).add(tag)
         return {kind: sorted(t) for kind, t in tags.items()}, types
 
     @property

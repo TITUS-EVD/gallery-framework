@@ -296,7 +296,11 @@ def test_extract_tracks():
 def test_extract_points_and_showers():
     vertices = dump_products.extract_vertices([fake(ID=2, position=FakePoint(1, 2, 3))])
     assert vertices.xyz.tolist() == [[1, 2, 3]] and vertices.id.tolist() == [2]
-    spacepoints = dump_products.extract_spacepoints([fake(ID=5, XYZ=[4., 5., 6.])])
+    spacepoints = dump_products.extract_spacepoints([fake(ID=5, position=FakePoint(4., 5., 6.))])
+    assert spacepoints.xyz.tolist() == [[4, 5, 6]]
+    # without position(): XYZ() as PyROOT reads the Double32_t pointer, the doubles' bits as integers
+    bits = np.array([4., 5., 6.]).view('i8').tolist()
+    spacepoints = dump_products.extract_spacepoints([fake(ID=5, XYZ=bits)])
     assert spacepoints.xyz.tolist() == [[4, 5, 6]]
     assert len(dump_products.extract_vertices([])) == 0
     shower = fake(ID=1, ShowerStart=FakePoint(1, 2, 3), Direction=FakePoint(0, 0, 1), Length=40.,
@@ -372,3 +376,10 @@ def test_extract_swapped_associations():
 ])
 def test_parse_reco2_branches(branch, kind):
     assert parse_branch(branch)[0] == kind
+
+
+def test_prefer_types():
+    found = [('track_hits', 'pandoraTrack::Reco2', 'art::Assns<recob::Hit,recob::Track,void>'),
+             ('track_hits', 'pandoraTrack::Reco2', 'art::Assns<recob::Hit,recob::Track,recob::TrackHitMeta>'),
+             ('hits', 'gaushit::Reco1', 'std::vector<recob::Hit>')]
+    assert sorted(dump_products.prefer_types(found)) == sorted(found[1:])
