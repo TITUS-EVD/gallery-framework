@@ -5,7 +5,7 @@
   "source_files": [
    "reco2-2f8a8787-6785-46d3-a9f0-a43082f291c2.root"
   ],
-  "created": "2026-10-28T18:21:17+00:00",
+  "created": "2026-10-28T18:30:30+00:00",
   "root_version": "6.28/12",
   "tool": "dump_products.py",
   "args": [
@@ -20,10 +20,10 @@
   "errors": [],
   "trimmed_from": "sbnd-reco2",
   "trim": {
-   "events": "0",
+   "events": "0,2",
    "wires": null,
-   "kinds": "hits,tracks",
-   "tags": "gaushit,pandoraTrack"
+   "kinds": "hits,tracks,track_hits,pfp_tracks,pfp_t0s,t0s",
+   "tags": "gaushit,pandoraTrack,pandora"
   }
  },
  "events": [
@@ -40,6 +40,46 @@
     ],
     "tracks": [
      "pandoraTrack::Reco2"
+    ],
+    "track_hits": [
+     "pandoraTrack::Reco2"
+    ],
+    "pfp_tracks": [
+     "pandoraTrack::Reco2"
+    ],
+    "pfp_t0s": [
+     "pandora::Reco2"
+    ],
+    "t0s": [
+     "pandora::Reco2"
+    ]
+   }
+  },
+  {
+   "id": [
+    28,
+    94,
+    17
+   ],
+   "file": "event_0001.npz",
+   "products": {
+    "hits": [
+     "gaushit::Reco1"
+    ],
+    "tracks": [
+     "pandoraTrack::Reco2"
+    ],
+    "track_hits": [
+     "pandoraTrack::Reco2"
+    ],
+    "pfp_tracks": [
+     "pandoraTrack::Reco2"
+    ],
+    "pfp_t0s": [
+     "pandora::Reco2"
+    ],
+    "t0s": [
+     "pandora::Reco2"
     ]
    }
   }
