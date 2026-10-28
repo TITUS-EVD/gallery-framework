@@ -1,51 +1,77 @@
 import numpy as np
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 
 from titus.display import hit_positions
 from titus.drawables.drawable import ReaderDrawable
 
 
-class HitBoxCollection(QtWidgets.QGraphicsItem):
+class HitCollection(QtWidgets.QGraphicsItem):
     '''
-    A collection of HitBox classes to be drawn at the same time.
+    All the hits of a view in one item: boxes (x, y, width, height in view
+    coordinates) filled black with an opacity each. One item instead of one
+    per hit keeps drawing and clearing an event fast. The box under the
+    mouse is outlined, and its tooltip comes from tooltip(index).
     '''
 
-    def __init__(self):
+    def __init__(self, x, y, width, height, alpha, tooltip):
         super().__init__()
-        self._rects = []
+        self.x0, self.y0 = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+        self.x1, self.y1 = self.x0 + width, self.y0 + height
+        self.alpha = np.clip(np.asarray(alpha, dtype=int), 0, 255)
+        self._tooltip = tooltip
+        self._hovered = None
+        self.setAcceptHoverEvents(True)
+        # rects grouped by opacity, so that painting is one drawRects per group
+        self._groups = [(QtGui.QBrush(pg.mkColor(0, 0, 0, int(a))),
+                         [QtCore.QRectF(self.x0[i], self.y0[i], self.x1[i] - self.x0[i], self.y1[i] - self.y0[i])
+                          for i in np.flatnonzero(self.alpha == a)])
+                        for a in np.unique(self.alpha)]
+        if len(self.x0):
+            self._bounds = QtCore.QRectF(self.x0.min(), self.y0.min(),
+                                         self.x1.max() - self.x0.min(), self.y1.max() - self.y0.min())
+        else:
+            self._bounds = QtCore.QRectF()
+        self._hover_pen = pg.mkPen('r', width=2)
+        self._hover_pen.setCosmetic(True)
 
-    def add_hitbox(self, hitbox):
-        self._rects.append(hitbox)
+    def __len__(self):
+        return len(self.x0)
 
-    def add_hitboxes(self, rects):
-        self._rects = rects
-    
+    def rect(self, index):
+        return QtCore.QRectF(self.x0[index], self.y0[index], self.x1[index] - self.x0[index],
+                             self.y1[index] - self.y0[index])
+
     def boundingRect(self):
-        # required by QGraphicsItem; the boxes are child items
-        return self.childrenBoundingRect() if self._rects else QtCore.QRectF()
+        return self._bounds
 
     def paint(self, painter, option, widget):
-        # This method is intentionally left empty because QGraphicsRectItem
-        # will handle their own painting.
-        pass
+        painter.setPen(QtCore.Qt.NoPen)
+        for brush, rects in self._groups:
+            painter.setBrush(brush)
+            painter.drawRects(rects)
+        if self._hovered is not None:
+            painter.setPen(self._hover_pen)
+            painter.setBrush(QtCore.Qt.NoBrush)
+            painter.drawRect(self.rect(self._hovered))
 
+    def index_at(self, x, y):
+        ''' the hit whose box contains the view point (the last drawn on top), or None '''
+        inside = np.flatnonzero((self.x0 <= x) & (x < self.x1) & (self.y0 <= y) & (y < self.y1))
+        return int(inside[-1]) if len(inside) else None
 
-class HitBox(QtWidgets.QGraphicsRectItem):
-    '''
-    Represents a single Hit
-    '''
+    def _hover(self, index):
+        if index == self._hovered:
+            return
+        self._hovered = index
+        self.setToolTip(self._tooltip(index) if index is not None else '')
+        self.update()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
-        self.setAcceptHoverEvents(True)
-        self._isHighlighted = False
-
-    def hoverEnterEvent(self, e):
-        self.setPen(pg.mkPen('r', width=2))
+    def hoverMoveEvent(self, e):
+        self._hover(self.index_at(e.pos().x(), e.pos().y()))
 
     def hoverLeaveEvent(self, e):
-        self.setPen(pg.mkPen(None))
+        self._hover(None)
 
 
 class Hit(ReaderDrawable):
@@ -102,18 +128,11 @@ class Hit(ReaderDrawable):
             max_charge[same] = max(integral[same].max(), 1e-12)
         opacity = (128 * integral / max_charge).astype(int) + 127
 
-        hit_collection = HitBoxCollection()
-        rects = []
-        for i, row in enumerate(positions.index):
-            r = HitBox(positions.x[i] - 0.5, bottom[i], 1, height[i], hit_collection)
-            r.setPen(pg.mkPen(None))
-            r.setBrush(pg.mkColor(0, 0, 0, int(np.clip(opacity[i], 0, 255))))
-            r.setToolTip(self.genToolTip(hits, row))
-            rects.append(r)
-
-        hit_collection.add_hitboxes(rects)
-        self._drawnObjects.append(hit_collection)
-        view._view.addItem(hit_collection)
+        rows = positions.index
+        collection = HitCollection(positions.x - 0.5, bottom, np.ones(len(positions)), height, opacity,
+                                   tooltip=lambda i: self.genToolTip(hits, rows[i]))
+        self._drawnObjects.append(collection)
+        view._view.addItem(collection)
 
     def genToolTip(self, hits, row):
         return 'Time: {time:0.1f}\nRMS: {rms:0.1f}\nIntegral: {integral:0.1f}'.format(

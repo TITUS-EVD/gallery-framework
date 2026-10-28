@@ -10,7 +10,16 @@ if (${sbnobj_FOUND})
     target_compile_definitions(EventDisplay_Reader PRIVATE WITH_SBNOBJ)
     target_include_directories(EventDisplay_Reader PRIVATE ${sbnobj_INCLUDE_DIR})
     target_link_libraries(EventDisplay_Reader ${sbnobj_LIBRARY_DIR}/libsbnobj_ICARUS_TPC.so)
+    # SBND CRT (FEBData) and timing (DAQTimestamp) products
+    target_compile_definitions(EventDisplay_Reader PRIVATE WITH_SBNOBJ_SBND)
+    target_link_libraries(EventDisplay_Reader
+        ${sbnobj_LIBRARY_DIR}/libsbnobj_SBND_CRT.so
+        ${sbnobj_LIBRARY_DIR}/libsbnobj_SBND_Timing.so)
 endif()
+
+# simb::MCTruth (header-only accessors; the dictionary is loaded by ROOT)
+find_package(nusimdata REQUIRED)
+target_include_directories(EventDisplay_Reader PRIVATE ${nusimdata_INCLUDE_DIRS})
 
 target_link_libraries(EventDisplay_Reader
     ${gallery_LIBRARY_DIR}/libgallery.so
@@ -19,6 +28,7 @@ target_link_libraries(EventDisplay_Reader
     ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
     ${lardataobj_LIBRARY_DIR}/liblardataobj_RawData.so
     ${lardataobj_LIBRARY_DIR}/liblardataobj_AnalysisBase.so
+    ${lardataobj_LIBRARY_DIR}/liblardataobj_MCBase.so
     ${larcoreobj_LIBRARY_DIR}/liblarcoreobj_SimpleTypesAndConstants.so
     ${ROOT_LIBRARIES}
 )

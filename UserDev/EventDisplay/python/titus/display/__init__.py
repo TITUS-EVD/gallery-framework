@@ -4,7 +4,7 @@ products without Qt or ROOT.
 """
 
 from .layout import Block, ViewLayout
-from .tpc import (HitPositions, hit_positions, image_n_ticks, plane_index_table, raw_digit_signals,
+from .tpc import (HitPositions, SignalSamples, hit_positions, image_n_ticks, plane_index_table, raw_digit_signals,
                   wire_image)
 from .projection import (PointCorrection, Polygon, Segment, TrackCorrection, cone_points, convex_hull,
                          object_hit_tpcs, object_t0s, particle_tpcs, point_correction, position_tpcs,

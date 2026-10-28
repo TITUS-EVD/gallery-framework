@@ -25,4 +25,21 @@
 #pragma link C++ function titusio::readPFParticles;
 #pragma link C++ function titusio::readT0s;
 #pragma link C++ function titusio::readAssociation;
+#pragma link C++ class titusio::ClusterColumns;
+#pragma link C++ class titusio::EndPoint2DColumns;
+#pragma link C++ class titusio::MCTruthColumns;
+#pragma link C++ class titusio::MCTrackColumns;
+#pragma link C++ class titusio::OpFlashColumns;
+#pragma link C++ class titusio::OpDetWaveformColumns;
+#pragma link C++ class titusio::CRTFEBDataColumns;
+#pragma link C++ class titusio::DAQTimestampColumns;
+#pragma link C++ function titusio::readClusters;
+#pragma link C++ function titusio::readEndPoints2D;
+#pragma link C++ function titusio::readMCTruths;
+#pragma link C++ function titusio::readMCTracks;
+#pragma link C++ function titusio::readOpFlashes;
+#pragma link C++ function titusio::readOpDetWaveforms;
+#pragma link C++ function titusio::readCRTFEBData;
+#pragma link C++ function titusio::readDAQTimestamps;
+#pragma link C++ function titusio::hasSBNDCRTSupport;
 #endif

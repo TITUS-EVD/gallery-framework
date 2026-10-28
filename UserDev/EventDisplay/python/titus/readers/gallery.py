@@ -7,7 +7,7 @@ gallery and the product libraries, but no LArSoft services.
 import numpy as np
 
 from .base import EventReader, ProductNotFound
-from .products import ASSOCIATIONS, KINDS, EventID, Hits, RawDigits, WireSignals, parse_branch
+from .products import ASSOCIATIONS, KINDS, CRTFEBData, EventID, Hits, RawDigits, WireSignals, parse_branch
 
 # kind -> (titusio function, titusio column struct)
 EXTRACTORS = {
@@ -21,6 +21,14 @@ EXTRACTORS = {
     'showers': ('readShowers', 'ShowerColumns'),
     'pfparticles': ('readPFParticles', 'PFParticleColumns'),
     't0s': ('readT0s', 'T0Columns'),
+    'clusters': ('readClusters', 'ClusterColumns'),
+    'endpoints2d': ('readEndPoints2D', 'EndPoint2DColumns'),
+    'mctruths': ('readMCTruths', 'MCTruthColumns'),
+    'mctracks': ('readMCTracks', 'MCTrackColumns'),
+    'opflashes': ('readOpFlashes', 'OpFlashColumns'),
+    'opdet_waveforms': ('readOpDetWaveforms', 'OpDetWaveformColumns'),
+    'crt_febdata': ('readCRTFEBData', 'CRTFEBDataColumns'),
+    'daq_timestamps': ('readDAQTimestamps', 'DAQTimestampColumns'),
     **{kind: ('readAssociation', 'AssociationColumns') for kind in ASSOCIATIONS},
 }
 
@@ -48,6 +56,8 @@ def columns_to_container(kind, columns):
     if cls is RawDigits:
         arrays['adc'] = arrays['adc'].reshape(len(arrays['channel']), int(columns.width))
         return RawDigits(**arrays)
+    if cls is CRTFEBData:
+        arrays['adc'] = arrays['adc'].reshape(len(arrays['mac5']), CRTFEBData.N_SIPMS)
     if cls is WireSignals and len(arrays['roi_offset']) == 0:
         arrays['roi_offset'] = np.zeros(1, dtype='i8')
     return cls.from_arrays(arrays)

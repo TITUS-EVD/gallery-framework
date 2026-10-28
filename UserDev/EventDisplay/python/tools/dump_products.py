@@ -15,8 +15,9 @@ Run inside the SBN environment (gpvm), from this directory:
 By default every product TITUS reads (titus.readers.KINDS) found in the file
 is dumped: hits, wires, channel ROIs, tracks with their hit associations,
 vertices, spacepoints, showers, and the PFParticles and T0s (with their
-track associations) to undo Pandora's T0 shift. Raw digits (large) only with
---raw-digits. Failures are recorded in the dump's index.json and listed at
+track associations) to undo Pandora's T0 shift, clusters, 2D end points,
+MC truth and tracks, optical flashes and SBND CRT FEB data. Raw digits and
+optical waveforms (large) only with --raw-digits and --opdet-waveforms. Failures are recorded in the dump's index.json and listed at
 the end instead of aborting.
 """
 
@@ -31,15 +32,19 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from dump_detector import Errors  # noqa: E402
-from titus.readers import (ASSOCIATIONS, KINDS, Associations, DumpWriter, Hits, PFParticles,  # noqa: E402
-                           Points, RawDigits, Showers, T0s, Tracks, WireSignals)
+from titus.readers import (ASSOCIATIONS, KINDS, Associations, Clusters, CRTFEBData, DAQTimestamps,  # noqa: E402
+                           DumpWriter, EndPoints2D, Hits, MCTracks, MCTruths, OpDetWaveforms, OpFlashes,
+                           PFParticles, Points, RawDigits, Showers, T0s, Tracks, WireSignals)
 from titus.readers.products import association_is_swapped, parse_branch  # noqa: E402
 
 # kinds read through associations, after the products they refer to
 ASSOCIATION_KINDS = tuple(ASSOCIATIONS)
 
 DEFAULT_KINDS = ('hits', 'wires', 'channel_rois', 'tracks', 'vertices', 'spacepoints', 'showers',
-                 'pfparticles', 't0s') + ASSOCIATION_KINDS
+                 'pfparticles', 't0s', 'clusters', 'endpoints2d', 'mctruths', 'mctracks', 'opflashes',
+                 'crt_febdata', 'daq_timestamps') + ASSOCIATION_KINDS
+# large: only with --raw-digits / --opdet-waveforms
+OPTIONAL_KINDS = ('raw_digits', 'opdet_waveforms')
 
 # raw::Compress_t
 COMPRESSION_NONE = 0
@@ -204,6 +209,168 @@ def extract_associations(assns, tag_of_product, has_meta, swapped=False):
     return Associations(product_tags=tags, **columns)
 
 
+def _numbers(vector, dtype):
+    """
+    A std::vector (or a class deriving from one, e.g. raw::OpDetWaveform) of
+    numbers as a numpy array: through the array interface if PyROOT exposes
+    one, else element by element
+    """
+    array = np.asarray(vector, dtype=dtype) if hasattr(vector, '__array_interface__') else None
+    if array is None or array.ndim != 1:
+        array = np.array([vector[i] for i in range(vector.size())], dtype=dtype)
+    return array
+
+
+def _ragged(rows, dtype):
+    """ (offsets, flat values) of a list of per-row arrays """
+    offsets = np.concatenate([[0], np.cumsum([len(r) for r in rows], dtype='i8')])
+    values = np.concatenate(rows).astype(dtype) if rows else np.zeros(0, dtype=dtype)
+    return offsets, values
+
+
+def extract_clusters(clusters):
+    columns = {name: [] for name in Clusters.DTYPES}
+    for c in clusters:
+        pid = c.Plane()
+        columns['id'].append(c.ID())
+        columns['cryostat'].append(pid.Cryostat)
+        columns['tpc'].append(pid.TPC)
+        columns['plane'].append(pid.Plane)
+        columns['n_hits'].append(c.NHits())
+        columns['start_wire'].append(c.StartWire())
+        columns['start_tick'].append(c.StartTick())
+        columns['end_wire'].append(c.EndWire())
+        columns['end_tick'].append(c.EndTick())
+        columns['integral'].append(c.Integral())
+    return Clusters(**columns)
+
+
+def extract_endpoints2d(points):
+    columns = {name: [] for name in EndPoints2D.DTYPES}
+    for p in points:
+        wid = p.WireID()
+        columns['id'].append(p.ID())
+        columns['cryostat'].append(wid.Cryostat)
+        columns['tpc'].append(wid.TPC)
+        columns['plane'].append(wid.Plane)
+        columns['wire'].append(wid.Wire)
+        columns['drift_time'].append(p.DriftTime())
+        columns['charge'].append(p.Charge())
+        columns['strength'].append(p.Strength())
+    return EndPoints2D(**columns)
+
+
+def extract_mctruths(truths):
+    columns = {name: [] for name in MCTruths.DTYPES if not name.startswith('particle_')}
+    particles = []
+    for t in truths:
+        columns['origin'].append(int(t.Origin()))
+        has_nu = bool(t.NeutrinoSet())
+        columns['has_neutrino'].append(has_nu)
+        if has_nu:
+            nu = t.GetNeutrino()
+            p = nu.Nu()
+            values = (p.PdgCode(), p.E(), p.Vx(), p.Vy(), p.Vz(), p.T(), nu.Mode(), nu.InteractionType(), nu.CCNC())
+        else:
+            nan = float('nan')
+            values = (0, nan, nan, nan, nan, nan, -1, -1, -1)
+        for name, value in zip(('nu_pdg', 'nu_energy', 'vx', 'vy', 'vz', 'vt', 'mode', 'interaction_type', 'ccnc'),
+                               values):
+            columns[name].append(value)
+        particles.append([(q.PdgCode(), q.StatusCode(), q.E())
+                          for q in (t.GetParticle(i) for i in range(t.NParticles()))])
+    offsets = np.concatenate([[0], np.cumsum([len(p) for p in particles], dtype='i8')])
+    flat = [row for p in particles for row in p]
+    pdg, status, energy = (list(c) for c in zip(*flat)) if flat else ([], [], [])
+    return MCTruths(particle_offset=offsets, particle_pdg=pdg, particle_status=status, particle_energy=energy,
+                    **columns)
+
+
+def extract_mctracks(tracks):
+    columns = {name: [] for name in ('track_id', 'pdg', 'origin', 'process', 'start_t', 'start_e')}
+    steps = []
+    for t in tracks:
+        columns['track_id'].append(t.TrackID())
+        columns['pdg'].append(t.PdgCode())
+        columns['origin'].append(int(t.Origin()))
+        columns['process'].append(str(t.Process()))
+        columns['start_t'].append(t.Start().T())
+        columns['start_e'].append(t.Start().E())
+        steps.append(np.array([(s.X(), s.Y(), s.Z(), s.T(), s.E()) for s in (t[i] for i in range(t.size()))],
+                              dtype='f8').reshape(-1, 5))
+    offsets, flat = _ragged(steps, 'f8')
+    flat = flat.reshape(-1, 5)
+    return MCTracks(step_offset=offsets, x=flat[:, 0], y=flat[:, 1], z=flat[:, 2], t=flat[:, 3], e=flat[:, 4],
+                    **columns)
+
+
+def extract_opflashes(flashes):
+    columns = {name: [] for name in OpFlashes.DTYPES if name not in ('pe_offset', 'pe')}
+    pes = []
+    for f in flashes:
+        for name, value in zip(('time', 'abs_time', 'time_width', 'y_center', 'y_width', 'z_center', 'z_width',
+                                'total_pe', 'on_beam_time'),
+                               (f.Time(), f.AbsTime(), f.TimeWidth(), f.YCenter(), f.YWidth(), f.ZCenter(),
+                                f.ZWidth(), f.TotalPE(), f.OnBeamTime())):
+            columns[name].append(value)
+        pes.append(_numbers(f.PEs(), 'f4'))
+    offsets, flat = _ragged(pes, 'f4')
+    return OpFlashes(pe_offset=offsets, pe=flat, **columns)
+
+
+def extract_opdet_waveforms(waveforms):
+    channels, stamps, samples = [], [], []
+    for w in waveforms:
+        channels.append(w.ChannelNumber())
+        stamps.append(w.TimeStamp())
+        samples.append(_numbers(w, 'u2'))
+    offsets, flat = _ragged(samples, 'u2')
+    return OpDetWaveforms(channel=channels, time_stamp=stamps, adc_offset=offsets, adc=flat)
+
+
+def extract_crt_febdata(febs):
+    columns = {name: [] for name in CRTFEBData.DTYPES}
+    for f in febs:
+        for name, value in zip(('mac5', 'flags', 'ts0', 'ts1', 'coinc', 'unix_s'),
+                               (f.Mac5(), f.Flags(), f.Ts0(), f.Ts1(), f.Coinc(), f.UnixS())):
+            columns[name].append(value)
+        adc = f.ADC()
+        columns['adc'].append([adc[i] for i in range(CRTFEBData.N_SIPMS)])
+    if not columns['adc']:
+        columns['adc'] = np.zeros((0, CRTFEBData.N_SIPMS))
+    return CRTFEBData(**columns)
+
+
+def extract_daq_timestamps(stamps):
+    rows = [(s.Channel(), s.Timestamp()) for s in stamps]
+    columns = list(zip(*rows)) if rows else [[], []]
+    return DAQTimestamps(channel=columns[0], timestamp=columns[1])
+
+
+def extractors(ROOT):
+    """ kind -> function(product) -> container, for every non-association kind """
+    return {
+        'hits': extract_hits,
+        'wires': extract_wire_signals,
+        'channel_rois': extract_wire_signals,
+        'raw_digits': lambda v, u=make_uncompress(ROOT): extract_raw_digits(v, u),
+        'tracks': extract_tracks,
+        'vertices': extract_vertices,
+        'spacepoints': extract_spacepoints,
+        'showers': extract_showers,
+        'pfparticles': extract_pfparticles,
+        't0s': extract_t0s,
+        'clusters': extract_clusters,
+        'endpoints2d': extract_endpoints2d,
+        'mctruths': extract_mctruths,
+        'mctracks': extract_mctracks,
+        'opflashes': extract_opflashes,
+        'opdet_waveforms': extract_opdet_waveforms,
+        'crt_febdata': extract_crt_febdata,
+        'daq_timestamps': extract_daq_timestamps,
+    }
+
+
 # --- ROOT side ---
 
 def discover_tags(ROOT, path, kinds, labels=None):
@@ -262,6 +429,7 @@ def main():
     parser.add_argument('--events', type=int, default=3, help='number of events to dump')
     parser.add_argument('--skip', type=int, default=0, help='events to skip first')
     parser.add_argument('--raw-digits', action='store_true', help='also dump raw::RawDigit products')
+    parser.add_argument('--opdet-waveforms', action='store_true', help='also dump raw::OpDetWaveform products')
     parser.add_argument('--tags', help='comma-separated module labels to dump (default: all)')
     args = parser.parse_args()
 
@@ -269,7 +437,8 @@ def main():
     ROOT.PyConfig.IgnoreCommandLineOptions = True
     ROOT.gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
 
-    kinds = DEFAULT_KINDS + (('raw_digits',) if args.raw_digits else ())
+    kinds = DEFAULT_KINDS + (('raw_digits',) if args.raw_digits else ()) + \
+        (('opdet_waveforms',) if args.opdet_waveforms else ())
     labels = set(args.tags.split(',')) if args.tags else None
     products = discover_tags(ROOT, args.files[0], kinds, labels)
     print('Dumping:')
@@ -279,18 +448,7 @@ def main():
         print('nothing to dump')
         return 1
 
-    extractors = {
-        'hits': extract_hits,
-        'wires': extract_wire_signals,
-        'channel_rois': extract_wire_signals,
-        'raw_digits': lambda v, u=make_uncompress(ROOT): extract_raw_digits(v, u),
-        'tracks': extract_tracks,
-        'vertices': extract_vertices,
-        'spacepoints': extract_spacepoints,
-        'showers': extract_showers,
-        'pfparticles': extract_pfparticles,
-        't0s': extract_t0s,
-    }
+    kind_extractors = extractors(ROOT)
     errors = Errors()
     meta = {
         'detector': args.detector,
@@ -329,7 +487,7 @@ def main():
                                                          has_meta='TrackHitMeta' in cpp_type,
                                                          swapped=association_is_swapped(kind, cpp_type))
                     else:
-                        container = extractors[kind](handle.product())
+                        container = kind_extractors[kind](handle.product())
                         try:
                             product_ids[handle.id().value()] = tag
                         except Exception as e:

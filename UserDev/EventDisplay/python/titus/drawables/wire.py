@@ -1,7 +1,7 @@
 from .drawable import ReaderDrawable
 import numpy as np
 
-from titus.display import ViewLayout, raw_digit_signals, wire_image
+from titus.display import SignalSamples, ViewLayout, raw_digit_signals
 
 
 class Wire(ReaderDrawable):
@@ -22,17 +22,34 @@ class Wire(ReaderDrawable):
         super().__init__(gallery_interface)
         self._geom = geom
         self._signals = []
+        # per event: SignalSamples per product, and the images of views drawn so far
+        self._samples = None
+        self._images = {}
 
     def on_data(self):
         self._signals = list(self._data)
 
+    def analyze(self):
+        self._samples = None
+        self._images = {}
+        super().analyze()
+
     def getPlane(self, plane, cryo=0):
-        ''' the image of the view for this plane number: (wires, ticks) '''
-        layout = ViewLayout(self._geom, plane=plane, cryostat=cryo)
-        image = np.zeros(layout.shape, dtype='f4')
-        for signals in self._signals:
-            image += wire_image(layout, signals, self._geom.detector.channel_map)
-        return image
+        ''' the image of the view for this plane number: (wires, ticks), computed once per event '''
+        if (plane, cryo) not in self._images:
+            if self._samples is None:
+                self._samples = [SignalSamples(s, self._geom.detector.channel_map, self._geom)
+                                 for s in self._signals if len(s)]
+            layout = ViewLayout(self._geom, plane=plane, cryostat=cryo)
+            image = np.zeros(layout.shape, dtype='f4')
+            for samples in self._samples:
+                if len(self._samples) == 1:
+                    samples.fill(image, layout)
+                else:
+                    # products add up (one per drift volume on ICARUS)
+                    image += samples.image(layout)
+            self._images[(plane, cryo)] = image
+        return self._images[(plane, cryo)]
 
 
 class RecoWire(Wire):

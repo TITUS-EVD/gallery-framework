@@ -7,6 +7,7 @@ that they are only updated when their parent module is visible
 import sys
 
 from PyQt5 import QtCore
+import pyqtgraph as pg
 
 from titus.display.layout import ViewLayout
 from titus.display.projection import object_hit_tpcs, object_t0s, particle_tpcs
@@ -16,6 +17,37 @@ from titus.readers.gallery import (association_candidates, file_products, read_e
                                    titusio)
 
 _NULL_NAME = "null"
+
+
+def _view_box(item):
+    """ the pyqtgraph ViewBox an item was added to (ViewBox.addItem), or None """
+    parent = item.parentItem()
+    while parent is not None:
+        if isinstance(parent, pg.ViewBox):
+            return parent
+        parent = parent.parentItem()
+    return None
+
+
+def remove_items(items):
+    """
+    Remove graphics items from their scene, and from the addedItems of the
+    ViewBox they were added to: removing them from the scene only would
+    leave them listed there, growing every event. One pass per ViewBox,
+    since ViewBox.removeItem updates the auto range for every item.
+    """
+    by_view = {}
+    for item in items:
+        view = _view_box(item)
+        if view is not None:
+            by_view.setdefault(view, set()).add(id(item))
+        if item.scene() is not None:
+            item.scene().removeItem(item)
+        if view is not None:
+            item.setParentItem(None)
+    for view, removed in by_view.items():
+        view.addedItems[:] = [i for i in view.addedItems if id(i) not in removed]
+        view.updateAutoRange()
 
 class Drawable:
 
@@ -118,9 +150,17 @@ class Drawable:
     def drawObjects(self):
         pass
 
+    def disconnect_signals(self):
+        ''' stop receiving the gallery interface's signals, once this drawable is removed '''
+        for signal, slot in [(self._gi.eventChanged, self.on_event_changed),
+                             (self._gi.fileChanged, self.on_file_changed)]:
+            try:
+                signal.disconnect(slot)
+            except TypeError:
+                pass
+
     def clearDrawnObjects(self, obj_list=None):
-        for obj in self._drawnObjects:
-            obj.scene().removeItem(obj)
+        remove_items(self._drawnObjects)
         self._drawnObjects = []
 
     # derived classes should override these
@@ -180,10 +220,20 @@ class ReaderDrawable(Drawable):
             return
         for tag in self.producers():
             try:
-                self._data.append(read_event_product(titusio(), ev, self.KIND, str(tag)))
+                self._data.append(self._read(ev, self.KIND, str(tag)))
             except ProductNotFound as e:
                 print(f'Warning: {e}')
         self.on_data()
+
+    def _product_cache(self):
+        ''' the gallery interface's ProductCache, shared by all drawables (None without one) '''
+        return getattr(self._gi, 'product_cache', None)
+
+    def _read(self, ev, kind, tag, **kwargs):
+        ''' read_event_product, through the shared cache: each product is read once per event '''
+        cache = self._product_cache()
+        read = lambda: read_event_product(titusio(), ev, kind, tag, **kwargs)  # noqa: E731
+        return read() if cache is None else cache.get((kind, tag), read)
 
     def on_data(self):
         """ called after analyze() reads the products; derived classes may convert them """
@@ -193,10 +243,20 @@ class ReaderDrawable(Drawable):
         self._file_products = None
 
     def file_products(self):
+        cache = self._product_cache()
+        ev = self._gi.event_handle()
+        if cache is not None:
+            return cache.file_value('file_products', lambda: {} if ev is None else file_products(ev))
         if self._file_products is None:
-            ev = self._gi.event_handle()
             self._file_products = {} if ev is None else file_products(ev)
         return self._file_products
+
+    def _association_candidates(self):
+        ''' std::vector of the tags associations may point into, built once per file '''
+        products = self.file_products()
+        cache = self._product_cache()
+        make = lambda: string_vector(association_candidates(products))  # noqa: E731
+        return make() if cache is None else cache.file_value('association_candidates', make)
 
     def view_layout(self, view):
         ''' the layout of a wire view as currently shown, including ticks cut by "unite cathodes" '''
@@ -258,9 +318,9 @@ class ReaderDrawable(Drawable):
             return None
         try:
             if kind in ASSOCIATIONS:
-                return read_event_product(titusio(), ev, kind, tag, cpp_type=products[(kind, tag)],
-                                          candidate_tags=string_vector(association_candidates(products)))
-            return read_event_product(titusio(), ev, kind, tag)
+                return self._read(ev, kind, tag, cpp_type=products[(kind, tag)],
+                                  candidate_tags=self._association_candidates())
+            return self._read(ev, kind, tag)
         except Exception as e:
             print(f'Warning: could not read {kind} {tag}: {e}')
             return None

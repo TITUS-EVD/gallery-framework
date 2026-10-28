@@ -34,6 +34,45 @@ def resolve_tag(tag, available):
     raise ProductNotFound(f'{tag!r} is ambiguous, specify one of {", ".join(matches)}')
 
 
+class ProductCache:
+    """
+    Products read in the current event, shared by every drawable, so that a
+    product (e.g. hits, read by hits, tracks and their associations) is read
+    once per event, and redrawing after a GUI change doesn't read it again.
+    The owner calls new_event() when the event changes and new_file() when
+    the file does. Containers are shared: drawables must not modify them.
+    """
+
+    def __init__(self):
+        self._products = {}
+        self._file = {}
+
+    def new_event(self):
+        self._products.clear()
+
+    def new_file(self):
+        self._products.clear()
+        self._file.clear()
+
+    def get(self, key, read):
+        """ the product for key, from read() the first time; a ProductNotFound is remembered too """
+        if key not in self._products:
+            try:
+                self._products[key] = read()
+            except ProductNotFound as e:
+                self._products[key] = e
+        value = self._products[key]
+        if isinstance(value, ProductNotFound):
+            raise ProductNotFound(*value.args)
+        return value
+
+    def file_value(self, key, compute):
+        """ something about the current file (e.g. its product list), computed once per file """
+        if key not in self._file:
+            self._file[key] = compute()
+        return self._file[key]
+
+
 class EventReader(ABC):
 
     @property

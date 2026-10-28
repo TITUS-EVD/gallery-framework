@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from titus.readers import (DumpReader, DumpWriter, EventID, Hits, ProductNotFound, RawDigits,
+from titus.readers import (DumpReader, DumpWriter, EventID, Hits, ProductCache, ProductNotFound, RawDigits,
                            WireSignals, parse_branch_name, resolve_tag)
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / 'tools'))
@@ -131,7 +131,7 @@ def test_dump_products_per_event(dump):
         dump.hits(0, 'fasthit')
     assert len(dump.hits(1, 'fasthit')) == 2
     with pytest.raises(ValueError, match='unknown product kind'):
-        dump.get(0, 'clusters', 'pandora')
+        dump.get(0, 'no_such_kind', 'pandora')
     with pytest.raises(IndexError):
         dump.hits(2, 'gaushit')
 
@@ -383,3 +383,162 @@ def test_prefer_types():
              ('track_hits', 'pandoraTrack::Reco2', 'art::Assns<recob::Hit,recob::Track,recob::TrackHitMeta>'),
              ('hits', 'gaushit::Reco1', 'std::vector<recob::Hit>')]
     assert sorted(dump_products.prefer_types(found)) == sorted(found[1:])
+
+
+def test_product_cache_reads_once_per_event():
+    cache = ProductCache()
+    reads = []
+
+    def read(value):
+        reads.append(value)
+        return value
+
+    assert cache.get(('hits', 'a'), lambda: read(1)) == 1
+    assert cache.get(('hits', 'a'), lambda: read(2)) == 1
+    assert reads == [1]
+    cache.new_event()
+    assert cache.get(('hits', 'a'), lambda: read(3)) == 3
+    assert reads == [1, 3]
+
+
+def test_product_cache_remembers_missing_products():
+    cache = ProductCache()
+    calls = []
+
+    def missing():
+        calls.append(1)
+        raise ProductNotFound('hits b not in this event')
+
+    for _ in range(2):
+        with pytest.raises(ProductNotFound, match='hits b'):
+            cache.get(('hits', 'b'), missing)
+    assert calls == [1]
+
+
+def test_product_cache_file_values_last_until_new_file():
+    cache = ProductCache()
+    assert cache.file_value('products', lambda: {'x': 1}) == {'x': 1}
+    cache.new_event()
+    assert cache.file_value('products', lambda: {'y': 2}) == {'x': 1}
+    cache.new_file()
+    assert cache.file_value('products', lambda: {'y': 2}) == {'y': 2}
+
+
+# --- products for the drawables still on C++ drawers (gpvm step 2) ---
+
+class FakeVector:
+    """ a std::vector-like object: size() and [i], no array interface """
+    def __init__(self, values):
+        self._values = list(values)
+
+    def size(self):
+        return len(self._values)
+
+    def __getitem__(self, i):
+        return self._values[i]
+
+
+class FakeWaveform(FakeVector):
+    def __init__(self, channel, stamp, values):
+        super().__init__(values)
+        self._channel, self._stamp = channel, stamp
+
+    def ChannelNumber(self):
+        return self._channel
+
+    def TimeStamp(self):
+        return self._stamp
+
+
+class FakeStep(FakePoint):
+    def __init__(self, x, y, z, t, e):
+        super().__init__(x, y, z)
+        self._te = (t, e)
+
+    def T(self):
+        return self._te[0]
+
+    def E(self):
+        return self._te[1]
+
+
+class FakeMCTrack(FakeVector):
+    def __init__(self, steps, **methods):
+        super().__init__(steps)
+        for k, v in methods.items():
+            setattr(self, k, lambda v=v: v)
+
+
+def test_extract_clusters_and_endpoints():
+    clusters = dump_products.extract_clusters([fake(ID=4, Plane=SimpleNamespace(Cryostat=0, TPC=1, Plane=2), NHits=12,
+                                                    StartWire=10., StartTick=500., EndWire=30., EndTick=900.,
+                                                    Integral=1e3)])
+    assert (clusters.id[0], clusters.tpc[0], clusters.plane[0], clusters.n_hits[0]) == (4, 1, 2, 12)
+    points = dump_products.extract_endpoints2d([fake(ID=1, WireID=SimpleNamespace(Cryostat=0, TPC=0, Plane=1, Wire=7),
+                                                     DriftTime=321.5, Charge=2., Strength=3)])
+    assert (points.plane[0], points.wire[0], points.drift_time[0]) == (1, 7, 321.5)
+    assert len(dump_products.extract_clusters([])) == 0
+
+
+def test_extract_mctruths():
+    nu = fake(Nu=fake(PdgCode=14, E=1.5, Vx=1., Vy=2., Vz=3., T=10.), Mode=0, InteractionType=1001, CCNC=0)
+    particles = [fake(PdgCode=13, StatusCode=1, E=1.2), fake(PdgCode=2212, StatusCode=1, E=1.0)]
+    neutrino = SimpleNamespace(Origin=lambda: 1, NeutrinoSet=lambda: True, GetNeutrino=lambda: nu,
+                               NParticles=lambda: 2, GetParticle=lambda i: particles[i])
+    cosmic = SimpleNamespace(Origin=lambda: 2, NeutrinoSet=lambda: False, NParticles=lambda: 1,
+                             GetParticle=lambda i: fake(PdgCode=13, StatusCode=1, E=5.))
+    truths = dump_products.extract_mctruths([neutrino, cosmic])
+    assert truths.nu_pdg.tolist() == [14, 0] and truths.has_neutrino.tolist() == [True, False]
+    assert (truths.vx[0], truths.vz[0]) == (1, 3) and np.isnan(truths.vx[1])
+    pdg, status, energy = truths.particles(0)
+    assert pdg.tolist() == [13, 2212] and truths.particles(1)[0].tolist() == [13]
+    assert len(dump_products.extract_mctruths([])) == 0
+
+
+def test_extract_mctracks():
+    track = FakeMCTrack([FakeStep(0, 0, 0, 1, 100), FakeStep(1, 2, 3, 2, 90)], TrackID=5, PdgCode=13, Origin=1,
+                        Process='primary', Start=FakeStep(0, 0, 0, 1, 100))
+    tracks = dump_products.extract_mctracks([track, FakeMCTrack([], TrackID=6, PdgCode=11, Origin=2,
+                                                                  Process='eIoni', Start=FakeStep(0, 0, 0, 0, 0))])
+    assert tracks.process.tolist() == ['primary', 'eIoni']
+    assert tracks.points(0).tolist() == [[0, 0, 0], [1, 2, 3]] and len(tracks.points(1)) == 0
+
+
+def test_extract_optical():
+    flash = fake(Time=1.5, AbsTime=1.6, TimeWidth=0.1, YCenter=10., YWidth=5., ZCenter=250., ZWidth=40.,
+                 TotalPE=30., OnBeamTime=1, PEs=FakeVector([0., 10., 20.]))
+    flashes = dump_products.extract_opflashes([flash, flash])
+    assert flashes.pe_per_channel(1).tolist() == [0, 10, 20] and flashes.total_pe.tolist() == [30, 30]
+    waveforms = dump_products.extract_opdet_waveforms([FakeWaveform(3, -1.25, [14000, 14010]),
+                                                       FakeWaveform(4, 0.5, [15000])])
+    assert waveforms.samples(0).tolist() == [14000, 14010] and waveforms.time_stamp.tolist() == [-1.25, 0.5]
+
+
+def test_extract_crt():
+    feb = fake(Mac5=12, Flags=3, Ts0=1000, Ts1=900, Coinc=5, UnixS=1700000000, ADC=FakeVector(range(32)))
+    febs = dump_products.extract_crt_febdata([feb])
+    assert febs.adc.shape == (1, 32) and febs.adc[0, 31] == 31 and febs.mac5.tolist() == [12]
+    assert dump_products.extract_crt_febdata([]).adc.shape == (0, 32)
+    stamps = dump_products.extract_daq_timestamps([fake(Channel=4, Timestamp=2 ** 40)])
+    assert stamps.timestamp.tolist() == [2 ** 40]
+
+
+def test_new_products_roundtrip_through_a_dump(tmp_path):
+    products = {
+        ('clusters', 'linecluster::Reco1'): dump_products.extract_clusters([]),
+        ('mctruths', 'generator::Gen'): dump_products.extract_mctruths([SimpleNamespace(
+            Origin=lambda: 2, NeutrinoSet=lambda: False, NParticles=lambda: 0, GetParticle=None)]),
+        ('mctracks', 'mcreco::DetSim'): dump_products.extract_mctracks([FakeMCTrack(
+            [FakeStep(1, 2, 3, 4, 5)], TrackID=1, PdgCode=13, Origin=1, Process='primary',
+            Start=FakeStep(1, 2, 3, 4, 5))]),
+        ('crt_febdata', 'crtsim::DetSim'): dump_products.extract_crt_febdata([fake(
+            Mac5=1, Flags=1, Ts0=1, Ts1=1, Coinc=0, UnixS=0, ADC=FakeVector([7] * 32))]),
+    }
+    with DumpWriter(tmp_path, {'detector': 'sbnd'}) as writer:
+        writer.add_event((1, 1, 1), products)
+    reader = DumpReader(tmp_path)
+    for (kind, tag), expected in products.items():
+        got = reader.get(0, kind, tag)
+        for column, array in expected.to_arrays().items():
+            np.testing.assert_array_equal(getattr(got, column), array)
+    assert reader.get(0, 'crt_febdata', 'crtsim').adc.shape == (1, 32)

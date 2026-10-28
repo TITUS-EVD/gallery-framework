@@ -10,7 +10,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from titus.display import ViewLayout, hit_positions, image_n_ticks, plane_index_table, wire_image
+from titus.display import SignalSamples, ViewLayout, hit_positions, image_n_ticks, plane_index_table, wire_image
 from titus.geometry import Geometry
 from titus.readers import DumpReader, Hits, WireSignals
 
@@ -139,6 +139,26 @@ def test_wire_image_matches_legacy(geom, n_ticks):
     for plane, cryo in views(geom):
         image = wire_image(ViewLayout(geom, plane, cryo, n_ticks=n), signals, geom.detector.channel_map)
         np.testing.assert_array_equal(image, legacy_get_plane(geom, arrays, plane, cryo))
+
+
+@pytest.mark.parametrize('slice_length', [1, 10 ** 9], ids=['slices', 'samples'])
+def test_wire_image_roi_paths_match_legacy(geom, slice_length, monkeypatch):
+    ''' long ROIs are copied as slices, short ones expanded to samples: both match '''
+    monkeypatch.setattr(SignalSamples, 'SLICE_LENGTH', slice_length)
+    signals = random_signals(geom, n_ticks=geom.tRange())
+    arrays = legacy_plane_arrays(geom, signals, geom.tRange())
+    for plane, cryo in views(geom):
+        image = wire_image(ViewLayout(geom, plane, cryo), signals, geom.detector.channel_map)
+        np.testing.assert_array_equal(image, legacy_get_plane(geom, arrays, plane, cryo))
+
+
+def test_signal_samples_shared_by_views(sbnd, dump):
+    ''' one SignalSamples per product fills every view as wire_image does '''
+    signals = dump.wires(0, 'simtpc2d:dnnsp')
+    samples = SignalSamples(signals, sbnd.detector.channel_map, sbnd)
+    for plane, cryo in views(sbnd):
+        layout = ViewLayout(sbnd, plane, cryo)
+        np.testing.assert_array_equal(samples.image(layout), wire_image(layout, signals, sbnd.detector.channel_map))
 
 
 def test_wire_image_matches_legacy_on_data(sbnd, dump):

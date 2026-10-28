@@ -20,12 +20,23 @@
 #include "lardataobj/RecoBase/TrackHitMeta.h"
 #include "lardataobj/RecoBase/Vertex.h"
 #include "lardataobj/AnalysisBase/T0.h"
+#include "lardataobj/MCBase/MCTrack.h"
+#include "lardataobj/RawData/OpDetWaveform.h"
+#include "lardataobj/RecoBase/Cluster.h"
+#include "lardataobj/RecoBase/EndPoint2D.h"
+#include "lardataobj/RecoBase/OpFlash.h"
+#include "nusimdata/SimulationBase/MCTruth.h"
 #include "canvas/Persistency/Common/Assns.h"
 #include "canvas/Persistency/Common/Ptr.h"
 #include "canvas/Persistency/Provenance/ProductID.h"
 
 #ifdef WITH_SBNOBJ
 #include "sbnobj/ICARUS/TPC/ChannelROI.h"
+#endif
+
+#ifdef WITH_SBNOBJ_SBND
+#include "sbnobj/SBND/CRT/FEBData.hh"
+#include "sbnobj/SBND/Timing/DAQTimestamp.hh"
 #endif
 
 namespace titusio {
@@ -326,6 +337,307 @@ namespace titusio {
     return true;
   }
 
+  void ClusterColumns::clear()
+  {
+    id.clear();
+    cryostat.clear();
+    tpc.clear();
+    plane.clear();
+    n_hits.clear();
+    start_wire.clear();
+    start_tick.clear();
+    end_wire.clear();
+    end_tick.clear();
+    integral.clear();
+  }
+
+  void EndPoint2DColumns::clear()
+  {
+    id.clear();
+    cryostat.clear();
+    tpc.clear();
+    plane.clear();
+    wire.clear();
+    drift_time.clear();
+    charge.clear();
+    strength.clear();
+  }
+
+  void MCTruthColumns::clear()
+  {
+    origin.clear();
+    has_neutrino.clear();
+    nu_pdg.clear();
+    nu_energy.clear();
+    vx.clear();
+    vy.clear();
+    vz.clear();
+    vt.clear();
+    mode.clear();
+    interaction_type.clear();
+    ccnc.clear();
+    particle_offset.assign(1, 0);
+    particle_pdg.clear();
+    particle_status.clear();
+    particle_energy.clear();
+  }
+
+  void MCTrackColumns::clear()
+  {
+    track_id.clear();
+    pdg.clear();
+    origin.clear();
+    process.clear();
+    start_t.clear();
+    start_e.clear();
+    step_offset.assign(1, 0);
+    x.clear();
+    y.clear();
+    z.clear();
+    t.clear();
+    e.clear();
+  }
+
+  void OpFlashColumns::clear()
+  {
+    time.clear();
+    abs_time.clear();
+    time_width.clear();
+    y_center.clear();
+    y_width.clear();
+    z_center.clear();
+    z_width.clear();
+    total_pe.clear();
+    on_beam_time.clear();
+    pe_offset.assign(1, 0);
+    pe.clear();
+  }
+
+  void OpDetWaveformColumns::clear()
+  {
+    channel.clear();
+    time_stamp.clear();
+    adc_offset.assign(1, 0);
+    adc.clear();
+  }
+
+  void CRTFEBDataColumns::clear()
+  {
+    mac5.clear();
+    flags.clear();
+    ts0.clear();
+    ts1.clear();
+    coinc.clear();
+    unix_s.clear();
+    adc.clear();
+  }
+
+  void DAQTimestampColumns::clear()
+  {
+    channel.clear();
+    timestamp.clear();
+  }
+
+  bool readClusters(gallery::Event const& ev, std::string const& tag, ClusterColumns& out)
+  {
+    out.clear();
+    gallery::Handle<std::vector<recob::Cluster>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& cluster : *handle) {
+      auto const& pid = cluster.Plane();
+      out.id.push_back(cluster.ID());
+      out.cryostat.push_back(pid.Cryostat);
+      out.tpc.push_back(pid.TPC);
+      out.plane.push_back(pid.Plane);
+      out.n_hits.push_back(cluster.NHits());
+      out.start_wire.push_back(cluster.StartWire());
+      out.start_tick.push_back(cluster.StartTick());
+      out.end_wire.push_back(cluster.EndWire());
+      out.end_tick.push_back(cluster.EndTick());
+      out.integral.push_back(cluster.Integral());
+    }
+    return true;
+  }
+
+  bool readEndPoints2D(gallery::Event const& ev, std::string const& tag, EndPoint2DColumns& out)
+  {
+    out.clear();
+    gallery::Handle<std::vector<recob::EndPoint2D>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& point : *handle) {
+      auto const& wid = point.WireID();
+      out.id.push_back(point.ID());
+      out.cryostat.push_back(wid.Cryostat);
+      out.tpc.push_back(wid.TPC);
+      out.plane.push_back(wid.Plane);
+      out.wire.push_back(wid.Wire);
+      out.drift_time.push_back(point.DriftTime());
+      out.charge.push_back(point.Charge());
+      out.strength.push_back(point.Strength());
+    }
+    return true;
+  }
+
+  bool readMCTruths(gallery::Event const& ev, std::string const& tag, MCTruthColumns& out)
+  {
+    out.clear();
+    gallery::Handle<std::vector<simb::MCTruth>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& truth : *handle) {
+      out.origin.push_back(truth.Origin());
+      bool const has_nu = truth.NeutrinoSet();
+      out.has_neutrino.push_back(has_nu ? 1 : 0);
+      if (has_nu) {
+        auto const& nu = truth.GetNeutrino();
+        auto const& particle = nu.Nu();
+        out.nu_pdg.push_back(particle.PdgCode());
+        out.nu_energy.push_back(particle.E());
+        out.vx.push_back(particle.Vx());
+        out.vy.push_back(particle.Vy());
+        out.vz.push_back(particle.Vz());
+        out.vt.push_back(particle.T());
+        out.mode.push_back(nu.Mode());
+        out.interaction_type.push_back(nu.InteractionType());
+        out.ccnc.push_back(nu.CCNC());
+      }
+      else {
+        auto const nan = std::numeric_limits<float>::quiet_NaN();
+        out.nu_pdg.push_back(0);
+        out.nu_energy.push_back(nan);
+        out.vx.push_back(nan);
+        out.vy.push_back(nan);
+        out.vz.push_back(nan);
+        out.vt.push_back(nan);
+        out.mode.push_back(-1);
+        out.interaction_type.push_back(-1);
+        out.ccnc.push_back(-1);
+      }
+      for (int i = 0; i < truth.NParticles(); ++i) {
+        auto const& particle = truth.GetParticle(i);
+        out.particle_pdg.push_back(particle.PdgCode());
+        out.particle_status.push_back(particle.StatusCode());
+        out.particle_energy.push_back(particle.E());
+      }
+      out.particle_offset.push_back(out.particle_pdg.size());
+    }
+    return true;
+  }
+
+  bool readMCTracks(gallery::Event const& ev, std::string const& tag, MCTrackColumns& out)
+  {
+    out.clear();
+    gallery::Handle<std::vector<sim::MCTrack>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& track : *handle) {
+      out.track_id.push_back(track.TrackID());
+      out.pdg.push_back(track.PdgCode());
+      out.origin.push_back(track.Origin());
+      out.process.push_back(track.Process());
+      out.start_t.push_back(track.Start().T());
+      out.start_e.push_back(track.Start().E());
+      for (auto const& step : track) {
+        out.x.push_back(step.X());
+        out.y.push_back(step.Y());
+        out.z.push_back(step.Z());
+        out.t.push_back(step.T());
+        out.e.push_back(step.E());
+      }
+      out.step_offset.push_back(out.x.size());
+    }
+    return true;
+  }
+
+  bool readOpFlashes(gallery::Event const& ev, std::string const& tag, OpFlashColumns& out)
+  {
+    out.clear();
+    gallery::Handle<std::vector<recob::OpFlash>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& flash : *handle) {
+      out.time.push_back(flash.Time());
+      out.abs_time.push_back(flash.AbsTime());
+      out.time_width.push_back(flash.TimeWidth());
+      out.y_center.push_back(flash.YCenter());
+      out.y_width.push_back(flash.YWidth());
+      out.z_center.push_back(flash.ZCenter());
+      out.z_width.push_back(flash.ZWidth());
+      out.total_pe.push_back(flash.TotalPE());
+      out.on_beam_time.push_back(flash.OnBeamTime());
+      auto const& pes = flash.PEs();
+      out.pe.insert(out.pe.end(), pes.begin(), pes.end());
+      out.pe_offset.push_back(out.pe.size());
+    }
+    return true;
+  }
+
+  bool readOpDetWaveforms(gallery::Event const& ev, std::string const& tag, OpDetWaveformColumns& out)
+  {
+    out.clear();
+    gallery::Handle<std::vector<raw::OpDetWaveform>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& waveform : *handle) {
+      out.channel.push_back(waveform.ChannelNumber());
+      out.time_stamp.push_back(waveform.TimeStamp());
+      out.adc.insert(out.adc.end(), waveform.begin(), waveform.end());
+      out.adc_offset.push_back(out.adc.size());
+    }
+    return true;
+  }
+
+  bool readCRTFEBData(gallery::Event const& ev, std::string const& tag, CRTFEBDataColumns& out)
+  {
+#ifdef WITH_SBNOBJ_SBND
+    out.clear();
+    gallery::Handle<std::vector<sbnd::crt::FEBData>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& feb : *handle) {
+      out.mac5.push_back(feb.Mac5());
+      out.flags.push_back(feb.Flags());
+      out.ts0.push_back(feb.Ts0());
+      out.ts1.push_back(feb.Ts1());
+      out.coinc.push_back(feb.Coinc());
+      out.unix_s.push_back(feb.UnixS());
+      auto const& adc = feb.ADC();
+      out.adc.insert(out.adc.end(), adc.begin(), adc.end());
+    }
+    return true;
+#else
+    throw std::runtime_error("titusio was compiled without sbnobj: sbnd::crt::FEBData is not available");
+#endif
+  }
+
+  bool readDAQTimestamps(gallery::Event const& ev, std::string const& tag, DAQTimestampColumns& out)
+  {
+#ifdef WITH_SBNOBJ_SBND
+    out.clear();
+    gallery::Handle<std::vector<sbnd::timing::DAQTimestamp>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
+
+    for (auto const& stamp : *handle) {
+      out.channel.push_back(stamp.Channel());
+      out.timestamp.push_back(stamp.Timestamp());
+    }
+    return true;
+#else
+    throw std::runtime_error("titusio was compiled without sbnobj: sbnd::timing::DAQTimestamp is not available");
+#endif
+  }
+
+  bool hasSBNDCRTSupport()
+  {
+#ifdef WITH_SBNOBJ_SBND
+    return true;
+#else
+    return false;
+#endif
+  }
+
   namespace {
 
     /// ProductID value of a product of type std::vector<T> with this tag, if any
@@ -421,6 +733,10 @@ namespace titusio {
       return readAssns<recob::SpacePoint, recob::Hit, void>(ev, tag, false, candidate_tags, out);
     if (cpp_type == "art::Assns<recob::Hit,recob::SpacePoint,void>")
       return readAssns<recob::Hit, recob::SpacePoint, void>(ev, tag, true, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::Cluster,recob::Hit,void>")
+      return readAssns<recob::Cluster, recob::Hit, void>(ev, tag, false, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::Hit,recob::Cluster,void>")
+      return readAssns<recob::Hit, recob::Cluster, void>(ev, tag, true, candidate_tags, out);
     throw std::runtime_error("titusio: unsupported association type " + cpp_type);
   }
 

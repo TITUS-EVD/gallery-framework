@@ -86,7 +86,8 @@ class CrtModule(Module):
         self._crt_view._view_widget._min_time = value
         self._crt_view._time_widget._min_time = value
 
-        self._gi.process_event(True)
+        # redraw the strips already read for this event
+        self.update()
 
     def _updated_max_time(self, value):
         self._crt_view._view_widget._clear_cache()
@@ -98,16 +99,15 @@ class CrtModule(Module):
         self._crt_view._view_widget._max_time = value
         self._crt_view._time_widget._max_time = value
 
-        self._gi.process_event(True)
+        self.update()
 
     def update(self):
         all_producers = self._gi.get_producers(_SBND_CRT_FEBDATA, self._lsm.current_stage)
-        print(all_producers[0].producer())
         if all_producers is None:
             self._draw_crt_strips = False
             if self._crt_strip_drawer is not None:
                 self.remove_drawable(self._crt_strip_drawer)
-                self._crt_strip_drawwer = None
+                self._crt_strip_drawer = None
             return
 
         self._draw_crt_strips = True

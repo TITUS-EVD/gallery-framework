@@ -30,7 +30,9 @@ def compare(kind, expected, actual):
     differences = []
     for column, want in expected.to_arrays().items():
         got = getattr(actual, column)
-        if want.shape != got.shape or not np.array_equal(want, got):
+        # MC truths without a neutrino hold nan
+        equal_nan = want.dtype.kind == 'f'
+        if want.shape != got.shape or not np.array_equal(want, got, equal_nan=equal_nan):
             differences.append(f'{column}: shape {want.shape} vs {got.shape}')
     return differences
 
@@ -41,6 +43,7 @@ def main():
     parser.add_argument('file')
     parser.add_argument('--events', type=int, default=2)
     parser.add_argument('--raw-digits', action='store_true')
+    parser.add_argument('--opdet-waveforms', action='store_true')
     parser.add_argument('--tags', help='comma-separated module labels (default: all)')
     args = parser.parse_args()
 
@@ -54,25 +57,16 @@ def main():
     reader = GalleryReader([args.file], root=ROOT)
     print(f'GalleryReader({args.file}): {len(reader.events)} events, {time.perf_counter() - start:.2f} s')
     print(f'ChannelROI support: {bool(ROOT.titusio.hasChannelROISupport())}')
+    print(f'SBND CRT support: {bool(ROOT.titusio.hasSBNDCRTSupport())}')
 
     # the kinds the titusio library reads so far
     kinds = [k for k in dump_products.DEFAULT_KINDS if k in EXTRACTORS]
     kinds += ['raw_digits'] if args.raw_digits else []
+    kinds += ['opdet_waveforms'] if args.opdet_waveforms else []
     labels = set(args.tags.split(',')) if args.tags else None
     products = [(k, t) for k in kinds for t in reader.tags(k)
                 if labels is None or t.split(':')[0] in labels]
-    extractors = {
-        'hits': dump_products.extract_hits,
-        'wires': dump_products.extract_wire_signals,
-        'channel_rois': dump_products.extract_wire_signals,
-        'raw_digits': lambda v: dump_products.extract_raw_digits(v, dump_products.make_uncompress(ROOT)),
-        'tracks': dump_products.extract_tracks,
-        'vertices': dump_products.extract_vertices,
-        'spacepoints': dump_products.extract_spacepoints,
-        'showers': dump_products.extract_showers,
-        'pfparticles': dump_products.extract_pfparticles,
-        't0s': dump_products.extract_t0s,
-    }
+    extractors = dump_products.extractors(ROOT)
     # C++ product type of each (kind, tag) in the file
     types = reader._file_types[0]
 

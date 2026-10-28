@@ -137,6 +137,125 @@ namespace titusio {
     void clear();
   };
 
+  /// recob::Cluster; its hits come from the cluster_hits association
+  struct ClusterColumns {
+    std::vector<int> id;
+    std::vector<int> cryostat;
+    std::vector<int> tpc;
+    std::vector<int> plane;
+    std::vector<int> n_hits;
+    std::vector<float> start_wire;
+    std::vector<float> start_tick;
+    std::vector<float> end_wire;
+    std::vector<float> end_tick;
+    std::vector<float> integral;
+
+    void clear();
+  };
+
+  /// recob::EndPoint2D
+  struct EndPoint2DColumns {
+    std::vector<int> id;
+    std::vector<int> cryostat;
+    std::vector<int> tpc;
+    std::vector<int> plane;
+    std::vector<int> wire;
+    std::vector<float> drift_time;
+    std::vector<float> charge;
+    std::vector<float> strength;
+
+    void clear();
+  };
+
+  /// simb::MCTruth; neutrino columns are set if has_neutrino. Particles of
+  /// truth i are particle_offset[i] to particle_offset[i + 1]
+  struct MCTruthColumns {
+    std::vector<int> origin;
+    std::vector<unsigned char> has_neutrino;
+    std::vector<int> nu_pdg;
+    std::vector<float> nu_energy;
+    std::vector<float> vx;
+    std::vector<float> vy;
+    std::vector<float> vz;
+    std::vector<double> vt;
+    std::vector<int> mode;
+    std::vector<int> interaction_type;
+    std::vector<int> ccnc;
+    std::vector<long long> particle_offset;
+    std::vector<int> particle_pdg;
+    std::vector<int> particle_status;
+    std::vector<float> particle_energy;
+
+    void clear();
+  };
+
+  /// sim::MCTrack; steps of track i are step_offset[i] to step_offset[i + 1]
+  struct MCTrackColumns {
+    std::vector<int> track_id;
+    std::vector<int> pdg;
+    std::vector<int> origin;
+    std::vector<std::string> process;
+    std::vector<double> start_t;
+    std::vector<float> start_e;
+    std::vector<long long> step_offset;
+    std::vector<float> x;
+    std::vector<float> y;
+    std::vector<float> z;
+    std::vector<double> t;
+    std::vector<float> e;
+
+    void clear();
+  };
+
+  /// recob::OpFlash; PEs of flash i (by optical channel) are
+  /// pe[pe_offset[i], pe_offset[i + 1])
+  struct OpFlashColumns {
+    std::vector<double> time;
+    std::vector<double> abs_time;
+    std::vector<float> time_width;
+    std::vector<float> y_center;
+    std::vector<float> y_width;
+    std::vector<float> z_center;
+    std::vector<float> z_width;
+    std::vector<float> total_pe;
+    std::vector<int> on_beam_time;
+    std::vector<long long> pe_offset;
+    std::vector<float> pe;
+
+    void clear();
+  };
+
+  /// raw::OpDetWaveform; samples of row i are adc[adc_offset[i], adc_offset[i + 1])
+  struct OpDetWaveformColumns {
+    std::vector<unsigned int> channel;
+    std::vector<double> time_stamp;
+    std::vector<long long> adc_offset;
+    std::vector<unsigned short> adc;
+
+    void clear();
+  };
+
+  /// sbnd::crt::FEBData; adc is row-major (rows x 32)
+  struct CRTFEBDataColumns {
+    std::vector<unsigned short> mac5;
+    std::vector<unsigned short> flags;
+    std::vector<unsigned int> ts0;
+    std::vector<unsigned int> ts1;
+    std::vector<unsigned int> coinc;
+    std::vector<unsigned int> unix_s;
+    std::vector<unsigned short> adc;
+
+    void clear();
+  };
+
+  /// sbnd::timing::DAQTimestamp
+  struct DAQTimestampColumns {
+    std::vector<unsigned int> channel;
+    std::vector<unsigned long long> timestamp;
+
+    void clear();
+  };
+
   /// Each reader clears and fills its columns. Returns false if the event has
   /// no such product; other failures throw.
   bool readHits(gallery::Event const& ev, std::string const& tag, HitColumns& out);
@@ -149,6 +268,19 @@ namespace titusio {
   bool readShowers(gallery::Event const& ev, std::string const& tag, ShowerColumns& out);
   bool readPFParticles(gallery::Event const& ev, std::string const& tag, PFParticleColumns& out);
   bool readT0s(gallery::Event const& ev, std::string const& tag, T0Columns& out);
+  bool readClusters(gallery::Event const& ev, std::string const& tag, ClusterColumns& out);
+  bool readEndPoints2D(gallery::Event const& ev, std::string const& tag, EndPoint2DColumns& out);
+
+  bool readMCTruths(gallery::Event const& ev, std::string const& tag, MCTruthColumns& out);
+  bool readMCTracks(gallery::Event const& ev, std::string const& tag, MCTrackColumns& out);
+
+  bool readOpFlashes(gallery::Event const& ev, std::string const& tag, OpFlashColumns& out);
+  bool readOpDetWaveforms(gallery::Event const& ev, std::string const& tag, OpDetWaveformColumns& out);
+
+  /// SBND CRT and timing products live in sbnobj; without it these throw
+  bool readCRTFEBData(gallery::Event const& ev, std::string const& tag, CRTFEBDataColumns& out);
+  bool readDAQTimestamps(gallery::Event const& ev, std::string const& tag, DAQTimestampColumns& out);
+  bool hasSBNDCRTSupport();
 
   /// An association product of type cpp_type (as in the file, e.g.
   /// "art::Assns<recob::Hit,recob::Track,recob::TrackHitMeta>"), returned

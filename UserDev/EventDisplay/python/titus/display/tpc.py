@@ -43,41 +43,83 @@ def raw_digit_signals(digits, subtract_pedestal=True):
                        values=adc[in_waveform])
 
 
+class SignalSamples:
+    """
+    The ROIs of WireSignals (recob::Wire or ChannelROI) on every wire their
+    channel reads out (several on ICARUS), as flat arrays per (ROI, wire)
+    pair: TITUS plane index, wire, first tick, length and offset into the
+    values. Computed once per product and shared by all views (fill()).
+    """
+    # ROIs at least this long (raw digits, dense wires) are copied one slice
+    # each; shorter ones are expanded to samples and written in one assignment
+    SLICE_LENGTH = 64
+
+    def __init__(self, signals, channel_map, geom):
+        self.values = np.asarray(signals.values)
+        rows = np.asarray(signals.roi_row, dtype=np.int64)
+        first = np.searchsorted(channel_map.channel, signals.channel, side='left')[rows]
+        n_wires = np.searchsorted(channel_map.channel, signals.channel, side='right')[rows] - first
+
+        pair_roi = np.repeat(np.arange(len(rows)), n_wires)
+        map_row = np.repeat(first, n_wires) + _ranks(n_wires)
+        offsets = np.asarray(signals.roi_offset, dtype=np.int64)
+        self.plane_index = plane_index_table(geom)[channel_map.cryostat, channel_map.tpc, channel_map.plane][map_row]
+        self.wire = channel_map.wire[map_row].astype(np.int64)
+        self.start = np.asarray(signals.roi_start, dtype=np.int64)[pair_roi]
+        self.length = (offsets[1:] - offsets[:-1])[pair_roi]
+        self.offset = offsets[:-1][pair_roi]
+
+    def __len__(self):
+        return len(self.plane_index)
+
+    def fill(self, image, layout):
+        """ write the ROIs on the layout's planes into its image; ticks past n_ticks are dropped """
+        n = layout.n_ticks
+        length = np.clip(np.minimum(self.start + self.length, n) - self.start, 0, None)
+        for block in layout.blocks:
+            on_block = (self.plane_index == block.plane_index) & (length > 0)
+            long_roi = on_block & (length >= self.SLICE_LENGTH)
+            short_roi = on_block & ~long_roi
+            if short_roi.any():
+                counts = length[short_roi]
+                in_roi = _ranks(counts)
+                ticks = np.repeat(self.start[short_roi], counts) + in_roi
+                columns = block.time_offset + (n - 1 - ticks if block.flip else ticks)
+                wires = block.wire_offset + np.repeat(self.wire[short_roi], counts)
+                image[wires, columns] = self.values[np.repeat(self.offset[short_roi], counts) + in_roi]
+            for i in np.flatnonzero(long_roi):
+                start, end, offset = self.start[i], self.start[i] + length[i], self.offset[i]
+                values = self.values[offset:offset + length[i]]
+                row = image[block.wire_offset + self.wire[i]]
+                if block.flip:
+                    row[block.time_offset + n - end:block.time_offset + n - start] = values[::-1]
+                else:
+                    row[block.time_offset + start:block.time_offset + end] = values
+        return image
+
+    def image(self, layout):
+        return self.fill(np.zeros(layout.shape, dtype='f4'), layout)
+
+
+def _ranks(counts):
+    """ 0..count-1 for each count, concatenated """
+    counts = np.asarray(counts, dtype=np.int64)
+    if counts.sum() == 0:
+        return np.zeros(0, dtype=np.int64)
+    starts = np.repeat(np.cumsum(counts) - counts, counts)
+    return np.arange(counts.sum(), dtype=np.int64) - starts
+
+
 def wire_image(layout, signals, channel_map):
     """
     View image (wires, ticks) of WireSignals (recob::Wire or ChannelROI).
     Handles channel reading out several wires (ICARUS). Samples beyond the
-    layout's n_ticks are dropped.
+    layout's n_ticks are dropped. To draw several views of the same product,
+    build its SignalSamples once instead.
     """
-    image = np.zeros(layout.shape, dtype='f4')
     if len(signals) == 0:
-        return image
-
-    table = plane_index_table(layout.geom)
-    map_planes = table[channel_map.cryostat, channel_map.tpc, channel_map.plane]
-    in_view = np.isin(map_planes, [b.plane_index for b in layout.blocks])
-    first = np.searchsorted(channel_map.channel, signals.channel, side='left')
-    last = np.searchsorted(channel_map.channel, signals.channel, side='right')
-
-    n = layout.n_ticks
-    for j in range(len(signals.roi_row)):
-        row = signals.roi_row[j]
-        start = int(signals.roi_start[j])
-        values = signals.values[signals.roi_offset[j]:signals.roi_offset[j + 1]]
-        end = min(start + len(values), n)
-        if end <= start:
-            continue
-        values = values[:end - start]
-        for k in range(first[row], last[row]):
-            if not in_view[k]:
-                continue
-            block = layout.block(map_planes[k])
-            wire = block.wire_offset + channel_map.wire[k]
-            if block.flip:
-                image[wire, block.time_offset + n - end:block.time_offset + n - start] = values[::-1]
-            else:
-                image[wire, block.time_offset + start:block.time_offset + end] = values
-    return image
+        return np.zeros(layout.shape, dtype='f4')
+    return SignalSamples(signals, channel_map, layout.geom).image(layout)
 
 
 @dataclass(frozen=True)

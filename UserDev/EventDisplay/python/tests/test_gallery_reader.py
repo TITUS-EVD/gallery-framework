@@ -13,6 +13,7 @@ import pytest
 
 from titus.readers import EventID, GalleryReader, Hits, ProductNotFound, RawDigits, WireSignals
 from titus.readers.gallery import EXTRACTORS, columns_to_container
+from titus.readers.products import KINDS
 
 
 def hit_columns(n):
@@ -202,6 +203,23 @@ def test_empty_columns():
     assert len(columns_to_container('wires', empty)) == 0
     raw = SimpleNamespace(channel=[], pedestal=[], n_samples=[], adc=[], width=0)
     assert columns_to_container('raw_digits', raw).adc.shape == (0, 0)
+
+
+@pytest.mark.parametrize('kind', ['clusters', 'endpoints2d', 'mctruths', 'mctracks', 'opflashes',
+                                  'opdet_waveforms', 'crt_febdata', 'daq_timestamps', 'cluster_hits'])
+def test_every_kind_has_an_extractor_and_empty_columns(kind):
+    ''' as titusio's clear() leaves them: offset columns hold [0], the others are empty '''
+    container = KINDS[kind].container
+    assert kind in EXTRACTORS
+    columns = SimpleNamespace(**{name: [0] if name.endswith('_offset') else [] for name in container.DTYPES})
+    assert len(columns_to_container(kind, columns)) == 0
+
+
+def test_crt_adc_columns_reshaped():
+    columns = SimpleNamespace(mac5=[1, 2], flags=[1, 3], ts0=[5, 6], ts1=[0, 0], coinc=[0, 0], unix_s=[0, 0],
+                              adc=list(range(64)))
+    febs = columns_to_container('crt_febdata', columns)
+    assert febs.adc.shape == (2, 32) and febs.adc[1, 0] == 32
 
 
 def test_tracks_and_associations():

@@ -9,6 +9,8 @@ from ROOT import TFile
 from ROOT import vector as ROOTvector
 from ROOT import string as ROOTstring
 
+from titus.readers.base import ProductCache
+
 
 class Product:
     """ holds information about art products """
@@ -62,6 +64,8 @@ class GalleryInterface(QtCore.QObject):
         super().__init__()
 
         self._gallery_event_handle = None
+        # products of the current event, shared by the drawables
+        self.product_cache = ProductCache()
 
         self._keyTable = {}
         self._drawnClasses = {}
@@ -92,13 +96,7 @@ class GalleryInterface(QtCore.QObject):
         Returns:
             list: A list of all available runs
         '''
-        out = []
-        for item in self._run_list:
-            if item['run'] in out:
-                continue
-            else:
-                out.append(item['run'])
-        return out
+        return list(dict.fromkeys(item['run'] for item in self._run_list))
 
     def available_subruns(self):
         '''
@@ -107,13 +105,7 @@ class GalleryInterface(QtCore.QObject):
         Returns:
             list: A list of all available subruns
         '''
-        out = []
-        for item in self._run_list:
-            if item['subrun'] in out:
-                continue
-            else:
-                out.append(item['subrun'])
-        return out
+        return list(dict.fromkeys(item['subrun'] for item in self._run_list))
 
     def available_events(self):
         '''
@@ -122,13 +114,7 @@ class GalleryInterface(QtCore.QObject):
         Returns:
             list: A list of all available events
         '''
-        out = []
-        for item in self._run_list:
-            if item['event'] in out:
-                continue
-            else:
-                out.append(item['event'])
-        return out
+        return list(dict.fromkeys(item['event'] for item in self._run_list))
 
     def ping_file(self, file):
         """
@@ -277,6 +263,7 @@ class GalleryInterface(QtCore.QObject):
             self._current_directory = os.getcwd()
 
         self._gallery_event_handle = gallery.Event(_file_list)
+        self.product_cache.new_file()
 
         self._lastProcessed = -1
         self._entry = 0
@@ -454,5 +441,8 @@ class GalleryInterface(QtCore.QObject):
             print(f"Selected event is too high. You have requested event {event}, but there is a maximum of {self._n_entries}.")
             return
 
-        self._entry = self._gallery_event_handle.eventEntry()
+        entry = self._gallery_event_handle.eventEntry()
+        if entry != self._entry or self._lastProcessed == -1:
+            self.product_cache.new_event()
+        self._entry = entry
         self.process_event()

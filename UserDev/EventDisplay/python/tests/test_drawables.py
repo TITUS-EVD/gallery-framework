@@ -15,13 +15,14 @@ sys.modules.setdefault('ROOT', mock.MagicMock())
 sys.modules.setdefault('galleryUtils', mock.MagicMock())
 
 pg = pytest.importorskip('pyqtgraph')
-from PyQt5 import QtCore  # noqa: E402
+from PyQt5 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 import titus.drawables.drawable as drawable_module  # noqa: E402
 from titus.display import ViewLayout, track_correction, track_segments, track_t0s, wire_image  # noqa: E402
 from titus.drawables import Hit, RawDigit, RecoWire, Track, recoChannelROI  # noqa: E402
+from titus.drawables.hit import HitCollection  # noqa: E402
 from titus.geometry import Geometry  # noqa: E402
-from titus.readers import DumpReader, ProductNotFound, RawDigits  # noqa: E402
+from titus.readers import DumpReader, ProductCache, ProductNotFound, RawDigits  # noqa: E402
 
 DATA = pathlib.Path(__file__).parent / 'data'
 
@@ -148,20 +149,44 @@ def test_hits(qtbot, products, sbnd, tpc_module):
     drawer.analyze()
     drawer.drawObjects()
 
-    boxes = [r for c in drawer._drawnObjects for r in c._rects]
-    assert len(boxes) == len(hits)
+    assert sum(len(c) for c in drawer._drawnObjects) == len(hits)
     # view U, TPC 0: box centered on the wire and on the peak, +- RMS
     view = tpc_module._wire_views[(0, 0)]
     (collection,) = [c for c in drawer._drawnObjects if c in view._view.addedItems]
     first = hits.on_plane(0, 0, 0)
-    rects = sorted((r.rect().x(), r.rect().center().y(), r.rect().height()) for r in collection._rects
-                   if r.rect().center().y() < 3400)
+    rects = [collection.rect(i) for i in range(len(collection))]
+    rects = sorted((r.x(), r.center().y(), r.height()) for r in rects if r.center().y() < 3400)
     expected = sorted(zip(hits.wire[first] + 0.0, hits.peak_time[first].astype(float), 2. * hits.rms[first]))
     np.testing.assert_allclose(rects, expected, rtol=1e-5)
 
     drawer.clearDrawnObjects()
     assert drawer._drawnObjects == []
-    assert not [i for i in view._view.addedItems if i in boxes]
+    assert collection not in view._view.addedItems
+
+
+def test_hit_collection_paints_and_hovers(qtbot):
+    tooltips = []
+    collection = HitCollection([0, 10], [0, 20], [1, 1], [5, 5], [255, 128],
+                               tooltip=lambda i: tooltips.append(i) or f'hit {i}')
+    scene = QtWidgets.QGraphicsScene()
+    scene.addItem(collection)
+    assert collection.boundingRect() == QtCore.QRectF(0, 0, 11, 25)
+
+    image = QtGui.QImage(11, 25, QtGui.QImage.Format_ARGB32)
+    image.fill(QtGui.QColor('white'))
+    painter = QtGui.QPainter(image)
+    scene.render(painter, QtCore.QRectF(0, 0, 11, 25), QtCore.QRectF(0, 0, 11, 25))
+    painter.end()
+    # opaque black, half transparent black, untouched white
+    assert image.pixelColor(0, 2).value() == 0
+    assert 100 < image.pixelColor(10, 22).value() < 160
+    assert image.pixelColor(5, 10).value() == 255
+
+    assert collection.index_at(10.5, 21) == 1 and collection.index_at(5, 5) is None
+    collection._hover(1)
+    assert collection.toolTip() == 'hit 1' and tooltips == [1]
+    collection._hover(None)
+    assert collection.toolTip() == ''
 
 
 def test_crt_view_from_detector_description(qtbot, sbnd):
@@ -479,3 +504,162 @@ def test_wire_view_unite_cathodes(qtbot, sbnd):
 
     view.uniteCathodes(False)
     assert view.removed_ticks() == 0 and view._item.image.shape == image.shape
+
+
+# --- reading each product once, and the TPC module's redraw paths ---
+
+class CachingGalleryInterface(FakeGalleryInterface):
+    def __init__(self):
+        super().__init__()
+        self.product_cache = ProductCache()
+
+
+def count_reads(monkeypatch):
+    ''' (kind, tag) of every read_event_product call, through the products fixture '''
+    reads = []
+    read = drawable_module.read_event_product
+
+    def counting(lib, ev, kind, tag, **kwargs):
+        reads.append((kind, tag))
+        return read(lib, ev, kind, tag, **kwargs)
+
+    monkeypatch.setattr(drawable_module, 'read_event_product', counting)
+    return reads
+
+
+def test_drawables_share_products_read_once(qtbot, products, sbnd, tpc_module, monkeypatch, capsys):
+    serve_reco2(products, 1)
+    reads = count_reads(monkeypatch)
+    gi = CachingGalleryInterface()
+    tpc_module.correct_3d_objects = lambda: True
+    hits = Hit(gi, sbnd, tpc_module)
+    hits.set_producer('gaushit::Reco1')
+    tracks = Track(gi, sbnd, tpc_module)
+    tracks.set_producer('pandoraTrack::Reco2')
+    for _ in range(2):
+        # e.g. a redraw after a GUI change: nothing is read again
+        for drawer in (hits, tracks):
+            drawer.analyze()
+            drawer.drawObjects()
+    assert 'Warning' not in capsys.readouterr().out
+    assert len(reads) == len(set(reads)) and ('hits', 'gaushit::Reco1') in reads
+    assert tracks._drawnObjects and hits._drawnObjects
+
+    gi.product_cache.new_event()
+    hits.analyze()
+    assert reads.count(('hits', 'gaushit::Reco1')) == 2
+
+
+def test_removed_drawable_stops_receiving_signals(qtbot, products, sbnd):
+    gi = FakeGalleryInterface()
+    drawer = RecoWire(gi, sbnd)
+    connected = gi.receivers(gi.fileChanged)
+    drawer.disconnect_signals()
+    assert gi.receivers(gi.fileChanged) == connected - 1
+    drawer.disconnect_signals()  # twice is harmless
+
+
+def test_wire_images_computed_once_per_event(qtbot, products, sbnd):
+    products[('wires', 'simtpc2d:dnnsp:DetSim')] = DumpReader(DATA / 'sbnd-reco1-trimmed').wires(0, 'simtpc2d:dnnsp')
+    drawer = RecoWire(FakeGalleryInterface(), sbnd)
+    drawer.set_producer('simtpc2d:dnnsp:DetSim')
+    drawer.analyze()
+    image = drawer.getPlane(2, 0)
+    assert drawer.getPlane(2, 0) is image
+    drawer.analyze()
+    assert drawer.getPlane(2, 0) is not image
+    np.testing.assert_array_equal(drawer.getPlane(2, 0), image)
+
+
+class FakeWireView:
+    def __init__(self, plane, cryostat):
+        self._plane, self._cryostat = plane, cryostat
+        self.images, self.visible = [], None
+
+    def plane(self):
+        return self._plane
+
+    def cryostat(self):
+        return self._cryostat
+
+    def drawPlane(self, image):
+        self.images.append(image)
+
+    def setVisible(self, visible):
+        self.visible = visible
+
+    def drawBlank(self):
+        self.images.append(None)
+
+    def setWrapperVisible(self, show):
+        pass
+
+    def toggleLogo(self, show):
+        pass
+
+    def toggleScale(self, show):
+        pass
+
+
+def bare_tpc_module(selected):
+    from titus.modules.tpc_module import TpcModule
+    module = TpcModule.__new__(TpcModule)
+    module._wire_views = {(p, 0): FakeWireView(p, 0) for p in range(3)}
+    module._selected_planes = [p for p, _ in selected]
+    module._selected_cryos = [c for _, c in selected]
+    module._stale_views = set()
+    module._draw_wires = True
+    module._wire_drawer = mock.Mock(getPlane=lambda plane, cryo: f'image {plane}')
+    module._plane_frames = mock.Mock(isChecked=lambda: True)
+    module._current_wire_drawer = None
+    module._show_logo = module._show_scale_bar = False
+    return module
+
+
+def test_hidden_views_drawn_when_shown():
+    module = bare_tpc_module([(2, 0)])
+    module.update()
+    views = module._wire_views
+    assert views[(2, 0)].images == ['image 2']
+    assert views[(0, 0)].images == [] and module._stale_views == {(0, 0), (1, 0)}
+
+    module._selected_planes, module._selected_cryos = [-1], [-1]
+    module.refresh_draw_list_widget()
+    assert [v.images for v in views.values()] == [['image 0'], ['image 1'], ['image 2']]
+    assert all(v.visible for v in views.values()) and not module._stale_views
+    # already drawn for this event
+    module.refresh_draw_list_widget()
+    assert views[(0, 0)].images == ['image 0']
+
+
+def test_no_wires_blanks_shown_views():
+    module = bare_tpc_module([(-1, -1)])
+    module._draw_wires = False
+    module.update()
+    assert [v.images for v in module._wire_views.values()] == [[None]] * 3
+
+
+def test_icarus_draws_every_drift_volume_product():
+    from titus.gallery_interface.gallery_interface import Product
+    from titus.modules.tpc_module import TpcModule
+    products = [Product(f'recobChannelROIs_wire2channelroi2d_PHYSCRATEDATATPC{tpc}_stage0', 'std::vector<recob::ChannelROI>')
+                for tpc in ('EE', 'EW', 'WE', 'WW')]
+    products.append(Product('recobChannelROIs_other_PHYSCRATEDATATPCEE_stage1', 'std::vector<recob::ChannelROI>'))
+    box = mock.Mock(selected_products=lambda: ['wire2channelroi2d:PHYSCRATEDATATPCEW:stage0'])
+    module = TpcModule.__new__(TpcModule)
+    module._gm = mock.Mock()
+    module._gm.current_geom.name.return_value = 'icarus'
+    assert module._wire_producers(box, products) == [p.full_name() for p in products[:4]]
+    assert module._wire_producers(box, products, producers=['given']) == ['given']
+    module._gm.current_geom.name.return_value = 'sbnd'
+    assert module._wire_producers(box, products) == 'wire2channelroi2d:PHYSCRATEDATATPCEW:stage0'
+
+
+def test_crt_update_without_crt_products():
+    from titus.modules.crt_module import CrtModule
+    module = CrtModule.__new__(CrtModule)
+    module._gi = mock.Mock(get_producers=lambda *args: None)
+    module._lsm = mock.Mock()
+    module._crt_strip_drawer = None
+    module.update()
+    assert module._draw_crt_strips is False

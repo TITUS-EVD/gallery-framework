@@ -151,6 +151,10 @@ class Module(QtCore.QObject):
             return
         drawable.clearDrawnObjects() 
         self._drawables.remove(drawable)
+        # drawers are recreated when the wire choice or file changes: let go of the old one
+        disconnect = getattr(drawable, 'disconnect_signals', None)
+        if disconnect is not None:
+            disconnect()
 
     # TODO need to rework widgets so that this kind of event forwarding to 
     # gui isn't necessary

@@ -86,6 +86,10 @@ class TpcModule(Module):
         self._wire_drawer = None
         self._product_box_map = {}
         self._wire_views = {}
+        # views not drawn for the current event since hidden by the view buttons
+        self._stale_views = set()
+        # set while the product boxes are filled for a new file
+        self._updating_boxes = False
         self._show_logo = False
         self._show_scale_bar = False
         self._selected_planes = [-1]
@@ -266,7 +270,7 @@ class TpcModule(Module):
 
         products = self._gi.get_products(_RECOB_WIRE)
         default_products = self._gi.get_default_products(_RECOB_WIRE)
-        self._wire_choice = MultiSelectionBox(_RECOB_WIRE, products, default_products)
+        self._wire_choice = MultiSelectionBox(self, _RECOB_WIRE, products, default_products)
         self._wire_choice.activated.connect(self.change_wire_choice)
 
         # Draw Raw Digit
@@ -462,6 +466,10 @@ class TpcModule(Module):
             self._t0slider.setMaximum(self._gm.current_geom.triggerOffset())
         self._t0slider.setSingleStep(10)
         self._t0slider.valueChanged.connect(self.t0slider_worker)
+        self._t0_redraw_timer = QtCore.QTimer(self)
+        self._t0_redraw_timer.setSingleShot(True)
+        self._t0_redraw_timer.setInterval(150)
+        self._t0_redraw_timer.timeout.connect(self.redraw_products)
         self._t0sliderLabel = QtWidgets.QLabel("Current t<sub>0</sub> = 0")
 
         self._t0sliderLabelIntro.setVisible(False)
@@ -679,6 +687,9 @@ class TpcModule(Module):
         if product is not None:
             drawable = self._product_box_map[sender]
             drawable.set_producer(product.full_name())
+            if self._updating_boxes:
+                # new file: everything is read and drawn once the boxes are set
+                return
             # read this producer in the current event (process_event() only
             # re-processes when the event changed) and draw it
             drawable.analyze()
@@ -732,6 +743,18 @@ class TpcModule(Module):
         self._current_wire = -1
 
     def change_wire_choice(self):
+        ''' the wire radio buttons or product boxes changed: read and draw only the wires '''
+        cuts = {key: view.removed_ticks() for key, view in self._wire_views.items()}
+        self._select_wire_drawer()
+        if self._wire_drawer is not None:
+            self._wire_drawer.analyze()
+        self.update()
+        if any(view.removed_ticks() != cuts[key] for key, view in self._wire_views.items()):
+            # "unite cathodes" cut changed with the image: products follow it
+            self.redraw_products()
+
+    def _select_wire_drawer(self):
+        ''' create the wire drawer for the checked wire button and product box '''
         # reset the wire drawer regardless of what happens next
         self.remove_drawable(self._wire_drawer)
         self._wire_drawer = None
@@ -745,22 +768,29 @@ class TpcModule(Module):
         elif self._channel_roi_button.isChecked():
             self.toggle_wires(_RECOB_CHANNELROI, stage=self._lsm.current_stage, producers=None)
 
+    def on_file_change(self):
+        '''
+        override of base class method: set the products of the new file in
+        the boxes and the wire drawer, then read and draw everything once
+        '''
+        self._updating_boxes = True
+        try:
+            self.update_reco_boxes()
+        finally:
+            self._updating_boxes = False
+        self._select_wire_drawer()
         self._gi.process_event(True)
 
-    def on_file_change(self):
-        ''' override of base class method to update reco boxes first '''
-        self.update_reco_boxes()
-        self.change_wire_choice()
-
     def update(self):
+        # views hidden by the view buttons are drawn when shown (refresh_draw_list_widget)
+        self._stale_views = set()
+        for key, view in self._wire_views.items():
+            if self._view_shown(key):
+                self._draw_wire_view(view)
+            else:
+                self._stale_views.add(key)
         if not self._draw_wires:
-            for plane_cryo, view in self._wire_views.items():
-                view.drawBlank()
             return
-
-        for plane_cryo, view in self._wire_views.items():
-            view.drawPlane(self._wire_drawer.getPlane(*plane_cryo))
-            view.setWrapperVisible(self._plane_frames.isChecked())
         
         if self._current_wire_drawer is not None:
             # do this in two steps since self._wirePlotItems will be changed
@@ -770,6 +800,21 @@ class TpcModule(Module):
             for d in updated_vals:
                 self._current_wire_drawer.show_waveform(**d)
 
+
+    def _wire_producers(self, box, all_producers, producers=None):
+        '''
+        Full tags of the wire products to draw: producers if given, else the
+        box's selection. ICARUS stores one product per drift volume, with the
+        same label and process and the TPC in the instance (e.g. 4 ChannelROI
+        products in stage0): all of them are drawn.
+        '''
+        if producers is not None:
+            return producers
+        selected = box.selected_products()[0]
+        if self._gm.current_geom.name() != 'icarus':
+            return selected
+        label, _, process = selected.split(':')
+        return [p.full_name() for p in all_producers if (p.producer(), p.stage()) == (label, process)]
 
     def toggle_wires(self, product, stage=None, subtract_pedestal=True, producers=None):
         ''' get wire data from gallery interface '''
@@ -797,14 +842,7 @@ class TpcModule(Module):
                 drawables.RecoWire(self._gi, self._gm.current_geom)
             )
 
-            if producers is not None:
-                producer = producers
-            elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
-                producer = [p.full_name() for p in all_producers[:3]]
-            else:
-                producer = self._wire_choice.selected_products()[0]
-
-            self._wire_drawer.set_producer(producer)
+            self._wire_drawer.set_producer(self._wire_producers(self._wire_choice, all_producers, producers))
 
         elif product == _RECOB_CHANNELROI:
             if not self._channel_roi_choice.selected_products():
@@ -814,14 +852,7 @@ class TpcModule(Module):
                 drawables.recoChannelROI(self._gi, self._gm.current_geom)
             )
 
-            if producers is not None:
-                producer = producers
-            elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
-                producer = [p.full_name() for p in all_producers[:3]]
-            else:
-                producer = self._wire_choice.selected_products()[0]
-
-            self._wire_drawer.set_producer(producer)
+            self._wire_drawer.set_producer(self._wire_producers(self._channel_roi_choice, all_producers, producers))
 
         elif product == _RAW_RAWDIGIT:
             if not self._raw_digit_choice.selected_products():
@@ -832,14 +863,7 @@ class TpcModule(Module):
             )
             self._wire_drawer.setSubtractPedestal(subtract_pedestal)
 
-            if producers is not None:
-                producer = producers
-            elif self._gm.current_geom.name() == 'icarus' and len(all_producers) > 3:
-                producer = [p.full_name() for p in all_producers[:3]]
-            else:
-                producer = self._raw_digit_choice.selected_products()[0]
-
-            self._wire_drawer.set_producer(producer)
+            self._wire_drawer.set_producer(self._wire_producers(self._raw_digit_choice, all_producers, producers))
 
     def grayscale(self):
         cmap = 'grayscale' if self._grayScale.isChecked() else 'default'
@@ -891,7 +915,8 @@ class TpcModule(Module):
         for view in self._wire_views.values():
             view.t0slide(t0)
         if self._uniteCathodes.isChecked():
-            self.redraw_products()
+            # the cut follows the cathode: redraw products once the slider rests
+            self._t0_redraw_timer.start()
 
     def unite_cathodes(self):
         for view in self._wire_views.values():
@@ -953,22 +978,31 @@ class TpcModule(Module):
 
         self.refresh_draw_list_widget()
 
+    def _view_shown(self, key):
+        ''' whether the view of (plane, cryostat) is selected by the view buttons; -1 selects all '''
+        return any(p == -1 or c == -1 or key == (p, c)
+                   for p, c in zip(self._selected_planes, self._selected_cryos))
+
+    def _draw_wire_view(self, view):
+        if not self._draw_wires:
+            view.drawBlank()
+            return
+        view.drawPlane(self._wire_drawer.getPlane(view.plane(), view.cryostat()))
+        view.setWrapperVisible(self._plane_frames.isChecked())
+
     def refresh_draw_list_widget(self):
         for key, view in self._wire_views.items():
-            # Turn it off to begin width
-            view.toggleLogo(False)
-            view.setVisible(False)
-
-        # negative -1 for p and c means all planes are enabled
-        for p, c in zip(self._selected_planes, self._selected_cryos):
-            for key, view in self._wire_views.items():
-                if key != (p, c) and p != -1 and c != -1:
-                    continue
-
-                # Turn on the requested ones
-                view.setVisible(True)
-                view.toggleLogo(self._show_logo)
-                view.toggleScale(self._show_scale_bar)
+            if not self._view_shown(key):
+                view.toggleLogo(False)
+                view.setVisible(False)
+                continue
+            view.setVisible(True)
+            view.toggleLogo(self._show_logo)
+            view.toggleScale(self._show_scale_bar)
+            if key in self._stale_views:
+                # hidden when the event was drawn
+                self._stale_views.discard(key)
+                self._draw_wire_view(view)
 
     def _update_scale_bar_length(self, x: int):
         '''
@@ -1388,10 +1422,10 @@ class WireView(pg.GraphicsLayoutWidget):
     def toggleLogo(self, logoBool):
         ''' Toggles the experiment's logo on and off '''
 
-        if self._logo in self.scene().items():
+        if self._logo is not None and self._logo.scene() is self.scene():
             self.scene().removeItem(self._logo)
 
-        if self._label in self.scene().items():
+        if self._label is not None and self._label.scene() is self.scene():
             self.scene().removeItem(self._label)
 
         self._useLogo = logoBool
@@ -1401,7 +1435,7 @@ class WireView(pg.GraphicsLayoutWidget):
         if not self._useLogo:
             return
 
-        if self._logo in self.scene().items():
+        if self._logo is not None and self._logo.scene() is self.scene():
             self.scene().removeItem(self._logo)
 
         self._logo = MovablePixmapItem(QtGui.QPixmap(self._geometry.logo()))
@@ -1414,7 +1448,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self.drawEventNumber()
 
     def drawEventNumber(self):
-        if self._label in self.scene().items():
+        if self._label is not None and self._label.scene() is self.scene():
             self.scene().removeItem(self._label)
 
         xLoc = 0
@@ -1501,13 +1535,10 @@ class WireView(pg.GraphicsLayoutWidget):
     def showAnodeCathode(self,showAC):
         self._showAnodeCathode = showAC
 
-        for l in self._cathode_lines:
-            if l in self.scene().items():
-                self.scene().removeItem(l)
-
-        for l in self._anode_lines:
-            if l in self.scene().items():
-                self.scene().removeItem(l)
+        for l in self._cathode_lines + self._anode_lines:
+            self._view.removeItem(l)
+        self._cathode_lines = []
+        self._anode_lines = []
 
         self.refreshAnodeCathode()
 

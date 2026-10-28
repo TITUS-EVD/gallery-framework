@@ -55,11 +55,14 @@ class Track(ReaderDrawable):
             for producer, tracks in enumerate(self._data):
                 for row in range(len(tracks)):
                     correction = self._correction(producer, row, layout) if corrected else None
+                    moved = correction is not None and correction.corrected
+                    tooltip = None
                     for segment in track_segments(layout, tracks, row, correction):
                         points = [QtCore.QPointF(x, y) for x, y in zip(segment.x, segment.y)]
-                        moved = correction is not None and correction.corrected
                         line = polyLine(points, self.COLOR, QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine)
-                        line.setToolTip(self.genToolTip(tracks, row, correction))
+                        if tooltip is None:
+                            tooltip = self.genToolTip(tracks, row, correction)
+                        line.setToolTip(tooltip)
                         view._view.addItem(line)
                         self._drawnObjects.append(line)
 
