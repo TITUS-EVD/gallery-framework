@@ -219,6 +219,30 @@ def object_hit_tpcs(n_objects, object_hits=None, hits=None):
     return tpcs
 
 
+def particle_tpcs(xyz, pfp_objects, pfp_points, points, point_tpcs):
+    """
+    (cryostat, tpc) per object (e.g. a vertex, which has no hits) from its
+    PFParticle's points (spacepoints): the TPC of the particle's point
+    nearest to it. pfp_objects / pfp_points: PFParticle associations to the
+    objects and to the points; point_tpcs: per point, see object_hit_tpcs.
+    (-1, -1) for objects whose particle has no points with a TPC.
+    """
+    xyz = np.asarray(xyz, dtype=float).reshape(-1, 3)
+    tpcs = np.full((len(xyz), 2), -1, dtype=int)
+    if pfp_objects is None or pfp_points is None or points is None:
+        return tpcs
+    points_of_pfp = {}
+    for pfp, point in zip(pfp_points.left, pfp_points.right):
+        if point_tpcs[point, 0] >= 0:
+            points_of_pfp.setdefault(pfp, []).append(point)
+    for pfp, obj in zip(pfp_objects.left, pfp_objects.right):
+        mine = np.asarray(points_of_pfp.get(pfp, []), dtype=int)
+        if len(mine) and 0 <= obj < len(xyz):
+            nearest = mine[np.argmin(np.linalg.norm(points.xyz[mine] - xyz[obj], axis=1))]
+            tpcs[obj] = point_tpcs[nearest]
+    return tpcs
+
+
 @dataclass(frozen=True)
 class PointCorrection:
     """ what the corrected drawing of point-like objects (vertices, spacepoints) changes """
@@ -226,21 +250,23 @@ class PointCorrection:
     tick_shift: np.ndarray  # ticks added to the drift time, per point
     tpcs: np.ndarray        # (cryostat, tpc) per point as drawn
     moved: np.ndarray       # per point: shifted, or drawn in another TPC than its position's
+    tpc_source: str = "hits'"  # whose TPC moved points are drawn in, for describe
 
     def describe(self, i):
         parts = []
         if not np.isnan(self.t0[i]):
             parts.append(f'T0 {self.t0[i] / 1000:.1f} us: drawn {self.tick_shift[i]:+.0f} ticks')
         if self.moved[i] and np.isnan(self.t0[i]):
-            parts.append("drawn in its hits' TPC")
+            parts.append(f'drawn in its {self.tpc_source} TPC')
         return '; '.join(parts) or 'drawn as stored'
 
 
-def point_correction(layout, points, t0=None, hit_tpcs=None) -> PointCorrection:
+def point_correction(layout, points, t0=None, hit_tpcs=None, tpc_source="hits'") -> PointCorrection:
     """
     Corrections for drawing points on their hits: undo their T0 (ns per
     point, see object_t0s) and draw each in the TPC of its hits (per point,
-    see object_hit_tpcs), else the TPC whose readout window contains it
+    see object_hit_tpcs, or particle_tpcs for objects without hits; named by
+    tpc_source), else the TPC whose readout window contains it
     """
     xyz = points.xyz
     n = len(xyz)
@@ -251,7 +277,7 @@ def point_correction(layout, points, t0=None, hit_tpcs=None) -> PointCorrection:
         known = np.asarray(hit_tpcs)[:, 0] >= 0
         tpcs[known] = np.asarray(hit_tpcs)[known]
     moved = (shift != 0) | np.any(tpcs != position_tpcs(layout.geom.detector, xyz), axis=1)
-    return PointCorrection(t0=t0, tick_shift=shift, tpcs=tpcs, moved=moved)
+    return PointCorrection(t0=t0, tick_shift=shift, tpcs=tpcs, moved=moved, tpc_source=tpc_source)
 
 
 def project_objects(layout, points, correction=None):

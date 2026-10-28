@@ -1,6 +1,6 @@
 import numpy as np
 
-from titus.display import ViewLayout, point_correction, project_objects
+from titus.display import ViewLayout, object_hit_tpcs, particle_tpcs, point_correction, project_objects
 from titus.drawables.drawable import ReaderDrawable
 from titus.drawables.items import Marker
 
@@ -9,9 +9,10 @@ class Vertex(ReaderDrawable):
     '''
     recob::Vertex positions projected into the wire views, as fixed-size
     markers. Corrected (the TPC module's "Correct 3D objects" option), a
-    vertex's PFParticle T0 is undone and it is drawn in the TPC whose readout
-    window contains it; vertices have no hits to place them by. Corrected
-    vertices are hollow, and their tooltip says what was changed.
+    vertex's PFParticle T0 is undone and, as vertices have no hits, it is
+    drawn in the TPC of its particle's nearest spacepoint's hit (else the TPC
+    whose readout window contains it). Corrected vertices are hollow, and
+    their tooltip says what was changed.
     '''
     KIND = 'vertices'
     COLOR = (0, 255, 255)
@@ -22,15 +23,32 @@ class Vertex(ReaderDrawable):
         self._product_name = 'vertex'
         self._geom = geom
         self._module = tpc_module
-        self._t0s = []
         self._corrections = []
 
     def on_data(self):
-        self._t0s = [self.pfp_object_t0s('pfp_vertices', str(tag), len(vertices))
-                     for tag, vertices in zip(self.producers(), self._data)]
         layout = ViewLayout(self._geom, plane=0)
-        self._corrections = [point_correction(layout, vertices, t0)
-                             for vertices, t0 in zip(self._data, self._t0s)]
+        self._corrections = []
+        for tag, vertices in zip(self.producers(), self._data):
+            t0 = self.pfp_object_t0s('pfp_vertices', str(tag), len(vertices))
+            self._corrections.append(point_correction(layout, vertices, t0, self._particle_tpcs(str(tag), vertices),
+                                                      tpc_source="particle's"))
+
+    def _particle_tpcs(self, tag, vertices):
+        ''' TPC per vertex from its PFParticle's spacepoints and their hits, or None '''
+        pfp_vertices = self.read_optional('pfp_vertices', tag)
+        if pfp_vertices is None or len(pfp_vertices) == 0:
+            return None
+        pfp_tag = pfp_vertices.product_tags[pfp_vertices.left_product[0]]
+        pfp_spacepoints = self.read_optional('pfp_spacepoints', pfp_tag)
+        if pfp_spacepoints is None or len(pfp_spacepoints) == 0:
+            return None
+        spacepoint_tag = pfp_spacepoints.product_tags[pfp_spacepoints.right_product[0]]
+        spacepoints = self.read_optional('spacepoints', spacepoint_tag)
+        spacepoint_hits, hits = self.associated_hits('spacepoint_hits', spacepoint_tag)
+        if spacepoints is None or hits is None:
+            return None
+        return particle_tpcs(vertices.xyz, pfp_vertices, pfp_spacepoints, spacepoints,
+                             object_hit_tpcs(len(spacepoints), spacepoint_hits, hits))
 
     def corrected(self):
         return getattr(self._module, 'correct_3d_objects', lambda: True)()

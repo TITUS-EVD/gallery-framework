@@ -6,7 +6,7 @@ products without Qt or ROOT.
 from .layout import Block, ViewLayout
 from .tpc import (HitPositions, hit_positions, image_n_ticks, plane_index_table, raw_digit_signals,
                   wire_image)
-from .projection import (PointCorrection, Segment, TrackCorrection, object_hit_tpcs, object_t0s,
+from .projection import (PointCorrection, Segment, TrackCorrection, object_hit_tpcs, object_t0s, particle_tpcs,
                          point_correction, position_tpcs, project_objects, project_path, project_points,
                          readout_tpcs, ticks_per_ns, tpcs_from_hits, track_correction, track_segments,
                          track_t0s)

@@ -1,9 +1,9 @@
 """
 Projection of 3D points into TPC views (titus.display.projection), against
 the detector description and against the hits of real Pandora tracks
-(tests/data/sbnd-reco2-tracks: events 0 and 2 of an SBND reco2 file with
-gaushit, pandoraTrack, their associations and Pandora's T0s, made with
-tools/trim_dump.py).
+(tests/data/sbnd-reco2-pandora: events 0 and 2 of an SBND reco2 file with
+gaushit, pandoraTrack and Pandora's vertices, spacepoints, T0s and their
+associations, made with tools/trim_dump.py).
 """
 
 import pathlib
@@ -11,13 +11,14 @@ import pathlib
 import numpy as np
 import pytest
 
-from titus.display import (ViewLayout, hit_positions, object_hit_tpcs, point_correction, position_tpcs,
-                           project_objects, project_path, project_points, readout_tpcs, ticks_per_ns,
-                           tpcs_from_hits, track_correction, track_segments, track_t0s)
+from titus.display import (ViewLayout, hit_positions, object_hit_tpcs, object_t0s, particle_tpcs,
+                           point_correction, position_tpcs, project_objects, project_path, project_points,
+                           readout_tpcs, ticks_per_ns, tpcs_from_hits, track_correction, track_segments,
+                           track_t0s)
 from titus.geometry import Geometry
 from titus.readers import DumpReader
 
-DUMP = pathlib.Path(__file__).parent / 'data' / 'sbnd-reco2-tracks'
+DUMP = pathlib.Path(__file__).parent / 'data' / 'sbnd-reco2-pandora'
 
 
 @pytest.fixture(scope='module')
@@ -265,3 +266,92 @@ def test_object_hit_tpcs():
                          meta_index=[-1, -1, -1], product_tags=['pandora::Reco2', 'gaushit::Reco1'])
     assert object_hit_tpcs(3, assns, hits).tolist() == [[0, 1], [-1, -1], [0, 0]]
     assert (object_hit_tpcs(2) == -1).all()
+
+
+def spacepoint_residuals(geom, dump, entry, corrected=True):
+    """ view-coordinate residuals (hit - projected spacepoint) of each spacepoint's hit """
+    hits = dump.hits(entry, 'gaushit')
+    points = dump.get(entry, 'spacepoints', 'pandora')
+    spacepoint_hits = dump.get(entry, 'spacepoint_hits', 'pandora')
+    t0 = object_t0s(len(points), dump.get(entry, 'pfp_spacepoints', 'pandora'),
+                    dump.get(entry, 'pfp_t0s', 'pandora'), dump.get(entry, 't0s', 'pandora'))
+    hit_tpcs = object_hit_tpcs(len(points), spacepoint_hits, hits)
+    residuals = []
+    for plane in range(geom.nPlanes()):
+        layout = ViewLayout(geom, plane)
+        positions = hit_positions(layout, hits)
+        hit_x, hit_y = dict(zip(positions.index, positions.x)), dict(zip(positions.index, positions.y))
+        correction = point_correction(layout, points, t0, hit_tpcs) if corrected else None
+        for block, (index, x, y) in project_objects(layout, points, correction).items():
+            where = dict(zip(index, range(len(index))))
+            on_block = hits.on_plane(*geom.detector.planes[block].id)
+            for s, h in zip(spacepoint_hits.left, spacepoint_hits.right):
+                if s in where and on_block[h] and h in hit_x:
+                    residuals.append((hit_x[h] - x[where[s]], hit_y[h] - y[where[s]]))
+    return np.array(residuals), len(spacepoint_hits)
+
+
+@pytest.mark.parametrize('entry', [0, 1])
+def test_spacepoints_lie_on_their_hits(sbnd, dump, entry):
+    """
+    Corrected (T0 undone, TPC of their hit), every Pandora spacepoint is drawn
+    on its hit; as stored, out-of-time and T0-tagged ones aren't
+    """
+    corrected, n_hits = spacepoint_residuals(sbnd, dump, entry)
+    assert len(corrected) == n_hits
+    assert np.mean(np.abs(corrected[:, 0]) < 1) > 0.9
+    assert np.mean(np.abs(corrected[:, 1]) < 3) > 0.98
+    stored, _ = spacepoint_residuals(sbnd, dump, entry, corrected=False)
+    # as stored, some aren't even drawn in their hit's TPC, and some are off by a T0
+    assert len(stored) < 0.97 * n_hits
+    assert np.mean(np.abs(stored[:, 1]) < 3) < 0.8
+
+
+def vertex_distances(geom, dump, entry, corrected=True):
+    """
+    Per vertex and view: distance (cm, in the view) to the nearest hit of its
+    own PFParticle, for vertices whose particle has hits in the view
+    """
+    hits = dump.hits(entry, 'gaushit')
+    vertices = dump.get(entry, 'vertices', 'pandora')
+    points = dump.get(entry, 'spacepoints', 'pandora')
+    pfp_vertices = dump.get(entry, 'pfp_vertices', 'pandora')
+    pfp_spacepoints = dump.get(entry, 'pfp_spacepoints', 'pandora')
+    spacepoint_hits = dump.get(entry, 'spacepoint_hits', 'pandora')
+    t0 = object_t0s(len(vertices), pfp_vertices, dump.get(entry, 'pfp_t0s', 'pandora'), dump.get(entry, 't0s', 'pandora'))
+    tpcs = particle_tpcs(vertices.xyz, pfp_vertices, pfp_spacepoints, points,
+                         object_hit_tpcs(len(points), spacepoint_hits, hits))
+    hit_of_point = dict(zip(spacepoint_hits.left, spacepoint_hits.right))
+    hits_of_pfp = {}
+    for pfp, point in zip(pfp_spacepoints.left, pfp_spacepoints.right):
+        if point in hit_of_point:
+            hits_of_pfp.setdefault(pfp, []).append(hit_of_point[point])
+    pfp_of_vertex = dict(zip(pfp_vertices.right, pfp_vertices.left))
+    distances = []
+    for plane in range(geom.nPlanes()):
+        layout = ViewLayout(geom, plane)
+        positions = hit_positions(layout, hits)
+        hit_x, hit_y = dict(zip(positions.index, positions.x)), dict(zip(positions.index, positions.y))
+        correction = point_correction(layout, vertices, t0, tpcs) if corrected else None
+        for _, (index, x, y) in project_objects(layout, vertices, correction).items():
+            for i, vx, vy in zip(index, x, y):
+                own = [h for h in hits_of_pfp.get(pfp_of_vertex.get(i), []) if h in hit_x]
+                if len(own) >= 5:
+                    distances.append(min(np.hypot((hit_x[h] - vx) * geom.wire2cm(), (hit_y[h] - vy) * geom.time2cm())
+                                         for h in own))
+    return np.array(distances)
+
+
+@pytest.mark.parametrize('entry', [0, 1])
+def test_vertices_lie_on_their_particles(sbnd, dump, entry):
+    """
+    Corrected (T0 undone, TPC of their particle's nearest spacepoint),
+    Pandora vertices sit on their own particle's hits
+    """
+    corrected = vertex_distances(sbnd, dump, entry)
+    assert len(corrected) >= 40
+    assert np.median(corrected) < 0.5
+    assert np.mean(corrected < 2) > 0.85
+    assert np.mean(corrected > 20) < 0.05
+    stored = vertex_distances(sbnd, dump, entry, corrected=False)
+    assert np.mean(stored > 20) > 0.3

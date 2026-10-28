@@ -8,9 +8,9 @@ ROOT).
 
     python trim_dump.py dumps/sbnd-reco1 ../tests/data/sbnd-reco1-trimmed \
         --detector sbnd --events 0 --wires 800:1000
-    python trim_dump.py dumps/sbnd-reco2 ../tests/data/sbnd-reco2-tracks \
-        --detector sbnd --events 0,2 --kinds hits,tracks,track_hits,pfp_tracks,pfp_t0s,t0s \
-        --tags gaushit,pandoraTrack,pandora
+    python trim_dump.py dumps/sbnd-reco2 ../tests/data/sbnd-reco2-pandora \
+        --detector sbnd --events 0,2 --tags gaushit,pandoraTrack,pandora \
+        --kinds hits,tracks,track_hits,pfp_tracks,pfp_t0s,t0s,vertices,spacepoints,pfp_vertices,pfp_spacepoints,spacepoint_hits
 """
 
 import argparse

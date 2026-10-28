@@ -245,7 +245,7 @@ def test_lazy_drawable_created_on_first_producer():
 
 
 def serve_reco2(products, entry, with_associations=True):
-    dump = DumpReader(DATA / 'sbnd-reco2-tracks')
+    dump = DumpReader(DATA / 'sbnd-reco2-pandora')
     products[('tracks', 'pandoraTrack::Reco2')] = dump.get(entry, 'tracks', 'pandoraTrack')
     products[('hits', 'gaushit::Reco1')] = dump.hits(entry, 'gaushit')
     if with_associations:
@@ -398,3 +398,19 @@ def test_spacepoints(qtbot, products, sbnd, tpc_module, capsys):
     assert sorted(len(s.data) for s in scatters) == [1, 1, 1, 2, 2, 2]
     stored = draw_points(SpacePoint, tpc_module, sbnd, corrected=False)
     assert len(stored._drawnObjects) == 3 and all(len(s.data) == 3 for s in stored._drawnObjects)
+
+
+def test_vertices_on_real_data(qtbot, products, sbnd, tpc_module, capsys):
+    """ the whole chain: vertex -> PFParticle -> T0, and -> spacepoints -> hits for its TPC """
+    from titus.drawables import Vertex
+    dump = DumpReader(DATA / 'sbnd-reco2-pandora')
+    for kind, tag in [('vertices', 'pandora::Reco2'), ('pfp_vertices', 'pandora::Reco2'),
+                      ('pfp_spacepoints', 'pandora::Reco2'), ('spacepoints', 'pandora::Reco2'),
+                      ('spacepoint_hits', 'pandora::Reco2'), ('pfp_t0s', 'pandora::Reco2'),
+                      ('t0s', 'pandora::Reco2'), ('hits', 'gaushit::Reco1')]:
+        products[(kind, tag)] = dump.get(0, kind, tag)
+    drawer = draw_points(Vertex, tpc_module, sbnd)
+    assert 'Warning' not in capsys.readouterr().out
+    tips = [m.toolTip() for m in drawer._drawnObjects]
+    assert any('T0 ' in t for t in tips)
+    assert any("drawn in its particle's TPC" in t for t in tips)
