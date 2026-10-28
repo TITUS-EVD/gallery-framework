@@ -5,6 +5,7 @@
 
 #include "canvas/Utilities/InputTag.h"
 #include "gallery/Event.h"
+#include "gallery/Handle.h"
 #include "lardataobj/RawData/RawDigit.h"
 #include "lardataobj/RawData/raw.h"
 #include "lardataobj/RecoBase/Hit.h"
@@ -53,8 +54,8 @@ namespace titusio {
   bool readHits(gallery::Event const& ev, std::string const& tag, HitColumns& out)
   {
     out.clear();
-    auto const handle = ev.getHandle<std::vector<recob::Hit>>(art::InputTag(tag));
-    if (!handle.isValid()) return false;
+    gallery::Handle<std::vector<recob::Hit>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
 
     for (auto const& hit : *handle) {
       auto const& wid = hit.WireID();
@@ -81,8 +82,8 @@ namespace titusio {
     bool readSignals(gallery::Event const& ev, std::string const& tag, WireColumns& out)
     {
       out.clear();
-      auto const handle = ev.getHandle<std::vector<T>>(art::InputTag(tag));
-      if (!handle.isValid()) return false;
+      gallery::Handle<std::vector<T>> handle;
+      if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
 
       for (std::size_t row = 0; row < handle->size(); ++row) {
         auto const& signal = (*handle)[row].SignalROI();
@@ -126,8 +127,8 @@ namespace titusio {
   bool readRawDigits(gallery::Event const& ev, std::string const& tag, RawDigitColumns& out)
   {
     out.clear();
-    auto const handle = ev.getHandle<std::vector<raw::RawDigit>>(art::InputTag(tag));
-    if (!handle.isValid()) return false;
+    gallery::Handle<std::vector<raw::RawDigit>> handle;
+    if (!ev.getByLabel(art::InputTag(tag), handle)) return false;
 
     std::vector<std::vector<short>> rows;
     rows.reserve(handle->size());
