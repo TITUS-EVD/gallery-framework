@@ -8,6 +8,7 @@ import sys
 
 from PyQt5 import QtCore
 
+from titus.display.layout import ViewLayout
 from titus.display.projection import object_hit_tpcs, object_t0s, particle_tpcs
 from titus.readers import ProductNotFound
 from titus.readers.products import ASSOCIATIONS
@@ -196,6 +197,12 @@ class ReaderDrawable(Drawable):
             ev = self._gi.event_handle()
             self._file_products = {} if ev is None else file_products(ev)
         return self._file_products
+
+    def view_layout(self, view):
+        ''' the layout of a wire view as currently shown, including ticks cut by "unite cathodes" '''
+        removed = getattr(view, 'removed_ticks', None)
+        return ViewLayout(self._geom, plane=view.plane(), cryostat=view.cryostat(),
+                          removed_ticks=removed() if removed is not None else 0)
 
     def pfp_object_t0s(self, pfp_kind, tag, n_objects):
         '''

@@ -9,6 +9,10 @@ planes of every TPC in the cryostat. This covers planes which are:
 - along the wire axis (split wires), one block per TPC of a drift volume,
   ordered by z and also separated by the cathode gap
 
+With "unite cathodes" (removed_ticks = n), the n ticks past the cathode
+are cut from the end of the first time block and the start of the second,
+so the two cathodes meet across the gap: the second block moves up by 2n.
+
 View coordinates are pixel units of the view image: pixel (i, j) covers
 [i, i + 1) x [j, j + 1). Wire w is centered at w + 0.5, matching LArSoft's
 continuous wire coordinate (wire w covers [w - 0.5, w + 0.5)). Times are
@@ -33,16 +37,18 @@ class Block:
 
 class ViewLayout:
 
-    def __init__(self, geom, plane, cryostat=0, n_ticks=None):
+    def __init__(self, geom, plane, cryostat=0, n_ticks=None, removed_ticks=0):
         """
         n_ticks: samples per waveform. Defaults to the geometry's time range;
         pass the waveform length of the data drawn to fit it exactly.
+        removed_ticks: ticks past the cathode cut by "unite cathodes".
         """
         self.geom = geom
         self.plane = plane
         self.cryostat = cryostat
         self.n_ticks = int(n_ticks if n_ticks is not None else geom.tRange())
         self.gap = int(geom.cathodeGap())
+        self.removed_ticks = max(int(removed_ticks), 0)
 
         first = geom.getPlaneID(plane=plane, tpc=0, cryo=cryostat)
         volumes = geom.detector.cryostats[cryostat].drift_volumes()
@@ -75,16 +81,27 @@ class ViewLayout:
         """ view x of the center of a wire """
         return np.asarray(wire, dtype=float) + self.block(plane_index).wire_offset + 0.5
 
-    def tick_to_view(self, plane_index, tick):
+    def tick_to_view(self, plane_index, tick, hide_removed=True):
         """
         view y of a continuous time in ticks. Flipped blocks run from the
-        end of the block backwards.
+        end of the block backwards. With removed_ticks, times in the cut
+        region are nan (or, hide_removed=False, kept where the cut joins).
         """
         b = self.block(plane_index)
         y = np.asarray(tick, dtype=float)
         if b.flip:
             y = self.n_ticks - y
-        return y + b.time_offset
+        n = self.removed_ticks
+        if n == 0:
+            return y + b.time_offset
+        if b.time_offset == 0:
+            # the end of the first block is cut
+            cut, edge, shift = y > self.n_ticks - n, self.n_ticks - n, 0
+        else:
+            # the start of the second block is cut, and it moves up by both cuts
+            cut, edge, shift = y < n, n, 2 * n
+        y = np.where(cut, np.nan if hide_removed else edge, y)
+        return y + b.time_offset - shift
 
     def block_slices(self, plane_index):
         """ (rows, columns) slices of the view image covered by a block """

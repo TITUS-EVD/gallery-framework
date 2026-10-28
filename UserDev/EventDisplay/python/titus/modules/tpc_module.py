@@ -657,6 +657,10 @@ class TpcModule(Module):
         return self._correct_3d.isChecked()
 
     def redraw_3d_objects(self):
+        self.redraw_products()
+
+    def redraw_products(self):
+        ''' redraw the selected products (hits, tracks...) on the current views '''
         for drawable in self._product_box_map.values():
             drawable.clearDrawnObjects()
             drawable.drawObjects()
@@ -886,10 +890,14 @@ class TpcModule(Module):
         self._t0sliderLabel.setText(t0sliderLabel)
         for view in self._wire_views.values():
             view.t0slide(t0)
+        if self._uniteCathodes.isChecked():
+            self.redraw_products()
 
     def unite_cathodes(self):
         for view in self._wire_views.values():
             view.uniteCathodes(self._uniteCathodes.isChecked())
+        # hits, tracks... are drawn through each view's removed_ticks()
+        self.redraw_products()
 
 
     def show_plane_frames(self):
@@ -1201,6 +1209,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._gi = gallery_interface
 
         self._removed_entries = 0
+        self._uniteCathodes = False
         self._manual_t0 = 0
         self._showAnodeCathode = False
 
@@ -1525,9 +1534,9 @@ class WireView(pg.GraphicsLayoutWidget):
                 x_anode   = self._geometry.tRange() - x_anode
 
 
-            # Add the ad-hoc gap between TPCs
-            x_cathode += tpc * self._geometry.cathodeGap()
-            x_anode   += tpc * self._geometry.cathodeGap()
+            # Add the ad-hoc gap between TPCs (whole ticks, as in the image)
+            x_cathode += tpc * int(self._geometry.cathodeGap())
+            x_anode   += tpc * int(self._geometry.cathodeGap())
 
             # Shift up to the appropriate TPC
             x_cathode += tpc * self._geometry.tRange()
@@ -1555,58 +1564,68 @@ class WireView(pg.GraphicsLayoutWidget):
 
     def uniteCathodes(self, uniteC):
         '''
+        Cut the ticks past the cathode from both TPCs so that the cathodes
+        meet across the gap. Drawables follow through removed_ticks().
         '''
         self._uniteCathodes = uniteC
+        self._showImage()
+        self.showAnodeCathode(self._showAnodeCathode)
 
+    def removed_ticks(self):
+        ''' ticks cut from each side of the cathode by "unite cathodes" (0 if off) '''
+        return self._removed_entries
+
+    def _ticksPastCathode(self):
+        _, x_cathode, _ = self._geometry.anodeCathodeTicks(self._plane, self._cryostat)[0]
+        return max(int(self._geometry.tRange() - (x_cathode + self._manual_t0)), 0)
+
+    def _showImage(self):
+        ''' show the full image (self._original_image), cut if uniting the cathodes '''
         data = self._original_image
         self._removed_entries = 0
+        if data is None:
+            return
+        if self._uniteCathodes and self._geometry.nTPCs() == 2:
+            n = self._ticksPastCathode()
+            n_ticks, gap = self._geometry.tRange(), int(self._geometry.cathodeGap())
+            # the end of the first TPC's block and the start of the second's
+            data = np.delete(data, np.r_[n_ticks - n:n_ticks, n_ticks + gap:n_ticks + gap + n], axis=1)
+            self._removed_entries = n
+        self._item.setImage(data, autoLevels=False)
+        self._item.setLookupTable(self._cmap.getLookupTable(255))
+        # Make sure the levels are actually set:
+        self.levelChanged()
 
-        if self._uniteCathodes:
-
-            _, x_cathode, _ = self._geometry.anodeCathodeTicks(self._plane, self._cryostat)[0]
-            x_cathode += self._manual_t0
-
-            data = self._item.image
-            self._original_image = np.copy(data)
-
-            n_removable_entries = int(self._geometry.tRange() - x_cathode)
-
-            start_removal = self._geometry.tRange() - n_removable_entries
-            end_removal = self._geometry.tRange()
-            slice_right = slice(int(start_removal), int(end_removal))
-
-            start_removal = self._geometry.tRange() + self._geometry.cathodeGap()
-            end_removal = start_removal + n_removable_entries
-            slice_left = slice(int(start_removal), int(end_removal))
-
-            final_slice = np.r_[slice_right, slice_left]
-
-            self._removed_entries = n_removable_entries
-
-            data = np.delete(data, final_slice, axis=1)
-            self.drawPlane(data)
-        
-        self.drawPlane(data)
-        self.showAnodeCathode(self._showAnodeCathode)
+        if self._geometry.nTPCs() == 2:
+            self.drawTPCdivision()
 
 
     def t0slide(self, t0):
         self._manual_t0 = t0
+        if self._uniteCathodes:
+            # the cathode moved: so does the cut
+            self._showImage()
         self.showAnodeCathode(True)
 
     def restoret0(self):
         self._manual_t0 = 0
+        if self._uniteCathodes:
+            self._showImage()
         self.showAnodeCathode(False)
 
     def mouseMoved(self, pos):
         self.q = self._item.mapFromScene(pos)
         self._lastPos = self.q
 
-        offset = 0
-        for i in range(self._geometry.nTPCs() * self._geometry.nCryos(), 0, -1):
-            if self.q.y() > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
-                offset = -i * (self._geometry.tRange() + self._geometry.cathodeGap())
-                break
+        # the tick under the mouse in its TPC: undo "unite cathodes", the
+        # block's position and, for TPCs drawn flipped, the flip
+        y = self._fullImageY(self.q.y())
+        block_size = self._geometry.tRange() + int(self._geometry.cathodeGap())
+        block = min(int(y // block_size), self._geometry.nTPCs() - 1) if y > 0 else 0
+        tick = y - block * block_size
+        flips = [flipped for _, _, flipped in self._geometry.anodeCathodeTicks(self._plane, self._cryostat)]
+        if block < len(flips) and flips[block]:
+            tick = self._geometry.tRange() - tick
 
         message= str()
 
@@ -1628,17 +1647,17 @@ class WireView(pg.GraphicsLayoutWidget):
         if self._cmSpace:
             if type(message) != str:
                 message.append(", Y: ")
-                message.append("{0:.1f}".format((self.q.y()+offset)*self._geometry.time2cm() - self._geometry.offset(self._plane)))
+                message.append("{0:.1f}".format(tick*self._geometry.time2cm() - self._geometry.offset(self._plane)))
             else:
                 message += ", Y: "
-                message += "{0:.1f}".format((self.q.y()+offset)*self._geometry.time2cm() - self._geometry.offset(self._plane))
+                message += "{0:.1f}".format(tick*self._geometry.time2cm() - self._geometry.offset(self._plane))
         else:
             if type(message) != str:
                 message.append(", T: ")
-                message.append(str(int(self.q.y()+offset)))
+                message.append(str(int(tick)))
             else:
                 message += ", T: "
-                message += str(int(self.q.y()+offset))
+                message += str(int(tick))
 
         max_trange = self._geometry.tRange() * self._geometry.nTPCs()
 
@@ -1658,8 +1677,9 @@ class WireView(pg.GraphicsLayoutWidget):
         self._first_entry = 0
         self._last_entry = self._geometry.tRange()
         tpc = 0
+        y = self._fullImageY(self.q.y())
         for i in range(self._geometry.nTPCs(), 0, -1):
-            if self.q.y() > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
+            if y > i * (self._geometry.tRange() + self._geometry.cathodeGap()):
                 tpc = 1
                 self._first_entry = int (i * (self._geometry.tRange() + self._geometry.cathodeGap()))
                 self._last_entry = int((i+1) * (self._geometry.tRange() + self._geometry.cathodeGap()))
@@ -1667,6 +1687,18 @@ class WireView(pg.GraphicsLayoutWidget):
 
         wire = int(self._lastPos.x())
         self.show_waveform(wire=wire, tpc=tpc)
+
+    def _fullImageY(self, y):
+        ''' a y in the image as shown to the full image, undoing the cut of "unite cathodes" '''
+        n = self._removed_entries
+        if n == 0:
+            return y
+        first_end = self._geometry.tRange() - n
+        if y < first_end:
+            return y
+        if y < first_end + int(self._geometry.cathodeGap()):
+            return y + n
+        return y + 2 * n
 
     def show_waveform(self, wire, tpc, replace_idx=None):
         '''
@@ -1680,8 +1712,9 @@ class WireView(pg.GraphicsLayoutWidget):
         '''
 
         if self._item.image is not None:
-            # get the data from the plot:
-            data = self._item.image
+            # the full image (not cut by "unite cathodes"): _first_entry and
+            # _last_entry are positions in it
+            data = self._original_image if self._original_image is not None else self._item.image
             if wire < 0 or wire >= len(data):
                 return
             
@@ -1785,13 +1818,9 @@ class WireView(pg.GraphicsLayoutWidget):
             self._view.setAspectLocked(False)
 
     def drawPlane(self, image):
-        self._item.setImage(image,autoLevels=False)
-        self._item.setLookupTable(self._cmap.getLookupTable(255))
-        # Make sure the levels are actually set:
-        self.levelChanged()
-
-        if self._geometry.nTPCs() == 2:
-            self.drawTPCdivision()
+        ''' image: the full view image, e.g. from a wire drawable; shown cut if uniting the cathodes '''
+        self._original_image = image
+        self._showImage()
 
     def drawTPCdivision(self):
 

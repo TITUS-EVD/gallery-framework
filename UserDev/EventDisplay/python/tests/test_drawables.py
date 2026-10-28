@@ -442,3 +442,40 @@ def make_showers():
     return Showers(id=[0, 1, 2], start_x=[-100., 100., 0.], start_y=[0., 0., 0.], start_z=[100., 250., 50.],
                    dir_x=[0., 0., 0.], dir_y=[0., 0.6, 0.], dir_z=[1., 0.8, 1.], length=[100., 50., 0.],
                    open_angle=[0.2, 0.1, 0.1], best_plane=[2, 2, 2])
+
+
+def test_wire_view_unite_cathodes(qtbot, sbnd):
+    """ the cut follows new images and t0, and clicks map back to the full image """
+    pytest.importorskip('PIL')
+    from titus.modules.tpc_module import WireView
+
+    view = WireView(sbnd, plane=0, cryostat=0, gallery_interface=mock.Mock())
+    qtbot.addWidget(view)
+    layout = ViewLayout(sbnd, plane=0)
+    image = np.random.default_rng(0).uniform(size=layout.shape).astype('f4')
+    view.drawPlane(image)
+    assert view.removed_ticks() == 0 and view._item.image.shape == image.shape
+
+    view.uniteCathodes(True)
+    n = view.removed_ticks()
+    cathode = sbnd.anodeCathodeTicks(0)[0][1]
+    assert n == int(sbnd.tRange() - cathode) > 0
+    assert view._item.image.shape == (image.shape[0], image.shape[1] - 2 * n)
+    # a new event's image is cut too
+    view.drawPlane(image * 2)
+    assert view._item.image.shape[1] == image.shape[1] - 2 * n
+    np.testing.assert_array_equal(view._item.image[:, :100], 2 * image[:, :100])
+    # the cut moves with t0
+    view.t0slide(100)
+    assert view.removed_ticks() == n - 100
+    view.restoret0()
+    assert view.removed_ticks() == n
+    # shown y -> full image y, either side of the gap
+    gap = int(sbnd.cathodeGap())
+    assert view._fullImageY(10) == 10
+    first_end = sbnd.tRange() - n
+    assert view._fullImageY(first_end + 1) == first_end + 1 + n
+    assert view._fullImageY(first_end + gap + 5) == first_end + gap + 5 + 2 * n
+
+    view.uniteCathodes(False)
+    assert view.removed_ticks() == 0 and view._item.image.shape == image.shape

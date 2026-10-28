@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt5 import QtCore
 
-from titus.display import ViewLayout, track_correction, track_segments
+from titus.display import track_correction, track_segments
 from titus.drawables.drawable import ReaderDrawable
 from titus.drawables.items import polyLine
 
@@ -51,7 +51,7 @@ class Track(ReaderDrawable):
     def drawObjects(self):
         corrected = self.corrected()
         for view in self._module._wire_views.values():
-            layout = ViewLayout(self._geom, plane=view.plane(), cryostat=view.cryostat())
+            layout = self.view_layout(view)
             for producer, tracks in enumerate(self._data):
                 for row in range(len(tracks)):
                     correction = self._correction(producer, row, layout) if corrected else None

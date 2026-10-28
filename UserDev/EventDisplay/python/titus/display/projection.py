@@ -99,13 +99,14 @@ def tpcs_from_hits(n_points, point_index, hit_rows, hits):
     return tpcs[nearest]
 
 
-def project_points(layout, xyz, tick_shift=0., tpcs=None):
+def project_points(layout, xyz, tick_shift=0., tpcs=None, hide_removed=True):
     """
     View coordinates of 3D points, per block of the layout: {plane index:
     (point indices, x, y)} for the blocks that have points. tick_shift
     (ticks, one or per point) is added to the drift time, e.g. a T0 that was
     removed from the points' x. tpcs: (cryostat, tpc) per point; by default
-    readout_tpcs.
+    readout_tpcs. Points in ticks cut by "unite cathodes" are left out
+    (hide_removed=False: drawn where the cut joins).
     """
     xyz = np.asarray(xyz, dtype=float).reshape(-1, 3)
     tick_shift = np.broadcast_to(np.asarray(tick_shift, dtype=float), (len(xyz),))
@@ -121,8 +122,11 @@ def project_points(layout, xyz, tick_shift=0., tpcs=None):
             continue
         points = xyz[index]
         x = layout.wire_to_view(block.plane_index, plane.wire_coordinate(points))
-        y = layout.tick_to_view(block.plane_index, plane.x_to_ticks(points[:, 0]) + tick_shift[index])
-        result[block.plane_index] = (index, x, y)
+        y = layout.tick_to_view(block.plane_index, plane.x_to_ticks(points[:, 0]) + tick_shift[index],
+                                hide_removed)
+        shown = np.isfinite(y)
+        if shown.any():
+            result[block.plane_index] = (index[shown], x[shown], y[shown])
     return result
 
 
@@ -366,7 +370,8 @@ def project_cone(layout, start, direction, length, half_angle, tick_shift=0., tp
         tpc = readout_tpcs(layout.geom.detector, [start], layout.n_ticks, tick_shift)[0]
     tpcs = np.tile(np.asarray(tpc, dtype=int), (len(xyz), 1))
     polygons = []
-    for plane_index, (_, x, y) in project_points(layout, xyz, tick_shift, tpcs).items():
+    # a cone reaching into ticks cut by "unite cathodes" is drawn up to the cut
+    for plane_index, (_, x, y) in project_points(layout, xyz, tick_shift, tpcs, hide_removed=False).items():
         hull = convex_hull(x, y)
         polygons.append(Polygon(plane_index, x[hull], y[hull]))
     return polygons

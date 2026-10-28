@@ -390,3 +390,18 @@ def test_project_cone(sbnd, x, block):
     spread = 100 * np.tan(0.1) / sbnd.time2cm()  # ticks, either side of the axis
     ends = sorted(polygon.y[np.isclose(polygon.x, end_x)])
     assert ends == pytest.approx([apex_y - spread, apex_y + spread], rel=1e-3)
+
+
+def test_united_track_segments(sbnd):
+    """
+    points in ticks cut by "unite cathodes" (past the cathode) are left out:
+    a late cosmic read out by TPC 0 but placed past the cathode, x > 0
+    """
+    full = ViewLayout(sbnd, plane=2)
+    layout = ViewLayout(sbnd, plane=2, removed_ticks=300)
+    path = np.stack([np.linspace(-100, 30, 40), np.zeros(40), np.full(40, 250.)], axis=1)
+    tpcs = np.tile([0, 0], (40, 1))
+    (segment,) = project_path(layout, path, tpcs=tpcs)
+    assert segment.y.max() <= layout.n_ticks - 300
+    (whole,) = project_path(full, path, tpcs=tpcs)
+    assert len(segment.y) < len(whole.y)

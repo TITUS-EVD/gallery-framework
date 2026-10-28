@@ -2,7 +2,7 @@ import numpy as np
 from PyQt5 import QtCore, QtWidgets
 import pyqtgraph as pg
 
-from titus.display import ViewLayout, hit_positions
+from titus.display import hit_positions
 from titus.drawables.drawable import ReaderDrawable
 
 
@@ -75,7 +75,7 @@ class Hit(ReaderDrawable):
             return
 
         geom = self._geom
-        layout = ViewLayout(geom, plane=view.plane(), cryostat=view.cryostat())
+        layout = self.view_layout(view)
         positions = hit_positions(layout, hits, time_offset_ticks=geom.timeOffsetTicks(view.plane()))
         if len(positions) == 0:
             return
@@ -87,8 +87,8 @@ class Hit(ReaderDrawable):
             for block in layout.blocks:
                 rows = hits.on_plane(*geom.detector.planes[block.plane_index].id)[positions.index]
                 index = positions.index[rows]
-                y_start[rows] = layout.tick_to_view(block.plane_index, hits.start_tick[index])
-                y_end[rows] = layout.tick_to_view(block.plane_index, hits.end_tick[index] + 1)
+                y_start[rows] = layout.tick_to_view(block.plane_index, hits.start_tick[index], hide_removed=False)
+                y_end[rows] = layout.tick_to_view(block.plane_index, hits.end_tick[index] + 1, hide_removed=False)
             bottom, height = np.minimum(y_start, y_end), np.abs(y_end - y_start)
         else:
             bottom, height = positions.y - positions.half_height, 2 * positions.half_height

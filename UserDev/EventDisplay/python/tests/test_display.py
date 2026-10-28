@@ -259,3 +259,55 @@ def test_hit_positions(sbnd):
     assert pos.half_height.tolist() == [2., 3.]
     assert hit_positions(layout, hits, time_offset_ticks=5).y[0] == 105.
     assert len(hit_positions(layout, Hits.empty())) == 0
+
+
+# --- unite cathodes ---
+
+def unite(image, layout):
+    """ the image as WireView shows it with "unite cathodes" """
+    n, n_ticks, gap = layout.removed_ticks, layout.n_ticks, layout.gap
+    return np.delete(image, np.r_[n_ticks - n:n_ticks, n_ticks + gap:n_ticks + gap + n], axis=1)
+
+
+def test_united_layout(sbnd):
+    layout = ViewLayout(sbnd, plane=0, removed_ticks=100)
+    full = ViewLayout(sbnd, plane=0)
+    n_ticks = layout.n_ticks
+    # first TPC: unchanged before the cut, hidden in it
+    assert layout.tick_to_view(0, 1000.) == full.tick_to_view(0, 1000.)
+    assert np.isnan(layout.tick_to_view(0, n_ticks - 50.))
+    assert layout.tick_to_view(0, n_ticks - 50., hide_removed=False) == n_ticks - 100
+    # second TPC (flipped): its late ticks are cut, the rest moves up by both cuts
+    assert np.isnan(layout.tick_to_view(4, n_ticks - 50.))
+    assert layout.tick_to_view(4, 1000.) == full.tick_to_view(4, 1000.) - 200
+    # the cathodes meet across the gap
+    cathode = n_ticks - 100.
+    gap = layout.tick_to_view(4, cathode) - layout.tick_to_view(0, cathode)
+    assert gap == pytest.approx(layout.gap)
+
+
+def test_united_hits_peak_on_their_waveform(sbnd, dump):
+    """ the cut image (as WireView shows it) and the united layout agree """
+    signals = dump.wires(0, 'simtpc2d:dnnsp')
+    hits = dump.hits(0, 'gaushit')
+    for plane in range(3):
+        cathode = sbnd.anodeCathodeTicks(plane)[0][1]
+        layout = ViewLayout(sbnd, plane, removed_ticks=int(sbnd.tRange() - cathode))
+        image = unite(wire_image(ViewLayout(sbnd, plane), signals, sbnd.detector.channel_map), layout)
+        positions = hit_positions(layout, hits)
+        assert len(positions) > 0
+        offsets = []
+        for x, y, rms in zip(positions.x, positions.y, positions.half_height):
+            lo = max(int(y - 2 * rms), 0)
+            offsets.append(lo + np.argmax(image[int(x), lo:int(y + 2 * rms) + 1]) + 0.5 - y)
+        offsets = np.array(offsets)
+        assert (np.abs(offsets) < 1).mean() > 0.9
+        assert abs(np.median(offsets)) < 0.2
+
+
+def test_united_hides_hits_past_the_cathode(sbnd):
+    hits = Hits(channel=[0, 0], cryostat=[0, 0], tpc=[0, 0], plane=[0, 0], wire=[10, 20],
+                peak_time=[1000., 3300.], rms=[1., 1.], integral=[1, 1], peak_amplitude=[1, 1],
+                start_tick=[0, 0], end_tick=[0, 0])
+    positions = hit_positions(ViewLayout(sbnd, plane=0, removed_ticks=300), hits)
+    assert positions.index.tolist() == [0]

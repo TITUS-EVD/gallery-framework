@@ -61,7 +61,7 @@ class Shower(ReaderDrawable):
     def drawObjects(self):
         corrected = self.corrected()
         for view in self._module._wire_views.values():
-            layout = ViewLayout(self._geom, plane=view.plane(), cryostat=view.cryostat())
+            layout = self.view_layout(view)
             for showers, correction in zip(self._data, self._corrections):
                 starts = self.starts(showers).xyz
                 stored_tpcs = position_tpcs(self._geom.detector, starts)

@@ -98,9 +98,12 @@ def hit_positions(layout, hits, time_offset_ticks=0):
     index, x, y = [], [], []
     for block in layout.blocks:
         rows = np.flatnonzero(planes == block.plane_index)
+        y_rows = layout.tick_to_view(block.plane_index, hits.peak_time[rows] + time_offset_ticks)
+        # hits in ticks cut by "unite cathodes" aren't shown
+        rows, y_rows = rows[np.isfinite(y_rows)], y_rows[np.isfinite(y_rows)]
         index.append(rows)
         x.append(layout.wire_to_view(block.plane_index, hits.wire[rows]))
-        y.append(layout.tick_to_view(block.plane_index, hits.peak_time[rows] + time_offset_ticks))
+        y.append(y_rows)
     index = np.concatenate(index)
     return HitPositions(index=index, x=np.concatenate(x), y=np.concatenate(y),
                         half_height=hits.rms[index].astype(float))
