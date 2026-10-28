@@ -68,6 +68,7 @@ class GalleryInterface(QtCore.QObject):
         self._lastProcessed = -1
 
         self._n_entries = 0
+        self._file_entries = {}
 
         # A list that will contain a dictionary with run, subrun, event keys
         self._run_list = []
@@ -144,6 +145,7 @@ class GalleryInterface(QtCore.QObject):
 
         # Get all the (run, subrun, event) IDs
         self._run_list = []
+        self._file_entries[file] = e.GetEntries()
         ev_aux_b = e.GetBranch("EventAuxiliary")
 
         for i in range(ev_aux_b.GetEntries()):
@@ -257,13 +259,9 @@ class GalleryInterface(QtCore.QObject):
                 _file_list.push_back(file)
 
 
-        # Have to figure out number of events available
-        self._n_entries = 0
-        for _f in _file_list:
-            _rf = TFile.Open(str(_f))
-            _tree = _rf.Get("Events")
-            self._n_entries += _tree.GetEntries()
-            _rf.Close()
+        # number of events available, counted by ping_file (without opening
+        # the files again: that is slow over xrootd)
+        self._n_entries = sum(self._file_entries[str(_f)] for _f in _file_list)
 
 
         # Create an instance of the data manager:
