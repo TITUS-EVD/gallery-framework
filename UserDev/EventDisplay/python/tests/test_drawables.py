@@ -414,3 +414,31 @@ def test_vertices_on_real_data(qtbot, products, sbnd, tpc_module, capsys):
     tips = [m.toolTip() for m in drawer._drawnObjects]
     assert any('T0 ' in t for t in tips)
     assert any("drawn in its particle's TPC" in t for t in tips)
+
+
+@pytest.mark.parametrize('corrected', [True, False])
+def test_showers(qtbot, products, sbnd, tpc_module, capsys, corrected):
+    """ showers without PFParticle associations: drawn without corrections """
+    from PyQt5 import QtWidgets
+    from titus.drawables import Shower
+    products[('showers', 'pandoraShower::Reco2')] = make_showers()
+    tpc_module.correct_3d_objects = lambda: corrected
+    drawer = Shower(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('pandoraShower::Reco2')
+    drawer.analyze()
+    drawer.drawObjects()
+    assert 'Warning' not in capsys.readouterr().out
+    items = drawer._drawnObjects
+    # the zero-length shower isn't drawn; the others once per view
+    assert len(items) == 2 * 3 and all(isinstance(i, QtWidgets.QGraphicsPolygonItem) for i in items)
+    assert all(('drawn as stored' in i.toolTip()) for i in items)
+    assert all(i.pen().style() == QtCore.Qt.SolidLine for i in items)
+    drawer.clearDrawnObjects()
+    assert drawer._drawnObjects == []
+
+
+def make_showers():
+    from titus.readers import Showers
+    return Showers(id=[0, 1, 2], start_x=[-100., 100., 0.], start_y=[0., 0., 0.], start_z=[100., 250., 50.],
+                   dir_x=[0., 0., 0.], dir_y=[0., 0.6, 0.], dir_z=[1., 0.8, 1.], length=[100., 50., 0.],
+                   open_angle=[0.2, 0.1, 0.1], best_plane=[2, 2, 2])

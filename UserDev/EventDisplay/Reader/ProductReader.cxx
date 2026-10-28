@@ -409,6 +409,10 @@ namespace titusio {
       return readAssns<recob::PFParticle, recob::Vertex, void>(ev, tag, false, candidate_tags, out);
     if (cpp_type == "art::Assns<recob::Vertex,recob::PFParticle,void>")
       return readAssns<recob::Vertex, recob::PFParticle, void>(ev, tag, true, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::PFParticle,recob::Shower,void>")
+      return readAssns<recob::PFParticle, recob::Shower, void>(ev, tag, false, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::Shower,recob::PFParticle,void>")
+      return readAssns<recob::Shower, recob::PFParticle, void>(ev, tag, true, candidate_tags, out);
     if (cpp_type == "art::Assns<recob::PFParticle,recob::SpacePoint,void>")
       return readAssns<recob::PFParticle, recob::SpacePoint, void>(ev, tag, false, candidate_tags, out);
     if (cpp_type == "art::Assns<recob::SpacePoint,recob::PFParticle,void>")

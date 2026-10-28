@@ -304,3 +304,69 @@ def track_segments(layout, tracks, row, correction=None) -> List[Segment]:
         tpcs, shift = correction.tpcs.copy(), correction.tick_shift
     tpcs[~valid] = -1
     return project_path(layout, xyz, shift, tpcs)
+
+
+@dataclass(frozen=True)
+class Polygon:
+    plane_index: int    # TITUS plane index of the block drawn in
+    x: np.ndarray       # view coordinates of the outline, in order
+    y: np.ndarray
+
+
+def cone_points(start, direction, length, half_angle, n_circle=24):
+    """
+    3D points spanning a cone: its apex (start) and n_circle points on the
+    circle at its far end (start + length * direction, radius
+    length * tan(half_angle))
+    """
+    start = np.asarray(start, dtype=float)
+    d = np.asarray(direction, dtype=float)
+    d = d / np.linalg.norm(d)
+    # two unit vectors perpendicular to the axis
+    helper = np.array([1., 0., 0.]) if abs(d[0]) < 0.9 else np.array([0., 1., 0.])
+    u = np.cross(d, helper)
+    u /= np.linalg.norm(u)
+    v = np.cross(d, u)
+    phi = np.linspace(0, 2 * np.pi, n_circle, endpoint=False)
+    radius = length * np.tan(half_angle)
+    circle = start + length * d + radius * (np.outer(np.cos(phi), u) + np.outer(np.sin(phi), v))
+    return np.vstack([start, circle])
+
+
+def convex_hull(x, y):
+    """ indices of the 2D convex hull, counterclockwise (Andrew's monotone chain) """
+    points = sorted(set(zip(np.round(x, 9), np.round(y, 9), range(len(x)))), key=lambda p: (p[0], p[1]))
+    if len(points) <= 2:
+        return [p[2] for p in points]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower, upper = [], []
+    for p in points:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(points):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return [p[2] for p in lower[:-1] + upper[:-1]]
+
+
+def project_cone(layout, start, direction, length, half_angle, tick_shift=0., tpc=None) -> List[Polygon]:
+    """
+    Outline of a 3D cone (e.g. a shower) in a view: the convex hull of its
+    projected apex and end circle, which is the projected cone since the
+    projection is affine within a TPC. The whole cone is drawn in one TPC:
+    tpc (cryostat, tpc), by default where its start is (readout_tpcs).
+    """
+    xyz = cone_points(start, direction, length, half_angle)
+    if tpc is None:
+        tpc = readout_tpcs(layout.geom.detector, [start], layout.n_ticks, tick_shift)[0]
+    tpcs = np.tile(np.asarray(tpc, dtype=int), (len(xyz), 1))
+    polygons = []
+    for plane_index, (_, x, y) in project_points(layout, xyz, tick_shift, tpcs).items():
+        hull = convex_hull(x, y)
+        polygons.append(Polygon(plane_index, x[hull], y[hull]))
+    return polygons

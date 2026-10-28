@@ -355,3 +355,38 @@ def test_vertices_lie_on_their_particles(sbnd, dump, entry):
     assert np.mean(corrected > 20) < 0.05
     stored = vertex_distances(sbnd, dump, entry, corrected=False)
     assert np.mean(stored > 20) > 0.3
+
+
+def test_cone_points():
+    from titus.display import cone_points
+    xyz = cone_points([1., 2., 3.], [0., 0., 2.], length=10., half_angle=np.arctan(0.5), n_circle=8)
+    assert xyz[0].tolist() == [1, 2, 3]
+    end = xyz[1:]
+    assert np.allclose(end[:, 2], 13.)
+    assert np.allclose(np.hypot(end[:, 0] - 1, end[:, 1] - 2), 5.)
+
+
+def test_convex_hull():
+    from titus.display import convex_hull
+    x = np.array([0., 2., 2., 0., 1., 1.])
+    y = np.array([0., 0., 2., 2., 1., 0.5])
+    assert sorted(convex_hull(x, y)) == [0, 1, 2, 3]
+    assert convex_hull(np.array([0., 1.]), np.array([0., 1.])) == [0, 1]
+
+
+@pytest.mark.parametrize('x, block', [(-100., 2), (100., 5)])
+def test_project_cone(sbnd, x, block):
+    """ a cone along z: a triangle from the apex wire to the end wire, symmetric in ticks """
+    from titus.display import project_cone
+    layout = ViewLayout(sbnd, plane=2)
+    (polygon,) = project_cone(layout, [x, 0., 100.], [0., 0., 1.], length=100., half_angle=0.1)
+    assert polygon.plane_index == block
+    plane = sbnd.detector.planes[block]
+    apex_x = layout.wire_to_view(block, plane.wire_coordinate([x, 0., 100.]))
+    end_x = layout.wire_to_view(block, plane.wire_coordinate([x, 0., 200.]))
+    assert len(polygon.x) == 3
+    assert sorted(polygon.x) == pytest.approx(sorted([apex_x, end_x, end_x]))
+    apex_y = layout.tick_to_view(block, plane.x_to_ticks(x))
+    spread = 100 * np.tan(0.1) / sbnd.time2cm()  # ticks, either side of the axis
+    ends = sorted(polygon.y[np.isclose(polygon.x, end_x)])
+    assert ends == pytest.approx([apex_y - spread, apex_y + spread], rel=1e-3)

@@ -1,287 +1,93 @@
-from titus.drawables import Drawable
-from ROOT import evd, TVector3
+import numpy as np
+from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
-import math as mt
-from titus.drawables.connectedObjects import boxCollection
+
+from titus.display import ViewLayout, point_correction, position_tpcs, project_cone
+from titus.drawables.drawable import ReaderDrawable
+from titus.readers import Points
+
+# recob::Shower::OpenAngle as the cone's full opening angle; the half-angle
+# drawn is OPEN_ANGLE_TO_HALF_ANGLE times it
+OPEN_ANGLE_TO_HALF_ANGLE = 0.5
 
 
+class Shower(ReaderDrawable):
+    '''
+    recob::Shower cones (start, direction, length, opening angle) projected
+    into the wire views: the outline of the projected 3D cone, drawn in the
+    TPC of its start. Corrected (the TPC module's "Correct 3D objects"
+    option), the shower's PFParticle T0 is undone and it is drawn in the TPC
+    of its particle's spacepoint nearest its start. Corrected showers have a
+    dashed outline, and their tooltip says what was changed.
+    '''
+    KIND = 'showers'
+    COLORS = [
+        (0, 147, 147, 100),  # dark teal
+        (0, 0, 252, 100),  # bright blue
+        (156, 0, 156, 100),  # purple
+        (255, 0, 255, 100),  # pink
+        (255, 0, 0, 100),  # red
+        (175, 0, 0, 100),  # red/brown
+        (252, 127, 0, 100),  # orange
+        (102, 51, 0, 100),  # brown
+        (127, 127, 127, 100),  # dark gray
+        (210, 210, 210, 100),  # gray
+        (100, 253, 0, 100),  # bright green
+    ]
 
-# Shower drawing is currently "experimental"
-class Shower(Drawable):
-
-    """docstring for shower"""
-
-    def __init__(self, gallery_interface, geom, tpc_module):
-        super().__init__(gallery_interface)
+    def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'shower'
-        self._process = evd.DrawShower(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getWireReadout(), geom.getDetectorClocks())
         self._geom = geom
         self._module = tpc_module
-        self.init()
-        self._clusters = [ [], [], []]
-        self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
+        self._corrections = []
 
-        # Defining the cluster colors:
-        self._showerColors = [
-            (0, 147, 147, 100),  # dark teal
-            (0, 0, 252, 100),   # bright blue
-            (156, 0, 156, 100),  # purple
-            (255, 0, 255, 100),  # pink
-            (255, 0, 0, 100),  # red
-            (175, 0, 0, 100),  # red/brown
-            (252, 127, 0, 100),  # orange
-            (102, 51, 0, 100),  # brown
-            (127, 127, 127, 100),  # dark gray
-            (210, 210, 210, 100),  # gray
-            (100, 253, 0, 100)  # bright green
-        ]
+    @staticmethod
+    def starts(showers):
+        return Points(id=showers.id, x=showers.start_x, y=showers.start_y, z=showers.start_z)
 
-    # def clearDrawnObjects(self,view_manager):
-    #   pass
+    def on_data(self):
+        layout = ViewLayout(self._geom, plane=0)
+        self._corrections = []
+        for tag, showers in zip(self.producers(), self._data):
+            starts = self.starts(showers)
+            t0 = self.pfp_object_t0s('pfp_showers', str(tag), len(showers))
+            tpcs = self.particle_tpcs('pfp_showers', str(tag), starts.xyz)
+            self._corrections.append(point_correction(layout, starts, t0, tpcs, tpc_source="particle's"))
 
-    # def getAutoRange(self,plane):
-    #   pass
+    def corrected(self):
+        return getattr(self._module, 'correct_3d_objects', lambda: True)()
 
     def drawObjects(self):
-
-        # Showers can get messed up so only draw "good" showers
-        # This means that if either projection is bad, don't draw that shower
-
-        for _, view in self._module._wire_views.items():
-            # get the showers from the process:
-            # self._drawnObjects.append([])
-            for i in range(0, self._n_planes): self._drawnObjects.append([])
-            showers = self._process.getDataByPlane(view.plane())
-
-            thisPlane = view.plane() + view.cryostat() * self._geom.nPlanes() * self._geom.nTPCs()
-
-            showers = self._process.getDataByPlane(thisPlane)
-            offset = self._geom.offset(view.plane()) / self._geom.time2cm()
-
-            # print ('Drawing showers for plane', view.plane())
-            self.drawShowers(view, showers, offset, view.plane(), self._geom)
-
-            if self._geom.nTPCs() == 2:
-                for left_plane in self._geom.planeMix()[thisPlane]:
-                    showers = self._process.getDataByPlane(left_plane)
-                    # print ('Drawing tracks for plane', left_plane)
-                    self.drawShowers(view, showers, offset, left_plane, self._geom)
-
-
-    def drawShowers(self, view, showers, offset, plane, geom):
-
-            i_color = 0
-
-            for i in range(len(showers)):
-
-                shower = showers[i]
-
-                if i_color >= len(self._showerColors):
-                    i_color = 0
-
-                color = self._showerColors[i_color]
-
-                # location = shower.tpc()
-                # plane_x = geom.getGeometryCore().Plane(view.plane(), shower.tpc(), shower.cryo()).GetCenter().X()
-                # plane_x_ref = geom.getGeometryCore().Plane(0, 0, 0).GetCenter().X()
-                # tpc_view_offset = 0
-                # tpc_view_offset -= location * (2 * geom.halfwidth()) / geom.time2cm()
-                # tpc_view_offset += location * (plane_x - plane_x_ref - 4 * geom.halfwidth()) / geom.time2cm()
-                # tpc_view_offset += location * (geom.tRange() + geom.cathodeGap())
-
-                # tpc_view_offset = location * (geom.tRange() + geom.cathodeGap())
-
-                # construct a polygon for this shower:
-                points = []
-                # Remember - everything is in cm, but the display is in
-                # wire/time!
-
-                x = shower.startPoint().w / self._geom.wire2cm()
-                y = shower.startPoint().t / self._geom.time2cm() #+ offset
-
-                # y += tpc_view_offset
-
-                points.append(QtCore.QPoint(x, y))
-                # next connect the two points at the end of the shower to make
-                # a cone
-                #
-                # We need the vector that's perpendicular to the axis, to make the cone.
-                # Use 3D vectors to allow the cross product:
-                zAxis = TVector3(0, 0, 1)
-                showerAxis = TVector3(shower.endPoint().w - shower.startPoint().w,
-                                      shower.endPoint().t -
-                                      shower.startPoint().t,
-                                      0.0)
-                perpAxis = zAxis.Cross(showerAxis)
-
-                length = showerAxis.Mag() * mt.tan(shower.openingAngle()/2)
-                perpAxis *= length / perpAxis.Mag()
-
-
-                x1, y1 = shower.endPoint().w + perpAxis.X(), shower.endPoint().t + \
-                    perpAxis.Y()
-                x2, y2 = shower.endPoint().w - perpAxis.X(), shower.endPoint().t - \
-                    perpAxis.Y()
-
-                # Scale everything to wire/time:
-                x1 /= self._geom.wire2cm()
-                y1 /= self._geom.time2cm()
-                x2 /= self._geom.wire2cm()
-                y2 /= self._geom.time2cm()
-
-                # y1 += offset
-                # y2 += offset
-
-                # y1 += tpc_view_offset
-                # y2 += tpc_view_offset
-
-                points.append(QtCore.QPoint(x1, y1))
-                points.append(QtCore.QPoint(x2, y2))
-
-
-                thisPolyF = QtGui.QPolygonF(points)
-
-                self.shower_poly = QtGui.QGraphicsPolygonItem( thisPolyF )
-                #thisPoly = QtGui.QGraphicsPolygonItem(thisPolyF)
-
-                self.shower_poly.setPen(pg.mkPen(None))
-                self.shower_poly.setBrush(pg.mkColor(color))
-
-                # hovering stuff
-                #self.shower_poly.connectOwnerHoverEnter(self.shower_poly.hoverEnter)
-                #self.shower_poly.connectOwnerHoverExit (self.shower_poly.hoverExit)
-                #self.shower_poly.connectToggleHighlight(self.shower_poly.toggleHighlight)
-                # self.shower_poly.connectToolTip(self.shower_poly.genToolTip)
-
-                view._view.addItem(self.shower_poly)
-                self._drawnObjects[view.plane()].append(self.shower_poly)
-
-                # if view.plane() == 0:
-                #   print "dedx: ", shower.dedx()
-
-
-                i_color += 1
-
-    def clearDrawnObjects(self, obj_list=None):
-        """ Override base class since our object list is nested """
-        for _, view in self._module._wire_views.items():
-            plane = view.plane()
-            clusters = self._clusters[plane]
-            for cluster in clusters:
-                cluster.clearHits(view)
-
-        for view_objs in self._drawnObjects:
-            for obj in view_objs:
-                obj.scene().removeItem(obj)
-        self._drawnObjects = []
-
-
-try:
-    from gallery_interface.datatypes.database import recoBase3D
-    import pyqtgraph.opengl as gl
-    import numpy as np
-
-    class shower3D(recoBase3D):
-
-        """docstring for shower3D"""
-
-        def __init__(self):
-            super(shower3D, self).__init__()
-            self._productName = 'shower3D'
-            self._process = evd.DrawShower3D()
-            self.init()
-
-            # Defining the shower colors:
-            self._showerColors = [
-                (  0./255, 147./255, 147./255, 100./255),  # dark teal
-                (  0./255,   0./255, 252./255, 100./255),   # bright blue
-                ( 15./255,   0./255, 156./255, 100./255),  # purple
-                ( 25./255,   0./255, 255./255, 100./255),  # pink
-                ( 25./255,   0./255,   0./255, 100./255),  # red
-                ( 17./255,   0./255,   0./255, 100./255),  # red/brown
-                ( 25./255, 127./255,   0./255, 100./255),  # orange
-                ( 10./255,  51./255,   0./255, 100./255),  # brown
-                ( 12./255, 127./255, 127./255, 100./255),  # dark gray
-                ( 21./255, 210./255, 210./255, 100./255),  # gray
-                (100./255, 253./255,   0./255, 100./255)  # bright green
-            ]
-
-
-
-        # def clearDrawnObjects(self,view_manager):
-        #   pass
-
-        # def getAutoRange(self,plane):
-        #   pass
-
-        def drawObjects(self, view_manager):
-
-            geom = view_manager._geometry
-            view = view_manager.getView()
-
-            showers = self._process.getData()
-            i_color = 0
-
-            for i in range(len(showers)):
-                shower = showers[i]
-
-                if i_color > len(self._showerColors):
-                    i_color = 0
-
-                color = self._showerColors[i_color]
-
-                # We need to know the outer radius of the cylinder at the end
-                # of the shower
-
-                radius = shower.length() * np.tan(shower.opening_angle()/2)
-
-                # Just be stupid and try to draw something:
-                cylinderPoints = gl.MeshData.cylinder(
-                    2, 50, radius=[0, radius], length=shower.length())
-                cylinder = gl.GLMeshItem(meshdata=cylinderPoints,
-                                         drawEdges=False,
-                                         shader='shaded',
-                                         color=color,
-                                         glOptions='additive')
-                # We need to get this cyliner's axis to match the actual axis
-                # we can rotate it around an axis.
-                # Find the axis to rotate it around, which is the axis perpendicular to it's current axis
-                # and the axis .
-                # Since the axis the cylinder is made along is the z axis, we
-                # can compute the cross product easily:
-                crossx = - shower.direction().Y()
-                crossy = shower.direction().X()
-                crossz = 0
-
-                # We need the angle to rotate it by, too:
-                # Compute it with the dot product
-                angle = np.arccos(
-                    shower.direction().Z()/shower.direction().Mag())
-
-                cylinder.rotate((180.0/np.pi)*angle, crossx, crossy, crossz)
-
-                # Last, translate the shower to it's actual start point:
-                #
-
-                cylinder.translate(
-                    shower.start_point().X(), shower.start_point().Y(), shower.start_point().Z())
-
-                # print "Start point: ({x},{y},{z})".format(x=shower.start_point().X(),
-                #                                           y=shower.start_point().Y(),
-                #                                           z=shower.start_point().Z())
-
-                # print "Direction  : ({x},{y},{z})".format(x=shower.direction().X(),
-                #                                           y=shower.direction().Y(),
-                #                                           z=shower.direction().Z())
-
-                # cylinder.setGLOptions("additive")
-                view.addItem(cylinder)
-
-                self._drawnObjects.append(cylinder)
-
-                i_color += 1
-
-
-except:
-    pass
+        corrected = self.corrected()
+        for view in self._module._wire_views.values():
+            layout = ViewLayout(self._geom, plane=view.plane(), cryostat=view.cryostat())
+            for showers, correction in zip(self._data, self._corrections):
+                starts = self.starts(showers).xyz
+                stored_tpcs = position_tpcs(self._geom.detector, starts)
+                for i in range(len(showers)):
+                    if not showers.length[i] > 0:
+                        continue
+                    if corrected:
+                        shift, tpc, moved = correction.tick_shift[i], correction.tpcs[i], correction.moved[i]
+                    else:
+                        shift, tpc, moved = 0., stored_tpcs[i], False
+                    direction = (showers.dir_x[i], showers.dir_y[i], showers.dir_z[i])
+                    half_angle = OPEN_ANGLE_TO_HALF_ANGLE * showers.open_angle[i]
+                    color = self.COLORS[i % len(self.COLORS)]
+                    for polygon in project_cone(layout, starts[i], direction, showers.length[i], half_angle,
+                                                shift, tpc):
+                        item = QtWidgets.QGraphicsPolygonItem(
+                            QtGui.QPolygonF([QtCore.QPointF(x, y) for x, y in zip(polygon.x, polygon.y)]))
+                        item.setBrush(pg.mkBrush(color))
+                        item.setPen(pg.mkPen(color[:3], width=1,
+                                             style=QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine))
+                        item.setToolTip(self.genToolTip(showers, i, correction if corrected else None))
+                        view._view.addItem(item)
+                        self._drawnObjects.append(item)
+
+    def genToolTip(self, showers, i, correction):
+        what = correction.describe(i) if correction is not None else 'drawn as stored'
+        return (f'Shower {showers.id[i]}: length {showers.length[i]:.1f} cm, '
+                f'opening angle {np.degrees(showers.open_angle[i]):.1f} deg, best plane {showers.best_plane[i]}\n'
+                f'{what}')

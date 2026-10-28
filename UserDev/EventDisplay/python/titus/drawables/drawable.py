@@ -8,7 +8,7 @@ import sys
 
 from PyQt5 import QtCore
 
-from titus.display.projection import object_t0s
+from titus.display.projection import object_hit_tpcs, object_t0s, particle_tpcs
 from titus.readers import ProductNotFound
 from titus.readers.products import ASSOCIATIONS
 from titus.readers.gallery import (association_candidates, file_products, read_event_product, string_vector,
@@ -210,6 +210,27 @@ class ReaderDrawable(Drawable):
             if pfp_t0s is not None and len(pfp_t0s):
                 t0s = self.read_optional('t0s', pfp_t0s.product_tags[pfp_t0s.right_product[0]])
         return object_t0s(n_objects, pfp_objects, pfp_t0s, t0s)
+
+    def particle_tpcs(self, pfp_kind, tag, xyz):
+        '''
+        TPC per object (e.g. vertex, shower start at xyz) of the product tag,
+        from its PFParticle's spacepoints and their hits (see
+        titus.display.particle_tpcs); None without them
+        '''
+        pfp_objects = self.read_optional(pfp_kind, tag)
+        if pfp_objects is None or len(pfp_objects) == 0:
+            return None
+        pfp_tag = pfp_objects.product_tags[pfp_objects.left_product[0]]
+        pfp_spacepoints = self.read_optional('pfp_spacepoints', pfp_tag)
+        if pfp_spacepoints is None or len(pfp_spacepoints) == 0:
+            return None
+        spacepoint_tag = pfp_spacepoints.product_tags[pfp_spacepoints.right_product[0]]
+        spacepoints = self.read_optional('spacepoints', spacepoint_tag)
+        spacepoint_hits, hits = self.associated_hits('spacepoint_hits', spacepoint_tag)
+        if spacepoints is None or hits is None:
+            return None
+        return particle_tpcs(xyz, pfp_objects, pfp_spacepoints, spacepoints,
+                             object_hit_tpcs(len(spacepoints), spacepoint_hits, hits))
 
     def associated_hits(self, kind, tag):
         ''' (association to hits, the hits it points into) for the product tag, or (None, None) '''

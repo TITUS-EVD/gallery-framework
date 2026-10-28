@@ -288,6 +288,7 @@ ASSOCIATIONS = {
     'pfp_tracks': ('recob::PFParticle', 'recob::Track', ('void',)),
     'pfp_t0s': ('recob::PFParticle', 'anab::T0', ('void',)),
     'pfp_vertices': ('recob::PFParticle', 'recob::Vertex', ('void',)),
+    'pfp_showers': ('recob::PFParticle', 'recob::Shower', ('void',)),
     'pfp_spacepoints': ('recob::PFParticle', 'recob::SpacePoint', ('void',)),
     'spacepoint_hits': ('recob::SpacePoint', 'recob::Hit', ('void',)),
 }

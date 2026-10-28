@@ -23,7 +23,7 @@ import titus.drawables as drawables
 _DRAWABLE_LIST = {
     'Hit': [drawables.Hit, "recob::Hit"],
     'Cluster': [drawables.Cluster, "recob::Cluster"],
-    # 'Shower': [drawables.Shower, "recob::Shower"],
+    'Shower': [drawables.Shower, "recob::Shower"],
     'Track': [drawables.Track, "recob::Track"],
     'MCTruth': [drawables.MCTruth, "simb::MCTruth"],
     'MCTrack': [drawables.MCTrack, "sim::MCTrack"],
