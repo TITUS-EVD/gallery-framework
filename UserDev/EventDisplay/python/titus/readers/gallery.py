@@ -7,7 +7,7 @@ gallery and the product libraries, but no LArSoft services.
 import numpy as np
 
 from .base import EventReader, ProductNotFound
-from .products import KINDS, EventID, Hits, RawDigits, WireSignals, parse_branch_name
+from .products import ASSOCIATIONS, KINDS, EventID, Hits, RawDigits, WireSignals, parse_branch
 
 # kind -> (titusio function, titusio column struct)
 EXTRACTORS = {
@@ -15,6 +15,13 @@ EXTRACTORS = {
     'wires': ('readWires', 'WireColumns'),
     'channel_rois': ('readChannelROIs', 'WireColumns'),
     'raw_digits': ('readRawDigits', 'RawDigitColumns'),
+    'tracks': ('readTracks', 'TrackColumns'),
+    'vertices': ('readVertices', 'PointColumns'),
+    'spacepoints': ('readSpacePoints', 'PointColumns'),
+    'showers': ('readShowers', 'ShowerColumns'),
+    'pfparticles': ('readPFParticles', 'PFParticleColumns'),
+    't0s': ('readT0s', 'T0Columns'),
+    **{kind: ('readAssociation', 'AssociationColumns') for kind in ASSOCIATIONS},
 }
 
 
@@ -25,7 +32,13 @@ def to_numpy(vector, dtype):
     """
     if len(vector) == 0:
         return np.zeros(0, dtype=dtype)
-    return np.array(np.asarray(vector), dtype=dtype, copy=True)
+    if np.dtype(dtype).kind == 'U':
+        return np.array([str(v) for v in vector], dtype=dtype)
+    array = np.asarray(vector)
+    if array.dtype.kind in 'SU':
+        # unsigned char elements iterated as one-character strings
+        array = np.array([ord(c) for c in vector])
+    return np.array(array, dtype=dtype, copy=True)
 
 
 def columns_to_container(kind, columns):
@@ -46,18 +59,27 @@ def _import_root():
     return ROOT
 
 
-def read_event_product(lib, ev, kind, tag, columns=None):
+def read_event_product(lib, ev, kind, tag, columns=None, cpp_type=None, candidate_tags=None):
     """
     A product of a positioned gallery.Event, through the titusio library
     (ROOT.titusio). tag: full 'label:instance:process' or as accepted by
     art::InputTag. columns: a reusable titusio column struct.
+    Associations also need cpp_type, the product type in the file (e.g.
+    from parse_branch), and candidate_tags, a std::vector<std::string> of
+    the tags of the products they may point into.
     """
     if kind not in EXTRACTORS:
         raise NotImplementedError(f'{kind} products are not read by the titusio library yet')
     function, struct = EXTRACTORS[kind]
     if columns is None:
         columns = getattr(lib, struct)()
-    if not getattr(lib, function)(ev, tag, columns):
+    if kind in ASSOCIATIONS:
+        if cpp_type is None or candidate_tags is None:
+            raise ValueError(f'{kind}: reading an association needs its cpp_type and candidate_tags')
+        found = getattr(lib, function)(ev, tag, cpp_type, candidate_tags, columns)
+    else:
+        found = getattr(lib, function)(ev, tag, columns)
+    if not found:
         raise ProductNotFound(f'{kind} {tag} not in this event')
     return columns_to_container(kind, columns)
 
@@ -81,11 +103,14 @@ class GalleryReader(EventReader):
         self._entries = []  # (file index, entry in file)
         self._events = []
         self._file_tags = []  # per file, {kind: [full tags]}
+        self._file_types = []  # per file, {(kind, tag): C++ product type}
         self._columns = {}
         for i, path in enumerate(self._files):
             ev = self._ROOT.gallery.Event(self._ROOT.std.vector['string']([path]))
             self._handles.append(ev)
-            self._file_tags.append(self._product_tags(ev))
+            tags, types = self._product_tags(ev)
+            self._file_tags.append(tags)
+            self._file_types.append(types)
             local = 0
             while not ev.atEnd():
                 aux = ev.eventAuxiliary()
@@ -96,12 +121,14 @@ class GalleryReader(EventReader):
 
     @staticmethod
     def _product_tags(ev):
-        tags = {}
+        tags, types = {}, {}
         for branch in ev.getTFile().Get('Events').GetListOfBranches():
-            parsed = parse_branch_name(branch.GetName())
+            parsed = parse_branch(branch.GetName())
             if parsed is not None and parsed[0] is not None:
-                tags.setdefault(parsed[0], []).append(parsed[1])
-        return {kind: sorted(t) for kind, t in tags.items()}
+                kind, tag, cpp_type = parsed
+                tags.setdefault(kind, []).append(tag)
+                types[(kind, tag)] = cpp_type
+        return {kind: sorted(t) for kind, t in tags.items()}, types
 
     @property
     def events(self):
@@ -139,7 +166,15 @@ class GalleryReader(EventReader):
         if kind not in self._columns and kind in EXTRACTORS:
             # reused between events: the conversion copies
             self._columns[kind] = getattr(self._lib, EXTRACTORS[kind][1])()
+        cpp_type = candidates = None
+        if kind in ASSOCIATIONS:
+            file_index = self._entries[entry][0]
+            cpp_type = self._file_types[file_index][(kind, tag)]
+            # every non-association product of the file: the ones pointed into are among them
+            candidates = self._ROOT.std.vector['string'](list(dict.fromkeys(
+                t for (k, t) in self._file_types[file_index] if k not in ASSOCIATIONS)))
         try:
-            return read_event_product(self._lib, self.event_handle(entry), kind, tag, self._columns.get(kind))
+            return read_event_product(self._lib, self.event_handle(entry), kind, tag, self._columns.get(kind),
+                                      cpp_type, candidates)
         except ProductNotFound:
             raise ProductNotFound(f'{kind} {tag} not in event {self._events[entry]}') from None

@@ -18,6 +18,7 @@ target_link_libraries(EventDisplay_Reader
     ${cetlib_except_LIBRARY_DIR}/libcetlib_except.so
     ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
     ${lardataobj_LIBRARY_DIR}/liblardataobj_RawData.so
+    ${lardataobj_LIBRARY_DIR}/liblardataobj_AnalysisBase.so
     ${larcoreobj_LIBRARY_DIR}/liblarcoreobj_SimpleTypesAndConstants.so
     ${ROOT_LIBRARIES}
 )

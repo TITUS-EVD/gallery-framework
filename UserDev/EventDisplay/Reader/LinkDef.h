@@ -12,4 +12,17 @@
 #pragma link C++ function titusio::readRawDigits;
 #pragma link C++ function titusio::readChannelROIs;
 #pragma link C++ function titusio::hasChannelROISupport;
+#pragma link C++ class titusio::TrackColumns;
+#pragma link C++ class titusio::PointColumns;
+#pragma link C++ class titusio::ShowerColumns;
+#pragma link C++ class titusio::PFParticleColumns;
+#pragma link C++ class titusio::T0Columns;
+#pragma link C++ class titusio::AssociationColumns;
+#pragma link C++ function titusio::readTracks;
+#pragma link C++ function titusio::readVertices;
+#pragma link C++ function titusio::readSpacePoints;
+#pragma link C++ function titusio::readShowers;
+#pragma link C++ function titusio::readPFParticles;
+#pragma link C++ function titusio::readT0s;
+#pragma link C++ function titusio::readAssociation;
 #endif

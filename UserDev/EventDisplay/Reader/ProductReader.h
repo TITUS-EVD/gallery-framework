@@ -65,11 +65,99 @@ namespace titusio {
     void clear();
   };
 
+  /// recob::Track trajectories: track i has points point_offset[i] to
+  /// point_offset[i + 1]; valid is 1 for points with a valid position
+  struct TrackColumns {
+    std::vector<int> id;
+    std::vector<long long> point_offset;
+    std::vector<float> x;
+    std::vector<float> y;
+    std::vector<float> z;
+    std::vector<unsigned char> valid;
+
+    void clear();
+  };
+
+  /// recob::Vertex and recob::SpacePoint positions
+  struct PointColumns {
+    std::vector<int> id;
+    std::vector<float> x;
+    std::vector<float> y;
+    std::vector<float> z;
+
+    void clear();
+  };
+
+  /// recob::Shower
+  struct ShowerColumns {
+    std::vector<int> id;
+    std::vector<float> start_x;
+    std::vector<float> start_y;
+    std::vector<float> start_z;
+    std::vector<float> dir_x;
+    std::vector<float> dir_y;
+    std::vector<float> dir_z;
+    std::vector<float> length;
+    std::vector<float> open_angle;
+    std::vector<int> best_plane;
+
+    void clear();
+  };
+
+  /// recob::PFParticle; parent is -1 for primaries
+  struct PFParticleColumns {
+    std::vector<int> self_index;
+    std::vector<int> pdg;
+    std::vector<int> parent;
+
+    void clear();
+  };
+
+  /// anab::T0, time in ns
+  struct T0Columns {
+    std::vector<double> time;
+    std::vector<int> trigger_type;
+    std::vector<int> id;
+
+    void clear();
+  };
+
+  /// art::Assns: row j links element left[j] of product
+  /// product_tags[left_product[j]] to element right[j] of product
+  /// product_tags[right_product[j]] ("" if not identified); meta_index is
+  /// the recob::TrackHitMeta index, or -1
+  struct AssociationColumns {
+    std::vector<int> left;
+    std::vector<int> right;
+    std::vector<int> left_product;
+    std::vector<int> right_product;
+    std::vector<int> meta_index;
+    std::vector<std::string> product_tags;
+
+    void clear();
+  };
+
   /// Each reader clears and fills its columns. Returns false if the event has
   /// no such product; other failures throw.
   bool readHits(gallery::Event const& ev, std::string const& tag, HitColumns& out);
   bool readWires(gallery::Event const& ev, std::string const& tag, WireColumns& out);
   bool readRawDigits(gallery::Event const& ev, std::string const& tag, RawDigitColumns& out);
+
+  bool readTracks(gallery::Event const& ev, std::string const& tag, TrackColumns& out);
+  bool readVertices(gallery::Event const& ev, std::string const& tag, PointColumns& out);
+  bool readSpacePoints(gallery::Event const& ev, std::string const& tag, PointColumns& out);
+  bool readShowers(gallery::Event const& ev, std::string const& tag, ShowerColumns& out);
+  bool readPFParticles(gallery::Event const& ev, std::string const& tag, PFParticleColumns& out);
+  bool readT0s(gallery::Event const& ev, std::string const& tag, T0Columns& out);
+
+  /// An association product of type cpp_type (as in the file, e.g.
+  /// "art::Assns<recob::Hit,recob::Track,recob::TrackHitMeta>"), returned
+  /// with left = first type of the kind (see titus/readers/products.py
+  /// ASSOCIATIONS) whichever order it was stored in. candidate_tags: input
+  /// tags of the products the Ptrs may point into, to identify them.
+  /// Throws for an unsupported type.
+  bool readAssociation(gallery::Event const& ev, std::string const& tag, std::string const& cpp_type,
+                       std::vector<std::string> const& candidate_tags, AssociationColumns& out);
 
   /// recob::ChannelROI lives in sbnobj; without it this throws
   bool readChannelROIs(gallery::Event const& ev, std::string const& tag, WireColumns& out);

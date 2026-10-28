@@ -20,8 +20,9 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import dump_products  # noqa: E402
-from titus.readers import KINDS, GalleryReader  # noqa: E402
+from titus.readers import GalleryReader  # noqa: E402
 from titus.readers.gallery import EXTRACTORS  # noqa: E402
+from titus.readers.products import ASSOCIATIONS, association_is_swapped  # noqa: E402
 
 
 def compare(kind, expected, actual):
@@ -65,11 +66,32 @@ def main():
         'wires': dump_products.extract_wire_signals,
         'channel_rois': dump_products.extract_wire_signals,
         'raw_digits': lambda v: dump_products.extract_raw_digits(v, dump_products.make_uncompress(ROOT)),
+        'tracks': dump_products.extract_tracks,
+        'vertices': dump_products.extract_vertices,
+        'spacepoints': dump_products.extract_spacepoints,
+        'showers': dump_products.extract_showers,
+        'pfparticles': dump_products.extract_pfparticles,
+        't0s': dump_products.extract_t0s,
     }
+    # C++ product type of each (kind, tag) in the file
+    types = reader._file_types[0]
+
+    def product_ids(ev):
+        """ ProductID value -> tag of every non-association product in the event """
+        ids = {}
+        for (k, t), cpp_type in types.items():
+            if k in ASSOCIATIONS:
+                continue
+            try:
+                ids[ev.getValidHandle[cpp_type](ROOT.art.InputTag(t)).id().value()] = t
+            except Exception:
+                pass
+        return ids
 
     failures = 0
     for entry in range(min(args.events, len(reader.events))):
         print(f'Event {reader.events[entry]}:')
+        ids = None
         for kind, tag in products:
             try:
                 start = time.perf_counter()
@@ -78,8 +100,15 @@ def main():
 
                 start = time.perf_counter()
                 ev = reader.event_handle(entry)
-                handle = ev.getValidHandle[KINDS[kind].types[0]](ROOT.art.InputTag(tag))
-                expected = extractors[kind](handle.product())
+                cpp_type = types[(kind, tag)]
+                handle = ev.getValidHandle[cpp_type](ROOT.art.InputTag(tag))
+                if kind in ASSOCIATIONS:
+                    ids = product_ids(ev) if ids is None else ids
+                    expected = dump_products.extract_associations(
+                        handle.product(), lambda pid: ids.get(pid.value(), ''),
+                        has_meta='TrackHitMeta' in cpp_type, swapped=association_is_swapped(kind, cpp_type))
+                else:
+                    expected = extractors[kind](handle.product())
                 t_pyroot = time.perf_counter() - start
             except Exception as e:
                 failures += 1
