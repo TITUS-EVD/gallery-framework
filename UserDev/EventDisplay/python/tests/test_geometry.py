@@ -10,7 +10,7 @@ import math
 import numpy as np
 import pytest
 
-from titus.geometry import Geometry
+from titus.geometry import Geometry, ServiceHandles
 
 # values copied from titus/gallery_interface/geometry.py
 LEGACY = {
@@ -223,3 +223,20 @@ def test_anode_cathode_drift_length():
     # ICARUS: 149 cm drift
     anode, cathode, _ = icarus.anodeCathodeTicks(0)[0]
     assert (cathode - anode) * icarus.time2cm() == pytest.approx(149.04, abs=0.01)
+
+
+def test_services_load_on_first_use(geom):
+    calls = []
+
+    def loader():
+        calls.append(1)
+        return ServiceHandles(geometry_core='core', detector_clocks='clocks')
+
+    g = Geometry(geom.detector, geom.display, service_loader=loader)
+    assert calls == []
+    assert g.getGeometryCore() == 'core' and g.getDetectorClocks() == 'clocks'
+    assert calls == [1]
+    # loaded once; a service the loader didn't provide is still an error
+    with pytest.raises(RuntimeError, match='not loaded'):
+        g.getWireReadout()
+    assert calls == [1]

@@ -201,7 +201,7 @@ class OpticalElements(pg.ScatterPlotItem):
         with timing offsets
         '''
         self._data = data
-        self._pe_per_opdet = [0] * self._geom.getGeometryCore().NOpDets()
+        self._pe_per_opdet = [0] * len(self._geom.detector.opdets)
 
         for element in self._opdet_circles:
             ch = element['data']['id']

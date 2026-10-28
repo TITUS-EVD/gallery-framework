@@ -9,15 +9,6 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg 
 import numpy as np
 
-import ROOT
-from ROOT import vector, string
-from ROOT import set as ROOTset
-
-# set up gallery to access some larcoreobj types
-import galleryUtils
-sc = galleryUtils.SourceCode
-sc.loadHeaderFromUPS('larcorealg/Geometry/AuxDetSensitiveGeo.h')
-
 from titus.modules import Module
 import titus.drawables as drawables
 
@@ -220,38 +211,15 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         self._max_time = 30e6
 
     def _init_crt_strips(self):
-        ''' create initial map of mac and strip ID to GDML objects '''
-        geo_core = self._geometry.getGeometryCore()
-        Aux_geo_core = self._geometry.getAuxDetGeometryCore() 
-        for ad_i in range(Aux_geo_core.NAuxDets()):
-            # Get module from parent of the aux det in the GDML
-            ad = Aux_geo_core.AuxDet(ad_i)
-            ad_name = ad.TotalVolume().GetName()
-            # FindAllVolumePaths needs a C++ set argument, can't initialize in one
-            # line for some reason
-            name_set = ROOTset(string)()
-            name_set.insert(ad_name)
-            geo_paths = geo_core.FindAllVolumePaths(name_set)
-
-            path = ''
-            for p in geo_paths[0]:
-                path += p.GetName()
-                path += '/'
-            path = path[:-1]
-                
-            manager = geo_core.ROOTGeoManager()
-            manager.cd(path)
-            module = manager.GetMother(1);
-            local_mac = module.GetNumber()
-
-            nstrip = ad.NSensitiveVolume()
-
-            for sv_i in range(nstrip):
-                channel0 = 2 * sv_i + 0
-                channel1 = 2 * sv_i + 1
-                strip = ad.SensitiveVolume(sv_i)
-                self._crt_strips[(local_mac, sv_i)] = strip
-                self._crt_strip_bounds_map[strip] = self._crt_strip_world_bounds(strip)
+        '''
+        map of (mac, strip index) to the strip's world bounds, from the CRT
+        modules (AuxDets) in the detector description
+        '''
+        for auxdet in self._geometry.detector.auxdets:
+            for strip in auxdet['strips']:
+                key = (auxdet['local_mac'], strip['index'])
+                self._crt_strips[key] = key
+                self._crt_strip_bounds_map[key] = (np.array(strip['min']), np.array(strip['max']))
 
     def _crt_strip(self, mac, sipm):
         ''' 
@@ -274,80 +242,14 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
 
     def _crt_plane_world_bounds(self):
         '''
-        return min. and max. corners of CRT module plane defined by strips
-        contained within. This is done coarsely, so that adjacent planes
-        separated small amounts are grouped together. I'm not sure if there is
-        a GDML way to do it, but AuxDet bounding boxes seem to be too large
+        return min. and max. corners of each CRT strip array (AuxDet), by
+        AuxDet index. Coarse: AuxDet bounding boxes are larger than the arrays
         '''
-        plane_number = 0
-        # a dict because named planes may be useful for other geometries
-        result = {}
-
-        # AuxDets are the CRT strip arrays. The GDML mother of the AuxDets is the CRT module
-        geo_core = self._geometry.getGeometryCore()
-        Aux_geo_core = self._geometry.getAuxDetGeometryCore()
-        nauxdet = Aux_geo_core.NAuxDets()
-        for ad_i in range(nauxdet):
-            ad = Aux_geo_core.AuxDet(ad_i)
-            nstrip = ad.NSensitiveVolume()
-
-            ad_name = ad.TotalVolume().GetName()
-            name_set = ROOTset(string)()
-            name_set.insert(ad_name)
-            geo_paths = geo_core.FindAllVolumePaths(name_set)
-
-            path = ''
-            for p in geo_paths[0]:
-                path += p.GetName()
-                path += '/'
-            # remove trailing /
-            path = path[:-1]
-                
-            manager = geo_core.ROOTGeoManager()
-            manager.cd(path)
-            array_node = manager.GetCurrentNode()
-            mod_node = manager.GetMother(1)
-            tagger_node = manager.GetMother(2)
-            det_node = manager.GetMother(3)
-            
-            hw = array_node.GetVolume().GetShape().GetDX();
-            hh = array_node.GetVolume().GetShape().GetDY();
-            hl = array_node.GetVolume().GetShape().GetDZ()/2;
-            limits_min = np.array([-hw, -hh, -hl])
-            limits_max = np.array([hw, hh, hl])
-
-            def to_world_coord(limits):
-                for node in [array_node, mod_node, tagger_node, det_node]:
-                    new_limits = np.zeros(3)
-                    node.LocalToMaster(limits, new_limits)
-                    limits = new_limits.copy()
-                return limits
-
-            result[plane_number] = [to_world_coord(limits_min), to_world_coord(limits_max)]
-            plane_number += 1
-
-        return result
+        return {i: [np.array(auxdet['array_bounds']['min']), np.array(auxdet['array_bounds']['max'])]
+                for i, auxdet in enumerate(self._geometry.detector.auxdets)}
 
     def _crt_strip_world_bounds(self, strip):
         ''' return min. and max. corners of CRT strip bounding box in world coordinates '''
-
-        try:
-            return self._crt_strip_bounds_map[strip]
-        except KeyError:
-            pass
-
-        hw = strip.HalfWidth1()
-        hh = strip.HalfHeight()
-        hl = strip.Length() / 2
-
-        local_pt_min = ROOT.geo.AuxDetSensitiveGeo.LocalPoint_t(-hw, -hh, -hl)
-        local_pt_max = ROOT.geo.AuxDetSensitiveGeo.LocalPoint_t(hw, hh, hl)
-        world_coord_min = strip.toWorldCoords(local_pt_min)
-        world_coord_max = strip.toWorldCoords(local_pt_max)
-
-        self._crt_strip_bounds_map[strip] = (np.array([world_coord_min.X(), world_coord_min.Y(), world_coord_min.Z()]),\
-            np.array([world_coord_max.X(), world_coord_max.Y(), world_coord_max.Z()]))
-        
         return self._crt_strip_bounds_map[strip]
 
     def _crt_draw_pos(self, coord):

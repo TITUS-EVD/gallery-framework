@@ -9,6 +9,7 @@ dependencies = [
     "numpy",
     "pyqtgraph",
     "PyQt5",
+    "pillow",
 ]
 
 [dependency-groups]

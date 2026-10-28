@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 
 """
-Loads the LArSoft services. This can take a few seconds so we start it in a
-separate thread and block the GUI until it's finished. This module also
-provides a menu to select the producer stages present in the loaded file, and
-maintains a dictionary of LArSoft products present at each stage
+Provides the LArSoft services to the C++ drawers that still need them, loaded
+the first time one asks (see Geometry's service_loader): startup only needs
+the detector description files. Loading takes a while from cvmfs; the GUI
+shows a wait cursor meanwhile. This module also provides a menu to select
+the producer stages present in the loaded file, and maintains a dictionary of
+LArSoft products present at each stage
 """
+
+import time
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from .module import Module
+from ..geometry import ServiceHandles
 
 
 SUPPORTED_SERVICES = {
@@ -17,23 +22,18 @@ SUPPORTED_SERVICES = {
     'sbnd': 'SBNDservices',
 }
 
-# variable to store python module interface
-services = None
 
 class LArSoftModule(Module):
+    # emitted once the GUI is set up: the geometry can be created
+    ready = QtCore.pyqtSignal()
     servicesLoaded = QtCore.pyqtSignal()
     stageChanged = QtCore.pyqtSignal()
 
     def __init__(self, service_name: str = '', time_range: int = None):
-        global services
         super().__init__()
-        if service_name != '':
-            try:
-                services = __import__(SUPPORTED_SERVICES[service_name])
-            except KeyError:
-                raise RuntimeError(f'{service_name} is not supported by LArSoft module')
-            except ImportError:
-                raise ImportError(f'LArSoft module could not import {service_name} services')
+        service_name = service_name or 'sbnd'
+        if service_name not in SUPPORTED_SERVICES:
+            raise RuntimeError(f'{service_name} is not supported by LArSoft module')
 
         self._stage_label = QtWidgets.QLabel()
         self._stage_label.setText('Stage: All')
@@ -41,10 +41,8 @@ class LArSoftModule(Module):
         self._stage_action_map = {}
         self._current_stage = None
 
-        # flag to indicate which services were loaded
-        self.configured_for = 'sbnd'
-        if 'icarus' in services.__name__.lower():
-            self.configured_for = 'icarus'
+        # which services to load, and which detector description to use
+        self.configured_for = service_name
 
         self._services_loaded = False
 
@@ -57,27 +55,25 @@ class LArSoftModule(Module):
         self.lar_prop_service = None
         self.auxDetGeometryCore = None
 
-        self._central_widget = QtWidgets.QWidget()
-        waiting_layout = QtWidgets.QHBoxLayout()
-        waiting_layout.addStretch(1)
-        waiting_layout.addWidget(QtWidgets.QLabel('<h1>Starting LArSoft services...</h1>'))
-        waiting_layout.addStretch(1)
-        self._central_widget.setLayout(waiting_layout)
-
     @property
     def current_stage(self):
         return self._current_stage
+
+    @property
+    def services_loaded(self):
+        return self._services_loaded
 
     def _initialize(self):
         self.populate_menu()
         self._gui.statusBar().insertPermanentWidget(0, self._stage_label)
 
-        # start gui with this module's waiting widget
-        self.activate()
-        self._gui.setEnabled(False)
+        # once the event loop runs, as the other modules connect to the
+        # geometry signals in their own _initialize
+        QtCore.QTimer.singleShot(0, self._on_ready)
 
-        # Start the thread after a small delay to give GUI chance to display
-        QtCore.QTimer.singleShot(50, self._load_services)
+    def _on_ready(self):
+        self.populate_menu()
+        self.ready.emit()
 
     def populate_menu(self):
         if self._stage_menu is not None:
@@ -89,7 +85,7 @@ class LArSoftModule(Module):
         stage_action_group = QtWidgets.QActionGroup(self._gui)
         available_stages = self._gi.get_stages()
         if available_stages is None:
-            return 
+            return
 
         for stage in available_stages:
             action = QtWidgets.QAction(stage, self._stage_menu)
@@ -112,57 +108,48 @@ class LArSoftModule(Module):
             self.stageChanged.emit()
         self._stage_label.setText(f'Stage: {stage}')
 
-    def _load_services(self):
-        """ Services take a little while to load, so do it in a separate thread """
-        if self._services_loaded:
+    def load_services(self):
+        """
+        Load the services (blocking) and return their handles. Used as the
+        geometry's service_loader, so it runs the first time a drawer asks
+        for a service.
+        """
+        if not self._services_loaded:
+            self._show_loading(True)
+            try:
+                start = time.perf_counter()
+                services = __import__(SUPPORTED_SERVICES[self.configured_for])
+                self.det_clock_service = services.ServiceManager('DetectorClocks')
+                self.det_prop_service = services.ServiceManager('DetectorProperties')
+                self.geom_service = services.ServiceManager('Geometry')
+                self.readout_service = services.ServiceManager('WireReadout')
+                self.lar_prop_service = services.ServiceManager('LArProperties')
+                self.auxDetGeometryCore = services.ServiceManager('AuxDetGeometry')
+                print(f'LArSoft module loaded services in {time.perf_counter() - start:.1f} s')
+            finally:
+                self._show_loading(False)
+            self._services_loaded = True
+            self.servicesLoaded.emit()
+
+        clocks = self.det_clock_service.DataForJob()
+        return ServiceHandles(
+            geometry_core=self.geom_service,
+            detector_properties=self.det_prop_service.DataFor(clocks),
+            wire_readout=self.readout_service,
+            detector_clocks=clocks,
+            lar_properties=self.lar_prop_service,
+            aux_det_geometry=self.auxDetGeometryCore,
+        )
+
+    def _show_loading(self, loading):
+        if self._gui is None:
+            if loading:
+                print('Loading LArSoft services...')
             return
-
-        self._thread = QtCore.QThread()
-        self._worker = ServiceLoaderWorker()
-        self._worker.moveToThread(self._thread)
-        self._thread.started.connect(self._worker.run)
-        self._worker.finished.connect(self._thread.quit)
-        self._thread.finished.connect(self._on_service_worker_thread_finished)
-        self._thread.start()
-
-    def _on_service_worker_thread_finished(self):
-        self._services_loaded = True
-
-        self.det_clock_service = self._worker.det_clock_service
-        self.det_prop_service = self._worker.det_prop_service
-        self.readout_service = self._worker.readout_service
-        self.geom_service = self._worker.geom_service
-        self.lar_prop_service = self._worker.lar_prop_service
-        self.auxDetGeometryCore = self._worker.auxDetGeometryCore
-
-        self._gui.setEnabled(True)
-        self._worker.deleteLater()
-        self._thread.deleteLater()
-        
-        self.deactivate()
-        self._central_widget.deleteLater()
-        self.populate_menu()
-
-        self.servicesLoaded.emit()
-
-
-class ServiceLoaderWorker(QtCore.QObject):
-    """ Load LArSoft services in this thread. Main thread will get them once loaded """
-    finished = QtCore.pyqtSignal()
-    def __init__(self):
-        super().__init__()
-
-    def run(self):
-        self.det_clock_service = services.ServiceManager('DetectorClocks')
-        self.det_prop_service = services.ServiceManager('DetectorProperties')
-        self.geom_service = services.ServiceManager('Geometry')
-        self.readout_service = services.ServiceManager('WireReadout')
-        self.lar_prop_service = services.ServiceManager('LArProperties')
-        self.auxDetGeometryCore = services.ServiceManager('AuxDetGeometry')
-
-        # TODO is this necessary?
-        self.det_prop_service.DataFor(self.det_clock_service.DataForJob())
-
-        print('LArSoft module loaded services')
-
-        self.finished.emit()
+        if loading:
+            self._gui.statusBar().showMessage('Loading LArSoft services...')
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            QtWidgets.QApplication.processEvents()
+        else:
+            QtWidgets.QApplication.restoreOverrideCursor()
+            self._gui.statusBar().clearMessage()

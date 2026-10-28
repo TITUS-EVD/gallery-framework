@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 """
-This module adds UI elements for selecting different geometries. It requires
-the LArSoft services from the LArSoft module
+This module adds UI elements for selecting different geometries. Geometries
+come from the detector description files; the LArSoft module only provides
+the services, loaded when a drawer first needs them
 """
 
 import time
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from .module import Module
-from ..geometry import Geometry, ServiceHandles
+from ..geometry import Geometry
 
 
 class GeometryModule(Module):
@@ -19,7 +20,7 @@ class GeometryModule(Module):
         super().__init__()
 
         self._lsm = larsoft_module
-        self._lsm.servicesLoaded.connect(self._on_larsoft_services_loaded)
+        self._lsm.ready.connect(self._create_geometries)
 
         self._available_geoms = None
         self._geom_menu = None
@@ -78,23 +79,15 @@ class GeometryModule(Module):
                 action.triggered.emit(True)
                 first = False
 
-    def _on_larsoft_services_loaded(self):
+    def _create_geometries(self):
         """
         Creates list of geometries the user can select. Since LArSoftModule can
         only use either ICARUS or SBND services, these are mutually exclusive
         """
         # geometry and timing come from the detector description files; the
-        # services are only passed along for the C++ drawers that still need them
-        clocks = self._lsm.det_clock_service.DataForJob()
-        services = ServiceHandles(
-            geometry_core=self._lsm.geom_service,
-            detector_properties=self._lsm.det_prop_service.DataFor(clocks),
-            wire_readout=self._lsm.readout_service,
-            detector_clocks=clocks,
-            lar_properties=self._lsm.lar_prop_service,
-            aux_det_geometry=self._lsm.auxDetGeometryCore,
-        )
-        self._available_geoms = [Geometry.load(self._lsm.configured_for, services=services)]
+        # services are loaded the first time a C++ drawer asks for one
+        self._available_geoms = [Geometry.load(self._lsm.configured_for,
+                                               service_loader=self._lsm.load_services)]
 
         if self._time_range is not None:
             for geo in self._available_geoms:

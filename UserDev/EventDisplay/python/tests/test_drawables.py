@@ -1,7 +1,7 @@
 """
 Wire and hit drawables on the reader path, offscreen, with products from the
 test dumps in place of a gallery event. The other drawables still import the
-C++ evd library, so ROOT is stubbed to import titus.drawables.
+C++ evd library, so ROOT (and galleryUtils, for titus.modules) is stubbed.
 """
 
 import pathlib
@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 sys.modules.setdefault('ROOT', mock.MagicMock())
+sys.modules.setdefault('galleryUtils', mock.MagicMock())
 
 pg = pytest.importorskip('pyqtgraph')
 from PyQt5 import QtCore  # noqa: E402
@@ -158,3 +159,47 @@ def test_hits(qtbot, products, sbnd, tpc_module):
     drawer.clearDrawnObjects()
     assert drawer._drawnObjects == []
     assert not [i for i in view._view.addedItems if i in boxes]
+
+
+def test_crt_view_from_detector_description(qtbot, sbnd):
+    """ the CRT view is built from the dumped AuxDets, without services """
+    pytest.importorskip('PIL')
+    from titus.modules.crt_module import CrtViewWidget
+
+    widget = CrtViewWidget(sbnd)
+    qtbot.addWidget(widget)
+    auxdets = sbnd.detector.auxdets
+    assert len(widget._drawn_crt_modules) == len(auxdets)
+    assert len(widget._crt_strips) == sum(len(a['strips']) for a in auxdets)
+    # sipms 2i and 2i + 1 read strip i
+    mac = auxdets[0]['local_mac']
+    assert widget._crt_strip(mac, 6) == widget._crt_strip(mac, 7) == (mac, 3)
+    low, high = widget._crt_strip_world_bounds((mac, 3))
+    assert low.tolist() == auxdets[0]['strips'][3]['min'] and high.tolist() == auxdets[0]['strips'][3]['max']
+    assert widget._crt_strip(mac, 999) is None
+
+
+def test_services_load_only_when_asked(qtbot, monkeypatch, sbnd):
+    pytest.importorskip('PIL')
+    from titus.modules.larsoft_module import LArSoftModule
+
+    created = []
+
+    def service_manager(name):
+        created.append(name)
+        return mock.MagicMock(name=name)
+
+    monkeypatch.setitem(sys.modules, 'SBNDservices', mock.Mock(ServiceManager=service_manager))
+    lsm = LArSoftModule('sbnd')
+    loaded = []
+    lsm.servicesLoaded.connect(lambda: loaded.append(1))
+    geom = Geometry(sbnd.detector, sbnd.display, service_loader=lsm.load_services)
+    assert created == [] and not lsm.services_loaded
+
+    geom.getWireReadout()
+    assert lsm.services_loaded and loaded == [1]
+    assert sorted(created) == sorted(['DetectorClocks', 'DetectorProperties', 'Geometry', 'WireReadout',
+                                      'LArProperties', 'AuxDetGeometry'])
+    assert geom.getGeometryCore() is lsm.geom_service
+    geom.getDetectorClocks()
+    assert len(created) == 6 and loaded == [1]

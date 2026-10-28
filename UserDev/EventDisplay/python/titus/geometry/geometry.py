@@ -16,7 +16,7 @@ import copy
 import json
 import pathlib
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -74,10 +74,17 @@ def _tuples(obj):
 class Geometry:
 
     def __init__(self, detector: Detector, display: Dict[str, Any],
-                 services: Optional[ServiceHandles] = None):
+                 services: Optional[ServiceHandles] = None,
+                 service_loader: Optional[Callable[[], ServiceHandles]] = None):
+        """
+        services: LArSoft service handles for the C++ drawers that still need
+        them. service_loader: called the first time a service is requested
+        and none is set, to load them only when needed.
+        """
         self.detector = detector
         self.display = display
         self.services = services or ServiceHandles()
+        self._service_loader = service_loader
 
         timing = detector.timing
         self._time2Cm = timing.time_to_cm
@@ -102,8 +109,9 @@ class Geometry:
         self._plane_mix = self._compute_plane_mix()
 
     @classmethod
-    def load(cls, detector_name, gdml=None, services=None):
-        return cls(load_detector(detector_name, gdml), load_display_settings(detector_name), services)
+    def load(cls, detector_name, gdml=None, services=None, service_loader=None):
+        return cls(load_detector(detector_name, gdml), load_display_settings(detector_name),
+                   services, service_loader)
 
     # --- layout, computed from the detector ---
 
@@ -355,6 +363,10 @@ class Geometry:
 
     def _service(self, name):
         service = getattr(self.services, name)
+        if service is None and self._service_loader is not None:
+            loader, self._service_loader = self._service_loader, None
+            self.services = loader()
+            service = getattr(self.services, name)
         if service is None:
             raise RuntimeError(f'LArSoft service {name!r} is not loaded; this drawer still needs it')
         return service

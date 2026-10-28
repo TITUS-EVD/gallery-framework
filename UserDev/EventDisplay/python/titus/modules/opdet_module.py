@@ -98,7 +98,7 @@ class OpDetModule(Module):
     def init_ui(self):
         # Waveform View
         wfv_layout = QtWidgets.QHBoxLayout()
-        self._wf_view = waveform_view(self._gm.current_geom, self._lsm.det_clock_service)
+        self._wf_view = waveform_view(self._gm.current_geom)
         self._wf_view.timeWindowChanged.connect(self.time_range_wf_worker)
 
         name = VerticalLabel('Waveform Viewer')
@@ -456,7 +456,7 @@ class OpDetModule(Module):
         if not self._show_raw_btn.isChecked():
             return
         
-        result = parse_opdetwaveforms(data, self._gm.current_geom, self._lsm.det_clock_service)
+        result = parse_opdetwaveforms(data, self._gm.current_geom)
 
         self._wf_view.drawOpDetWvf(result)
 
@@ -517,11 +517,10 @@ class waveform_view(pg.GraphicsLayoutWidget):
 
     timeWindowChanged = QtCore.pyqtSignal(tuple)
     
-    def __init__(self, geometry, clock_service, plane=-1):
+    def __init__(self, geometry, plane=-1):
         super(waveform_view, self).__init__(border=None)
 
         self._geometry = geometry
-        self._clock_service = clock_service
 
         self._data = None
 
@@ -620,7 +619,7 @@ class flash_time_view(pg.GraphicsLayoutWidget):
         self._time_plot.autoRange()
 
 
-def parse_opdetwaveforms(data, geometry, clock_service):
+def parse_opdetwaveforms(data, geometry):
     """Get waveforms & times from raw data returned by DrawOpDetWaveform."""
     if len(data) < 3:
         return {}
@@ -643,7 +642,7 @@ def parse_opdetwaveforms(data, geometry, clock_service):
 
     # result is a dict like
     # channel: {'time': [t1, t2, ...], 'adc': [a1, a2, a3, ...]}
-    tick_period = clock_service.DataForJob().OpticalClock().TickPeriod()
+    tick_period = geometry.detector.timing.optical_tick_period
     result = {}
     for w in wvfms:
         ch = int(w[0])
