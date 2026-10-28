@@ -3,7 +3,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 from ROOT import evd
 import pyqtgraph as pg
 
-from titus.drawables.track import polyLine
+from titus.drawables.items import polyLine
 
 
 class MCTrack(Drawable):

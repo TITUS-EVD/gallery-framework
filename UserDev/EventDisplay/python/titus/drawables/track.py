@@ -1,41 +1,9 @@
 import numpy as np
-from PyQt5 import QtWidgets, QtGui, QtCore
-import pyqtgraph as pg
+from PyQt5 import QtCore
 
-from titus.display import ViewLayout, track_correction, track_segments, track_t0s
+from titus.display import ViewLayout, track_correction, track_segments
 from titus.drawables.drawable import ReaderDrawable
-
-
-class polyLine(QtWidgets.QGraphicsPathItem):
-    def __init__(self, points, color=None, style=QtCore.Qt.SolidLine, *args):
-        super(polyLine, self).__init__()
-        self.setAcceptHoverEvents(True)
-        self._points = points
-        self._color = color if color is not None else (0, 0, 0)
-        self._style = style
-
-        # Initialize a path:
-        path = QtGui.QPainterPath()
-        self.setPen(self._pen(2))
-
-        # Fill the path:
-        path.moveTo(points[0])
-        for i in range(len(points)-1):
-            path.lineTo(points[i+1])
-        self.setPath(path)
-
-    def _pen(self, width):
-        return pg.mkPen(self._color, width=width, style=self._style)
-
-    def hoverEnterEvent(self, e):
-        QtWidgets.QGraphicsPathItem.hoverEnterEvent(self, e)
-        self.setPen(self._pen(5))
-        self.update()
-
-    def hoverLeaveEvent(self, e):
-        QtWidgets.QGraphicsPathItem.hoverLeaveEvent(self, e)
-        self.setPen(self._pen(2))
-        self.update()
+from titus.drawables.items import polyLine
 
 
 class Track(ReaderDrawable):
@@ -65,21 +33,9 @@ class Track(ReaderDrawable):
 
     def _correction_inputs(self, tag, tracks):
         ''' T0 per track and the track-hit associations, from the products related to these tracks '''
-        tag = str(tag)
-        track_hits = self.read_optional('track_hits', tag)
-        hits = None
-        if track_hits is not None and len(track_hits):
-            hits = self.read_optional('hits', track_hits.product_tags[track_hits.right_product[0]])
-
-        pfp_tracks = self.read_optional('pfp_tracks', tag)
-        pfp_t0s = t0s = None
-        if pfp_tracks is not None and len(pfp_tracks):
-            pfp_tag = pfp_tracks.product_tags[pfp_tracks.left_product[0]]
-            pfp_t0s = self.read_optional('pfp_t0s', pfp_tag)
-            if pfp_t0s is not None and len(pfp_t0s):
-                t0s = self.read_optional('t0s', pfp_t0s.product_tags[pfp_t0s.right_product[0]])
-        return {'t0': track_t0s(len(tracks), pfp_tracks, pfp_t0s, t0s),
-                'track_hits': track_hits if hits is not None else None, 'hits': hits}
+        track_hits, hits = self.associated_hits('track_hits', str(tag))
+        return {'t0': self.pfp_object_t0s('pfp_tracks', str(tag), len(tracks)),
+                'track_hits': track_hits, 'hits': hits}
 
     def _correction(self, producer, row, layout):
         cache = self._corrections[producer]

@@ -11,9 +11,9 @@ import pathlib
 import numpy as np
 import pytest
 
-from titus.display import (ViewLayout, hit_positions, position_tpcs, project_path, project_points,
-                           readout_tpcs, ticks_per_ns, tpcs_from_hits, track_correction, track_segments,
-                           track_t0s)
+from titus.display import (ViewLayout, hit_positions, object_hit_tpcs, point_correction, position_tpcs,
+                           project_objects, project_path, project_points, readout_tpcs, ticks_per_ns,
+                           tpcs_from_hits, track_correction, track_segments, track_t0s)
 from titus.geometry import Geometry
 from titus.readers import DumpReader
 
@@ -232,3 +232,36 @@ def test_as_stored_draws_every_valid_point(sbnd, dump):
 def test_position_tpcs_nearest(sbnd):
     tpcs = position_tpcs(sbnd.detector, [[-100., 0., 250.], [230., 0., 250.], [-230., 0., 250.]])
     assert tpcs.tolist() == [[0, 0], [0, 1], [0, 0]]
+
+
+def test_point_correction(sbnd):
+    from titus.readers import Points
+    layout = ViewLayout(sbnd, plane=2)
+    # in TPC 0; past the cathode (in TPC 1's volume) but read out by TPC 0; behind TPC 1's anode
+    points = Points(id=[0, 1, 2], x=[-100., 10., 220.], y=[0., 0., 0.], z=[250., 250., 250.])
+    correction = point_correction(layout, points, t0=[-500000., np.nan, np.nan],
+                                  hit_tpcs=[[-1, -1], [0, 0], [-1, -1]])
+    assert correction.tick_shift.tolist() == pytest.approx([-1000., 0., 0.])
+    assert correction.tpcs.tolist() == [[0, 0], [0, 0], [0, 1]]
+    assert correction.moved.tolist() == [True, True, False]
+    assert correction.describe(0) == 'T0 -500.0 us: drawn -1000 ticks'
+    assert correction.describe(1) == "drawn in its hits' TPC"
+    assert correction.describe(2) == 'drawn as stored'
+
+    stored = project_objects(layout, points)
+    corrected = project_objects(layout, points, correction)
+    # as stored, the point past the cathode is in TPC 1 (plane index 5)
+    assert sorted(stored[5][0].tolist()) == [1, 2] and stored[2][0].tolist() == [0]
+    assert sorted(corrected[2][0].tolist()) == [0, 1] and corrected[5][0].tolist() == [2]
+    # the T0 shift, in the unflipped TPC 0 block
+    assert corrected[2][2][0] - stored[2][2][0] == pytest.approx(-1000.)
+
+
+def test_object_hit_tpcs():
+    from titus.readers import Associations, Hits
+    hits = Hits(channel=[0, 0], cryostat=[0, 0], tpc=[1, 0], plane=[0, 0], wire=[0, 0], peak_time=[0, 0],
+                rms=[1, 1], integral=[1, 1], peak_amplitude=[1, 1], start_tick=[0, 0], end_tick=[0, 0])
+    assns = Associations(left=[0, 0, 2], right=[0, 0, 1], left_product=[0, 0, 0], right_product=[1, 1, 1],
+                         meta_index=[-1, -1, -1], product_tags=['pandora::Reco2', 'gaushit::Reco1'])
+    assert object_hit_tpcs(3, assns, hits).tolist() == [[0, 1], [-1, -1], [0, 0]]
+    assert (object_hit_tpcs(2) == -1).all()

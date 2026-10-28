@@ -48,13 +48,14 @@ def readout_tpcs(detector, xyz, n_ticks, tick_shift=0.):
     without their hits. (-1, -1) if none.
     """
     xyz = np.asarray(xyz, dtype=float).reshape(-1, 3)
+    tick_shift = np.broadcast_to(np.asarray(tick_shift, dtype=float), (len(xyz),))
     tpcs = detector.tpc_of(xyz)
     for i in np.flatnonzero(tpcs[:, 0] < 0):
         for tpc in detector.tpcs:
             lo, hi = tpc.bounds.min, tpc.bounds.max
             if not np.all((xyz[i, 1:] >= lo[1:]) & (xyz[i, 1:] <= hi[1:])):
                 continue
-            tick = tpc.planes[-1].x_to_ticks(xyz[i, 0]) + tick_shift
+            tick = tpc.planes[-1].x_to_ticks(xyz[i, 0]) + tick_shift[i]
             if 0 <= tick < n_ticks:
                 tpcs[i] = tpc.id
                 break
@@ -102,10 +103,12 @@ def project_points(layout, xyz, tick_shift=0., tpcs=None):
     """
     View coordinates of 3D points, per block of the layout: {plane index:
     (point indices, x, y)} for the blocks that have points. tick_shift
-    (ticks) is added to the drift time, e.g. a T0 that was removed from the
-    points' x. tpcs: (cryostat, tpc) per point; by default readout_tpcs.
+    (ticks, one or per point) is added to the drift time, e.g. a T0 that was
+    removed from the points' x. tpcs: (cryostat, tpc) per point; by default
+    readout_tpcs.
     """
     xyz = np.asarray(xyz, dtype=float).reshape(-1, 3)
+    tick_shift = np.broadcast_to(np.asarray(tick_shift, dtype=float), (len(xyz),))
     detector = layout.geom.detector
     if tpcs is None:
         tpcs = readout_tpcs(detector, xyz, layout.n_ticks, tick_shift)
@@ -118,7 +121,7 @@ def project_points(layout, xyz, tick_shift=0., tpcs=None):
             continue
         points = xyz[index]
         x = layout.wire_to_view(block.plane_index, plane.wire_coordinate(points))
-        y = layout.tick_to_view(block.plane_index, plane.x_to_ticks(points[:, 0]) + tick_shift)
+        y = layout.tick_to_view(block.plane_index, plane.x_to_ticks(points[:, 0]) + tick_shift[index])
         result[block.plane_index] = (index, x, y)
     return result
 
@@ -181,16 +184,84 @@ def track_correction(layout, tracks, row, t0=np.nan, track_hits=None, hits=None)
     return TrackCorrection(t0=t0, tick_shift=shift, tpcs=tpcs, moved=float(moved))
 
 
-def track_t0s(n_tracks, pfp_tracks=None, pfp_t0s=None, t0s=None):
-    """ T0 (ns) per track via track -> PFParticle -> anab::T0; nan without one """
-    result = np.full(n_tracks, np.nan)
-    if pfp_tracks is None or pfp_t0s is None or t0s is None:
+def object_t0s(n_objects, pfp_objects=None, pfp_t0s=None, t0s=None):
+    """
+    T0 (ns) per object (track, vertex, spacepoint...) via its PFParticle:
+    pfp_objects associates PFParticles (left) with the objects (right),
+    pfp_t0s PFParticles with anab::T0s. nan without one.
+    """
+    result = np.full(n_objects, np.nan)
+    if pfp_objects is None or pfp_t0s is None or t0s is None:
         return result
     t0_of_pfp = dict(zip(pfp_t0s.left, t0s.time[pfp_t0s.right]))
-    for pfp, track in zip(pfp_tracks.left, pfp_tracks.right):
-        if pfp in t0_of_pfp and 0 <= track < n_tracks:
-            result[track] = t0_of_pfp[pfp]
+    for pfp, obj in zip(pfp_objects.left, pfp_objects.right):
+        if pfp in t0_of_pfp and 0 <= obj < n_objects:
+            result[obj] = t0_of_pfp[pfp]
     return result
+
+
+def track_t0s(n_tracks, pfp_tracks=None, pfp_t0s=None, t0s=None):
+    """ T0 (ns) per track, see object_t0s """
+    return object_t0s(n_tracks, pfp_tracks, pfp_t0s, t0s)
+
+
+def object_hit_tpcs(n_objects, object_hits=None, hits=None):
+    """
+    (cryostat, tpc) per object from the hits associated with it (e.g. a
+    spacepoint's hits, all in one TPC); (-1, -1) for objects without hits
+    """
+    tpcs = np.full((n_objects, 2), -1, dtype=int)
+    if object_hits is None or hits is None or len(object_hits) == 0:
+        return tpcs
+    ok = (object_hits.left >= 0) & (object_hits.left < n_objects)
+    tpcs[object_hits.left[ok], 0] = hits.cryostat[object_hits.right[ok]]
+    tpcs[object_hits.left[ok], 1] = hits.tpc[object_hits.right[ok]]
+    return tpcs
+
+
+@dataclass(frozen=True)
+class PointCorrection:
+    """ what the corrected drawing of point-like objects (vertices, spacepoints) changes """
+    t0: np.ndarray          # ns per point, nan without a T0
+    tick_shift: np.ndarray  # ticks added to the drift time, per point
+    tpcs: np.ndarray        # (cryostat, tpc) per point as drawn
+    moved: np.ndarray       # per point: shifted, or drawn in another TPC than its position's
+
+    def describe(self, i):
+        parts = []
+        if not np.isnan(self.t0[i]):
+            parts.append(f'T0 {self.t0[i] / 1000:.1f} us: drawn {self.tick_shift[i]:+.0f} ticks')
+        if self.moved[i] and np.isnan(self.t0[i]):
+            parts.append("drawn in its hits' TPC")
+        return '; '.join(parts) or 'drawn as stored'
+
+
+def point_correction(layout, points, t0=None, hit_tpcs=None) -> PointCorrection:
+    """
+    Corrections for drawing points on their hits: undo their T0 (ns per
+    point, see object_t0s) and draw each in the TPC of its hits (per point,
+    see object_hit_tpcs), else the TPC whose readout window contains it
+    """
+    xyz = points.xyz
+    n = len(xyz)
+    t0 = np.full(n, np.nan) if t0 is None else np.asarray(t0, dtype=float)
+    shift = np.nan_to_num(t0) * ticks_per_ns(layout.geom)
+    tpcs = readout_tpcs(layout.geom.detector, xyz, layout.n_ticks, shift)
+    if hit_tpcs is not None:
+        known = np.asarray(hit_tpcs)[:, 0] >= 0
+        tpcs[known] = np.asarray(hit_tpcs)[known]
+    moved = (shift != 0) | np.any(tpcs != position_tpcs(layout.geom.detector, xyz), axis=1)
+    return PointCorrection(t0=t0, tick_shift=shift, tpcs=tpcs, moved=moved)
+
+
+def project_objects(layout, points, correction=None):
+    """
+    Point-like objects in a view: {plane index: (indices, x, y)}, as stored
+    (by position, no shift) without a correction, else as it says
+    """
+    if correction is None:
+        return project_points(layout, points.xyz, 0., position_tpcs(layout.geom.detector, points.xyz))
+    return project_points(layout, points.xyz, correction.tick_shift, correction.tpcs)
 
 
 def track_segments(layout, tracks, row, correction=None) -> List[Segment]:

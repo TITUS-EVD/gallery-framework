@@ -405,6 +405,18 @@ namespace titusio {
       return readAssns<recob::PFParticle, anab::T0, void>(ev, tag, false, candidate_tags, out);
     if (cpp_type == "art::Assns<anab::T0,recob::PFParticle,void>")
       return readAssns<anab::T0, recob::PFParticle, void>(ev, tag, true, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::PFParticle,recob::Vertex,void>")
+      return readAssns<recob::PFParticle, recob::Vertex, void>(ev, tag, false, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::Vertex,recob::PFParticle,void>")
+      return readAssns<recob::Vertex, recob::PFParticle, void>(ev, tag, true, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::PFParticle,recob::SpacePoint,void>")
+      return readAssns<recob::PFParticle, recob::SpacePoint, void>(ev, tag, false, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::SpacePoint,recob::PFParticle,void>")
+      return readAssns<recob::SpacePoint, recob::PFParticle, void>(ev, tag, true, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::SpacePoint,recob::Hit,void>")
+      return readAssns<recob::SpacePoint, recob::Hit, void>(ev, tag, false, candidate_tags, out);
+    if (cpp_type == "art::Assns<recob::Hit,recob::SpacePoint,void>")
+      return readAssns<recob::Hit, recob::SpacePoint, void>(ev, tag, true, candidate_tags, out);
     throw std::runtime_error("titusio: unsupported association type " + cpp_type);
   }
 

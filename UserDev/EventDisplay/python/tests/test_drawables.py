@@ -306,3 +306,95 @@ def test_tracks_without_associations(qtbot, products, sbnd, tpc_module, capsys):
     assert drawer._drawnObjects
     assert not any('T0 ' in l.toolTip() for l in drawer._drawnObjects)
     assert 'Warning' not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('scale', [(1, 1), (20, 20), (20, 0.5), (0.05, 3)])
+def test_line_hover_area_is_fixed_on_screen(qtbot, scale):
+    """ zoomed in or out, and with unequal x and y scales: hover within HOVER_PIXELS of the line """
+    from PyQt5 import QtGui, QtWidgets
+    from titus.drawables.items import HOVER_PIXELS, polyLine
+
+    scene = QtWidgets.QGraphicsScene()
+    view = QtWidgets.QGraphicsView(scene)
+    qtbot.addWidget(view)
+    view.setTransform(QtGui.QTransform.fromScale(*scale))
+    def at_pixels(x_px, y_px):
+        ''' the item point drawn at (x_px, y_px) screen pixels from the origin '''
+        return QtCore.QPointF(x_px / scale[0], y_px / scale[1])
+
+    # an L-shaped track, 200 pixels along x, then 200 up in y
+    line = polyLine([at_pixels(0, 0), at_pixels(200, 0), at_pixels(200, 200)])
+    scene.addItem(line)
+
+    shape = line.shape()
+    assert shape.contains(at_pixels(100, HOVER_PIXELS - 2))
+    assert not shape.contains(at_pixels(100, HOVER_PIXELS + 3))
+    assert shape.contains(at_pixels(200 - (HOVER_PIXELS - 2), 100))
+    assert not shape.contains(at_pixels(200 - (HOVER_PIXELS + 3), 100))
+    # inside the L, away from both segments, is not part of the line
+    assert not shape.contains(at_pixels(150, 50))
+
+
+def serve_points(products, kind, pfp_kind):
+    """ three points: T0-tagged, past the cathode (read out by TPC 0), plain """
+    from titus.readers import Associations, Points, T0s
+    products[(kind, 'pandora::Reco2')] = Points(id=[0, 1, 2], x=[-100., 10., -50.], y=[0., 0., 0.],
+                                                z=[250., 250., 300.])
+    products[(pfp_kind, 'pandora::Reco2')] = Associations(
+        left=[0], right=[0], left_product=[0], right_product=[1], meta_index=[-1],
+        product_tags=['pandora::Reco2', 'pandora::Reco2'])
+    products[('pfp_t0s', 'pandora::Reco2')] = Associations(
+        left=[0], right=[0], left_product=[0], right_product=[1], meta_index=[-1],
+        product_tags=['pandora::Reco2', 'pandora::Reco2'])
+    products[('t0s', 'pandora::Reco2')] = T0s(time=[-500000.], trigger_type=[3], id=[0])
+
+
+def draw_points(cls, tpc_module, sbnd, corrected=True):
+    tpc_module.correct_3d_objects = lambda: corrected
+    drawer = cls(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('pandora::Reco2')
+    drawer.analyze()
+    drawer.drawObjects()
+    return drawer
+
+
+@pytest.mark.parametrize('corrected', [True, False])
+def test_vertices(qtbot, products, sbnd, tpc_module, capsys, corrected):
+    from titus.drawables import Vertex
+    from titus.drawables.items import Marker
+    serve_points(products, 'vertices', 'pfp_vertices')
+    drawer = draw_points(Vertex, tpc_module, sbnd, corrected)
+    assert 'Warning' not in capsys.readouterr().out
+    markers = drawer._drawnObjects
+    # one marker per vertex per view
+    assert len(markers) == 3 * 3 and all(isinstance(m, Marker) for m in markers)
+    tagged = [m for m in markers if m.toolTip().startswith('Vertex 0')]
+    if corrected:
+        assert all('T0 -500.0 us' in m.toolTip() for m in tagged)
+        assert all(m.brush().style() == QtCore.Qt.NoBrush for m in tagged)
+    else:
+        assert all('drawn as stored' in m.toolTip() for m in markers)
+        assert all(m.brush().style() != QtCore.Qt.NoBrush for m in markers)
+    drawer.clearDrawnObjects()
+    assert drawer._drawnObjects == []
+
+
+def test_spacepoints(qtbot, products, sbnd, tpc_module, capsys):
+    from titus.drawables import SpacePoint
+    from titus.readers import Associations, Hits
+    serve_points(products, 'spacepoints', 'pfp_spacepoints')
+    # spacepoint 1 (past the cathode) has a hit in TPC 0
+    products[('hits', 'gaushit::Reco1')] = Hits(
+        channel=[0], cryostat=[0], tpc=[0], plane=[2], wire=[833], peak_time=[3000.], rms=[1.], integral=[1.],
+        peak_amplitude=[1.], start_tick=[0], end_tick=[0])
+    products[('spacepoint_hits', 'pandora::Reco2')] = Associations(
+        left=[1], right=[0], left_product=[0], right_product=[1], meta_index=[-1],
+        product_tags=['pandora::Reco2', 'gaushit::Reco1'])
+    drawer = draw_points(SpacePoint, tpc_module, sbnd)
+    assert 'Warning' not in capsys.readouterr().out
+    # per view: plain points filled, the T0-shifted and the moved one hollow
+    scatters = drawer._drawnObjects
+    assert len(scatters) == 2 * 3
+    assert sorted(len(s.data) for s in scatters) == [1, 1, 1, 2, 2, 2]
+    stored = draw_points(SpacePoint, tpc_module, sbnd, corrected=False)
+    assert len(stored._drawnObjects) == 3 and all(len(s.data) == 3 for s in stored._drawnObjects)

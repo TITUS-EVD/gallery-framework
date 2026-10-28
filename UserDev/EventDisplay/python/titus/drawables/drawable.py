@@ -8,6 +8,7 @@ import sys
 
 from PyQt5 import QtCore
 
+from titus.display.projection import object_t0s
 from titus.readers import ProductNotFound
 from titus.readers.products import ASSOCIATIONS
 from titus.readers.gallery import (association_candidates, file_products, read_event_product, string_vector,
@@ -195,6 +196,28 @@ class ReaderDrawable(Drawable):
             ev = self._gi.event_handle()
             self._file_products = {} if ev is None else file_products(ev)
         return self._file_products
+
+    def pfp_object_t0s(self, pfp_kind, tag, n_objects):
+        '''
+        T0 (ns, nan without) per object of the product tag through its
+        PFParticle: pfp_kind is the PFParticle association kind (e.g.
+        'pfp_tracks'), stored under the objects' tag
+        '''
+        pfp_objects = self.read_optional(pfp_kind, tag)
+        pfp_t0s = t0s = None
+        if pfp_objects is not None and len(pfp_objects):
+            pfp_t0s = self.read_optional('pfp_t0s', pfp_objects.product_tags[pfp_objects.left_product[0]])
+            if pfp_t0s is not None and len(pfp_t0s):
+                t0s = self.read_optional('t0s', pfp_t0s.product_tags[pfp_t0s.right_product[0]])
+        return object_t0s(n_objects, pfp_objects, pfp_t0s, t0s)
+
+    def associated_hits(self, kind, tag):
+        ''' (association to hits, the hits it points into) for the product tag, or (None, None) '''
+        object_hits = self.read_optional(kind, tag)
+        if object_hits is None or len(object_hits) == 0:
+            return None, None
+        hits = self.read_optional('hits', object_hits.product_tags[object_hits.right_product[0]])
+        return (object_hits, hits) if hits is not None else (None, None)
 
     def read_optional(self, kind, tag):
         """
