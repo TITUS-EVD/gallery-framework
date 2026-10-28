@@ -101,11 +101,15 @@ class GalleryReader(EventReader):
         """ the gallery.Event positioned at an entry """
         file_index, local = self._entries[entry]
         ev = self._handles[file_index]
-        if ev.atEnd() or ev.eventEntry() != local:
-            try:
+        if ev.atEnd():
+            # past the end there is no current file, and goToEntry throws
+            ev.toBegin()
+        if ev.eventEntry() != local:
+            if hasattr(ev, 'goToEntry'):
                 ev.goToEntry(local)
-            except AttributeError:
-                ev.toBegin()
+            else:
+                if ev.eventEntry() > local:
+                    ev.toBegin()
                 while ev.eventEntry() != local:
                     ev.next()
         return ev

@@ -63,6 +63,9 @@ class FakeEvent:
         self.entry = 0
 
     def _go_to_entry(self, entry):
+        """ as gallery: only within the current file, which is gone at the end """
+        if self.atEnd():
+            raise RuntimeError('std::exception')
         self.log.append(('goToEntry', self.path, entry))
         self.entry = entry
 
@@ -141,10 +144,13 @@ def test_product_missing_in_event(reader):
 
 def test_navigation(reader):
     reader.hits(2, 'gaushit')
+    reader.hits(1, 'gaushit')
+    reader.hits(1, 'gaushit')
     reader.hits(0, 'gaushit')
-    reader.hits(0, 'gaushit')
-    # indexing leaves each file at its end; then one jump per change of entry
-    assert FakeEvent.log == [('goToEntry', 'b.root', 0), ('goToEntry', 'a.root', 0)]
+    # indexing leaves each file at its end, so the first read of a file rewinds;
+    # then one jump per change of entry
+    assert FakeEvent.log == [('toBegin', 'b.root'), ('toBegin', 'a.root'),
+                             ('goToEntry', 'a.root', 1), ('goToEntry', 'a.root', 0)]
 
 
 def test_navigation_without_go_to_entry():
@@ -153,6 +159,7 @@ def test_navigation_without_go_to_entry():
     assert len(reader.hits(1, 'gaushit')) == 5
     assert len(reader.hits(0, 'gaushit')) == 3
     assert FakeEvent.log == [('toBegin', 'a.root'), ('toBegin', 'a.root')]
+    assert len(reader.hits(1, 'gaushit')) == 5
 
 
 def test_empty_columns():
