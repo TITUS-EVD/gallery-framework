@@ -43,3 +43,7 @@ def load_detector(detector, gdml=None):
         raise LookupError(f'several geometries for {detector!r}, specify one of '
                           f'{sorted(g for _, g in matches)}')
     return Detector.load(next(iter(matches.values())))
+
+
+# after load_detector: the geometry module imports it
+from .geometry import Geometry, ServiceHandles, load_display_settings  # noqa: E402

@@ -172,12 +172,29 @@ class TPC:
 class Cryostat:
     id: int
     bounds: Box
+    half_width: float
+    half_height: float
+    length: float
     tpcs: Tuple[TPC, ...]
 
     @classmethod
     def from_json(cls, d):
         return cls(id=d['id'], bounds=Box.from_json(d['bounds']),
+                   half_width=d['half_width'], half_height=d['half_height'], length=d['length'],
                    tpcs=tuple(TPC.from_json(t) for t in d['tpcs']))
+
+    def drift_volumes(self) -> List[Tuple[TPC, ...]]:
+        """
+        TPCs grouped by shared drift volume (same x extent). Volumes are
+        ordered by their lowest TPC number, TPCs within a volume by z.
+        ICARUS splits each drift volume into two TPCs at z = 0.
+        """
+        volumes = {}
+        for t in self.tpcs:
+            key = tuple(np.round([t.bounds.min[0], t.bounds.max[0]], 3))
+            volumes.setdefault(key, []).append(t)
+        return [tuple(sorted(v, key=lambda t: t.bounds.min[2]))
+                for v in sorted(volumes.values(), key=lambda v: min(t.id.tpc for t in v))]
 
 
 @dataclass(frozen=True)

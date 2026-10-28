@@ -9,7 +9,7 @@ import time
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from .module import Module
-from ..gallery_interface import geometry as geometry
+from ..geometry import Geometry, ServiceHandles
 
 
 class GeometryModule(Module):
@@ -83,16 +83,18 @@ class GeometryModule(Module):
         Creates list of geometries the user can select. Since LArSoftModule can
         only use either ICARUS or SBND services, these are mutually exclusive
         """
-        if self._lsm.configured_for == 'sbnd':
-            self._available_geoms = [
-                geometry.sbnd(self._lsm.geom_service, self._lsm.det_prop_service, self._lsm.readout_service,
-                              self._lsm.det_clock_service, self._lsm.lar_prop_service, self._lsm.auxDetGeometryCore)
-            ]
-        elif self._lsm.configured_for == 'icarus':
-            self._available_geoms = [
-                geometry.icarus(self._lsm.geom_service, self._lsm.det_prop_service, self._lsm.readout_service,
-                              self._lsm.det_clock_service, self._lsm.lar_prop_service, self._lsm.auxDetGeometryCore)
-            ]
+        # geometry and timing come from the detector description files; the
+        # services are only passed along for the C++ drawers that still need them
+        clocks = self._lsm.det_clock_service.DataForJob()
+        services = ServiceHandles(
+            geometry_core=self._lsm.geom_service,
+            detector_properties=self._lsm.det_prop_service.DataFor(clocks),
+            wire_readout=self._lsm.readout_service,
+            detector_clocks=clocks,
+            lar_properties=self._lsm.lar_prop_service,
+            aux_det_geometry=self._lsm.auxDetGeometryCore,
+        )
+        self._available_geoms = [Geometry.load(self._lsm.configured_for, services=services)]
 
         if self._time_range is not None:
             for geo in self._available_geoms:
