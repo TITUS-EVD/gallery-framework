@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 
 import pytest
@@ -6,6 +7,9 @@ import pytest
 from titus.geometry import available_detectors, load_detector
 
 DATA_DIR = pathlib.Path(__file__).parent / 'data'
+
+# drawable tests run without a display (gpvm, CI)
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 # (detector, gdml) of every shipped description that has a golden table
 GOLDEN = [key for key in available_detectors()

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..readers.products import WireSignals
+
 
 def plane_index_table(geom):
     """ array [cryostat, tpc, plane] -> TITUS plane index """
@@ -27,6 +29,18 @@ def image_n_ticks(geom, *signals):
     """
     lengths = [int(s.n_ticks.max()) for s in signals if len(s)]
     return max([int(geom.readoutWindowSize())] + lengths)
+
+
+def raw_digit_signals(digits, subtract_pedestal=True):
+    """ RawDigits as WireSignals, one ROI per channel, for wire_image """
+    adc = digits.adc.astype('f4')
+    if subtract_pedestal:
+        adc -= digits.pedestal[:, None]
+    in_waveform = np.arange(adc.shape[1]) < digits.n_samples[:, None]
+    n = len(digits)
+    return WireSignals(channel=digits.channel, n_ticks=digits.n_samples, roi_row=np.arange(n),
+                       roi_start=np.zeros(n), roi_offset=np.concatenate([[0], np.cumsum(digits.n_samples)]),
+                       values=adc[in_waveform])
 
 
 def wire_image(layout, signals, channel_map):

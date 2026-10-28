@@ -4,4 +4,5 @@ products without Qt or ROOT.
 """
 
 from .layout import Block, ViewLayout
-from .tpc import HitPositions, hit_positions, image_n_ticks, plane_index_table, wire_image
+from .tpc import (HitPositions, hit_positions, image_n_ticks, plane_index_table, raw_digit_signals,
+                  wire_image)

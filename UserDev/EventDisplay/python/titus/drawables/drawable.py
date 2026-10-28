@@ -8,6 +8,9 @@ import sys
 
 from PyQt5 import QtCore
 
+from titus.readers import ProductNotFound
+from titus.readers.gallery import read_event_product, titusio
+
 _NULL_NAME = "null"
 
 class Drawable:
@@ -131,3 +134,51 @@ class Drawable:
 
     def disable(self):
         self._disabled = True
+
+
+class ReaderDrawable(Drawable):
+    """
+    Drawable reading its products through the titusio library
+    (titus.readers) instead of a C++ drawer with LArSoft services. Products
+    of the current event are read in analyze() into self._data, one
+    container per producer.
+    """
+    KIND = None  # titus.readers.KINDS name
+
+    def __init__(self, gallery_interface, *args, **kwargs):
+        super().__init__(gallery_interface, *args, **kwargs)
+        self._data = []
+
+    def init(self):
+        pass
+
+    def set_producer(self, producer):
+        if producer is None:
+            producer = _NULL_NAME
+        if producer == self._producer_name:
+            return
+        self._producer_name = producer
+
+    def producers(self):
+        if self._producer_name == _NULL_NAME:
+            return []
+        if isinstance(self._producer_name, (list, tuple)):
+            return list(self._producer_name)
+        return [self._producer_name]
+
+    def analyze(self):
+        self.clearDrawnObjects()
+        self._data = []
+        ev = self._gi.event_handle()
+        if ev is None:
+            return
+        for tag in self.producers():
+            try:
+                self._data.append(read_event_product(titusio(), ev, self.KIND, str(tag)))
+            except ProductNotFound as e:
+                print(f'Warning: {e}')
+        self.on_data()
+
+    def on_data(self):
+        """ called after analyze() reads the products; derived classes may convert them """
+        pass

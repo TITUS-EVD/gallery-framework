@@ -1,8 +1,9 @@
-from titus.drawables import Drawable
-from ROOT import evd
-from PyQt5 import QtWidgets, QtGui
+import numpy as np
+from PyQt5 import QtCore, QtWidgets
 import pyqtgraph as pg
-# from titus.modules import TpcModule
+
+from titus.display import ViewLayout, hit_positions
+from titus.drawables.drawable import ReaderDrawable
 
 
 class HitBoxCollection(QtWidgets.QGraphicsItem):
@@ -20,6 +21,10 @@ class HitBoxCollection(QtWidgets.QGraphicsItem):
     def add_hitboxes(self, rects):
         self._rects = rects
     
+    def boundingRect(self):
+        # required by QGraphicsItem; the boxes are child items
+        return self.childrenBoundingRect() if self._rects else QtCore.QRectF()
+
     def paint(self, painter, option, widget):
         # This method is intentionally left empty because QGraphicsRectItem
         # will handle their own painting.
@@ -43,117 +48,75 @@ class HitBox(QtWidgets.QGraphicsRectItem):
         self.setPen(pg.mkPen(None))
 
 
-class Hit(Drawable):
-
-    """docstring for hit"""
+class Hit(ReaderDrawable):
+    '''
+    Hits as boxes on the wire views, one wire wide and centered on the peak
+    time, +- RMS tall (start to end tick for fasthit). Positions come from
+    titus.display, the same layout as the wire images.
+    '''
+    KIND = 'hits'
 
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'hit'
-        self._process = evd.DrawHit(geom.getGeometryCore(), geom.getDetectorProperties(), geom.getWireReadout(), geom.getDetectorClocks())
-        self._brush = (0, 0, 0)
-        self._n_planes = geom.nPlanes() * geom.nTPCs() * geom.nCryos()
-        self._n_tpcs = geom.nTPCs()
-        self._split_wire = geom.splitWire()
         self._geom = geom
 
         # this product is only drawn when TPC module is active, and it needs to
         # access the GUI elements in the TPC module class.
         self._module = tpc_module
 
-        self.init()
-
     def drawObjects(self):
-        # Loop over all the viewports
-        for _, view in self._module._wire_views.items():
-            # Get the plane_id
-            thisPlane = self._geom.getPlaneID(plane=view.plane(), tpc=0, cryo=view.cryostat())
+        for hits in self._data:
+            for view in self._module._wire_views.values():
+                self.drawHitList(view, hits)
 
-            # Also get all the other planes
-            additional_planes = self._geom.getOtherPlanes(plane_id=thisPlane)
-
-            for i in range(0, self._n_planes): self._drawnObjects.append([])
-
-            hits = self._process.getDataByPlane(thisPlane)
-            self.drawHitList(view, hits, thisPlane, self._geom)
-
-            # Draw the additional planes, if any
-            for plane_id in additional_planes:
-                hits = self._process.getDataByPlane(plane_id)
-                self.drawHitList(view=view,
-                                 hits=hits,
-                                 thisPlane=plane_id,
-                                 geom=self._geom,
-                                 flip=self._geom.flipPlane(plane_id),
-                                 shift=self._geom.shiftPlane(plane_id))
-
-
-    def drawHitList(self, view, hits, thisPlane, geom, flip=False, shift=False):
+    def drawHitList(self, view, hits):
         if len(hits) == 0:
             return
 
+        geom = self._geom
+        layout = ViewLayout(geom, plane=view.plane(), cryostat=view.cryostat())
+        positions = hit_positions(layout, hits, time_offset_ticks=geom.timeOffsetTicks(view.plane()))
+        if len(positions) == 0:
+            return
+
+        if 'fasthit' in str(self._producer_name):
+            # SBND commissioning fasthit finder: box from start to end tick
+            y_start = np.empty(len(positions))
+            y_end = np.empty(len(positions))
+            for block in layout.blocks:
+                rows = hits.on_plane(*geom.detector.planes[block.plane_index].id)[positions.index]
+                index = positions.index[rows]
+                y_start[rows] = layout.tick_to_view(block.plane_index, hits.start_tick[index])
+                y_end[rows] = layout.tick_to_view(block.plane_index, hits.end_tick[index] + 1)
+            bottom, height = np.minimum(y_start, y_end), np.abs(y_end - y_start)
+        else:
+            bottom, height = positions.y - positions.half_height, 2 * positions.half_height
+
+        # opacity by charge, relative to the largest on the same plane
+        integral = hits.integral[positions.index]
+        max_charge = np.ones(len(positions))
+        planes = np.stack([hits.cryostat, hits.tpc, hits.plane], axis=1)[positions.index]
+        for plane in np.unique(planes, axis=0):
+            same = np.all(planes == plane, axis=1)
+            max_charge[same] = max(integral[same].max(), 1e-12)
+        opacity = (128 * integral / max_charge).astype(int) + 127
+
         hit_collection = HitBoxCollection()
         rects = []
-
-        for i in range(len(hits)):
-        # for i in range(100):
-            hit = hits[i]
-
-            wire = hit.wire()
-            time = hit.time() + geom.timeOffsetTicks(view.plane())
-            width = 1
-            height = hit.rms()
-
-            # Override for SBND commissioning fasthit finder
-            if 'fasthit' in self._producer_name:
-                height = hit.end_time() - hit.start_time() + 1
-
-            if flip:
-                # Flip the time
-                time = geom.tRange() - time
-
-                # Shift up to the appropriate view
-                time = time + geom.tRange()
-
-                # Add the ad-hoc gap between TPCs
-                time = time + geom.cathodeGap()
-
-            if shift:
-                offset = (geom.wRange(view.plane()) - geom.cathodeGap()) / 2. + geom.cathodeGap()
-                wire = wire + offset
-
-            r = HitBox(wire,
-                       time,
-                       width,
-                       height,
-                       hit_collection)
-
-            opacity = int(128 * hit.charge() / self._process.maxCharge(thisPlane)) + 127
-
+        for i, row in enumerate(positions.index):
+            r = HitBox(positions.x[i] - 0.5, bottom[i], 1, height[i], hit_collection)
             r.setPen(pg.mkPen(None))
-            r.setBrush(pg.mkColor(0,0,0,opacity))
-
-            r.setToolTip(self.genToolTip(hit))
-
+            r.setBrush(pg.mkColor(0, 0, 0, int(np.clip(opacity[i], 0, 255))))
+            r.setToolTip(self.genToolTip(hits, row))
             rects.append(r)
 
         hit_collection.add_hitboxes(rects)
-        self._drawnObjects[thisPlane].append(hit_collection)
+        self._drawnObjects.append(hit_collection)
         view._view.addItem(hit_collection)
 
-    def genToolTip(self, hit):
+    def genToolTip(self, hits, row):
         return 'Time: {time:0.1f}\nRMS: {rms:0.1f}\nIntegral: {integral:0.1f}'.format(
-            time=hit.time(),
-            rms=hit.rms(),
-            integral=hit.charge())
-
-    def getHitsOnWire(self, plane, wire):
-        return self._process.getHitsOnWirePlane(wire,plane)
-
-
-    def clearDrawnObjects(self, obj_list=None):
-        """ Override base class since our object list is nested """
-        for view_objs in self._drawnObjects:
-            for obj in view_objs:
-                obj.scene().removeItem(obj)
-        self._drawnObjects = []
+            time=hits.peak_time[row],
+            rms=hits.rms[row],
+            integral=hits.integral[row])
