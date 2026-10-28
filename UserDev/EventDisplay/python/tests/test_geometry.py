@@ -201,3 +201,25 @@ def test_override_time_range(geom):
     g = Geometry(geom.detector, geom.display)
     g.override_time_range(1234)
     assert g.tRange() == g.readoutWindowSize() == 1234
+
+
+def test_anode_cathode_ticks(geom):
+    """ anode at the trigger offset, cathode one full drift later, flips as the views """
+    for cryo in range(geom.nCryos()):
+        for plane in range(geom.nPlanes()):
+            ticks = geom.anodeCathodeTicks(plane, cryo)
+            assert len(ticks) == geom.nTPCs()
+            assert [flipped for _, _, flipped in ticks] == [False, True]
+            for anode, cathode, _ in ticks:
+                assert anode == pytest.approx(geom.triggerOffset(), abs=0.5)
+                assert 0 < anode < cathode < geom.tRange()
+
+
+def test_anode_cathode_drift_length():
+    sbnd, icarus = Geometry.load('sbnd'), Geometry.load('icarus')
+    # SBND: collection plane at |x| = 202.05 cm, cathode at x = 0
+    anode, cathode, _ = sbnd.anodeCathodeTicks(0)[0]
+    assert (cathode - anode) * sbnd.time2cm() == pytest.approx(202.05, abs=0.01)
+    # ICARUS: 149 cm drift
+    anode, cathode, _ = icarus.anodeCathodeTicks(0)[0]
+    assert (cathode - anode) * icarus.time2cm() == pytest.approx(149.04, abs=0.01)

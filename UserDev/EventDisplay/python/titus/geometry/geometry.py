@@ -259,6 +259,25 @@ class Geometry:
         """ display gap between TPCs stacked across the cathode, in ticks """
         return self._cathodeGap
 
+    def anodeCathodeTicks(self, plane, cryo=0):
+        """
+        For each TPC stacked along the time axis in the view of this plane
+        number: (anode tick, cathode tick, flipped) for charge at t0 = 0, in
+        that TPC's own ticks (before flipping and stacking).
+        The anode is the collection plane, where tick = trigger offset; the
+        cathode is the TPC boundary opposite to it.
+        """
+        first = self.getPlaneID(plane=plane, tpc=0, cryo=cryo)
+        result = []
+        for index in [first] + self._plane_mix.get(first, []):
+            plane_geo = self._planes[index]
+            tpc = self._tpc_of_plane(plane_geo.id)
+            anode_x = tpc.planes[-1].center[0]
+            cathode_x = tpc.bounds.max[0] if tpc.drift_dir[0] < 0 else tpc.bounds.min[0]
+            result.append((float(plane_geo.x_to_ticks(anode_x)), float(plane_geo.x_to_ticks(cathode_x)),
+                           self._plane_flip[index]))
+        return result
+
     def getLevels(self, plane):
         return self._levels[plane]
 

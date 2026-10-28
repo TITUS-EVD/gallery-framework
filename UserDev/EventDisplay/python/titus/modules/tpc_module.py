@@ -1489,20 +1489,13 @@ class WireView(pg.GraphicsLayoutWidget):
 
         max_wire = self._geometry._wRange[self._plane]
 
-        for tpc in range(0, int(self._geometry.nTPCs())):
-            # Take into account the distance between planes
-            offset = self._geometry.triggerOffset() * self._geometry.time2cm() # - delta_plane
-
-            hw = 100
-            x_cathode = (2 * self._geometry.halfwidth() + offset)/self._geometry.time2cm()
-            x_anode   = offset/self._geometry.time2cm()
-
+        ticks = self._geometry.anodeCathodeTicks(self._plane, self._cryostat)
+        for tpc, (x_anode, x_cathode, flipped) in enumerate(ticks):
             # If we are changing the t0, shift the anode and cathode position
             x_cathode += self._manual_t0
             x_anode   += self._manual_t0
 
-            if tpc % 2 == 1:
-                # Time is flipped for odd TPC
+            if flipped:
                 x_cathode = self._geometry.tRange() - x_cathode
                 x_anode   = self._geometry.tRange() - x_anode
 
@@ -1545,11 +1538,8 @@ class WireView(pg.GraphicsLayoutWidget):
 
         if self._uniteCathodes:
 
-            x_cathode = (2 * self._geometry.halfwidth() + self._geometry.offset(self._plane))/self._geometry.time2cm()
-            x_anode   = 0 + self._geometry.offset(self._plane)/self._geometry.time2cm()
-
+            _, x_cathode, _ = self._geometry.anodeCathodeTicks(self._plane, self._cryostat)[0]
             x_cathode += self._manual_t0
-            x_anode   += self._manual_t0
 
             data = self._item.image
             self._original_image = np.copy(data)
