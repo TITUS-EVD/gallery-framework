@@ -323,7 +323,10 @@ class GalleryInterface(QtCore.QObject):
         if not self._thread_safety and self._scan is scan_files:
             root = _root()
             root.ROOT.EnableThreadSafety()
-            release_gil(root)
+            # TITUS_RELEASE_GIL=0 keeps the GIL during gallery calls: the worker
+            # then can't run C++ concurrently with Python, but the GUI may stall
+            if os.environ.get('TITUS_RELEASE_GIL', '1') != '0':
+                release_gil(root)
             self._thread_safety = True
         self._opener = FileOpener(files, self._scan, parent=self)
         self._opener.done.connect(self._on_opened)

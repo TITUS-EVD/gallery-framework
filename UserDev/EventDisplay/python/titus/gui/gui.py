@@ -229,7 +229,13 @@ class Gui(QtWidgets.QMainWindow):
 
     def _on_open_action(self):
         ''' Show file browser &allow user to open a new file '''
-        file_path = str(QtWidgets.QFileDialog.getOpenFileName(filter="ROOT files (*.root)")[0])
+        # Qt's own dialog, in the current file's directory: the platform (GTK)
+        # dialog, symlink resolution and per-directory icons are slow over X
+        # forwarding and network file systems (/pnfs, NFS home)
+        options = (QtWidgets.QFileDialog.DontUseNativeDialog | QtWidgets.QFileDialog.DontResolveSymlinks
+                   | QtWidgets.QFileDialog.DontUseCustomDirectoryIcons)
+        file_path = str(QtWidgets.QFileDialog.getOpenFileName(
+            self, 'Open file', self._gi.current_directory, 'ROOT files (*.root)', options=options)[0])
         if file_path == '':
             return
         self._gi.open_files([file_path])
