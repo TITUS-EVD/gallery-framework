@@ -1,251 +1,162 @@
-from titus.drawables import Drawable
-from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
-from ROOT import evd, larutil
-import pyqtgraph as pg
+from titus.display import ViewLayout, mc_t0, point_correction, project_objects
+from titus.display.projection import AS_STORED
+from titus.drawables.drawable import ReaderDrawable
+from titus.drawables.items import CrossMarker
+from titus.readers import Points
 
-# Maximum number of final state particles to be displayed
+# Maximum number of final state particles listed
 MAX_FS_PARS = 6
 
 pdg_to_name = {
     12: 'nue',
     -12: 'anue',
-    14 : "numu",
-    -14 : 'numubar'
+    14: 'numu',
+    -14: 'numubar',
 }
 
 mode_to_name = {
     0: 'QE',
     1: 'RES',
-    2 : 'DIS',
-    3 : 'COH',
-    10: 'MEC'
+    2: 'DIS',
+    3: 'COH',
+    10: 'MEC',
 }
 
 inttype_to_name = {
     0: 'CC',
-    1: 'NC'
+    1: 'NC',
 }
 
-class MCTruth(Drawable):
+# simb::Origin_t
+ORIGIN_NAMES = {0: 'Unknown', 1: 'Neutrino', 2: 'Cosmic', 3: 'Supernova', 4: 'Single particle'}
+
+
+class MCTruth(ReaderDrawable):
+    '''
+    simb::MCTruth: one interaction at a time, chosen in the MC truth dock
+    (neutrinos first). The dock describes it, and the neutrino vertex is
+    drawn as a cross in the wire views. Corrected (the TPC module's "Correct
+    3D objects" option), the interaction time is undone like a T0, so the
+    vertex lands where its charge was read out.
+    '''
+    KIND = 'mctruths'
 
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
         self._product_name = 'mctruth'
-        self._process = evd.DrawMCTruth(geom.getGeometryCore(), geom.getDetectorProperties(),geom.getWireReadout(), geom.getDetectorClocks())
         self._geom = geom
         self._module = tpc_module
-        self._module._show_vertex.stateChanged.connect(self.toggle_cross)
-        self._mcts = None
-        self.init()
+        # (producer, row) of each dropdown entry, and the one shown
+        self._choices = []
+        self._selected = 0
+        dropdown = getattr(tpc_module, '_mctruth_dropdown', None)
+        if dropdown is not None:
+            dropdown.currentIndexChanged.connect(self.on_selection_changed)
+        show = getattr(tpc_module, '_show_vertex', None)
+        if show is not None:
+            show.stateChanged.connect(self.toggle_cross)
 
-    def getLabel(self):
-        info = self._process.getData()
-        # Determine type of incoming neutrino:
-        inneut = {
-        12 : "nue",
-        -12 : "nuebar",
-        14 : "numu",
-        -14 : "numubar"
-        }.get(info.incoming_lepton_pdg())
-
-        # print info.target_pdg()
-
-        # target = {
-        # 2212 : "p",
-        # 2112 : "n",
-        # 1000180400 : "Ar"
-        # }.get(info.target_pdg())
-
-        return inneut + " + "
-
-    def drawObjects(self):
-
-        self._mcts = self._process.getData()
-
-        if len(self._mcts) == 0:
-            return
-
-        # Start by drawing the fist one
-        self.draw_one_mctruth(self._mcts[0])
-
-        self._module._mctruth_dropdown.clear()
-        for i in range(len(self._mcts)):
-            self._module._mctruth_dropdown.addItem(f'Neutrino {i+1}')
-        self._module._mctruth_dropdown.currentIndexChanged.connect(self.on_selection_changed)
-
+    def on_data(self):
+        self._choices = sorted(((p, row) for p, truths in enumerate(self._data) for row in range(len(truths))),
+                               key=lambda c: not self._data[c[0]].has_neutrino[c[1]])
+        self._selected = 0
+        dropdown = self._module._mctruth_dropdown
+        dropdown.blockSignals(True)
+        dropdown.clear()
+        for p, row in self._choices:
+            truths = self._data[p]
+            origin = ORIGIN_NAMES.get(int(truths.origin[row]), str(truths.origin[row]))
+            dropdown.addItem(f'{origin} ({str(self.producers()[p]).split(":")[0]} {row + 1})')
+        dropdown.blockSignals(False)
 
     def on_selection_changed(self, index):
+        if 0 <= index < len(self._choices):
+            self._selected = index
+            self.clearDrawnObjects(hide=False)
+            self.drawObjects()
 
-        # Clear the current objects
-        self.clearDrawnObjects(hide=False)
+    def corrected(self):
+        return getattr(self._module, 'correct_3d_objects', lambda: True)()
 
-        # Draw the requestes mctruth
-        self.draw_one_mctruth(self._mcts[index])
+    def selected(self):
+        ''' (truths, row) shown, or None '''
+        if not self._choices:
+            return None
+        p, row = self._choices[min(self._selected, len(self._choices) - 1)]
+        return self._data[p], row
 
-
-    def draw_one_mctruth(self, mct):
-        '''
-        Draws a single MCTruth object
-        '''
-
-        vertex = mct.vertex()
-
-        if not len(vertex):
+    def drawObjects(self):
+        selected = self.selected()
+        if selected is None:
             return
+        truths, row = selected
+        self.describe(truths, row)
+        if not truths.has_neutrino[row]:
+            return
+        vertex = Points(id=[row], x=[truths.vx[row]], y=[truths.vy[row]], z=[truths.vz[row]])
+        correction = None
+        if self.corrected():
+            correction = point_correction(ViewLayout(self._geom, plane=0), vertex, t0=mc_t0(self._geom, [truths.vt[row]]),
+                                          tpc_source="readout window's")
+        tooltip = self.vertex_tooltip(truths, row, correction)
+        show = getattr(self._module, '_show_vertex', None)
+        for view in self.views():
+            items = []
+            for _, (_, x, y) in project_objects(self.view_layout(view), vertex, correction).items():
+                for vx, vy in zip(x, y):
+                    cross = CrossMarker(vx, vy)
+                    cross.setToolTip(tooltip)
+                    cross.setVisible(show is None or show.isChecked())
+                    items.append(cross)
+            self.add_to_view(view, items)
 
-        for _, view in self._module._wire_views.items():
-            self._drawnObjects.append([])
+    def vertex_tooltip(self, truths, row, correction):
+        what = correction.describe(0) if correction is not None else AS_STORED
+        return (f'Neutrino interaction vertex: ({truths.vx[row]:.1f}, {truths.vy[row]:.1f}, {truths.vz[row]:.1f}) cm, '
+                f'{mc_t0(self._geom, truths.vt[row]) / 1e3:.2f} us from the trigger\n{what}')
 
-            geo_helper = larutil.SimpleGeometryHelper(self._geom.getGeometryCore(),
-                                                      self._geom.getDetectorProperties(),
-                                                      self._geom.getDetectorClocks())
-
-            tpc = 0 if vertex[0] < 0 else 1
-            plane = view.plane()
-
-            if not self._geom.projectionsMatch():
-                # swap plane 0 and 1 for TPC 1
-                if tpc == 1:
-                    if plane != 2:
-                        plane =  abs(plane - 1)
-
-            vertexPoint = geo_helper.Point_3Dto2D(vertex, plane)
-
-            # Convert to wires and ticks
-            vertexPoint_2d_w = vertexPoint.w/self._geom.wire2cm()
-            vertexPoint_2d_t = vertexPoint.t/self._geom.time2cm()
-
-            if tpc == 1:
-                # flip
-                vertexPoint_2d_t = self._geom.tRange() - vertexPoint_2d_t
-                # move up
-                vertexPoint_2d_t += self._geom.tRange()
-                # add cathode gap
-                vertexPoint_2d_t += self._geom.cathodeGap()
-
-
-
-            points = self.makeCross(startX=vertexPoint_2d_w,
-                                    startY=vertexPoint_2d_t,
-                                    shortDistX=1.0/self._geom.wire2cm(),
-                                    longDistX=4.0/self._geom.wire2cm(),
-                                    shortDistY=1.0/self._geom.time2cm(),
-                                    longDistY=4.0/self._geom.time2cm(),
-                                    )
-
-            thisPolyF = QtGui.QPolygonF(points)
-            thisPoly = QtWidgets.QGraphicsPolygonItem(thisPolyF)
-            # thisPoly.setBrush(pg.mkColor((255,255,255,0))) # white
-            thisPoly.setBrush(QtGui.QBrush(QtGui.QColor("salmon"))) # white
-
-            thisPoly.setToolTip('Neutrino Interaction Vertex')
-
-            self._drawnObjects[view.plane()].append(thisPoly)
-            view._view.addItem(thisPoly)
-
-
-        message = str()
-        tooltip = str()
-
-        if mct.origin() == 1:
-            pdg = pdg_to_name.get(mct.nu_pdg(), 'NA')
-            mode = mode_to_name.get(mct.int_mode(), 'NA')
-            inttype = inttype_to_name.get(mct.ccnc(), 'NA')
-            message += f'PDG: {mct.nu_pdg()}, {inttype}, E: {mct.nu_energy():.3} GeV, mode: {mode}'
-
-            fs_pdgs = mct.finalstate_pdg()
-            fs_enes = mct.finalstate_energy()
-
-            fs_pars_dropped = False
-            if len(fs_pdgs) > MAX_FS_PARS:
-                fs_pars_dropped = True
-                fs_pdgs = fs_pdgs[:MAX_FS_PARS]
-                fs_enes = fs_enes[:MAX_FS_PARS]
-
-            tooltip += f'Vertex: x = {vertex[0]:.2f}, y = {vertex[1]:.2f}, z = {vertex[2]:.2f}\n'
-            tooltip += 'Final State Particles:'
-            for p, e in zip(fs_pdgs, fs_enes):
+    def describe(self, truths, row):
+        ''' the dock's text for an interaction '''
+        message, tooltip = '', ''
+        pdg, status, energy = truths.particles(row)
+        final = status == 1
+        fs_pdgs, fs_enes = pdg[final], energy[final]
+        origin = int(truths.origin[row])
+        if origin == 1 and truths.has_neutrino[row]:
+            nu_pdg = int(truths.nu_pdg[row])
+            name = pdg_to_name.get(nu_pdg, 'NA')
+            mode = mode_to_name.get(int(truths.mode[row]), 'NA')
+            inttype = inttype_to_name.get(int(truths.ccnc[row]), 'NA')
+            message = f'PDG: {nu_pdg} ({name}), {inttype}, E: {truths.nu_energy[row]:.3} GeV, mode: {mode}'
+            tooltip = (f'Vertex: x = {truths.vx[row]:.2f}, y = {truths.vy[row]:.2f}, z = {truths.vz[row]:.2f}\n'
+                       'Final State Particles:')
+            for p, e in zip(fs_pdgs[:MAX_FS_PARS], fs_enes[:MAX_FS_PARS]):
                 tooltip += f'\n  PDG: {p}, Energy: {e:.3} GeV'
-            if fs_pars_dropped:
-                tooltip += f'\n  ... [some particles not shown]'
-
-
-
-        elif mct.origin() == 2:
-            message += f'Cosmic Origin'
-        elif mct.origin() == 3:
-            message += f'Supernovae Event'
-        elif mct.origin() == 4:
-            # message += f'Single Particle Generation'
-            if len(mct.finalstate_pdg()) == 1:
-                message += f'Single particle. PDG: {mct.nu_pdg()}, Energy: {mct.nu_energy():.3} GeV.'
+            if len(fs_pdgs) > MAX_FS_PARS:
+                tooltip += '\n  ... [some particles not shown]'
+        elif origin == 2:
+            message = f'Cosmic origin, {len(fs_pdgs)} particles'
+        elif origin == 3:
+            message = 'Supernova event'
+        elif origin == 4:
+            if len(fs_pdgs) == 1:
+                message = f'Single particle. PDG: {fs_pdgs[0]}, Energy: {fs_enes[0]:.3} GeV.'
             else:
-                message += f'Particle Gun Generation with {len(mct.finalstate_pdg())} particles'
-
-                fs_pdgs = mct.finalstate_pdg()
-                fs_enes = mct.finalstate_energy()
-                tooltip += 'All Particles:'
-                for p, e in zip(fs_pdgs, fs_enes):
-                    tooltip += f'\n  PDG: {p}, Energy: {e:.3} GeV'
-
-
-        self._module._mctruth_text1.setText(message)
-        self._module._mctruth_text1.setToolTip(tooltip)
-        self._module._mctruth_text2.setText(tooltip)
-        self._module._mctruth_dock.show()
-
-    def makeCross(self, startX, startY,
-                  shortDistX, longDistX,
-                  shortDistY, longDistY):
-        # Let's draw an X to mark the vertex in each plane.
-        points = []
-        # Start by filling in points to mark the X:
-        points.append(QtCore.QPointF(startX + shortDistX,
-                                     startY))
-        points.append(QtCore.QPointF(startX + shortDistX + longDistX,
-                                     startY - longDistY))
-        points.append(QtCore.QPointF(startX + longDistX,
-                                     startY - shortDistY - longDistY))
-
-        points.append(QtCore.QPointF(startX,
-                                     startY - shortDistY))
-        points.append(QtCore.QPointF(startX - longDistX,
-                                     startY - longDistY - shortDistY))
-        points.append(QtCore.QPointF(startX - longDistX - shortDistX,
-                                     startY - longDistY))
-
-        points.append(QtCore.QPointF(startX - shortDistX,
-                                     startY))
-        points.append(QtCore.QPointF(startX - shortDistX - longDistX,
-                                     startY + longDistY))
-        points.append(QtCore.QPointF(startX - longDistX,
-                                     startY + shortDistY + longDistY))
-
-        points.append(QtCore.QPointF(startX,
-                                     startY + shortDistY))
-        points.append(QtCore.QPointF(startX + longDistX,
-                                     startY + shortDistY + longDistY))
-        points.append(QtCore.QPointF(startX + longDistX + shortDistX,
-                                     startY + longDistY))
-
-        return points
+                message = f'Particle gun with {len(fs_pdgs)} particles'
+                tooltip = 'All Particles:' + ''.join(f'\n  PDG: {p}, Energy: {e:.3} GeV'
+                                                     for p, e in zip(fs_pdgs, fs_enes))
+        module = self._module
+        module._mctruth_text1.setText(message)
+        module._mctruth_text1.setToolTip(tooltip)
+        module._mctruth_text2.setText(tooltip)
+        module._mctruth_dock.show()
 
     def toggle_cross(self):
-        if self._module._show_vertex.isChecked():
-            for view_objs in self._drawnObjects:
-                for obj in view_objs:
-                    obj.show()
-        else:
-            for view_objs in self._drawnObjects:
-                for obj in view_objs:
-                    obj.hide()
-
+        show = self._module._show_vertex.isChecked()
+        for item in self._drawnObjects:
+            item.setVisible(show)
 
     def clearDrawnObjects(self, obj_list=None, hide=True):
-        """ Override base class since our object list is nested """
-        for view_objs in self._drawnObjects:
-            for obj in view_objs:
-                obj.scene().removeItem(obj)
-        self._drawnObjects = []
-        if hide:
+        super().clearDrawnObjects(obj_list)
+        if hide and getattr(self._module, '_mctruth_dock', None) is not None:
             self._module._mctruth_dock.hide()

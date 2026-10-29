@@ -217,7 +217,7 @@ def test_untagged_track_needs_no_shift_but_may_move(sbnd, dump):
     # out-of-time cosmics: some points drawn in their hits' TPC
     moved = [c for c in untagged if c.moved > 0]
     assert moved and all('in their hits' in c.describe() for c in moved)
-    assert any(c.describe() == 'drawn as stored' for c in untagged)
+    assert any(c.describe() == "corrected: nothing to change (no T0, already in their hits' TPC)" for c in untagged)
 
 
 def test_as_stored_draws_every_valid_point(sbnd, dump):
@@ -247,7 +247,7 @@ def test_point_correction(sbnd):
     assert correction.moved.tolist() == [True, True, False]
     assert correction.describe(0) == 'T0 -500.0 us: drawn -1000 ticks'
     assert correction.describe(1) == "drawn in its hits' TPC"
-    assert correction.describe(2) == 'drawn as stored'
+    assert correction.describe(2) == "corrected: nothing to change (no T0, already in its hits' TPC)"
 
     stored = project_objects(layout, points)
     corrected = project_objects(layout, points, correction)
@@ -405,3 +405,51 @@ def test_united_track_segments(sbnd):
     assert segment.y.max() <= layout.n_ticks - 300
     (whole,) = project_path(full, path, tpcs=tpcs)
     assert len(segment.y) < len(whole.y)
+
+
+# --- showers, with their particles' spacepoints (sbnd-reco2-step3) ---
+
+STEP3 = pathlib.Path(__file__).parent / 'data' / 'sbnd-reco2-step3'
+
+
+def shower_spacepoints(reader, tag='pandoraShower'):
+    ''' per shower with >= 20 spacepoints: (start, unit direction, open angle, its particle's spacepoints) '''
+    showers = reader.get(0, 'showers', tag)
+    pfp_showers = reader.get(0, 'pfp_showers', tag)
+    pfp_spacepoints = reader.get(0, 'pfp_spacepoints', pfp_showers.product_tags[pfp_showers.left_product[0]])
+    xyz = reader.get(0, 'spacepoints', pfp_spacepoints.product_tags[pfp_spacepoints.right_product[0]]).xyz
+    out = []
+    for pfp, row in zip(pfp_showers.left, pfp_showers.right):
+        points = xyz[pfp_spacepoints.right[pfp_spacepoints.left == pfp]]
+        if len(points) < 20 or not showers.length[row] > 0:
+            continue
+        start = np.array([showers.start_x[row], showers.start_y[row], showers.start_z[row]])
+        direction = np.array([showers.dir_x[row], showers.dir_y[row], showers.dir_z[row]])
+        out.append((start, direction / np.linalg.norm(direction), showers.open_angle[row], points))
+    return out
+
+
+def test_shower_open_angle_is_a_half_angle():
+    ''' the drawn cone holds the core of its particle's spacepoints (OPEN_ANGLE_TO_HALF_ANGLE) '''
+    from titus.display.projection import OPEN_ANGLE_TO_HALF_ANGLE
+    inside = {0.5: [], 1.0: []}
+    for start, direction, open_angle, points in shower_spacepoints(DumpReader(STEP3)):
+        if np.degrees(open_angle) < 5:
+            continue  # track-like: spacepoint scatter dominates any cone this thin
+        rel = points - start
+        distance = np.linalg.norm(rel, axis=1)
+        ahead = (distance > 1) & (rel @ direction > 0)
+        angle = np.arccos(np.clip(rel[ahead] @ direction / distance[ahead], -1, 1))
+        for factor in inside:
+            inside[factor].append(np.mean(angle <= factor * open_angle))
+    assert len(inside[1.0]) >= 3
+    assert OPEN_ANGLE_TO_HALF_ANGLE == 1.0
+    assert 0.45 < np.median(inside[1.0]) < 0.8
+    assert np.median(inside[0.5]) < 0.35
+
+
+def test_shower_starts_on_their_particles_spacepoints():
+    showers = shower_spacepoints(DumpReader(STEP3))
+    assert showers
+    nearest = [np.linalg.norm(points - start, axis=1).min() for start, _, _, points in showers]
+    assert max(nearest) < 1.0

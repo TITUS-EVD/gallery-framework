@@ -27,6 +27,10 @@ from typing import List
 
 import numpy as np
 
+# tooltips: an object drawn without corrections, and one the corrections left as it was
+AS_STORED = 'drawn as stored ("Correct 3D objects" is off)'
+UNCHANGED = 'corrected: nothing to change (no T0, already in {whose} TPC)'
+
 
 @dataclass(frozen=True)
 class Segment:
@@ -37,6 +41,17 @@ class Segment:
 
 def ticks_per_ns(geom):
     return 1. / (geom.detector.timing.tpc_tick_period * 1000.)
+
+
+def mc_t0(geom, g4_time):
+    '''
+    Simulated times (G4 time, ns) relative to the trigger, in ns: the T0 that
+    places a particle's charge on its hits, as Pandora's T0 does for
+    reconstructed objects (detinfo::DetectorClocks::G4ToElecTime minus the
+    trigger time)
+    '''
+    timing = geom.detector.timing
+    return np.asarray(g4_time, dtype=float) + (timing.g4_to_elec_time_at_zero - timing.trigger_time) * 1000.
 
 
 def readout_tpcs(detector, xyz, n_ticks, tick_shift=0.):
@@ -162,7 +177,7 @@ class TrackCorrection:
             parts.append(f'T0 {self.t0 / 1000:.1f} us: drawn {self.tick_shift:+.0f} ticks')
         if self.moved > 0:
             parts.append(f'{100 * self.moved:.0f}% of points drawn in their hits\' TPC')
-        return '; '.join(parts) or 'drawn as stored'
+        return '; '.join(parts) or UNCHANGED.format(whose="their hits'")
 
 
 def track_correction(layout, tracks, row, t0=np.nan, track_hits=None, hits=None) -> TrackCorrection:
@@ -262,7 +277,7 @@ class PointCorrection:
             parts.append(f'T0 {self.t0[i] / 1000:.1f} us: drawn {self.tick_shift[i]:+.0f} ticks')
         if self.moved[i] and np.isnan(self.t0[i]):
             parts.append(f'drawn in its {self.tpc_source} TPC')
-        return '; '.join(parts) or 'drawn as stored'
+        return '; '.join(parts) or UNCHANGED.format(whose=f'its {self.tpc_source}')
 
 
 def point_correction(layout, points, t0=None, hit_tpcs=None, tpc_source="hits'") -> PointCorrection:
@@ -315,6 +330,14 @@ class Polygon:
     plane_index: int    # TITUS plane index of the block drawn in
     x: np.ndarray       # view coordinates of the outline, in order
     y: np.ndarray
+
+
+# The cone drawn has half-angle OPEN_ANGLE_TO_HALF_ANGLE * recob::Shower::OpenAngle.
+# OpenAngle behaves as a half-angle: on SBND reco2 (Pandora showers, OpenAngle
+# above 5 degrees) a cone of half-angle OpenAngle around the shower axis holds
+# ~60% of the shower particle's spacepoints, about a 1 sigma cone; read as the
+# full angle, the cone would hold ~20% (tests/test_projection.py)
+OPEN_ANGLE_TO_HALF_ANGLE = 1.0
 
 
 def cone_points(start, direction, length, half_angle, n_circle=24):

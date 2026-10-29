@@ -55,6 +55,25 @@ class Product:
         self._typeName = tokens[0].rstrip('s')
 
 
+def position_event(ev, entry):
+    '''
+    Move a gallery.Event to an entry: directly with goToEntry where gallery
+    has it, else stepping forward (from the start, to go back)
+    '''
+    if ev.atEnd():
+        # past the end there is no current file, and goToEntry throws
+        ev.toBegin()
+    if ev.eventEntry() == entry:
+        return
+    if hasattr(ev, 'goToEntry'):
+        ev.goToEntry(entry)
+        return
+    if ev.eventEntry() > entry:
+        ev.toBegin()
+    while ev.eventEntry() != entry:
+        ev.next()
+
+
 class GalleryInterface(QtCore.QObject):
     fileChanged = QtCore.pyqtSignal()
     dirChanged = QtCore.pyqtSignal()
@@ -424,22 +443,10 @@ class GalleryInterface(QtCore.QObject):
             print(f'Found event {event}')
 
 
-        # Loop through until the event is gotten:
-        if event < self._n_entries:
-            if event == self._entry + 1:
-                self._gallery_event_handle.next()
-
-            else:
-                if event > self._entry:
-                    while event != self._gallery_event_handle.eventEntry():
-                        self._gallery_event_handle.next()
-                else:
-                    self._gallery_event_handle.toBegin()
-                    while event != self._gallery_event_handle.eventEntry():
-                        self._gallery_event_handle.next()
-        else:
+        if event >= self._n_entries:
             print(f"Selected event is too high. You have requested event {event}, but there is a maximum of {self._n_entries}.")
             return
+        position_event(self._gallery_event_handle, event)
 
         entry = self._gallery_event_handle.eventEntry()
         if entry != self._entry or self._lastProcessed == -1:

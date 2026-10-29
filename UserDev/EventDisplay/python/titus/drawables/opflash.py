@@ -1,109 +1,95 @@
-from ROOT import evd, TVector3
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
-import math as mt
-from ROOT import larutil
+import numpy as np
 
-from titus.drawables import Drawable
+from titus.drawables.drawable import ReaderDrawable
 
-class OpFlash(Drawable):
+
+class Flash:
+    ''' one recob::OpFlash, with the accessors the optical views use '''
+
+    def __init__(self, flashes, row, n_channels=None):
+        self._flashes, self._row, self._n_channels = flashes, row, n_channels
+
+    def time(self):
+        ''' AbsTime: us from the hardware trigger '''
+        return float(self._flashes.abs_time[self._row])
+
+    def time_width(self):
+        return float(self._flashes.time_width[self._row])
+
+    def total_pe(self):
+        return float(self._flashes.total_pe[self._row])
+
+    def y(self):
+        return float(self._flashes.y_center[self._row])
+
+    def z(self):
+        return float(self._flashes.z_center[self._row])
+
+    def pe_per_opdet(self):
+        '''
+        PEs by optical channel, for every channel: recob::OpFlash::PEs() ends
+        at the highest channel its producer reads (e.g. 305 of SBND's 312)
+        '''
+        pe = self._flashes.pe_per_channel(self._row)
+        if self._n_channels is None or len(pe) >= self._n_channels:
+            return pe
+        return np.concatenate([pe, np.zeros(self._n_channels - len(pe), dtype=pe.dtype)])
+
+
+def flash_volumes(flashes, channel_volume):
+    '''
+    The drift volume (x-ordered, as Geometry.opdetToTPC) of each flash: the
+    one whose optical detectors collected most of its PEs. channel_volume:
+    drift volume per optical channel.
+    '''
+    out = np.zeros(len(flashes), dtype=int)
+    n_volumes = int(channel_volume.max()) + 1 if len(channel_volume) else 1
+    for row in range(len(flashes)):
+        pe = flashes.pe_per_channel(row)[:len(channel_volume)]
+        out[row] = np.argmax(np.bincount(channel_volume[:len(pe)], weights=pe, minlength=n_volumes))
+    return out
+
+
+class OpFlash(ReaderDrawable):
+    '''
+    recob::OpFlash, shown by the optical module: each flash colors the
+    optical detectors of the drift volume holding most of its PEs, by their
+    PEs, and appears in the flash time view
+    '''
+    KIND = 'opflashes'
+
     def __init__(self, gallery_interface, geom, opdet_module):
         super().__init__(gallery_interface)
         self._product_name = 'opflash'
-        self._process = evd.DrawOpflash(
-            geom.getGeometryCore(),
-            geom.getDetectorProperties(),
-            geom.getWireReadout(),
-            geom.getDetectorClocks()
-        )
         self._geom = geom
-
         # this product is only drawn when OpDet module is active, and it needs
         # to access the GUI elements in the OpDet module class.
         self._module = opdet_module
+        self._channel_volume = None
 
-        self.init()
+    def n_volumes(self):
+        return self._geom.nTPCs() * self._geom.nCryos()
+
+    def channel_volume(self):
+        if self._channel_volume is None:
+            self._channel_volume = np.array([self._geom.opdetToTPC(ch)
+                                             for ch in range(len(self._geom.detector.opdets))], dtype=int)
+        return self._channel_volume
+
+    def flashes_by_volume(self):
+        ''' {drift volume: [Flash]} of the current event '''
+        out = {}
+        for flashes in self._data:
+            for row, volume in enumerate(flash_volumes(flashes, self.channel_volume())):
+                out.setdefault(int(volume), []).append(Flash(flashes, row, len(self.channel_volume())))
+        return out
 
     def drawObjects(self):
-        for p in range(0, self._geom.nTPCs() * self._geom.nCryos()):
-            flashes = self._process.getExtraData(p)
-            self._module.setFlashesForPlane(p, flashes)
+        for volume, flashes in self.flashes_by_volume().items():
+            if volume < self.n_volumes():
+                self._module.setFlashesForPlane(volume, flashes)
 
     def clearDrawnObjects(self, obj_list=None):
         """ Override base class """
-        for p in range(0, self._geom.nTPCs() * self._geom.nCryos()):
+        for p in range(self.n_volumes()):
             self._module.setFlashesForPlane(p, None)
-
-
-
-try:
-    import pyqtgraph.opengl as gl
-    import numpy as np
-
-    class opflash3D(recoBase3D):
-
-        """docstring for opflash3D"""
-
-        triggerColor = (0, 1.0, 0, 0.2)
-        preSpillColor = (1.0, 0, 0, 0.2)
-        postSpillColor = (0, 0, 1.0, 0.2)
-
-        def __init__(self):
-            super(opflash3D, self).__init__()
-            self._productName = 'opflash3D'
-            self._process = evd.DrawOpflash3D()
-            self.init()
-            self._triggerOffset \
-                = larutil.DetectorProperties.GetME().TriggerOffset()
-            self._readOutWindowSize \
-                = larutil.DetectorProperties.GetME().ReadOutWindowSize()
-
-        def drawObjects(self, view_manager):
-
-            geom = view_manager._geometry
-            view = view_manager.getView()
-
-            flashes = self._process.getData()
-            i_color = 0
-
-            # Each flash is drawn as an oval in Y/Z/X
-            for i in range(len(flashes)):
-                thisFlash = flashes[i]
-
-                # Figure out what color this flash should be drawn as
-                # Determine the offset to the trigger:
-
-                # print thisFlash.time() - self._triggerOffset
-                offset = 0.0
-                if thisFlash.time() < 0:
-                    offset = thisFlash.time(
-                        ) / self._triggerOffset
-                    color = [-offset*x + (1+offset)*y for x,y in zip(self.preSpillColor,self.triggerColor)]
-                elif thisFlash > 0:
-                    offset = thisFlash.time() / \
-                        (self._readOutWindowSize - self._triggerOffset)
-                    color = [offset*x + (1-offset)*y for x,y in zip(self.postSpillColor,self.triggerColor)]
-
-                # print offset
-                # print color
-
-                flashSphere = gl.MeshData.sphere(15, 15, radius=1)
-                flash = gl.GLMeshItem(meshdata=flashSphere,
-                                      drawEdges=False,
-                                      color=color,
-                                      glOptions='translucent')
-                # shader='shaded',
-                # color=color,
-
-                flash.translate(offset*100, thisFlash.y(), thisFlash.z())
-                flash.scale(thisFlash.time_width(),
-                            thisFlash.y_width(),
-                            thisFlash.z_width())
-
-                view.addItem(flash)
-
-                self._drawnObjects.append(flash)
-
-
-except:
-    pass

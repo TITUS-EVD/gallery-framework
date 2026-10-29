@@ -1,0 +1,97 @@
+{
+ "schema_version": 1,
+ "meta": {
+  "detector": "sbnd",
+  "source_files": [
+   "reco2-2f8a8787-6785-46d3-a9f0-a43082f291c2.root"
+  ],
+  "created": "2026-10-28T22:17:05+00:00",
+  "root_version": "6.28/12",
+  "tool": "dump_products.py",
+  "args": [
+   "/pnfs/sbnd/persistent/users/twester/titus_test_files/v10/sbnd/mc/reco2/reco2-2f8a8787-6785-46d3-a9f0-a43082f291c2.root",
+   "--detector",
+   "sbnd",
+   "--outdir",
+   "dumps/sbnd-reco2"
+  ],
+  "errors": [],
+  "trimmed_from": "sbnd-reco2",
+  "trim": {
+   "events": "0",
+   "wires": null,
+   "kinds": "hits,showers,pfp_showers,pfparticles,pfp_spacepoints,spacepoints,spacepoint_hits,pfp_t0s,t0s,clusters,cluster_hits,tracks,track_hits,pfp_tracks,mctruths,mctracks,opflashes,crt_febdata",
+   "tags": "gaushit,pandora,pandoraShower,pandoraTrack,generator,corsika,mcreco,opflashtpc0,opflashtpc1,crtsim"
+  }
+ },
+ "events": [
+  {
+   "id": [
+    28,
+    94,
+    6
+   ],
+   "file": "event_0000.npz",
+   "products": {
+    "hits": [
+     "gaushit::Reco1"
+    ],
+    "showers": [
+     "pandoraShower::Reco2"
+    ],
+    "pfp_showers": [
+     "pandoraShower::Reco2"
+    ],
+    "pfparticles": [
+     "pandora::Reco2"
+    ],
+    "pfp_spacepoints": [
+     "pandora::Reco2"
+    ],
+    "spacepoints": [
+     "pandora::Reco2"
+    ],
+    "spacepoint_hits": [
+     "pandora::Reco2"
+    ],
+    "pfp_t0s": [
+     "pandora::Reco2"
+    ],
+    "t0s": [
+     "pandora::Reco2"
+    ],
+    "clusters": [
+     "pandora::Reco2"
+    ],
+    "cluster_hits": [
+     "pandora::Reco2"
+    ],
+    "tracks": [
+     "pandoraShower::Reco2",
+     "pandoraTrack::Reco2"
+    ],
+    "track_hits": [
+     "pandoraShower::Reco2",
+     "pandoraTrack::Reco2"
+    ],
+    "pfp_tracks": [
+     "pandoraTrack::Reco2"
+    ],
+    "mctruths": [
+     "corsika::GenieGen",
+     "generator::GenieGen"
+    ],
+    "mctracks": [
+     "mcreco::G4"
+    ],
+    "opflashes": [
+     "opflashtpc0::Reco1",
+     "opflashtpc1::Reco1"
+    ],
+    "crt_febdata": [
+     "crtsim::DetSim"
+    ]
+   }
+  }
+ ]
+}

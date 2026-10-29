@@ -38,7 +38,7 @@ class SpacePoint(ReaderDrawable):
 
     def drawObjects(self):
         corrected = self.corrected()
-        for view in self._module._wire_views.values():
+        for view in self.views():
             layout = self.view_layout(view)
             for points, correction in zip(self._data, self._corrections):
                 use = correction if corrected else None

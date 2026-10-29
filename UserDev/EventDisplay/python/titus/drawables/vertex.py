@@ -1,6 +1,7 @@
 import numpy as np
 
 from titus.display import ViewLayout, point_correction, project_objects
+from titus.display.projection import AS_STORED
 from titus.drawables.drawable import ReaderDrawable
 from titus.drawables.items import Marker
 
@@ -38,8 +39,9 @@ class Vertex(ReaderDrawable):
 
     def drawObjects(self):
         corrected = self.corrected()
-        for view in self._module._wire_views.values():
+        for view in self.views():
             layout = self.view_layout(view)
+            items = []
             for vertices, correction in zip(self._data, self._corrections):
                 use = correction if corrected else None
                 for _, (index, x, y) in project_objects(layout, vertices, use).items():
@@ -47,10 +49,10 @@ class Vertex(ReaderDrawable):
                         moved = use is not None and correction.moved[i]
                         marker = Marker(vx, vy, self.RADIUS, self.COLOR, filled=not moved)
                         marker.setToolTip(self.genToolTip(vertices, i, use))
-                        view._view.addItem(marker)
-                        self._drawnObjects.append(marker)
+                        items.append(marker)
+            self.add_to_view(view, items)
 
     def genToolTip(self, vertices, i, correction):
-        what = correction.describe(i) if correction is not None else 'drawn as stored'
+        what = correction.describe(i) if correction is not None else AS_STORED
         x, y, z = vertices.xyz[i]
         return f'Vertex {vertices.id[i]}: ({x:.1f}, {y:.1f}, {z:.1f}) cm\n{what}'

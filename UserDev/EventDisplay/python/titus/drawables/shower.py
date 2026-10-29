@@ -3,12 +3,9 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 
 from titus.display import ViewLayout, point_correction, position_tpcs, project_cone
+from titus.display.projection import AS_STORED, OPEN_ANGLE_TO_HALF_ANGLE
 from titus.drawables.drawable import ReaderDrawable
 from titus.readers import Points
-
-# recob::Shower::OpenAngle as the cone's full opening angle; the half-angle
-# drawn is OPEN_ANGLE_TO_HALF_ANGLE times it
-OPEN_ANGLE_TO_HALF_ANGLE = 0.5
 
 
 class Shower(ReaderDrawable):
@@ -60,8 +57,9 @@ class Shower(ReaderDrawable):
 
     def drawObjects(self):
         corrected = self.corrected()
-        for view in self._module._wire_views.values():
+        for view in self.views():
             layout = self.view_layout(view)
+            items = []
             for showers, correction in zip(self._data, self._corrections):
                 starts = self.starts(showers).xyz
                 stored_tpcs = position_tpcs(self._geom.detector, starts)
@@ -83,11 +81,11 @@ class Shower(ReaderDrawable):
                         item.setPen(pg.mkPen(color[:3], width=1,
                                              style=QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine))
                         item.setToolTip(self.genToolTip(showers, i, correction if corrected else None))
-                        view._view.addItem(item)
-                        self._drawnObjects.append(item)
+                        items.append(item)
+            self.add_to_view(view, items)
 
     def genToolTip(self, showers, i, correction):
-        what = correction.describe(i) if correction is not None else 'drawn as stored'
+        what = correction.describe(i) if correction is not None else AS_STORED
         return (f'Shower {showers.id[i]}: length {showers.length[i]:.1f} cm, '
                 f'opening angle {np.degrees(showers.open_angle[i]):.1f} deg, best plane {showers.best_plane[i]}\n'
                 f'{what}')

@@ -67,7 +67,18 @@ class polyLine(QtWidgets.QGraphicsPathItem):
         return self._shape_cache[1]
 
     def boundingRect(self):
-        return super().boundingRect().united(self.shape().boundingRect())
+        # the path's bounds widened by the hover distance, without stroking
+        # the path: views ask every item for its bounds whenever one is added
+        rect = super().boundingRect()
+        transform = _device_transform(self)
+        if transform is None:
+            return rect
+        inverse, invertible = transform.inverted()
+        if not invertible:
+            return rect
+        pad_x = HOVER_PIXELS * (inverse.m11() ** 2 + inverse.m21() ** 2) ** 0.5
+        pad_y = HOVER_PIXELS * (inverse.m12() ** 2 + inverse.m22() ** 2) ** 0.5
+        return rect.adjusted(-pad_x, -pad_y, pad_x, pad_y)
 
     def hoverEnterEvent(self, e):
         QtWidgets.QGraphicsPathItem.hoverEnterEvent(self, e)
@@ -106,3 +117,37 @@ class Marker(QtWidgets.QGraphicsEllipseItem):
     def hoverLeaveEvent(self, e):
         super().hoverLeaveEvent(e)
         self._style(1)
+
+
+class CrossMarker(QtWidgets.QGraphicsPathItem):
+    '''
+    An X of fixed size on screen (half-size in pixels) at a point, e.g. the
+    neutrino interaction vertex. Like Marker, it ignores the view's zoom.
+    '''
+
+    def __init__(self, x, y, size=8, color=(250, 128, 114), width=3):
+        path = QtGui.QPainterPath()
+        path.moveTo(-size, -size)
+        path.lineTo(size, size)
+        path.moveTo(-size, size)
+        path.lineTo(size, -size)
+        super().__init__(path)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+        self.setPos(x, y)
+        self.setAcceptHoverEvents(True)
+        self._color, self._width = color, width
+        self.setPen(pg.mkPen(color, width=width))
+
+    def shape(self):
+        # hover anywhere in the X's square, not only on its strokes
+        path = QtGui.QPainterPath()
+        path.addRect(self.path().boundingRect())
+        return path
+
+    def hoverEnterEvent(self, e):
+        super().hoverEnterEvent(e)
+        self.setPen(pg.mkPen(self._color, width=self._width + 2))
+
+    def hoverLeaveEvent(self, e):
+        super().hoverLeaveEvent(e)
+        self.setPen(pg.mkPen(self._color, width=self._width))

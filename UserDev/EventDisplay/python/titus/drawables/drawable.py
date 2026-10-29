@@ -29,6 +29,22 @@ def _view_box(item):
     return None
 
 
+def add_items(view, items):
+    """
+    Add graphics items to a pyqtgraph ViewBox, as ViewBox.addItem does, but
+    update its auto range once instead of after every item: with auto range
+    on, each update asks every item in the view for its bounds.
+    """
+    updating = view._updatingRange
+    view._updatingRange = True
+    try:
+        for item in items:
+            view.addItem(item)
+    finally:
+        view._updatingRange = updating
+    view.updateAutoRange()
+
+
 def remove_items(items):
     """
     Remove graphics items from their scene, and from the addedItems of the
@@ -150,6 +166,12 @@ class Drawable:
     def drawObjects(self):
         pass
 
+    def add_to_view(self, view, items):
+        """ draw items in a view (a TPC module wire view), and keep them to clear later """
+        items = list(items)
+        add_items(view._view, items)
+        self._drawnObjects.extend(items)
+
     def disconnect_signals(self):
         ''' stop receiving the gallery interface's signals, once this drawable is removed '''
         for signal, slot in [(self._gi.eventChanged, self.on_event_changed),
@@ -257,6 +279,14 @@ class ReaderDrawable(Drawable):
         cache = self._product_cache()
         make = lambda: string_vector(association_candidates(products))  # noqa: E731
         return make() if cache is None else cache.file_value('association_candidates', make)
+
+    def views(self):
+        '''
+        The TPC module's wire views to draw in: those shown by its view
+        buttons (it redraws the products when it shows another)
+        '''
+        shown = getattr(self._module, '_view_shown', None)
+        return [view for key, view in self._module._wire_views.items() if shown is None or shown(key)]
 
     def view_layout(self, view):
         ''' the layout of a wire view as currently shown, including ticks cut by "unite cathodes" '''

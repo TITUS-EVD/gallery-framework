@@ -18,11 +18,11 @@ pg = pytest.importorskip('pyqtgraph')
 from PyQt5 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 import titus.drawables.drawable as drawable_module  # noqa: E402
-from titus.display import ViewLayout, track_correction, track_segments, track_t0s, wire_image  # noqa: E402
+from titus.display import ViewLayout, hit_positions, track_correction, track_segments, track_t0s, wire_image  # noqa: E402
 from titus.drawables import Hit, RawDigit, RecoWire, Track, recoChannelROI  # noqa: E402
 from titus.drawables.hit import HitCollection  # noqa: E402
 from titus.geometry import Geometry  # noqa: E402
-from titus.readers import DumpReader, ProductCache, ProductNotFound, RawDigits  # noqa: E402
+from titus.readers import KINDS, DumpReader, ProductCache, ProductNotFound, RawDigits  # noqa: E402
 
 DATA = pathlib.Path(__file__).parent / 'data'
 
@@ -456,7 +456,9 @@ def test_showers(qtbot, products, sbnd, tpc_module, capsys, corrected):
     items = drawer._drawnObjects
     # the zero-length shower isn't drawn; the others once per view
     assert len(items) == 2 * 3 and all(isinstance(i, QtWidgets.QGraphicsPolygonItem) for i in items)
-    assert all(('drawn as stored' in i.toolTip()) for i in items)
+    # corrected or not, nothing moves them; the tooltip says which
+    expected = 'corrected: nothing to change' if corrected else 'drawn as stored ("Correct 3D objects" is off)'
+    assert all(expected in i.toolTip() for i in items)
     assert all(i.pen().style() == QtCore.Qt.SolidLine for i in items)
     drawer.clearDrawnObjects()
     assert drawer._drawnObjects == []
@@ -613,6 +615,8 @@ def bare_tpc_module(selected):
     module._plane_frames = mock.Mock(isChecked=lambda: True)
     module._current_wire_drawer = None
     module._show_logo = module._show_scale_bar = False
+    module._product_views = set()
+    module._product_box_map = {'box': mock.Mock()}
     return module
 
 
@@ -627,9 +631,12 @@ def test_hidden_views_drawn_when_shown():
     module.refresh_draw_list_widget()
     assert [v.images for v in views.values()] == [['image 0'], ['image 1'], ['image 2']]
     assert all(v.visible for v in views.values()) and not module._stale_views
+    # products were drawn in the collection view only: drawn again, now in all three
+    products = module._product_box_map['box']
+    assert products.drawObjects.call_count == 1 and module._product_views == set(views)
     # already drawn for this event
     module.refresh_draw_list_widget()
-    assert views[(0, 0)].images == ['image 0']
+    assert views[(0, 0)].images == ['image 0'] and products.drawObjects.call_count == 1
 
 
 def test_no_wires_blanks_shown_views():
@@ -663,3 +670,298 @@ def test_crt_update_without_crt_products():
     module._crt_strip_drawer = None
     module.update()
     assert module._draw_crt_strips is False
+
+
+STEP3 = DATA / 'sbnd-reco2-step3'
+
+
+def serve_all(products, path, entry=0):
+    ''' every product of a dump event, by full tag '''
+    reader = DumpReader(path)
+    for kind in KINDS:
+        for tag in reader.tags(kind, entry):
+            products[(kind, tag)] = reader.get(entry, kind, tag)
+    return reader
+
+
+def test_showers_on_real_data(qtbot, products, sbnd, tpc_module, capsys):
+    ''' Pandora showers with their particles: corrections found, every shower with a length drawn '''
+    from titus.drawables import Shower
+    reader = serve_all(products, STEP3)
+    showers = reader.get(0, 'showers', 'pandoraShower')
+    tpc_module.correct_3d_objects = lambda: True
+    drawer = Shower(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('pandoraShower::Reco2')
+    drawer.analyze()
+    drawer.drawObjects()
+    assert 'Warning' not in capsys.readouterr().out
+    tips = [i.toolTip() for i in drawer._drawnObjects]
+    drawn = {t.split(':')[0] for t in tips}
+    assert drawn == {f'Shower {i}' for i, n in zip(showers.id, showers.length) if n > 0}
+    # the cosmic showers carry a T0, and every tooltip says what the corrections did
+    assert any('T0 ' in t for t in tips)
+    assert not any('Correct 3D objects' in t for t in tips)
+
+
+def test_clusters_drawn_as_their_hits(qtbot, products, sbnd, tpc_module, capsys):
+    from titus.drawables import Cluster
+    reader = serve_all(products, STEP3)
+    drawer = Cluster(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('pandora::Reco2')
+    drawer.analyze()
+    drawer.drawObjects()
+    assert 'Warning' not in capsys.readouterr().out
+    assns = reader.get(0, 'cluster_hits', 'pandora')
+    # every associated hit, once per view of its plane
+    assert sum(len(c) for c in drawer._drawnObjects) == len(assns)
+    (collection,) = [c for c in drawer._drawnObjects if c in tpc_module._wire_views[(2, 0)]._view.addedItems]
+    # hovering a hit outlines its cluster: the cluster's hits on this view
+    collection._hover(0)
+    cluster = collection.group[0]
+    assert len(collection.highlighted()) == np.sum(collection.group == cluster) > 1
+    clusters = reader.get(0, 'clusters', 'pandora')
+    assert collection.toolTip().startswith(f'Cluster {clusters.id[cluster]}:')
+    # a color per cluster
+    assert len({tuple(c) for c in collection.colors}) > 1
+    drawer.clearDrawnObjects()
+    assert drawer._drawnObjects == []
+
+
+def test_clusters_without_associations(qtbot, products, sbnd, tpc_module, capsys):
+    from titus.drawables import Cluster
+    products[('clusters', 'pandora::Reco2')] = DumpReader(STEP3).get(0, 'clusters', 'pandora')
+    drawer = Cluster(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('pandora::Reco2')
+    drawer.analyze()
+    drawer.drawObjects()
+    assert 'no cluster-hit associations' in capsys.readouterr().out
+    assert drawer._drawnObjects == []
+
+
+def test_endpoints2d(qtbot, products, sbnd, tpc_module):
+    from titus.drawables import EndPoint2D
+    from titus.drawables.items import Marker
+    from titus.readers import EndPoints2D
+    products[('endpoints2d', 'ep::Reco1')] = EndPoints2D(
+        id=[0, 1], cryostat=[0, 0], tpc=[0, 1], plane=[2, 2], wire=[100, 200], drift_time=[1000., 2000.],
+        charge=[1., 1.], strength=[3, 4])
+    drawer = EndPoint2D(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('ep::Reco1')
+    drawer.analyze()
+    drawer.drawObjects()
+    # both on the collection view, at the same place as a hit on that wire and time
+    markers = drawer._drawnObjects
+    assert len(markers) == 2 and all(isinstance(m, Marker) for m in markers)
+    assert all(m in tpc_module._wire_views[(2, 0)]._view.addedItems for m in markers)
+    layout = ViewLayout(sbnd, plane=2)
+    plane = sbnd.getPlaneID(plane=2, tpc=1, cryo=0)
+    assert markers[1].pos().y() == pytest.approx(layout.tick_to_view(plane, 2000. + sbnd.timeOffsetTicks(2)))
+
+
+def test_mctracks_corrected_by_their_time(qtbot, products, sbnd, tpc_module, capsys):
+    from titus.drawables import MCTrack
+    serve_all(products, STEP3)
+    tips = {}
+    for corrected in (True, False):
+        tpc_module.correct_3d_objects = lambda corrected=corrected: corrected
+        drawer = MCTrack(FakeGalleryInterface(), sbnd, tpc_module)
+        drawer.set_producer('mcreco::G4')
+        drawer.analyze()
+        drawer.drawObjects()
+        tips[corrected] = [l.toolTip() for l in drawer._drawnObjects]
+        assert drawer._drawnObjects
+    assert 'Warning' not in capsys.readouterr().out
+    assert any('T0 ' in t for t in tips[True]) and all('Correct 3D objects' in t for t in tips[False])
+    # neutrino particles gray, cosmics black
+    colors = {l.pen().color().getRgb()[:3] for l in drawer._drawnObjects}
+    assert (0, 0, 0) in colors
+
+
+def test_mctrack_time_puts_cosmics_on_their_hits(sbnd):
+    ''' out-of-time cosmic muons: corrected by their MC time, their steps lie on the collection hits '''
+    from titus.display import mc_t0, track_correction, track_segments
+    from titus.drawables.mctrack import mctracks_as_tracks
+    reader = DumpReader(STEP3)
+    mctracks = reader.get(0, 'mctracks', 'mcreco')
+    tracks = mctracks_as_tracks(mctracks)
+    layout = ViewLayout(sbnd, plane=2)
+    positions = hit_positions(layout, reader.hits(0, 'gaushit'), sbnd.timeOffsetTicks(2))
+    hit_ticks = {}
+    for x, y in zip(np.floor(positions.x).astype(int), positions.y):
+        hit_ticks.setdefault(x, []).append(y)
+    t0 = mc_t0(sbnd, mctracks.start_t)
+    long_rows = [i for i in range(len(mctracks))
+                 if len(tracks.points(i)) > 1 and np.linalg.norm(np.ptp(tracks.points(i), axis=0)) > 100]
+    assert long_rows and all(abs(t0[i]) > 5e3 for i in long_rows)  # this event's long tracks are out of time
+
+    def median_distance(correction_of):
+        d = [min(abs(np.array(hit_ticks[int(np.floor(x))]) - y))
+             for i in long_rows for s in track_segments(layout, tracks, i, correction_of(i))
+             for x, y in zip(s.x, s.y) if int(np.floor(x)) in hit_ticks]
+        return np.median(d)
+
+    assert median_distance(lambda i: track_correction(layout, tracks, i, t0[i])) < 20
+    assert median_distance(lambda i: None) > 500
+
+
+@pytest.fixture
+def truth_module(tpc_module):
+    ''' the TPC module's MC truth dock widgets '''
+    tpc_module._mctruth_dropdown = QtWidgets.QComboBox()
+    tpc_module._mctruth_text1, tpc_module._mctruth_text2 = QtWidgets.QLabel(), QtWidgets.QLabel()
+    tpc_module._show_vertex = QtWidgets.QCheckBox()
+    tpc_module._show_vertex.setChecked(True)
+    tpc_module._mctruth_dock = QtWidgets.QWidget()
+    return tpc_module
+
+
+def test_mctruth_neutrino_first_with_vertex(qtbot, products, sbnd, truth_module, capsys):
+    from titus.drawables import MCTruth
+    from titus.drawables.items import CrossMarker
+    reader = serve_all(products, STEP3)
+    truth_module.correct_3d_objects = lambda: True
+    drawer = MCTruth(FakeGalleryInterface(), sbnd, truth_module)
+    drawer.set_producer(['generator::GenieGen', 'corsika::GenieGen'])
+    drawer.analyze()
+    drawer.drawObjects()
+    assert 'Warning' not in capsys.readouterr().out
+    dropdown = truth_module._mctruth_dropdown
+    assert dropdown.count() == 2 and dropdown.itemText(0).startswith('Neutrino')
+    truths = reader.get(0, 'mctruths', 'generator')
+    assert truth_module._mctruth_text1.text().startswith(f'PDG: {truths.nu_pdg[0]}')
+    crosses = drawer._drawnObjects
+    assert crosses and all(isinstance(c, CrossMarker) for c in crosses)
+    assert 'Neutrino interaction vertex' in crosses[0].toolTip()
+    truth_module._show_vertex.setChecked(False)
+    assert not any(c.isVisible() for c in crosses)
+
+    # the cosmics: described, no vertex
+    dropdown.setCurrentIndex(1)
+    assert truth_module._mctruth_text1.text().startswith('Cosmic origin') and drawer._drawnObjects == []
+    drawer.clearDrawnObjects()
+    assert truth_module._mctruth_dock.isHidden()
+
+
+# --- optical and CRT ---
+
+class FakeOpdetModule:
+    def __init__(self):
+        self.flashes = {}
+
+    def setFlashesForPlane(self, p, flashes):
+        self.flashes[p] = flashes
+
+
+def test_flashes_assigned_to_their_tpc(qtbot, products, sbnd):
+    ''' SBND makes flashes per TPC (opflashtpc0/1): each lands on its drift volume '''
+    from titus.drawables import OpFlash
+    reader = serve_all(products, STEP3)
+    for volume in (0, 1):
+        module = FakeOpdetModule()
+        drawer = OpFlash(FakeGalleryInterface(), sbnd, module)
+        drawer.set_producer(f'opflashtpc{volume}::Reco1')
+        drawer.analyze()
+        drawer.drawObjects()
+        flashes = reader.get(0, 'opflashes', f'opflashtpc{volume}')
+        assert len(flashes)
+        assert len(module.flashes[volume]) == len(flashes) and module.flashes.get(1 - volume) is None
+        first = module.flashes[volume][0]
+        assert first.time() == flashes.abs_time[0]
+        assert len(first.pe_per_opdet()) == len(sbnd.detector.opdets)
+        drawer.clearDrawnObjects()
+        assert module.flashes == {0: None, 1: None}
+
+
+def make_febs(flags, ts0, coinc, unix_s, adc_max_at, adc_max=500):
+    from titus.readers import CRTFEBData
+    n = len(flags)
+    adc = np.full((n, 32), 10)
+    adc[np.arange(n), adc_max_at] = adc_max
+    return CRTFEBData(mac5=np.arange(n) + 7, flags=flags, ts0=ts0, ts1=np.full(n, 99), coinc=coinc,
+                      unix_s=unix_s, adc=adc)
+
+
+def test_crt_strip_hits_without_trigger():
+    from titus.display.crt import crt_strip_hits
+    febs = make_febs(flags=[1, 3, 7], ts0=[1000, 2000, 3000], coinc=[5, 6, 7], unix_s=[0, 0, 0], adc_max_at=[3, 31, 0])
+    hits = crt_strip_hits(febs)
+    # the reset (flags 7) is dropped; one row per readout, for its largest SiPM
+    assert hits.tolist() == [[32 * 7 + 3, 1005, 99, 500], [32 * 8 + 31, 2006, 99, 500]]
+
+
+def test_crt_strip_hits_relative_to_the_trigger():
+    from titus.display.crt import crt_strip_hits
+    from titus.readers import DAQTimestamps
+    trigger = 1_700_000_000 * 10 ** 9 + 999_999_000
+    stamps = DAQTimestamps(channel=[1, 4], timestamp=[5, trigger])
+    febs = make_febs(flags=[1, 1, 1], ts0=[999_998_000, 1_000, 999_999_500], coinc=[0, 0, 0],
+                     unix_s=[1_700_000_000, 1_700_000_001, 1_699_999_999], adc_max_at=[0, 0, 0])
+    t0 = crt_strip_hits(febs, stamps)[:, 1]
+    # same second; the next second (+1 s); the second before (-1 s)
+    assert t0.tolist() == [-1000, 1_000 + 10 ** 9 - 999_999_000, 999_999_500 - 10 ** 9 - 999_999_000]
+    with pytest.raises(ValueError, match='more than 1 s'):
+        crt_strip_hits(make_febs([1], [0], [0], [1_700_000_005], [0]), stamps)
+
+
+def test_febdata_drawable(qtbot, products, sbnd):
+    from titus.drawables import FEBData
+    reader = serve_all(products, STEP3)
+    drawer = FEBData(FakeGalleryInterface(), sbnd)
+    drawer.set_producer('crtsim::DetSim')
+    drawer.analyze()
+    hits = drawer.getData()
+    febs = reader.get(0, 'crt_febdata', 'crtsim')
+    assert hits.shape == (np.isin(febs.flags, (1, 3)).sum(), 4) and len(hits)
+    # MC: no trigger time stamp, times as stored
+    keep = np.isin(febs.flags, (1, 3))
+    assert hits[:, 1].tolist() == (febs.ts0[keep].astype(np.int64) + febs.coinc[keep]).tolist()
+
+
+class SteppingEvent:
+    ''' a gallery.Event of n entries, logging moves; goToEntry only if direct '''
+    def __init__(self, n, direct):
+        self.n, self.entry, self.log = n, 0, []
+        if direct:
+            self.goToEntry = lambda e: (self.log.append(('goToEntry', e)), setattr(self, 'entry', e))
+
+    def atEnd(self):
+        return self.entry >= self.n
+
+    def eventEntry(self):
+        return self.entry
+
+    def toBegin(self):
+        self.log.append('toBegin')
+        self.entry = 0
+
+    def next(self):
+        self.log.append('next')
+        self.entry += 1
+
+
+@pytest.mark.parametrize('direct', [True, False])
+def test_position_event(direct):
+    from titus.gallery_interface.gallery_interface import position_event
+    ev = SteppingEvent(10, direct)
+    for entry in (5, 6, 2):
+        position_event(ev, entry)
+        assert ev.eventEntry() == entry
+    if direct:
+        assert ev.log == [('goToEntry', 5), ('goToEntry', 6), ('goToEntry', 2)]
+    else:
+        # back from 6 to 2: rewind and step
+        assert ev.log == ['next'] * 6 + ['toBegin', 'next', 'next']
+    ev.entry = 10  # past the end
+    position_event(ev, 3)
+    assert ev.eventEntry() == 3
+
+
+def test_products_drawn_in_shown_views_only(qtbot, products, sbnd, tpc_module):
+    products[('hits', 'gaushit::Reco1')] = DumpReader(DATA / 'sbnd-reco1-trimmed').hits(0, 'gaushit')
+    tpc_module._view_shown = lambda key: key == (2, 0)
+    drawer = Hit(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('gaushit::Reco1')
+    drawer.analyze()
+    drawer.drawObjects()
+    (collection,) = drawer._drawnObjects
+    assert collection in tpc_module._wire_views[(2, 0)]._view.addedItems

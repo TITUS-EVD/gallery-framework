@@ -1,140 +1,50 @@
-from titus.drawables import Drawable
-from pyqtgraph.Qt import QtGui, QtCore
-from ROOT import evd
-import pyqtgraph as pg
+import numpy as np
 
-from titus.drawables.items import polyLine
+from titus.display import mc_t0
+from titus.display.projection import AS_STORED
+from titus.drawables.track import Track
+from titus.readers import Tracks
 
 
-class MCTrack(Drawable):
+def mctracks_as_tracks(mctracks):
+    ''' sim::MCTrack steps as Tracks trajectories (every step valid), for the track projection '''
+    return Tracks(id=mctracks.track_id, point_offset=mctracks.step_offset, x=mctracks.x, y=mctracks.y,
+                  z=mctracks.z, valid=np.ones(len(mctracks.x), dtype=bool))
+
+
+class MCTrack(Track):
+    '''
+    sim::MCTrack: simulated particle paths, projected like recob::Track.
+    Corrected (the TPC module's "Correct 3D objects" option), a particle's
+    time relative to the trigger is its T0, so the path lands on the hits its
+    charge made (out-of-time cosmics move), and each step is drawn in the TPC
+    whose readout window contains it. Particles from a neutrino are gray,
+    others black.
+    '''
+    KIND = 'mctracks'
+    COLOR = (0, 0, 0)
+    NEUTRINO_COLOR = (128, 128, 128)
+    NEUTRINO_ORIGIN = 1  # simb::kBeamNeutrino
 
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
-        super().__init__(gallery_interface, *args, **kwargs)
+        super().__init__(gallery_interface, geom, tpc_module, *args, **kwargs)
         self._product_name = 'mctrack'
-        self._process = evd.DrawMCTrack(geom.getGeometryCore(), geom.getDetectorProperties(),geom.getWireReadout(), geom.getDetectorClocks())
-        self._geom = geom
-        self._module = tpc_module
-        self.init()
+        self._mctracks = []
 
-    def drawObjects(self, on_both_tpcs=False):
+    def on_data(self):
+        self._mctracks = self._data
+        self._data = [mctracks_as_tracks(m) for m in self._mctracks]
+        self._inputs = [{'t0': mc_t0(self._geom, m.start_t), 'track_hits': None, 'hits': None}
+                        for m in self._mctracks]
+        self._corrections = [{} for _ in self._data]
 
-        for _, view in self._module._wire_views.items():
-            self._drawnObjects.append([])
-            tracks = self._process.getDataByPlane(view.plane())
+    def color(self, producer, row):
+        origin = self._mctracks[producer].origin[row]
+        return self.NEUTRINO_COLOR if origin == self.NEUTRINO_ORIGIN else self.COLOR
 
-            for i in range(len(tracks)):
-                track = tracks[i]
-                # construct a polygon for this track:
-                points = []
-                # Remeber - everything is in cm, but the display is in
-                # wire/time!
-                for i, pair in enumerate(track.track()):
-                    x = pair.first / self._geom.wire2cm()
-                    y = pair.second / self._geom.time2cm()
-
-                    if track.tpc()[i] == 1:
-                        # flip
-                        y = self._geom.tRange() - y
-                        # move up
-                        y += self._geom.tRange()
-                        # add cathode gap
-                        y += self._geom.cathodeGap()
-
-                    # # If odd TPC, shift this piece of the track up
-                    # if track.tpc()[i] % 2:
-                    #     y += 2 * self._geom.triggerOffset()
-                    #     y += self._geom.cathodeGap()
-
-                    print(f'Track {i}, {x}, {y}')
-                    points.append(QtCore.QPointF(x, y))
-
-                if len(points) == 0:
-                    continue
-
-                #print ('MCTrack pdg', track.pdg())
-
-                origin = track.origin()
-                if (origin == 1): # neutrino origin
-                    color = (128,128,128) # Gray
-                else:
-                    color = (0,0,0) # Black
-
-                thisPoly = polyLine(points, color)
-
-                time = track.time() - self._geom.getDetectorClocks().TriggerTime()
-                thisPoly.setToolTip(f'PDG = {track.pdg()}\nTime = {time:.4} us\nEnergy = {track.energy()/1e3:.4} GeV\nProcess = {track.process()}')
-
-                view._view.addItem(thisPoly)
-
-                self._drawnObjects[view.plane()].append(thisPoly)
-
-    def clearDrawnObjects(self, obj_list=None):
-        """ Override base class since our object list is nested """
-        for view_objs in self._drawnObjects:
-            for obj in view_objs:
-                obj.scene().removeItem(obj)
-        self._drawnObjects = []
-
-
-
-try:
-    from gallery_interface.datatypes.database import recoBase3D
-    import pyqtgraph.opengl as gl
-    import numpy as np
-    class mctrack3D(recoBase3D):
-
-        def __init__(self):
-            super(mctrack3D, self).__init__()
-            self._productName = 'mctrack3D'
-            self._process = evd.DrawMCTrack3D()
-            self.init()
-            self._mesh = gl.MeshData()
-
-        def toggleMCCosmic(self, toggleValue):
-            self._process.SetViewCosmicOption(toggleValue)
-
-        def drawObjects(self, view_manager):
-            geom = view_manager._geometry
-            view = view_manager.getView()
-
-
-            tracks = self._process.getData()
-
-
-            for track in tracks:
-
-                # construct a line for this track:
-                points = track.track()
-                x = np.zeros(points.size())
-                y = np.zeros(points.size())
-                z = np.zeros(points.size())
-                # x = numpy.ndarray()
-                # x = numpy.ndarray()
-                i = 0
-                for point in points:
-                    x[i] = point.X()
-                    y[i] = point.Y()
-                    z[i] = point.Z()
-                    i+= 1
-
-                pts = np.vstack([x,y,z]).transpose()
-                pen = pg.mkPen((255,0,0), width=2)
-                origin = track.origin()
-                line = gl.GLLinePlotItem(pos=pts,color=(255,255,0,255))
-                if (origin == 1): # neutrino origin
-                    line = gl.GLLinePlotItem(pos=pts,color=(0, 176, 139,255))
-                view.addItem(line)
-                self._drawnObjects.append(line)
-
-
-    # # Just be stupid and try to draw something:
-    # cylinderPoints = gl.MeshData.cylinder(2,50,radius=[0,1],length=1)
-    # cylinder = gl.GLMeshItem(meshdata=cylinderPoints,drawEdges=False,shader='shaded', glOptions='opaque')
-    # cylinder.scale(10,10,10)
-    # # cylinder.setGLOptions("additive")
-    # self.addItem(cylinder)
-
-
-except:
-    pass
-
+    def genToolTip(self, tracks, row, correction):
+        mctracks = next(m for m, t in zip(self._mctracks, self._data) if t is tracks)
+        what = correction.describe() if correction is not None else AS_STORED
+        return (f'MCTrack {mctracks.track_id[row]}: PDG {mctracks.pdg[row]}, '
+                f'{mctracks.start_e[row] / 1e3:.3f} GeV, {mctracks.process[row]}\n'
+                f'time {mc_t0(self._geom, mctracks.start_t[row]) / 1e3:.2f} us from the trigger\n{what}')

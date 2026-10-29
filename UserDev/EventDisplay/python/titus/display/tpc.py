@@ -134,18 +134,26 @@ class HitPositions:
         return len(self.index)
 
 
-def hit_positions(layout, hits, time_offset_ticks=0):
+def wire_tick_positions(layout, cryostat, tpc, plane, wire, tick, time_offset_ticks=0):
+    '''
+    View coordinates of objects given on a wire plane (hits, clusters' hits,
+    2D end points): (rows shown, x, y). Objects on planes not in the view, or
+    in ticks cut by "unite cathodes", aren't shown.
+    '''
     table = plane_index_table(layout.geom)
-    planes = table[hits.cryostat, hits.tpc, hits.plane] if len(hits) else np.zeros(0, dtype=int)
-    index, x, y = [], [], []
+    planes = table[cryostat, tpc, plane] if len(wire) else np.zeros(0, dtype=int)
+    index, x, y = [np.zeros(0, dtype=int)], [np.zeros(0)], [np.zeros(0)]
     for block in layout.blocks:
         rows = np.flatnonzero(planes == block.plane_index)
-        y_rows = layout.tick_to_view(block.plane_index, hits.peak_time[rows] + time_offset_ticks)
-        # hits in ticks cut by "unite cathodes" aren't shown
+        y_rows = layout.tick_to_view(block.plane_index, np.asarray(tick)[rows] + time_offset_ticks)
         rows, y_rows = rows[np.isfinite(y_rows)], y_rows[np.isfinite(y_rows)]
         index.append(rows)
-        x.append(layout.wire_to_view(block.plane_index, hits.wire[rows]))
+        x.append(layout.wire_to_view(block.plane_index, np.asarray(wire)[rows]))
         y.append(y_rows)
-    index = np.concatenate(index)
-    return HitPositions(index=index, x=np.concatenate(x), y=np.concatenate(y),
-                        half_height=hits.rms[index].astype(float))
+    return np.concatenate(index), np.concatenate(x), np.concatenate(y)
+
+
+def hit_positions(layout, hits, time_offset_ticks=0):
+    index, x, y = wire_tick_positions(layout, hits.cryostat, hits.tpc, hits.plane, hits.wire, hits.peak_time,
+                                      time_offset_ticks)
+    return HitPositions(index=index, x=x, y=y, half_height=hits.rms[index].astype(float))

@@ -88,6 +88,8 @@ class TpcModule(Module):
         self._wire_views = {}
         # views not drawn for the current event since hidden by the view buttons
         self._stale_views = set()
+        # views the products (hits, tracks...) were last drawn in
+        self._product_views = set()
         # set while the product boxes are filled for a new file
         self._updating_boxes = False
         self._show_logo = False
@@ -327,7 +329,7 @@ class TpcModule(Module):
             prod_class, product = product_info
             producers = self._gi.get_producers(product, self._lsm.current_stage)
             thisBox = recoBox(self, product_name, product, producers)
-            # created when a producer is selected: most still need the services
+            # created when a producer is selected
             self._product_box_map[thisBox] = self.register_drawable(
                 drawables.LazyDrawable(
                     lambda prod_class=prod_class: prod_class(self._gi, self._gm.current_geom, self),
@@ -782,7 +784,9 @@ class TpcModule(Module):
         self._gi.process_event(True)
 
     def update(self):
-        # views hidden by the view buttons are drawn when shown (refresh_draw_list_widget)
+        # views hidden by the view buttons are drawn when shown (refresh_draw_list_widget);
+        # products were drawn in the shown views (ReaderDrawable.views)
+        self._product_views = {key for key in self._wire_views if self._view_shown(key)}
         self._stale_views = set()
         for key, view in self._wire_views.items():
             if self._view_shown(key):
@@ -1003,6 +1007,11 @@ class TpcModule(Module):
                 # hidden when the event was drawn
                 self._stale_views.discard(key)
                 self._draw_wire_view(view)
+        shown = {key for key in self._wire_views if self._view_shown(key)}
+        if shown - self._product_views:
+            # products are drawn in shown views only: draw them in the new ones (no re-read)
+            self.redraw_products()
+            self._product_views = shown
 
     def _update_scale_bar_length(self, x: int):
         '''

@@ -2,6 +2,7 @@ import numpy as np
 from PyQt5 import QtCore
 
 from titus.display import track_correction, track_segments
+from titus.display.projection import AS_STORED
 from titus.drawables.drawable import ReaderDrawable
 from titus.drawables.items import polyLine
 
@@ -45,13 +46,17 @@ class Track(ReaderDrawable):
                                           inputs['track_hits'], inputs['hits'])
         return cache[row]
 
+    def color(self, producer, row):
+        return self.COLOR
+
     def corrected(self):
         return getattr(self._module, 'correct_3d_objects', lambda: True)()
 
     def drawObjects(self):
         corrected = self.corrected()
-        for view in self._module._wire_views.values():
+        for view in self.views():
             layout = self.view_layout(view)
+            items = []
             for producer, tracks in enumerate(self._data):
                 for row in range(len(tracks)):
                     correction = self._correction(producer, row, layout) if corrected else None
@@ -59,15 +64,16 @@ class Track(ReaderDrawable):
                     tooltip = None
                     for segment in track_segments(layout, tracks, row, correction):
                         points = [QtCore.QPointF(x, y) for x, y in zip(segment.x, segment.y)]
-                        line = polyLine(points, self.COLOR, QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine)
+                        line = polyLine(points, self.color(producer, row),
+                                        QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine)
                         if tooltip is None:
                             tooltip = self.genToolTip(tracks, row, correction)
                         line.setToolTip(tooltip)
-                        view._view.addItem(line)
-                        self._drawnObjects.append(line)
+                        items.append(line)
+            self.add_to_view(view, items)
 
     def genToolTip(self, tracks, row, correction):
         points = tracks.points(row)
         length = np.linalg.norm(np.diff(points, axis=0), axis=1).sum() if len(points) > 1 else 0.
-        what = correction.describe() if correction is not None else 'drawn as stored'
+        what = correction.describe() if correction is not None else AS_STORED
         return f'Track {tracks.id[row]}: length {length:.1f} cm, {len(points)} points\n{what}'

@@ -9,24 +9,30 @@ from titus.drawables.drawable import ReaderDrawable
 class HitCollection(QtWidgets.QGraphicsItem):
     '''
     All the hits of a view in one item: boxes (x, y, width, height in view
-    coordinates) filled black with an opacity each. One item instead of one
-    per hit keeps drawing and clearing an event fast. The box under the
-    mouse is outlined, and its tooltip comes from tooltip(index).
+    coordinates) filled black with an opacity each (alpha), or with a color
+    each (colors, (n, 4) RGBA). One item instead of one per hit keeps drawing
+    and clearing an event fast. The box under the mouse is outlined, with
+    the other boxes of its group if given (e.g. a cluster's hits), and its
+    tooltip comes from tooltip(index).
     '''
 
-    def __init__(self, x, y, width, height, alpha, tooltip):
+    def __init__(self, x, y, width, height, alpha=None, tooltip=None, colors=None, group=None):
         super().__init__()
         self.x0, self.y0 = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
         self.x1, self.y1 = self.x0 + width, self.y0 + height
-        self.alpha = np.clip(np.asarray(alpha, dtype=int), 0, 255)
-        self._tooltip = tooltip
+        if colors is None:
+            colors = np.zeros((len(self.x0), 4), dtype=int)
+            colors[:, 3] = 255 if alpha is None else alpha
+        self.colors = np.clip(np.asarray(colors, dtype=int).reshape(-1, 4), 0, 255)
+        self.group = None if group is None else np.asarray(group)
+        self._tooltip = tooltip if tooltip is not None else (lambda index: '')
         self._hovered = None
         self.setAcceptHoverEvents(True)
-        # rects grouped by opacity, so that painting is one drawRects per group
-        self._groups = [(QtGui.QBrush(pg.mkColor(0, 0, 0, int(a))),
-                         [QtCore.QRectF(self.x0[i], self.y0[i], self.x1[i] - self.x0[i], self.y1[i] - self.y0[i])
-                          for i in np.flatnonzero(self.alpha == a)])
-                        for a in np.unique(self.alpha)]
+        # rects grouped by color, so that painting is one drawRects per color
+        unique, inverse = np.unique(self.colors, axis=0, return_inverse=True)
+        self._groups = [(QtGui.QBrush(pg.mkColor(*(int(c) for c in color))),
+                         [self.rect(i) for i in np.flatnonzero(inverse.ravel() == k)])
+                        for k, color in enumerate(unique)]
         if len(self.x0):
             self._bounds = QtCore.QRectF(self.x0.min(), self.y0.min(),
                                          self.x1.max() - self.x0.min(), self.y1.max() - self.y0.min())
@@ -53,7 +59,15 @@ class HitCollection(QtWidgets.QGraphicsItem):
         if self._hovered is not None:
             painter.setPen(self._hover_pen)
             painter.setBrush(QtCore.Qt.NoBrush)
-            painter.drawRect(self.rect(self._hovered))
+            painter.drawRects([self.rect(i) for i in self.highlighted()])
+
+    def highlighted(self):
+        ''' rows outlined: the hovered box, and the rest of its group '''
+        if self._hovered is None:
+            return []
+        if self.group is None:
+            return [self._hovered]
+        return list(np.flatnonzero(self.group == self.group[self._hovered]))
 
     def index_at(self, x, y):
         ''' the hit whose box contains the view point (the last drawn on top), or None '''
@@ -61,7 +75,8 @@ class HitCollection(QtWidgets.QGraphicsItem):
         return int(inside[-1]) if len(inside) else None
 
     def _hover(self, index):
-        if index == self._hovered:
+        if index == self._hovered or (index is not None and self._hovered is not None and self.group is not None
+                                      and self.group[index] == self.group[self._hovered]):
             return
         self._hovered = index
         self.setToolTip(self._tooltip(index) if index is not None else '')
@@ -93,7 +108,7 @@ class Hit(ReaderDrawable):
 
     def drawObjects(self):
         for hits in self._data:
-            for view in self._module._wire_views.values():
+            for view in self.views():
                 self.drawHitList(view, hits)
 
     def drawHitList(self, view, hits):
