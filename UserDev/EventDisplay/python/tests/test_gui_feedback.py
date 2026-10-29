@@ -127,16 +127,22 @@ def test_failed_open_message_stays(gui):
     assert not gui._loading_overlay.isVisible()
 
 
-def test_event_load_shows_the_bar_only(gui):
+def busy_cursor():
+    cursor = QtWidgets.QApplication.overrideCursor()
+    return cursor is not None and cursor.shape() == QtCore.Qt.WaitCursor
+
+
+def test_event_load_shows_the_bar_and_cursor_only(gui):
     gi = gui.gallery_interface
     gi._scan = lambda files, progress=None: opened(files[0])
     gi.set_input_files(['a.root'])
     seen = []
     gi.eventChanged.connect(lambda: seen.append((gui._loading_overlay.isVisible(), gui._loading_bar.isVisible(),
-                                                 gui._loading_bar.maximum())))
+                                                 gui._loading_bar.maximum(), busy_cursor())))
     gi.next()
-    # a busy bar (no steps), no overlay
-    assert seen == [(False, True, 0)] and not gui._loading_bar.isVisible()
+    # a busy bar (no steps) and the wait cursor, no overlay
+    assert seen == [(False, True, 0, True)] and not gui._loading_bar.isVisible()
+    assert QtWidgets.QApplication.overrideCursor() is None
 
 
 def products_of(type_name):

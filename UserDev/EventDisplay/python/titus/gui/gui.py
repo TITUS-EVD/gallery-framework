@@ -135,6 +135,8 @@ class Gui(QtWidgets.QMainWindow):
         self._loading_bar.setVisible(False)
         self.statusBar().addPermanentWidget(self._loading_bar)
         self._loading_overlay = LoadingOverlay(self)
+        # whether the wait cursor is set (QApplication keeps a stack of them)
+        self._busy_cursor = False
         self._gi.loadingStarted.connect(self._on_loading_started)
         self._gi.loadingProgress.connect(self._on_loading_progress)
         self._gi.loadingFinished.connect(self._on_loading_finished)
@@ -253,12 +255,16 @@ class Gui(QtWidgets.QMainWindow):
         self._loading_bar.setValue(0)
         self._loading_bar.setVisible(True)
         self.statusBar().showMessage(f'{message}...')
+        # the busy cursor for every load (events too: the window doesn't
+        # respond until they are drawn); the overlay only while a file opens
+        if not self._busy_cursor:
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            self._busy_cursor = True
         if opening_file:
             self._loading_overlay.set_message(message, '')
             self._place_loading_overlay()
             self._loading_overlay.show()
             self._loading_overlay.raise_()
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self._repaint_while_loading()
 
     def _on_loading_progress(self, message, step):
@@ -273,7 +279,9 @@ class Gui(QtWidgets.QMainWindow):
         self._loading_bar.setVisible(False)
         if self._loading_overlay.isVisible():
             self._loading_overlay.hide()
+        if self._busy_cursor:
             QtWidgets.QApplication.restoreOverrideCursor()
+            self._busy_cursor = False
         if not message:
             self.statusBar().clearMessage()
         elif ok:
