@@ -5,10 +5,6 @@ import signal
 
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-# No PyROOT thread polling ROOT's event loop (gSystem.ProcessEvents): TITUS
-# draws with Qt, and that thread running ROOT concurrently with the file
-# opening thread crashed it. Must be set before ROOT initializes (gROOT below).
-ROOT.PyConfig.StartGUIThread = False
 ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
 from PyQt5 import QtCore, QtWidgets
@@ -17,7 +13,6 @@ from titus.gui import Gui
 from titus.modules import LArSoftModule, RunModule, GeometryModule, ViewSelectModule, \
     TpcModule, OpDetModule, CrtModule, HelpModule, TruthDumperModule
 from titus.gallery_interface import GalleryInterface
-from titus.gallery_interface.gallery_interface import threads_enabled
 
 
 def sigintHandler(*args):
@@ -37,16 +32,12 @@ def main():
     parser.add_argument('--timerange',
                       type=int,
                       help="Overrides the number of time samples.")
-    parser.add_argument('--threads', action='store_true',
-                      help="Experimental: open files in a background thread (crashed ROOT 6.28 + gallery)")
-    parser.add_argument('--no-threads', action='store_true',
-                      help="Open files on the GUI thread (the default)")
     parser.add_argument('file', nargs='*', help="Optional input file to use")
     args = parser.parse_args()
 
     app = QtWidgets.QApplication(sys.argv)
 
-    gi = GalleryInterface(threaded=(args.threads or threads_enabled()) and not args.no_threads)
+    gi = GalleryInterface()
 
     gui = Gui(gi)
 
@@ -61,10 +52,10 @@ def main():
 
     lsm = LArSoftModule(det_service_name, args.timerange)
     # files from the command line are opened once the window and modules are
-    # set up, in the background, as from the file dialog
+    # set up (after the geometry and views, which also wait for ready), as
+    # from the file dialog
     if args.file:
-        # (after the geometry and views, which also wait for ready)
-        lsm.ready.connect(lambda: QtCore.QTimer.singleShot(0, lambda: gi.open_files(args.file)))
+        lsm.ready.connect(lambda: QtCore.QTimer.singleShot(0, lambda: gi.set_input_files(args.file)))
     gm = GeometryModule(lsm)
     
 

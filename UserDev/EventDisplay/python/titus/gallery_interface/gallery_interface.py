@@ -1,5 +1,4 @@
 import os
-import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -10,50 +9,9 @@ from PyQt5 import QtCore
 from titus.readers.base import ProductCache
 
 
-def threads_enabled():
-    '''
-    Whether files are opened in a background thread: experimental, off
-    unless TITUS_THREADS=1 or evd.py --threads. Opening in a thread crashed
-    ROOT 6.28 + gallery on the gpvm; by default files are opened on the GUI
-    thread, which keeps repainting between steps (GalleryInterface.open_files).
-    '''
-    return os.environ.get('TITUS_THREADS', '0') == '1'
-
-
 def _root():
     import ROOT
-    # no PyROOT event polling thread (see evd.py); no effect once ROOT is set up
-    ROOT.PyConfig.StartGUIThread = False
     return ROOT
-
-
-def root_event_thread_running():
-    '''
-    Whether PyROOT's thread polling ROOT's event loop (gSystem.ProcessEvents,
-    started unless PyConfig.StartGUIThread is False before ROOT initializes)
-    is running: ROOT is then used from two threads already, and opening files
-    in a third crashes
-    '''
-    for thread in threading.enumerate():
-        target = getattr(thread, '_target', None)
-        if getattr(target, '__name__', '') == '_process_root_events':
-            return True
-    return False
-
-
-def release_gil(root):
-    '''
-    Let other Python threads (the GUI) run while gallery opens and walks
-    files: by default PyROOT keeps the GIL during C++ calls, so a slow open
-    in a worker thread would still freeze the GUI. Best effort: older ROOT
-    versions may not support it.
-    '''
-    event = root.gallery.Event
-    for name in ('__init__', 'next', 'toBegin', 'goToEntry'):
-        try:
-            getattr(event, name).__release_gil__ = True
-        except AttributeError:
-            pass
 
 
 class Product:
@@ -163,53 +121,60 @@ def _merge_tables(into, table):
             into[stage][type_name] += found
 
 
-def _no_progress(message):
-    pass
-
-
-def ping_file(root, file, progress=_no_progress):
+def ping_file(root, file, timings=None):
     '''
     (run list, product table) of a file, read with ROOT's TFile before gallery
     opens it, as TITUS always did: gallery's constructor crashed in the GUI
-    when it was the first to open the file (it reads the file's dictionaries)
+    when it was the first to open the file (it reads the file's dictionaries).
+    timings: {step: seconds} to add this file's steps to.
     '''
+    timings = {} if timings is None else timings
+    clock = [time.perf_counter()]
+
+    def lap(step):
+        now = time.perf_counter()
+        timings[step] = timings.get(step, 0.) + now - clock[0]
+        clock[0] = now
+
     f = root.TFile.Open(file)
     if not f or f.IsZombie():
         raise OSError(f'could not open {file}')
     try:
         tree = f.Get('Events')
+        lap('TFile.Open')
         aux_branch = tree.GetBranch('EventAuxiliary')
         run_list = []
         n_entries = aux_branch.GetEntries()
         for i in range(n_entries):
-            if i % 100 == 0:
-                progress(f'reading events {i}/{n_entries} of {os.path.basename(file)}')
             aux_branch.GetEntry(i)
             aux = tree.EventAuxiliary
             run_list.append({'run': aux.run(), 'subrun': aux.subRun(), 'event': aux.event()})
+            if i == 0:
+                # its dictionary loaded, and PyROOT's cast compiled
+                lap('first EventAuxiliary')
+        lap(f'run list ({n_entries} events)' if n_entries > 1 else 'run list')
         table = product_table([(b.GetName(), b.GetTypeName()) for b in tree.GetListOfBranches()])
+        lap('branches')
     finally:
         f.Close()
     return run_list, table
 
 
-def scan_files(files, root=None, progress=_no_progress):
+def scan_files(files, root=None):
     '''
     Open art-root files: each file's (run, subrun, event)s and products read
-    with TFile (ping_file), then the gallery.Event to read them. No Qt or GUI
-    state. progress(message) is called between steps, e.g. to let the GUI
-    repaint. Raises OpenError.
+    with TFile (ping_file), then the gallery.Event to read them, with the
+    time each step took. Raises OpenError.
     '''
     root = root or _root()
     start = time.perf_counter()
     files, warnings = readable_files(files)
     if not files:
         raise OpenError('; '.join(warnings) or 'no file given')
-    run_list, table, opened = [], {'all': {}}, []
+    run_list, table, opened, timings = [], {'all': {}}, [], {}
     for file in files:
-        progress(f'reading {os.path.basename(file)}')
         try:
-            file_runs, file_table = ping_file(root, file, progress)
+            file_runs, file_table = ping_file(root, file, timings)
         except (OSError, AttributeError, ReferenceError) as e:
             warnings.append(f'could not open {file} ({e}), skipping')
             continue
@@ -223,8 +188,7 @@ def scan_files(files, root=None, progress=_no_progress):
         raise OpenError('; '.join(warnings))
     if not run_list:
         raise OpenError(f'no events in {", ".join(opened)}')
-    timings = {'TFile': time.perf_counter() - start}
-    progress(f'opening {", ".join(os.path.basename(f) for f in opened)} with gallery')
+    timings['TFile total'] = time.perf_counter() - start
     start = time.perf_counter()
     names = root.std.vector['string']()
     for file in opened:
@@ -236,22 +200,6 @@ def scan_files(files, root=None, progress=_no_progress):
     timings['gallery'] = time.perf_counter() - start
     return OpenedFiles(files=opened, event=ev, run_list=run_list, key_table=table, warnings=warnings,
                        file_names=names, timings=timings)
-
-
-class FileOpener(QtCore.QThread):
-    ''' runs scan_files in a worker thread; done carries the OpenedFiles or the exception '''
-    done = QtCore.pyqtSignal(object)
-
-    def __init__(self, files, scan=scan_files, parent=None):
-        super().__init__(parent)
-        self._files, self._scan = list(files), scan
-
-    def run(self):
-        try:
-            result = self._scan(self._files)
-        except Exception as e:
-            result = e
-        self.done.emit(result)
 
 
 def position_event(ev, entry):
@@ -277,22 +225,11 @@ class GalleryInterface(QtCore.QObject):
     fileChanged = QtCore.pyqtSignal()
     dirChanged = QtCore.pyqtSignal()
     eventChanged = QtCore.pyqtSignal()
-    # a background open started (what is opened), and ended (ok, message)
-    loadingStarted = QtCore.pyqtSignal(str)
-    loadingProgress = QtCore.pyqtSignal(str)
-    loadingFinished = QtCore.pyqtSignal(bool, str)
 
-    def __init__(self, file=None, threaded=None, scan=None):
-        """
-        threaded: open files in a background thread (open_files), default
-        threads_enabled(). scan: replaces scan_files (tests).
-        """
+    def __init__(self, file=None, scan=None):
+        """ scan: replaces scan_files (tests) """
         super().__init__()
-        self._threaded = threads_enabled() if threaded is None else threaded
         self._scan = scan or scan_files
-        self._opener = None
-        self._opening = False  # a file opening on the GUI thread (open_files)
-        self._thread_safety = False
 
         self._gallery_event_handle = None
         # products of the current event, shared by the drawables
@@ -362,18 +299,13 @@ class GalleryInterface(QtCore.QObject):
         self._current_directory = dirpath
         self.dirChanged.emit()
 
-    def set_input_files(self, files, progress=None) -> bool:
+    def set_input_files(self, files) -> bool:
         """
-        open files now, on this thread (see open_files); False if none could
-        be opened, or a file is opening already
+        Open files: False if none could be opened, and the current file then
+        stays open. Prints how long each step took.
         """
-        if self.is_loading():
-            return False
         try:
-            if progress is not None and self._scan is scan_files:
-                result = self._scan(files, progress=progress)
-            else:
-                result = self._scan(files)
+            result = self._scan(files)
         except OpenError as e:
             print(f"\033[91m WARNING\033[0m {e}")
             return False
@@ -382,84 +314,8 @@ class GalleryInterface(QtCore.QObject):
         self._install(result)
         return True
 
-    def is_loading(self):
-        return self._opener is not None or self._opening
-
-    def _keep_gui_alive(self, message):
-        ''' between the steps of an open on the GUI thread: repaint and run timers, but no user input '''
-        self.loadingProgress.emit(message)
-        QtCore.QCoreApplication.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents)
-
-    def open_files(self, files) -> bool:
-        """
-        Open files in a background thread (unless threading is off): the GUI
-        stays responsive, the current file stays shown until the new one is
-        open, and fileChanged then follows as with set_input_files.
-        loadingStarted/loadingFinished bracket it. False if a load is
-        already running.
-        """
-        if self.is_loading():
-            return False
-        files = [files] if isinstance(files, str) else list(files or [])
-        if not files:
-            return False
-        label = ', '.join(os.path.basename(f) for f in files)
-        threaded = self._threaded
-        if threaded and self._scan is scan_files and root_event_thread_running():
-            print("\033[91m WARNING\033[0m PyROOT's event thread is running (ROOT.PyConfig.StartGUIThread was "
-                  "not False before ROOT started): opening files on the GUI thread")
-            threaded = False
-        if not threaded:
-            # on the GUI thread: show that it's opening, and keep repainting
-            # between steps (a single long C++ call, e.g. gallery's
-            # constructor, still holds the GUI until it returns)
-            # opening from here on: no other open, navigation or ROOT use meanwhile
-            self._opening = True
-            try:
-                try:
-                    self.loadingStarted.emit(f'Opening {label}...')
-                    self._keep_gui_alive(f'Opening {label}...')
-                    result = (self._scan(files, progress=self._keep_gui_alive) if self._scan is scan_files
-                              else self._scan(files))
-                finally:
-                    self._opening = False
-            except OpenError as e:
-                print(f"\033[91m WARNING\033[0m {e}")
-                self.loadingFinished.emit(False, str(e))
-                return False
-            if result.timings:
-                print(f'Opened {", ".join(result.files)}: {result.describe_timings()}')
-            self._install(result)
-            self.loadingFinished.emit(True, f'Opened {label}')
-            return True
-        if not self._thread_safety and self._scan is scan_files:
-            root = _root()
-            root.ROOT.EnableThreadSafety()
-            # TITUS_RELEASE_GIL=0 keeps the GIL during gallery calls: the worker
-            # then can't run C++ concurrently with Python, but the GUI may stall
-            if os.environ.get('TITUS_RELEASE_GIL', '1') != '0':
-                release_gil(root)
-            self._thread_safety = True
-        self._opener = FileOpener(files, self._scan, parent=self)
-        self._opener.done.connect(self._on_opened)
-        self.loadingStarted.emit(f'Opening {label}...')
-        self._opener.start()
-        return True
-
-    def _on_opened(self, result):
-        opener, self._opener = self._opener, None
-        if opener is not None:
-            opener.wait()
-            opener.deleteLater()
-        if isinstance(result, Exception):
-            print(f"\033[91m WARNING\033[0m {result}")
-            self.loadingFinished.emit(False, str(result))
-            return
-        self._install(result)
-        self.loadingFinished.emit(True, f'Opened {", ".join(os.path.basename(f) for f in result.files)}')
-
     def _install(self, result):
-        """ make opened files current, on the GUI thread """
+        """ make opened files current """
         for warning in result.warnings:
             print(f"\033[91m WARNING\033[0m {warning}")
         self._gallery_event_handle = result.event
@@ -564,8 +420,8 @@ class GalleryInterface(QtCore.QObject):
     def event(self, qevent=None):
         '''
         The current art event number. Called by Qt with a QEvent (this
-        overrides QObject.event), e.g. to deliver the file opener's queued
-        signal: that is handed to QObject.
+        overrides QObject.event), e.g. to deliver a queued signal: that is
+        handed to QObject.
         '''
         if qevent is not None:
             return super().event(qevent)
@@ -574,8 +430,7 @@ class GalleryInterface(QtCore.QObject):
         return self.event_handle().eventAuxiliary().event()
 
     def event_handle(self):
-        # while a file opens in the background, ROOT isn't used from the GUI thread
-        return None if self.is_loading() else self._gallery_event_handle
+        return self._gallery_event_handle
 
     def subrun(self):
         if self.event_handle() is None:
@@ -620,8 +475,6 @@ class GalleryInterface(QtCore.QObject):
             print("On the first event, can't go to previous.")
 
     def process_event(self, force=False):
-        if self.is_loading():
-            return
         if self._lastProcessed != self._entry or force:
             self._lastProcessed = self._entry
             self.eventChanged.emit()
@@ -633,8 +486,6 @@ class GalleryInterface(QtCore.QObject):
         subrun, run) not an event index as usual. So first of all go from
         (event, subrun, run) to event index
         '''
-        if self.is_loading():
-            return
         if self._gallery_event_handle is None:
             print('No _gallery_event_handle')
             return

@@ -124,15 +124,6 @@ class Gui(QtWidgets.QMainWindow):
         # modules may access this thru this.statusBar()
         self.setStatusBar(QtWidgets.QStatusBar())
 
-        # shown while a file opens in the background (GalleryInterface.open_files)
-        self._loading_bar = QtWidgets.QProgressBar()
-        self._loading_bar.setRange(0, 0)
-        self._loading_bar.setMaximumWidth(120)
-        self._loading_bar.setVisible(False)
-        self.statusBar().addPermanentWidget(self._loading_bar)
-        self._gi.loadingStarted.connect(self._on_loading_started)
-        self._gi.loadingProgress.connect(lambda message: self.statusBar().showMessage(message))
-        self._gi.loadingFinished.connect(self._on_loading_finished)
 
         # modules may access this thru this.menuBar()
         self.setMenuBar(QtWidgets.QMenuBar())
@@ -239,17 +230,9 @@ class Gui(QtWidgets.QMainWindow):
             self, 'Open file', self._gi.current_directory, 'ROOT files (*.root)', options=options)[0])
         if file_path == '':
             return
-        self._gi.open_files([file_path])
+        self._gi.set_input_file(file_path)
         if (x := os.path.dirname(file_path)) != '':
             self._gi.current_directory = x
-
-    def _on_loading_started(self, message):
-        self._loading_bar.setVisible(True)
-        self.statusBar().showMessage(message)
-
-    def _on_loading_finished(self, ok, message):
-        self._loading_bar.setVisible(False)
-        self.statusBar().showMessage(message, 5000 if ok else 0)
 
     def _on_open_dir_action(self):
         ''' Show file browser &allow user to open a new file '''

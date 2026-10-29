@@ -66,8 +66,6 @@ def columns_to_container(kind, columns):
 def _import_root():
     import ROOT
     ROOT.PyConfig.IgnoreCommandLineOptions = True
-    # no PyROOT event polling thread (see evd.py); no effect once ROOT is set up
-    ROOT.PyConfig.StartGUIThread = False
     return ROOT
 
 

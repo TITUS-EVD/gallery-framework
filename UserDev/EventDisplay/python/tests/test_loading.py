@@ -1,11 +1,9 @@
 """
-Opening files: TFile then gallery (scan_files), in a background thread
-(GalleryInterface.open_files) while the GUI keeps running. gallery is faked.
+Opening files: TFile then gallery (scan_files), and what the gallery
+interface does with them. gallery is faked.
 """
 
 import sys
-import threading
-import time
 from types import SimpleNamespace
 from unittest import mock
 
@@ -189,70 +187,50 @@ def recorder(gi):
     log = []
     gi.fileChanged.connect(lambda: log.append(('file', gi.current_file)))
     gi.eventChanged.connect(lambda: log.append(('event', gi.event())))
-    gi.loadingStarted.connect(lambda m: log.append(('started', m)))
-    gi.loadingFinished.connect(lambda ok, m: log.append(('finished', ok)))
     return log
 
 
-def test_open_without_threads(qtbot):
-    gi = GalleryInterface(threaded=False, scan=lambda files: opened(files[0]))
+def test_open(qtbot):
+    gi = GalleryInterface(scan=lambda files: opened(files[0]))
     log = recorder(gi)
-    assert gi.open_files(['a.root'])
-    # file, then its first event, all before open_files returns
-    assert log == [('started', 'Opening a.root...'), ('file', 'a.root'), ('event', 1), ('finished', True)]
+    assert gi.set_input_files(['a.root'])
+    # file, then its first event
+    assert log == [('file', 'a.root'), ('event', 1)]
     assert gi.available_events() == [1, 2] and gi.get_products('recob::Hit')[0].full_name() == 'gaushit::Reco1'
 
 
-def test_open_in_the_background(qtbot):
-    release = threading.Event()
-    scanned_in = []
-
-    def slow_scan(files):
-        scanned_in.append(threading.current_thread() is threading.main_thread())
-        release.wait(5)
-        return opened(files[0])
-
-    gi = GalleryInterface(threaded=True, scan=slow_scan)
-    gi._scan = lambda files: opened(files[0], events=[(5, 5, 5)])
-    gi.set_input_files(['old.root'])
-    gi._scan = slow_scan
-    log = recorder(gi)
-
-    assert gi.open_files(['new.root'])
-    assert gi.is_loading() and log == [('started', 'Opening new.root...')]
-    # while it opens: the GUI's event loop runs, the old file is kept but not touched
-    ticks = []
-    QtCore.QTimer.singleShot(10, lambda: ticks.append(1))
-    qtbot.waitUntil(lambda: ticks == [1], timeout=2000)
-    assert gi.current_file == 'old.root' and gi.event_handle() is None and gi.event() == 0
-    assert not gi.open_files(['other.root'])  # one at a time
-    gi.next()
-    gi.process_event(True)
-    assert log == [('started', 'Opening new.root...')]
-
-    with qtbot.waitSignal(gi.loadingFinished, timeout=5000) as finished:
-        release.set()
-    assert finished.args == [True, 'Opened new.root']
-    assert scanned_in == [False]  # scanned in the worker thread
-    assert log[1:] == [('file', 'new.root'), ('event', 1), ('finished', True)]
-    assert not gi.is_loading() and gi.event_handle() is not None
+def test_products_of_the_new_file_only(qtbot):
+    gi = GalleryInterface(scan=lambda files: opened(files[0]))
+    gi.set_input_files(['a.root'])
+    gi._scan = lambda files: OpenedFiles(files=files, event=FakeEvent([(files[0], [(2, 1, 1)])]),
+                                         run_list=[{'run': 2, 'subrun': 1, 'event': 1}],
+                                         key_table=product_table(BRANCHES[:2]))
+    gi.set_input_files(['b.root'])
+    assert gi.get_products('recob::Track') is None and gi.available_runs() == [2]
 
 
-def test_failed_background_open_keeps_the_file(qtbot):
-    gi = GalleryInterface(threaded=True, scan=lambda files: opened(files[0]))
+def test_failed_open_keeps_the_file(qtbot, capsys):
+    gi = GalleryInterface(scan=lambda files: opened(files[0]))
     gi.set_input_files(['good.root'])
 
     def fail(files):
-        time.sleep(0.05)
         raise OpenError('could not open bad.root: corrupt')
 
     gi._scan = fail
     log = recorder(gi)
-    with qtbot.waitSignal(gi.loadingFinished, timeout=5000) as finished:
-        assert gi.open_files(['bad.root'])
-    assert finished.args == [False, 'could not open bad.root: corrupt']
-    assert log == [('started', 'Opening bad.root...'), ('finished', False)]
+    assert not gi.set_input_files(['bad.root'])
+    assert log == [] and 'corrupt' in capsys.readouterr().out
     assert gi.current_file == 'good.root' and gi.event() == 1
+
+
+def test_event_number_and_qt_events(qtbot):
+    ''' GalleryInterface.event() is the art event number, and still QObject.event for Qt '''
+    gi = GalleryInterface(scan=lambda files: opened(files[0]))
+    assert gi.event() == 0
+    gi.set_input_files(['a.root'])
+    assert gi.event() == 1
+    qevent = QtCore.QEvent(QtCore.QEvent.User)
+    assert gi.event(qevent) is QtCore.QObject.event(gi, qevent)
 
 
 def test_inactive_module_catches_up_on_file_change(qtbot):
@@ -280,58 +258,3 @@ def test_inactive_module_catches_up_on_file_change(qtbot):
     assert module.calls == ['file', 'update']
     module.activate()
     assert module.calls == ['file', 'update']
-
-
-def test_open_on_the_gui_thread_if_pyroot_polls_events(qtbot, monkeypatch, capsys):
-    ''' PyROOT's event polling thread uses ROOT concurrently: a background open would crash '''
-    import titus.gallery_interface.gallery_interface as gi_module
-    from titus.gallery_interface.gallery_interface import root_event_thread_running
-    stop = threading.Event()
-
-    def _process_root_events():  # the name of PyROOT's polling function (ROOT/_application.py)
-        stop.wait(5)
-
-    assert not root_event_thread_running()
-    poller = threading.Thread(target=_process_root_events, daemon=True)
-    poller.start()
-    try:
-        assert root_event_thread_running()
-        monkeypatch.setattr(gi_module, 'scan_files', lambda files, progress=None: opened(files[0]))
-        gi = GalleryInterface(threaded=True)
-        log = recorder(gi)
-        assert gi.open_files(['a.root'])
-        # opened before open_files returned: no worker thread
-        assert log == [('started', 'Opening a.root...'), ('file', 'a.root'), ('event', 1), ('finished', True)]
-        assert "PyROOT's event thread is running" in capsys.readouterr().out
-    finally:
-        stop.set()
-        poller.join()
-
-
-def test_root_setup_turns_off_the_event_thread(monkeypatch):
-    from titus.gallery_interface.gallery_interface import _root
-    root = SimpleNamespace(PyConfig=SimpleNamespace(StartGUIThread=True))
-    monkeypatch.setitem(sys.modules, 'ROOT', root)
-    assert _root() is root and root.PyConfig.StartGUIThread is False
-
-
-def test_gui_thread_open_keeps_repainting(qtbot, tmp_path, monkeypatch):
-    ''' the default open: on the GUI thread, timers run between steps, no other open meanwhile '''
-    import titus.gallery_interface.gallery_interface as gi_module
-    name = str(tmp_path / 'a.root')
-    open(name, 'w').close()
-    root = fake_root([(name, [(1, 1, i) for i in range(350)])])
-    monkeypatch.setattr(gi_module, '_root', lambda: root)
-    gi = GalleryInterface(threaded=False)
-    progress, ticks, nested = [], [], []
-    gi.loadingProgress.connect(progress.append)
-    timer = QtCore.QTimer()
-    timer.timeout.connect(lambda: (ticks.append(1), nested.append(gi.open_files(['other.root']))))
-    timer.start(0)
-    assert gi.open_files([name])
-    timer.stop()
-    assert gi.available_events() == list(range(350)) and not gi.is_loading()
-    # steps reported, the event loop ran in between, and a second open was refused
-    assert progress[1] == 'reading a.root' and 'reading events 300/350 of a.root' in progress
-    assert progress[-1] == 'opening a.root with gallery'
-    assert ticks and not any(nested)
