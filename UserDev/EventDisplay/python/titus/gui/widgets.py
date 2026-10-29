@@ -29,6 +29,63 @@ class ElidedLabel(QtWidgets.QLabel):
         painter.end()
 
 
+class LoadingOverlay(QtWidgets.QWidget):
+    '''
+    Translucent cover over the window while a file opens, with what is
+    being done. It takes the mouse clicks meant for the widgets below.
+    '''
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._title = ''
+        self._detail = ''
+        self.hide()
+
+    def set_message(self, title=None, detail=None):
+        if title is not None:
+            self._title = title
+        if detail is not None:
+            self._detail = detail
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.fillRect(self.rect(), QtGui.QColor(0, 0, 0, 110))
+
+        title_font = QtGui.QFont(self.font())
+        title_font.setPointSizeF(title_font.pointSizeF() * 1.4)
+        title_font.setBold(True)
+        title_metrics = QtGui.QFontMetrics(title_font)
+        detail_metrics = QtGui.QFontMetrics(self.font())
+
+        # a box in the middle, as wide as its text (within the window)
+        margin = 24
+        max_text = max(100, self.width() - 4 * margin)
+        title = title_metrics.elidedText(self._title, QtCore.Qt.ElideMiddle, max_text)
+        detail = detail_metrics.elidedText(self._detail, QtCore.Qt.ElideMiddle, max_text)
+        text_width = max(title_metrics.horizontalAdvance(title), detail_metrics.horizontalAdvance(detail), 200)
+        height = title_metrics.height() + (detail_metrics.height() + 8 if detail else 0)
+        box = QtCore.QRect(0, 0, text_width + 2 * margin, height + 2 * margin)
+        box.moveCenter(self.rect().center())
+
+        palette = self.palette()
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(palette.color(QtGui.QPalette.Window))
+        painter.drawRoundedRect(box, 10, 10)
+
+        painter.setPen(palette.color(QtGui.QPalette.WindowText))
+        text_rect = box.adjusted(margin, margin, -margin, -margin)
+        painter.setFont(title_font)
+        painter.drawText(text_rect, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop, title)
+        if detail:
+            painter.setFont(self.font())
+            painter.drawText(text_rect, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignBottom, detail)
+        painter.end()
+
+    def mousePressEvent(self, event):
+        event.accept()
+
+
 class ComboBoxWithKeyConnect(QtWidgets.QComboBox):
 
     def __init__(self):
@@ -81,6 +138,10 @@ class MultiSelectionBox(QtWidgets.QToolButton):
 
     def set_products(self, products):
         self._toolmenu.clear()
+        self._actions = []
+        # nothing to choose from: greyed out (the tooltip still shows)
+        self.setEnabled(bool(products))
+        self.setToolTip('' if products else f"No {self._name} in this file")
         first = True
         if products is not None:
             group = QtWidgets.QActionGroup(self._toolmenu)
@@ -168,12 +229,18 @@ class recoBox(ComboBoxWithKeyConnect):
         self._product = product
         self._producers = producers
         
-        if producers == None:
+        if not producers:
             self.addItem("--None--")
         else:
             self.addItem("--Select--")
             for producer in producers:
                 self.addItem(producer.producer())
+        self._set_available(bool(producers))
+
+    def _set_available(self, available):
+        ''' nothing to choose from: greyed out (the tooltip still shows) '''
+        self.setEnabled(available)
+        self.setToolTip('' if available else f"No {self._product} in this file")
 
     def selectStage(self, stage):
         # If no stage can draw this product, just return
@@ -193,6 +260,7 @@ class recoBox(ComboBoxWithKeyConnect):
                 self.addItem(_producer)
         else:
             self.addItem("--None--")
+        self._set_available(len(prod_list) > 0)
 
         self.setDuplicatesEnabled(False)
 

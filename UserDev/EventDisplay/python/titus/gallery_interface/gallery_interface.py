@@ -160,19 +160,29 @@ def ping_file(root, file, timings=None):
     return run_list, table
 
 
-def scan_files(files, root=None):
+def scan_steps(n_files):
+    ''' steps scan_files reports for n files: a TFile pass each, then gallery '''
+    return n_files + 1
+
+
+def scan_files(files, root=None, progress=None):
     '''
     Open art-root files: each file's (run, subrun, event)s and products read
     with TFile (ping_file), then the gallery.Event to read them, with the
     time each step took. Raises OpenError.
+    progress(message, step): called before each step (scan_steps of them,
+    counted from 0 over the files given)
     '''
     root = root or _root()
+    progress = progress or (lambda message, step: None)
     start = time.perf_counter()
+    n_given = len(files or [])
     files, warnings = readable_files(files)
     if not files:
         raise OpenError('; '.join(warnings) or 'no file given')
     run_list, table, opened, timings = [], {'all': {}}, [], {}
-    for file in files:
+    for i, file in enumerate(files):
+        progress(f'Reading {os.path.basename(file)}', i)
         try:
             file_runs, file_table = ping_file(root, file, timings)
         except (OSError, AttributeError, ReferenceError) as e:
@@ -190,6 +200,7 @@ def scan_files(files, root=None):
         raise OpenError(f'no events in {", ".join(opened)}')
     timings['TFile total'] = time.perf_counter() - start
     start = time.perf_counter()
+    progress('Opening with gallery', scan_steps(n_given) - 1)
     names = root.std.vector['string']()
     for file in opened:
         names.push_back(file)
@@ -225,11 +236,21 @@ class GalleryInterface(QtCore.QObject):
     fileChanged = QtCore.pyqtSignal()
     dirChanged = QtCore.pyqtSignal()
     eventChanged = QtCore.pyqtSignal()
+    # Reading files and events blocks the GUI thread: these let the GUI show
+    # that it is busy (and repaint between steps).
+    # (message, number of steps or 0 if not known, whether a file is opening)
+    loadingStarted = QtCore.pyqtSignal(str, int, bool)
+    # (message, steps done)
+    loadingProgress = QtCore.pyqtSignal(str, int)
+    # (succeeded, message)
+    loadingFinished = QtCore.pyqtSignal(bool, str)
 
     def __init__(self, file=None, scan=None):
         """ scan: replaces scan_files (tests) """
         super().__init__()
         self._scan = scan or scan_files
+        # set while files or an event are read, to refuse another open meanwhile
+        self._loading = False
 
         self._gallery_event_handle = None
         # products of the current event, shared by the drawables
@@ -299,20 +320,42 @@ class GalleryInterface(QtCore.QObject):
         self._current_directory = dirpath
         self.dirChanged.emit()
 
+    @property
+    def loading(self):
+        return self._loading
+
     def set_input_files(self, files) -> bool:
         """
         Open files: False if none could be opened, and the current file then
-        stays open. Prints how long each step took.
+        stays open. Prints how long each step took. The loading signals
+        report the steps: the files read, gallery, the first event drawn.
         """
-        try:
-            result = self._scan(files)
-        except OpenError as e:
-            print(f"\033[91m WARNING\033[0m {e}")
+        if self._loading:
+            print("\033[91m WARNING\033[0m still loading, can't open another file yet")
             return False
-        if result.timings:
-            print(f'Opened {", ".join(result.files)}: {result.describe_timings()}')
-        self._install(result)
-        return True
+        files = list(files or [])
+        names = ', '.join(os.path.basename(f) for f in files)
+        # the scan's steps, then drawing the first event
+        steps = scan_steps(len(files)) + 1
+        self._loading = True
+        self.loadingStarted.emit(f'Opening {names}', steps, True)
+        ok, message = False, ''
+        try:
+            try:
+                result = self._scan(files, progress=self.loadingProgress.emit)
+            except OpenError as e:
+                print(f"\033[91m WARNING\033[0m {e}")
+                message = str(e)
+                return False
+            if result.timings:
+                print(f'Opened {", ".join(result.files)}: {result.describe_timings()}')
+            self.loadingProgress.emit('Drawing the first event', steps - 1)
+            self._install(result)
+            ok, message = True, f'Opened {", ".join(os.path.basename(f) for f in result.files)}'
+            return True
+        finally:
+            self._loading = False
+            self.loadingFinished.emit(ok, message)
 
     def _install(self, result):
         """ make opened files current """
@@ -341,7 +384,7 @@ class GalleryInterface(QtCore.QObject):
         # a heads-up that they should expect different products in the file
         # before processing the new event
         self.fileChanged.emit()
-        self.go_to_event(0)
+        self._go_to_event(0)
 
 
     def get_stages(self):
@@ -477,9 +520,29 @@ class GalleryInterface(QtCore.QObject):
     def process_event(self, force=False):
         if self._lastProcessed != self._entry or force:
             self._lastProcessed = self._entry
-            self.eventChanged.emit()
+            if self._loading:
+                # part of opening a file, which reports its own progress
+                self.eventChanged.emit()
+                return
+            self._loading = True
+            self.loadingStarted.emit(f'Loading event {self._entry + 1} of {self._n_entries}', 0, False)
+            try:
+                self.eventChanged.emit()
+            finally:
+                self._loading = False
+                self.loadingFinished.emit(True, '')
 
     def go_to_event(self, event, subrun=None, run=None, force=False):
+        '''
+        Ignored while a file or event loads: the GUI repaints between loading
+        steps, and a timer (auto-advance) could otherwise move the event in
+        the middle of drawing one
+        '''
+        if self._loading:
+            return
+        self._go_to_event(event, subrun, run, force)
+
+    def _go_to_event(self, event, subrun=None, run=None, force=False):
         '''
         Gallery events don't offer random access
         if rubrun and run are specified, then we are dealing with real (event,

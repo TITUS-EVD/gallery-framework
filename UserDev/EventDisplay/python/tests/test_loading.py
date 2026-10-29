@@ -191,7 +191,7 @@ def recorder(gi):
 
 
 def test_open(qtbot):
-    gi = GalleryInterface(scan=lambda files: opened(files[0]))
+    gi = GalleryInterface(scan=lambda files, progress=None: opened(files[0]))
     log = recorder(gi)
     assert gi.set_input_files(['a.root'])
     # file, then its first event
@@ -200,9 +200,9 @@ def test_open(qtbot):
 
 
 def test_products_of_the_new_file_only(qtbot):
-    gi = GalleryInterface(scan=lambda files: opened(files[0]))
+    gi = GalleryInterface(scan=lambda files, progress=None: opened(files[0]))
     gi.set_input_files(['a.root'])
-    gi._scan = lambda files: OpenedFiles(files=files, event=FakeEvent([(files[0], [(2, 1, 1)])]),
+    gi._scan = lambda files, progress=None: OpenedFiles(files=files, event=FakeEvent([(files[0], [(2, 1, 1)])]),
                                          run_list=[{'run': 2, 'subrun': 1, 'event': 1}],
                                          key_table=product_table(BRANCHES[:2]))
     gi.set_input_files(['b.root'])
@@ -210,10 +210,10 @@ def test_products_of_the_new_file_only(qtbot):
 
 
 def test_failed_open_keeps_the_file(qtbot, capsys):
-    gi = GalleryInterface(scan=lambda files: opened(files[0]))
+    gi = GalleryInterface(scan=lambda files, progress=None: opened(files[0]))
     gi.set_input_files(['good.root'])
 
-    def fail(files):
+    def fail(files, progress=None):
         raise OpenError('could not open bad.root: corrupt')
 
     gi._scan = fail
@@ -225,7 +225,7 @@ def test_failed_open_keeps_the_file(qtbot, capsys):
 
 def test_event_number_and_qt_events(qtbot):
     ''' GalleryInterface.event() is the art event number, and still QObject.event for Qt '''
-    gi = GalleryInterface(scan=lambda files: opened(files[0]))
+    gi = GalleryInterface(scan=lambda files, progress=None: opened(files[0]))
     assert gi.event() == 0
     gi.set_input_files(['a.root'])
     assert gi.event() == 1

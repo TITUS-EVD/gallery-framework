@@ -99,6 +99,8 @@ class TpcModule(Module):
 
         self._draw_wires = False
         self._wire_drawer = None
+        # set when the user clicks "None": new files then open without wires
+        self._wires_off_by_user = False
         self._product_box_map = {}
         # art product type (e.g. recob::Track) of each product box
         self._box_products = {}
@@ -330,8 +332,9 @@ class TpcModule(Module):
         wire_group_box.setLayout(wire_choice_layout)
         main_layout.addWidget(wire_group_box)
 
-        # Set the default to be no wires
+        # Set the default to be no wires (a file with wires selects them, _choose_wire_view)
         self._none_wire_button.toggle()
+        self._update_wire_buttons()
 
         # Microboone only:
         # TODO re-enable this & add to geometry
@@ -576,6 +579,7 @@ class TpcModule(Module):
                 self._channel_roi_choice.select(c)
             if not products and self._channel_roi_button.isChecked():
                 self._none_wire_button.toggle()
+        self._update_wire_buttons()
 
         for box, drawable in self._product_box_map.items():
             current_producer = box.currentProducer()
@@ -773,9 +777,37 @@ class TpcModule(Module):
         self._wirePlotItems = {}
         self._current_wire = -1
 
+    def _wire_kinds(self):
+        ''' (radio button, product box) of each wire image, in the order a new file picks one '''
+        kinds = [(self._wire_button, self._wire_choice)]
+        if self._gm.current_geom.name() == 'icarus':
+            kinds.append((self._channel_roi_button, self._channel_roi_choice))
+        kinds.append((self._raw_digit_button, self._raw_digit_choice))
+        return kinds
+
+    def _update_wire_buttons(self):
+        ''' wire kinds the file doesn't have can't be chosen '''
+        for button, box in self._wire_kinds():
+            button.setEnabled(box.isEnabled())
+            button.setToolTip(box.toolTip())
+
+    def _choose_wire_view(self):
+        '''
+        A new file: draw its wires, else its channel ROIs, else its raw
+        digits, unless a kind it has is chosen already or the user chose none
+        '''
+        if not self._none_wire_button.isChecked() or self._wires_off_by_user:
+            return
+        for button, box in self._wire_kinds():
+            if box.selected_products():
+                button.setChecked(True)
+                return
+
     def change_wire_choice(self):
         ''' the wire radio buttons or product boxes changed: read and draw only the wires '''
-        cuts = {key: view.removed_ticks() for key, view in self._wire_views.items()}
+        if self.sender() in [button for button, _ in self._wire_kinds()] + [self._none_wire_button]:
+            self._wires_off_by_user = self.sender() is self._none_wire_button
+        cuts ={key: view.removed_ticks() for key, view in self._wire_views.items()}
         self._select_wire_drawer()
         if self._wire_drawer is not None:
             self._wire_drawer.analyze()
@@ -809,6 +841,7 @@ class TpcModule(Module):
             self.update_reco_boxes()
         finally:
             self._updating_boxes = False
+        self._choose_wire_view()
         self._select_wire_drawer()
         self._gi.process_event(True)
 

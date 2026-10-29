@@ -4,6 +4,8 @@ import datetime
 
 from PyQt5 import Qt, QtGui, QtCore, QtWidgets
 
+from .widgets import LoadingOverlay
+
 
 '''
 # experimental highlight effect when hovering over the menu items
@@ -124,6 +126,18 @@ class Gui(QtWidgets.QMainWindow):
         # modules may access this thru this.statusBar()
         self.setStatusBar(QtWidgets.QStatusBar())
 
+        # shown while files or an event load (GalleryInterface.loading*
+        # signals); the overlay covers the window above the status bar
+        # while a file opens
+        self._loading_bar = QtWidgets.QProgressBar()
+        self._loading_bar.setMaximumWidth(200)
+        self._loading_bar.setTextVisible(False)
+        self._loading_bar.setVisible(False)
+        self.statusBar().addPermanentWidget(self._loading_bar)
+        self._loading_overlay = LoadingOverlay(self)
+        self._gi.loadingStarted.connect(self._on_loading_started)
+        self._gi.loadingProgress.connect(self._on_loading_progress)
+        self._gi.loadingFinished.connect(self._on_loading_finished)
 
         # modules may access this thru this.menuBar()
         self.setMenuBar(QtWidgets.QMenuBar())
@@ -233,6 +247,62 @@ class Gui(QtWidgets.QMainWindow):
         self._gi.set_input_file(file_path)
         if (x := os.path.dirname(file_path)) != '':
             self._gi.current_directory = x
+
+    def _on_loading_started(self, message, steps, opening_file):
+        self._loading_bar.setRange(0, steps)
+        self._loading_bar.setValue(0)
+        self._loading_bar.setVisible(True)
+        self.statusBar().showMessage(f'{message}...')
+        if opening_file:
+            self._loading_overlay.set_message(message, '')
+            self._place_loading_overlay()
+            self._loading_overlay.show()
+            self._loading_overlay.raise_()
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        self._repaint_while_loading()
+
+    def _on_loading_progress(self, message, step):
+        if self._loading_bar.maximum() > 0:
+            self._loading_bar.setValue(step)
+        self.statusBar().showMessage(f'{message}...')
+        if self._loading_overlay.isVisible():
+            self._loading_overlay.set_message(detail=f'{message}...')
+        self._repaint_while_loading()
+
+    def _on_loading_finished(self, ok, message):
+        self._loading_bar.setVisible(False)
+        if self._loading_overlay.isVisible():
+            self._loading_overlay.hide()
+            QtWidgets.QApplication.restoreOverrideCursor()
+        if not message:
+            self.statusBar().clearMessage()
+        elif ok:
+            self.statusBar().showMessage(message, 5000)
+        else:
+            # stays until the next message
+            self.statusBar().showMessage(f'Could not open: {message}')
+
+    def _repaint_while_loading(self):
+        '''
+        Files and events are read on this (the GUI) thread, which doesn't
+        return to the event loop until they are drawn: paint the loading
+        state now. Clicks and keys wait (and the overlay takes the clicks).
+        '''
+        QtWidgets.QApplication.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents)
+
+    def _place_loading_overlay(self):
+        ''' over everything but the status bar, which shows the progress '''
+        rect = self.rect()
+        if self.statusBar().isVisible():
+            rect.setBottom(self.statusBar().geometry().top() - 1)
+        self._loading_overlay.setGeometry(rect)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # (may come before the overlay is made, from the restored geometry)
+        overlay = getattr(self, '_loading_overlay', None)
+        if overlay is not None and overlay.isVisible():
+            self._place_loading_overlay()
 
     def _on_open_dir_action(self):
         ''' Show file browser &allow user to open a new file '''
