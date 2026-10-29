@@ -32,6 +32,9 @@ def main():
     parser.add_argument('--timerange',
                       type=int,
                       help="Overrides the number of time samples.")
+    parser.add_argument('--profile', metavar='FILE',
+                      help="Profile the GUI's Python code until it is closed: write the cProfile "
+                           "statistics to FILE and print the most expensive functions")
     parser.add_argument('file', nargs='*', help="Optional input file to use")
     args = parser.parse_args()
 
@@ -91,7 +94,28 @@ def main():
     timer.start(250)
     timer.timeout.connect(lambda: None)  
 
+    if args.profile:
+        sys.exit(run_profiled(app, args.profile))
     sys.exit(app.exec_())
+
+
+def run_profiled(app, path, top=30):
+    ''' the event loop under cProfile: statistics written to path, the top functions printed '''
+    import cProfile
+    import pstats
+    profiler = cProfile.Profile()
+    profiler.enable()
+    try:
+        code = app.exec_()
+    finally:
+        profiler.disable()
+        profiler.dump_stats(path)
+        stats = pstats.Stats(profiler, stream=sys.stdout).strip_dirs()
+        print(f'\nProfile written to {path}. Most time in the function itself:')
+        stats.sort_stats('tottime').print_stats(top)
+        print('Most time including what they call:')
+        stats.sort_stats('cumulative').print_stats(top)
+    return code
 
 
 if __name__ == '__main__':
