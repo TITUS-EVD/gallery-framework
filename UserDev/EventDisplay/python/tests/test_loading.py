@@ -199,7 +199,7 @@ def test_open_without_threads(qtbot):
     log = recorder(gi)
     assert gi.open_files(['a.root'])
     # file, then its first event, all before open_files returns
-    assert log == [('file', 'a.root'), ('event', 1), ('finished', True)]
+    assert log == [('started', 'Opening a.root...'), ('file', 'a.root'), ('event', 1), ('finished', True)]
     assert gi.available_events() == [1, 2] and gi.get_products('recob::Hit')[0].full_name() == 'gaushit::Reco1'
 
 
@@ -296,12 +296,12 @@ def test_open_on_the_gui_thread_if_pyroot_polls_events(qtbot, monkeypatch, capsy
     poller.start()
     try:
         assert root_event_thread_running()
-        monkeypatch.setattr(gi_module, 'scan_files', lambda files: opened(files[0]))
+        monkeypatch.setattr(gi_module, 'scan_files', lambda files, progress=None: opened(files[0]))
         gi = GalleryInterface(threaded=True)
         log = recorder(gi)
         assert gi.open_files(['a.root'])
         # opened before open_files returned: no worker thread
-        assert log == [('file', 'a.root'), ('event', 1), ('finished', True)]
+        assert log == [('started', 'Opening a.root...'), ('file', 'a.root'), ('event', 1), ('finished', True)]
         assert "PyROOT's event thread is running" in capsys.readouterr().out
     finally:
         stop.set()
@@ -313,3 +313,25 @@ def test_root_setup_turns_off_the_event_thread(monkeypatch):
     root = SimpleNamespace(PyConfig=SimpleNamespace(StartGUIThread=True))
     monkeypatch.setitem(sys.modules, 'ROOT', root)
     assert _root() is root and root.PyConfig.StartGUIThread is False
+
+
+def test_gui_thread_open_keeps_repainting(qtbot, tmp_path, monkeypatch):
+    ''' the default open: on the GUI thread, timers run between steps, no other open meanwhile '''
+    import titus.gallery_interface.gallery_interface as gi_module
+    name = str(tmp_path / 'a.root')
+    open(name, 'w').close()
+    root = fake_root([(name, [(1, 1, i) for i in range(350)])])
+    monkeypatch.setattr(gi_module, '_root', lambda: root)
+    gi = GalleryInterface(threaded=False)
+    progress, ticks, nested = [], [], []
+    gi.loadingProgress.connect(progress.append)
+    timer = QtCore.QTimer()
+    timer.timeout.connect(lambda: (ticks.append(1), nested.append(gi.open_files(['other.root']))))
+    timer.start(0)
+    assert gi.open_files([name])
+    timer.stop()
+    assert gi.available_events() == list(range(350)) and not gi.is_loading()
+    # steps reported, the event loop ran in between, and a second open was refused
+    assert progress[1] == 'reading a.root' and 'reading events 300/350 of a.root' in progress
+    assert progress[-1] == 'opening a.root with gallery'
+    assert ticks and not any(nested)

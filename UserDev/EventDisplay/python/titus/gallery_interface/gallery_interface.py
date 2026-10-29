@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Dict, List
@@ -10,8 +11,13 @@ from titus.readers.base import ProductCache
 
 
 def threads_enabled():
-    ''' whether files are opened in a background thread (TITUS_THREADS=0 or evd.py --no-threads turns it off) '''
-    return os.environ.get('TITUS_THREADS', '1') != '0'
+    '''
+    Whether files are opened in a background thread: experimental, off
+    unless TITUS_THREADS=1 or evd.py --threads. Opening in a thread crashed
+    ROOT 6.28 + gallery on the gpvm; by default files are opened on the GUI
+    thread, which keeps repainting between steps (GalleryInterface.open_files).
+    '''
+    return os.environ.get('TITUS_THREADS', '0') == '1'
 
 
 def _root():
@@ -107,6 +113,11 @@ class OpenedFiles:
     warnings: List[str] = field(default_factory=list)
     # the std::vector of file names given to gallery, kept with the event
     file_names: object = None
+    # seconds per step: 'TFile' (all files), 'gallery'
+    timings: Dict[str, float] = field(default_factory=dict)
+
+    def describe_timings(self):
+        return ', '.join(f'{step} {seconds:.1f} s' for step, seconds in self.timings.items())
 
 
 def readable_files(files):
@@ -152,7 +163,11 @@ def _merge_tables(into, table):
             into[stage][type_name] += found
 
 
-def ping_file(root, file):
+def _no_progress(message):
+    pass
+
+
+def ping_file(root, file, progress=_no_progress):
     '''
     (run list, product table) of a file, read with ROOT's TFile before gallery
     opens it, as TITUS always did: gallery's constructor crashed in the GUI
@@ -165,7 +180,10 @@ def ping_file(root, file):
         tree = f.Get('Events')
         aux_branch = tree.GetBranch('EventAuxiliary')
         run_list = []
-        for i in range(aux_branch.GetEntries()):
+        n_entries = aux_branch.GetEntries()
+        for i in range(n_entries):
+            if i % 100 == 0:
+                progress(f'reading events {i}/{n_entries} of {os.path.basename(file)}')
             aux_branch.GetEntry(i)
             aux = tree.EventAuxiliary
             run_list.append({'run': aux.run(), 'subrun': aux.subRun(), 'event': aux.event()})
@@ -175,20 +193,23 @@ def ping_file(root, file):
     return run_list, table
 
 
-def scan_files(files, root=None):
+def scan_files(files, root=None, progress=_no_progress):
     '''
     Open art-root files: each file's (run, subrun, event)s and products read
     with TFile (ping_file), then the gallery.Event to read them. No Qt or GUI
-    state, so it can run in a worker thread. Raises OpenError.
+    state. progress(message) is called between steps, e.g. to let the GUI
+    repaint. Raises OpenError.
     '''
     root = root or _root()
+    start = time.perf_counter()
     files, warnings = readable_files(files)
     if not files:
         raise OpenError('; '.join(warnings) or 'no file given')
     run_list, table, opened = [], {'all': {}}, []
     for file in files:
+        progress(f'reading {os.path.basename(file)}')
         try:
-            file_runs, file_table = ping_file(root, file)
+            file_runs, file_table = ping_file(root, file, progress)
         except (OSError, AttributeError, ReferenceError) as e:
             warnings.append(f'could not open {file} ({e}), skipping')
             continue
@@ -202,6 +223,9 @@ def scan_files(files, root=None):
         raise OpenError('; '.join(warnings))
     if not run_list:
         raise OpenError(f'no events in {", ".join(opened)}')
+    timings = {'TFile': time.perf_counter() - start}
+    progress(f'opening {", ".join(os.path.basename(f) for f in opened)} with gallery')
+    start = time.perf_counter()
     names = root.std.vector['string']()
     for file in opened:
         names.push_back(file)
@@ -209,8 +233,9 @@ def scan_files(files, root=None):
         ev = root.gallery.Event(names)
     except Exception as e:
         raise OpenError(f'gallery could not open {", ".join(opened)}: {e}') from None
+    timings['gallery'] = time.perf_counter() - start
     return OpenedFiles(files=opened, event=ev, run_list=run_list, key_table=table, warnings=warnings,
-                       file_names=names)
+                       file_names=names, timings=timings)
 
 
 class FileOpener(QtCore.QThread):
@@ -254,6 +279,7 @@ class GalleryInterface(QtCore.QObject):
     eventChanged = QtCore.pyqtSignal()
     # a background open started (what is opened), and ended (ok, message)
     loadingStarted = QtCore.pyqtSignal(str)
+    loadingProgress = QtCore.pyqtSignal(str)
     loadingFinished = QtCore.pyqtSignal(bool, str)
 
     def __init__(self, file=None, threaded=None, scan=None):
@@ -265,6 +291,7 @@ class GalleryInterface(QtCore.QObject):
         self._threaded = threads_enabled() if threaded is None else threaded
         self._scan = scan or scan_files
         self._opener = None
+        self._opening = False  # a file opening on the GUI thread (open_files)
         self._thread_safety = False
 
         self._gallery_event_handle = None
@@ -335,18 +362,33 @@ class GalleryInterface(QtCore.QObject):
         self._current_directory = dirpath
         self.dirChanged.emit()
 
-    def set_input_files(self, files) -> bool:
-        """ open files now, on this thread (see open_files); False if none could be opened """
+    def set_input_files(self, files, progress=None) -> bool:
+        """
+        open files now, on this thread (see open_files); False if none could
+        be opened, or a file is opening already
+        """
+        if self.is_loading():
+            return False
         try:
-            result = self._scan(files)
+            if progress is not None and self._scan is scan_files:
+                result = self._scan(files, progress=progress)
+            else:
+                result = self._scan(files)
         except OpenError as e:
             print(f"\033[91m WARNING\033[0m {e}")
             return False
+        if result.timings:
+            print(f'Opened {", ".join(result.files)}: {result.describe_timings()}')
         self._install(result)
         return True
 
     def is_loading(self):
-        return self._opener is not None
+        return self._opener is not None or self._opening
+
+    def _keep_gui_alive(self, message):
+        ''' between the steps of an open on the GUI thread: repaint and run timers, but no user input '''
+        self.loadingProgress.emit(message)
+        QtCore.QCoreApplication.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents)
 
     def open_files(self, files) -> bool:
         """
@@ -368,9 +410,28 @@ class GalleryInterface(QtCore.QObject):
                   "not False before ROOT started): opening files on the GUI thread")
             threaded = False
         if not threaded:
-            ok = self.set_input_files(files)
-            self.loadingFinished.emit(ok, f'Opened {label}' if ok else f'Could not open {label}')
-            return ok
+            # on the GUI thread: show that it's opening, and keep repainting
+            # between steps (a single long C++ call, e.g. gallery's
+            # constructor, still holds the GUI until it returns)
+            # opening from here on: no other open, navigation or ROOT use meanwhile
+            self._opening = True
+            try:
+                try:
+                    self.loadingStarted.emit(f'Opening {label}...')
+                    self._keep_gui_alive(f'Opening {label}...')
+                    result = (self._scan(files, progress=self._keep_gui_alive) if self._scan is scan_files
+                              else self._scan(files))
+                finally:
+                    self._opening = False
+            except OpenError as e:
+                print(f"\033[91m WARNING\033[0m {e}")
+                self.loadingFinished.emit(False, str(e))
+                return False
+            if result.timings:
+                print(f'Opened {", ".join(result.files)}: {result.describe_timings()}')
+            self._install(result)
+            self.loadingFinished.emit(True, f'Opened {label}')
+            return True
         if not self._thread_safety and self._scan is scan_files:
             root = _root()
             root.ROOT.EnableThreadSafety()

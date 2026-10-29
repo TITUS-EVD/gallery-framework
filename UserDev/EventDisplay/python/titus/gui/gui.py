@@ -131,6 +131,7 @@ class Gui(QtWidgets.QMainWindow):
         self._loading_bar.setVisible(False)
         self.statusBar().addPermanentWidget(self._loading_bar)
         self._gi.loadingStarted.connect(self._on_loading_started)
+        self._gi.loadingProgress.connect(lambda message: self.statusBar().showMessage(message))
         self._gi.loadingFinished.connect(self._on_loading_finished)
 
         # modules may access this thru this.menuBar()
