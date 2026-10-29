@@ -11,7 +11,7 @@ import math
 import numpy as np
 import pytest
 
-from titus.geometry import Geometry, ServiceHandles
+from titus.geometry import Geometry
 
 # values copied from the legacy classes before they were removed
 LEGACY = {
@@ -193,9 +193,11 @@ def test_logo(geom):
     assert not geom.hasLogo()
 
 
-def test_services_missing_is_explicit(geom):
-    with pytest.raises(RuntimeError, match='not loaded'):
-        geom.getGeometryCore()
+def test_no_larsoft_services(geom):
+    """ everything comes from the detector description: no service accessors left """
+    for name in ('getGeometryCore', 'getDetectorProperties', 'getWireReadout', 'getDetectorClocks',
+                 'getLArProperties', 'getAuxDetGeometryCore'):
+        assert not hasattr(geom, name)
 
 
 def test_override_time_range(geom):
@@ -224,20 +226,3 @@ def test_anode_cathode_drift_length():
     # ICARUS: 149 cm drift
     anode, cathode, _ = icarus.anodeCathodeTicks(0)[0]
     assert (cathode - anode) * icarus.time2cm() == pytest.approx(149.04, abs=0.01)
-
-
-def test_services_load_on_first_use(geom):
-    calls = []
-
-    def loader():
-        calls.append(1)
-        return ServiceHandles(geometry_core='core', detector_clocks='clocks')
-
-    g = Geometry(geom.detector, geom.display, service_loader=loader)
-    assert calls == []
-    assert g.getGeometryCore() == 'core' and g.getDetectorClocks() == 'clocks'
-    assert calls == [1]
-    # loaded once; a service the loader didn't provide is still an error
-    with pytest.raises(RuntimeError, match='not loaded'):
-        g.getWireReadout()
-    assert calls == [1]

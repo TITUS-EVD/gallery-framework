@@ -85,6 +85,8 @@ class TpcModule(Module):
         self._draw_wires = False
         self._wire_drawer = None
         self._product_box_map = {}
+        # art product type (e.g. recob::Track) of each product box
+        self._box_products = {}
         self._wire_views = {}
         # views not drawn for the current event since hidden by the view buttons
         self._stale_views = set()
@@ -329,12 +331,9 @@ class TpcModule(Module):
             prod_class, product = product_info
             producers = self._gi.get_producers(product, self._lsm.current_stage)
             thisBox = recoBox(self, product_name, product, producers)
-            # created when a producer is selected
             self._product_box_map[thisBox] = self.register_drawable(
-                drawables.LazyDrawable(
-                    lambda prod_class=prod_class: prod_class(self._gi, self._gm.current_geom, self),
-                    product)
-            )
+                prod_class(self._gi, self._gm.current_geom, self))
+            self._box_products[thisBox] = product
 
             thisBox.activated[str].connect(self.reco_box_handler)
             thisBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
@@ -563,7 +562,7 @@ class TpcModule(Module):
 
         for box, drawable in self._product_box_map.items():
             current_producer = box.currentProducer()
-            product = drawable.product_name
+            product = self._box_products[box]
             producers = self._gi.get_producers(product, self._lsm.current_stage)
             box.set_product_and_producers(product, producers)
             if producers is not None:

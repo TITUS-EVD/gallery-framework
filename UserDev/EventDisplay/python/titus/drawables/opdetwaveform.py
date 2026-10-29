@@ -1,35 +1,37 @@
-from titus.drawables import Drawable
-
-from ROOT import evd
-import pyqtgraph as pg
-import numpy as np
+from titus.display.optical import opdet_traces
+from titus.drawables.drawable import ReaderDrawable
 
 
-class OpDetWaveform(Drawable):
-
-    """docstring for opdetwaveform"""
+class OpDetWaveform(ReaderDrawable):
+    '''
+    raw::OpDetWaveform as one trace per optical channel of the detector
+    description (titus.display.optical), for the optical module's waveform
+    view and optical detector colors. compression: keep every n-th sample.
+    '''
+    KIND = 'opdet_waveforms'
+    DEFAULT_COMPRESSION = 10
 
     def __init__(self, gallery_interface, geom):
         super().__init__(gallery_interface)
-        self._process = evd.DrawOpDetWaveform(geom.getGeometryCore(),
-                                              geom.getDetectorProperties(),
-                                              geom.getDetectorClocks())
-        self._process.set_n_frames(geom.nOpticalFrames())
-        self._process.set_time_offset(geom.opticalOffset())
-        self._process.initialize()
-        self._process.setInput(self._producer_name)
+        self._product_name = 'opdetwaveform'
+        self._geom = geom
+        self._compression = self.DEFAULT_COMPRESSION
+        self._traces = None
 
     def set_compression_factor(self, x: int):
-        self._process.set_size_reduction(x)
+        self._compression = max(int(x), 1)
+        self._traces = None
 
-    def set_producer(self, producer):
-        """ override to call setInput instead of setProducer """
-        self._producer_name = producer
-        if self._process is not None:
-            self._process.setInput(self._producer_name)
+    def on_data(self):
+        self._traces = None
 
     def getData(self):
-        try:
-            return self._process.getArray()
-        except:
-            return np.ones(shape=(312, 1))
+        ''' {channel: {'time': us, 'adc': ...}} of the current event '''
+        if self._traces is None:
+            self._traces = {}
+            for waveforms in self._data:
+                for channel, trace in opdet_traces(
+                        waveforms, len(self._geom.detector.opdets), self._geom.detector.timing.optical_tick_period,
+                        self._compression, self._geom.opticalOffset()).items():
+                    self._traces.setdefault(channel, trace)
+        return self._traces

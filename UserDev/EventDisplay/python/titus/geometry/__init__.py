@@ -46,4 +46,4 @@ def load_detector(detector, gdml=None):
 
 
 # after load_detector: the geometry module imports it
-from .geometry import Geometry, ServiceHandles, load_display_settings  # noqa: E402
+from .geometry import Geometry, load_display_settings  # noqa: E402

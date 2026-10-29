@@ -8,7 +8,7 @@ does not include the cost of 'import ROOT'. Run it a few times; the first run
 after login is usually the cold-cvmfs-cache case.
 
     python bench_startup.py --detector sbnd
-    python bench_startup.py --detector icarus --file my_art_file.root --evd
+    python bench_startup.py --detector icarus --file my_art_file.root --titusio --no-services
 
 Pass --json out.json to save the results.
 """
@@ -83,11 +83,11 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--detector', choices=SUPPORTED_SERVICES, default='sbnd')
     parser.add_argument('--file', help='art-root file to open with gallery')
-    parser.add_argument('--evd', action='store_true',
-                        help='also load the gallery-framework evd/larutil libraries')
+    parser.add_argument('--titusio', action='store_true',
+                        help='also load the titusio product reader library (what TITUS loads)')
     parser.add_argument('--products', action='store_true',
                         help='time instantiating gallery product access from python '
-                             '(run separately from --evd to measure each in isolation)')
+                             '(run separately from --titusio to measure each in isolation)')
     parser.add_argument('--no-services', action='store_true',
                         help='skip loading the LArSoft services')
     parser.add_argument('--json', help='write results to this file')
@@ -113,9 +113,8 @@ def main():
                         lambda product=product: ROOT.gallery.Event.getValidHandle[product])
         timer.stage('art::FindMany<recob::Hit>', lambda: ROOT.art.FindMany['recob::Hit'])
 
-    if args.evd:
-        timer.stage('from ROOT import evd', lambda: ROOT.evd)
-        timer.stage('from ROOT import larutil', lambda: ROOT.larutil)
+    if args.titusio:
+        timer.stage('from ROOT import titusio', lambda: ROOT.titusio)
 
     if args.file:
         def open_file():

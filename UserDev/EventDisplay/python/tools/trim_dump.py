@@ -87,7 +87,7 @@ def main():
                     if labels and tag.split(':')[0] not in labels:
                         continue
                     container = reader.get(entry, kind, tag)
-                    if hasattr(container, 'channel'):
+                    if isinstance(container, (Hits, RawDigits, WireSignals)):  # TPC channels
                         keep = np.isin(container.channel, channels)
                         kept[tag] = np.flatnonzero(keep)
                         container = keep_rows(container, keep)

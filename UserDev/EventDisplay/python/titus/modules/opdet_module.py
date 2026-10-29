@@ -276,7 +276,8 @@ class OpDetModule(Module):
         if self._opdet_wf_drawer is None:
             return
         self._opdet_wf_drawer.set_compression_factor(x)
-        self._gi.process_event(True)
+        # the waveforms are already read: only the traces change
+        self.update()
 
     def viewSelectionWorker(self):
         self._wf_view.setVisible(False)
@@ -338,6 +339,7 @@ class OpDetModule(Module):
                 self._opdet_wf_drawer = self.register_drawable(
                     _DRAWABLE_LIST['OpDetWaveform'][0](self._gi, self._gm.current_geom)
                 )
+                self._opdet_wf_drawer.set_compression_factor(self._waveform_compression_box.value())
             selected_products = self._wfm_choice.selected_products()
             if len(selected_products) > 0:
                 producer = self._wfm_choice.selected_products()[0]
@@ -449,14 +451,13 @@ class OpDetModule(Module):
         # self._flash_time_view.clear()
         self._flash_time_view.drawOpFlashTimes(self._flashes)
         
-    def drawOpDetWvf(self, data):
+    def drawOpDetWvf(self, result):
         '''
-        OpDet display shows raw waveform data
+        OpDet display shows raw waveform data: {channel: {'time', 'adc'}}
+        from the OpDetWaveform drawable
         '''
         if not self._show_raw_btn.isChecked():
             return
-        
-        result = parse_opdetwaveforms(data, self._gm.current_geom)
 
         self._wf_view.drawOpDetWvf(result)
 
@@ -617,60 +618,3 @@ class flash_time_view(pg.GraphicsLayoutWidget):
         
         self._time_plot.addItem(self._time_window)
         self._time_plot.autoRange()
-
-
-def parse_opdetwaveforms(data, geometry):
-    """Get waveforms & times from raw data returned by DrawOpDetWaveform."""
-    if len(data) < 3:
-        return {}
-
-    if np.isnan(data[0]):
-        return {}
-
-    # unpack variable number of waveforms
-    # waveform data follows first two elements. each waveform separated by
-    # a NaN. remove the last element (empty) after the split and then the
-    # leading NaN from each waveform
-    n_waveforms = int(data[0])
-    compression_factor = int(data[1])
-    data = data[2:]
-
-    wvfm_breaks = np.where(np.isnan(data))[0]
-    wvfms = np.split(data, wvfm_breaks)[:-1]
-    for i in range(len(wvfms)):
-        wvfms[i] = wvfms[i][~np.isnan(wvfms[i])]
-
-    # result is a dict like
-    # channel: {'time': [t1, t2, ...], 'adc': [a1, a2, a3, ...]}
-    tick_period = geometry.detector.timing.optical_tick_period
-    result = {}
-    for w in wvfms:
-        ch = int(w[0])
-        offset = w[1]
-        # remove trailing zeros
-        wvfm = np.trim_zeros(w[2:], trim='b')
-
-        if wvfm[0] == geometry.opdetDefaultValue():
-            continue
-
-        ticks = len(wvfm)
-        # extra element for trailing NaN. The NaN prevents pyqtgraph from
-        # connecting waveform lines
-        xs = np.arange(0, ticks + 1, dtype=float)
-        xs *= compression_factor
-
-        # tick to timestamp
-        xs *= tick_period
-        xs += offset 
-
-        # TODO: Lots of appends. These create copies so would be better to
-        # pre-allocate somehow
-        xs[-1] = np.nan
-        wvfm = np.append(wvfm, np.nan)
-        try:
-            result[ch]['time'] = np.append(result[ch]['time'], xs)
-            result[ch]['adc'] = np.append(result[ch]['adc'], wvfm)
-        except KeyError:
-            result[ch] = {'time': xs, 'adc': wvfm}
-
-    return result

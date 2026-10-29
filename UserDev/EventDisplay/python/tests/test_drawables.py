@@ -207,67 +207,14 @@ def test_crt_view_from_detector_description(qtbot, sbnd):
     assert widget._crt_strip(mac, 999) is None
 
 
-def test_services_load_only_when_asked(qtbot, monkeypatch, sbnd):
-    pytest.importorskip('PIL')
+def test_larsoft_module_loads_no_services(qtbot, monkeypatch):
+    """ the services packages aren't imported: any use of them fails """
     from titus.modules.larsoft_module import LArSoftModule
-
-    created = []
-
-    def service_manager(name):
-        created.append(name)
-        return mock.MagicMock(name=name)
-
-    monkeypatch.setitem(sys.modules, 'SBNDservices', mock.Mock(ServiceManager=service_manager))
+    monkeypatch.setitem(sys.modules, 'SBNDservices', None)
     lsm = LArSoftModule('sbnd')
-    loaded = []
-    lsm.servicesLoaded.connect(lambda: loaded.append(1))
-    geom = Geometry(sbnd.detector, sbnd.display, service_loader=lsm.load_services)
-    assert created == [] and not lsm.services_loaded
-
-    geom.getWireReadout()
-    assert lsm.services_loaded and loaded == [1]
-    assert sorted(created) == sorted(['DetectorClocks', 'DetectorProperties', 'Geometry', 'WireReadout',
-                                      'LArProperties', 'AuxDetGeometry'])
-    assert geom.getGeometryCore() is lsm.geom_service
-    geom.getDetectorClocks()
-    assert len(created) == 6 and loaded == [1]
-
-
-def test_lazy_drawable_created_on_first_producer():
-    from titus.drawables import LazyDrawable
-
-    created = []
-
-    def factory():
-        drawable = mock.Mock()
-        created.append(drawable)
-        return drawable
-
-    lazy = LazyDrawable(factory, 'recob::Track')
-    lazy.parent_module = 'module'
-    # the module analyzes, draws and clears all its drawables every event
-    lazy.analyze()
-    lazy.drawObjects()
-    lazy.clearDrawnObjects()
-    lazy.set_producer(None)
-    assert created == [] and lazy.product_name == 'recob::Track'
-    with pytest.raises(AttributeError, match='not created yet'):
-        lazy.getHitsOnWire
-
-    lazy.set_producer('pandoraTrack::Reco2')
-    (drawable,) = created
-    assert drawable.parent_module == 'module'
-    drawable.set_producer.assert_called_with('pandoraTrack::Reco2')
-    lazy.analyze()
-    lazy.drawObjects()
-    drawable.analyze.assert_called_once()
-    drawable.drawObjects.assert_called_once()
-    lazy.set_producer(None)
-    drawable.set_producer.assert_called_with(None)
-    lazy.set_producer('pandoraTrack::Reco2')
-    assert len(created) == 1
-
-
+    assert lsm.configured_for == 'sbnd' and not hasattr(lsm, 'load_services')
+    with pytest.raises(RuntimeError, match='not a supported detector'):
+        LArSoftModule('uboone')
 
 def serve_reco2(products, entry, with_associations=True):
     dump = DumpReader(DATA / 'sbnd-reco2-pandora')
@@ -965,3 +912,70 @@ def test_products_drawn_in_shown_views_only(qtbot, products, sbnd, tpc_module):
     drawer.drawObjects()
     (collection,) = drawer._drawnObjects
     assert collection in tpc_module._wire_views[(2, 0)]._view.addedItems
+
+
+CRT_DATA = DATA / 'sbnd-data-crt'
+
+
+def test_crt_times_relative_to_the_trigger_on_data(qtbot, products, sbnd):
+    ''' SBND data: FEB times are since the second (PPS); the drawable finds tdcdecoder and refers them to the trigger '''
+    from titus.drawables import FEBData
+    serve_all(products, CRT_DATA)
+    drawer = FEBData(FakeGalleryInterface(), sbnd)
+    drawer.set_producer('crtdecoder::DECODE')
+    drawer.analyze()
+    t0 = drawer.getData()[:, 1]
+    assert len(t0) > 1000
+    # the CRT readout spans tens of ms around the trigger
+    assert t0.min() < 0 < t0.max() and np.all(np.abs(t0) < 30e6) and abs(np.median(t0)) < 5e6
+    reader = DumpReader(CRT_DATA)
+    from titus.display.crt import crt_strip_hits
+    assert np.all(crt_strip_hits(reader.get(0, 'crt_febdata', 'crtdecoder'))[:, 1] > 100e6)
+
+
+def make_waveforms(rows):
+    ''' rows: (channel, time stamp, samples) '''
+    from titus.readers import OpDetWaveforms
+    samples = [np.asarray(s) for _, _, s in rows]
+    return OpDetWaveforms(channel=[r[0] for r in rows], time_stamp=[r[1] for r in rows],
+                          adc_offset=np.concatenate([[0], np.cumsum([len(s) for s in samples])]),
+                          adc=np.concatenate(samples) if samples else [])
+
+
+def test_opdet_traces():
+    from titus.display.optical import opdet_traces
+    waveforms = make_waveforms([(3, 10., [1, 2, 3, 4, 5]), (3, 0., [7, 8]), (900, 0., [1]), (5, 1., [9])])
+    traces = opdet_traces(waveforms, n_channels=312, tick_period=0.5, compression=2, time_offset=100.)
+    # the timing channel isn't an optical detector
+    assert sorted(traces) == [3, 5]
+    # channel 3: both waveforms, earliest first, every second sample, nan between
+    np.testing.assert_array_equal(traces[3]['adc'], [7, np.nan, 1, 3, 5, np.nan])
+    np.testing.assert_array_equal(traces[3]['time'], [100., np.nan, 110., 111., 112., np.nan])
+    assert opdet_traces(make_waveforms([]), 312, 0.5) == {}
+
+
+def test_opdetwaveform_drawable(qtbot, products, sbnd):
+    from titus.drawables import OpDetWaveform
+    products[('opdet_waveforms', 'pmtdecoder:PMTChannels:DECODE')] = make_waveforms([(6, -2., np.arange(100))])
+    drawer = OpDetWaveform(FakeGalleryInterface(), sbnd)
+    drawer.set_producer('pmtdecoder:PMTChannels:DECODE')
+    drawer.analyze()
+    assert len(drawer.getData()[6]['adc']) == 10 + 1  # default compression 10, and the nan
+    drawer.set_compression_factor(1)
+    assert len(drawer.getData()[6]['adc']) == 100 + 1
+
+
+def test_truth_dumper_lines():
+    from titus.modules.truthdumper_module import TruthPrintOut
+    truths = DumpReader(STEP3).get(0, 'mctruths', 'generator')
+    (line,) = TruthPrintOut.lines(truths)
+    assert line.startswith(TruthPrintOut.NU_NAME_MAP.get(int(truths.nu_pdg[0]), ''))
+    assert TruthPrintOut.lines(DumpReader(STEP3).get(0, 'mctruths', 'corsika')) == []
+
+
+def test_modules_import_without_header_parsing(monkeypatch):
+    ''' importing the modules doesn't use galleryUtils (it made cling parse MCTruth.h from cvmfs at startup) '''
+    import importlib
+    monkeypatch.setitem(sys.modules, 'galleryUtils', None)
+    import titus.modules.truthdumper_module as truthdumper
+    importlib.reload(truthdumper)

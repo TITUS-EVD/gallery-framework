@@ -81,13 +81,11 @@ class GeometryModule(Module):
 
     def _create_geometries(self):
         """
-        Creates list of geometries the user can select. Since LArSoftModule can
-        only use either ICARUS or SBND services, these are mutually exclusive
+        Creates the list of geometries the user can select: the detector
+        chosen on the command line (LArSoftModule.configured_for)
         """
-        # geometry and timing come from the detector description files; the
-        # services are loaded the first time a C++ drawer asks for one
-        self._available_geoms = [Geometry.load(self._lsm.configured_for,
-                                               service_loader=self._lsm.load_services)]
+        # geometry and timing come from the detector description files
+        self._available_geoms = [Geometry.load(self._lsm.configured_for)]
 
         if self._time_range is not None:
             for geo in self._available_geoms:

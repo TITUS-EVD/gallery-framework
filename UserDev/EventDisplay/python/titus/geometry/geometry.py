@@ -1,7 +1,8 @@
 """
 The geometry interface used by the TITUS GUI and drawables, built from a
 Detector description plus display settings (<detector>.display.json) instead
-of per-detector subclasses and the LArSoft services.
+of per-detector subclasses and the LArSoft services, which TITUS no longer
+loads (tools/dump_detector.py uses them once, to write the description).
 
 Method names follow the legacy per-detector geometry classes (formerly
 titus/gallery_interface/geometry.py) so existing callers keep working. Everything that follows from the detector
@@ -15,9 +16,7 @@ TITUS plane index: position of a plane in Detector.planes, i.e. ordered by
 import copy
 import json
 import pathlib
-import traceback
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict
 
 import numpy as np
 
@@ -28,21 +27,6 @@ LOGO_PATH = pathlib.Path(__file__).parent.parent.parent / 'resources' / 'logos'
 
 # op det type when the display settings don't list one per channel
 OPDET_NAME_BY_SHAPE = {'TGeoSphere': 'pmt_coated', 'TGeoBBox': 'xarapuca_vis'}
-
-
-@dataclass
-class ServiceHandles:
-    """
-    LArSoft service providers, still needed by the C++ drawers until they are
-    ported. The clock and detector property entries are the per-job data
-    objects (DetectorClocks.DataForJob(), DetectorProperties.DataFor(clocks)).
-    """
-    geometry_core: Any = None
-    detector_properties: Any = None
-    wire_readout: Any = None
-    detector_clocks: Any = None
-    lar_properties: Any = None
-    aux_det_geometry: Any = None
 
 
 def load_display_settings(detector_name, directory=DETECTOR_DIR):
@@ -74,18 +58,9 @@ def _tuples(obj):
 
 class Geometry:
 
-    def __init__(self, detector: Detector, display: Dict[str, Any],
-                 services: Optional[ServiceHandles] = None,
-                 service_loader: Optional[Callable[[], ServiceHandles]] = None):
-        """
-        services: LArSoft service handles for the C++ drawers that still need
-        them. service_loader: called the first time a service is requested
-        and none is set, to load them only when needed.
-        """
+    def __init__(self, detector: Detector, display: Dict[str, Any]):
         self.detector = detector
         self.display = display
-        self.services = services or ServiceHandles()
-        self._service_loader = service_loader
 
         timing = detector.timing
         self._time2Cm = timing.time_to_cm
@@ -110,9 +85,8 @@ class Geometry:
         self._plane_mix = self._compute_plane_mix()
 
     @classmethod
-    def load(cls, detector_name, gdml=None, services=None, service_loader=None):
-        return cls(load_detector(detector_name, gdml), load_display_settings(detector_name),
-                   services, service_loader)
+    def load(cls, detector_name, gdml=None):
+        return cls(load_detector(detector_name, gdml), load_display_settings(detector_name))
 
     # --- layout, computed from the detector ---
 
@@ -359,38 +333,6 @@ class Geometry:
     @property
     def crt_back_zmax(self):
         return self._crt('back_zmax')
-
-    # --- LArSoft service objects, for the C++ drawers ---
-
-    def _service(self, name):
-        service = getattr(self.services, name)
-        if service is None and self._service_loader is not None:
-            caller = traceback.extract_stack(limit=3)[0]
-            print(f'LArSoft service {name!r} requested by {caller.filename}:{caller.lineno}, loading services')
-            loader, self._service_loader = self._service_loader, None
-            self.services = loader()
-            service = getattr(self.services, name)
-        if service is None:
-            raise RuntimeError(f'LArSoft service {name!r} is not loaded; this drawer still needs it')
-        return service
-
-    def getGeometryCore(self):
-        return self._service('geometry_core')
-
-    def getDetectorProperties(self):
-        return self._service('detector_properties')
-
-    def getWireReadout(self):
-        return self._service('wire_readout')
-
-    def getDetectorClocks(self):
-        return self._service('detector_clocks')
-
-    def getLArProperties(self):
-        return self._service('lar_properties')
-
-    def getAuxDetGeometryCore(self):
-        return self._service('aux_det_geometry')
 
     def print_summary(self):
         t = self.detector.timing

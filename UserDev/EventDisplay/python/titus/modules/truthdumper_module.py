@@ -5,20 +5,14 @@ Prints event truth information to the terminal.
 This module would be a nice place to add print options to the GUI too
 """
 
-import ROOT
-
 from .module import Module
-
-
-import galleryUtils
-sc = galleryUtils.SourceCode
-sc.loadHeaderFromUPS('nusimdata/SimulationBase/MCTruth.h')
+from ..readers import ProductNotFound
 
 
 class TruthDumperModule(Module):
-    def __init__(self):
+    def __init__(self, tag='generator'):
         super().__init__()
-        self._tpo = TruthPrintOut()
+        self._tpo = TruthPrintOut(tag)
 
     def update(self):
         self._tpo.print(self._gi.event_handle())
@@ -39,8 +33,9 @@ class TruthPrintOut:
         -16: 'NuTauBar',
     }
 
-    def __init__(self):
-        galleryUtils.make_getValidHandle.make('std::vector<simb::MCTruth>')
+    def __init__(self, tag='generator'):
+        # simb::MCTruth products of this module label
+        self._tag = tag
 
     def print(self, gallery_event):
         ev_aux = gallery_event.eventAuxiliary()
@@ -50,22 +45,26 @@ class TruthPrintOut:
         print(TruthPrintOut._FOOTER)
 
     def _print_info(self, ev):
+        from ..readers.gallery import read_event_product, titusio
         try:
-            get_mctruths = ev.getValidHandle[ROOT.vector(ROOT.simb.MCTruth)]
-            mctruths_tag = ROOT.art.InputTag("generator");
-            truth_vec = get_mctruths(mctruths_tag)
-        except TypeError as e:
+            truths = read_event_product(titusio(), ev, 'mctruths', self._tag)
+        except ProductNotFound as e:
             print(f'{TruthPrintOut._INDENT}Could not load truth information from this file')
             print(f'{TruthPrintOut._INDENT}{e}')
             return
+        for line in self.lines(truths):
+            print(f'{TruthPrintOut._INDENT}{line}')
 
-        for idx in range(truth_vec.size()):
-            t = truth_vec.at(idx)
-            nutype = t.GetNeutrino().Nu().PdgCode()
-            ccnc = "CC" if not t.GetNeutrino().CCNC() else "NC"
-            origin = t.Origin()
-            vertex = (t.GetNeutrino().Nu().Vx(), t.GetNeutrino().Nu().Vy(), t.GetNeutrino().Nu().Vz())
-            enu = t.GetNeutrino().Nu().E()
-            mode = t.GetNeutrino().InteractionType()
-
-            print(f"{TruthPrintOut._INDENT}{TruthPrintOut.NU_NAME_MAP[nutype]} {ccnc} interaction (mode={mode}) at {vertex}, Enu={enu:.4f} GeV")
+    @staticmethod
+    def lines(truths):
+        ''' one line per neutrino interaction of an MCTruths container '''
+        out = []
+        for row in range(len(truths)):
+            if not truths.has_neutrino[row]:
+                continue
+            name = TruthPrintOut.NU_NAME_MAP.get(int(truths.nu_pdg[row]), str(truths.nu_pdg[row]))
+            ccnc = 'CC' if truths.ccnc[row] == 0 else 'NC'
+            vertex = (float(truths.vx[row]), float(truths.vy[row]), float(truths.vz[row]))
+            out.append(f'{name} {ccnc} interaction (mode={truths.interaction_type[row]}) at {vertex}, '
+                       f'Enu={truths.nu_energy[row]:.4f} GeV')
+        return out

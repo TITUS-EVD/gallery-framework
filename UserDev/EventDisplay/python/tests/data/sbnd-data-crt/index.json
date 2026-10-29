@@ -1,0 +1,49 @@
+{
+ "schema_version": 1,
+ "meta": {
+  "detector": "sbnd",
+  "source_files": [
+   "decoded-raw_filtered_data_EventBuilder2_p2_art1_run18255_60_strmBNBLight_20250218T104741-58aea841-d67d-a450-9e7f-29bd93510e21.root"
+  ],
+  "created": "2026-10-29T13:56:16+00:00",
+  "root_version": "6.28/12",
+  "tool": "dump_products.py",
+  "args": [
+   "/pnfs/sbnd/persistent/users/twester/titus_test_files/v10/sbnd/data/decode/decoded-raw_filtered_data_EventBuilder2_p2_art1_run18255_60_strmBNBLight_20250218T104741-58aea841-d67d-a450-9e7f-29bd93510e21.root",
+   "--detector",
+   "sbnd",
+   "--raw-digits",
+   "--opdet-waveforms",
+   "--events",
+   "1",
+   "--outdir",
+   "dumps/sbnd-detsim"
+  ],
+  "errors": [],
+  "trimmed_from": "sbnd-detsim",
+  "trim": {
+   "events": "0",
+   "wires": null,
+   "kinds": "crt_febdata,daq_timestamps",
+   "tags": null
+  }
+ },
+ "events": [
+  {
+   "id": [
+    18255,
+    1,
+    485425
+   ],
+   "file": "event_0000.npz",
+   "products": {
+    "crt_febdata": [
+     "crtdecoder::DECODE"
+    ],
+    "daq_timestamps": [
+     "tdcdecoder::DECODE"
+    ]
+   }
+  }
+ ]
+}
