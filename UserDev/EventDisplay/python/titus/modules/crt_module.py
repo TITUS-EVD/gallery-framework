@@ -11,6 +11,7 @@ import numpy as np
 
 from titus.modules import Module
 import titus.drawables as drawables
+from titus.gui.widgets import limit_dock_width
 
 _SBND_CRT_FEBDATA = 'sbnd::crt::FEBData'
 _CRT_COLORMAP = pg.colormap.get('CET-L17')
@@ -32,6 +33,7 @@ class CrtModule(Module):
 
         self._dock =  QtWidgets.QDockWidget('CRT Controls', self._gui, objectName='crt_dock')
         self._dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
+        limit_dock_width(self._dock)
         self._dock_widgets = set([self._dock])
 
     def _initialize(self):

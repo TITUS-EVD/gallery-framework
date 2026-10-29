@@ -12,7 +12,7 @@ from titus.gui.optical_elements import Pmts, Arapucas, _bordercol_
 
 from titus.modules import Module
 import titus.drawables as drawables
-from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel
+from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, limit_dock_width
 
 # place any drawables associated with optical view here. For now, just flashes
 _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
@@ -41,6 +41,8 @@ class OpDetModule(Module):
         self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._dock =  QtWidgets.QDockWidget('OpDet Controls', self._gui, objectName='opdet_dock')
         self._dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
+        limit_dock_width(self._view_dock)
+        limit_dock_width(self._dock)
         self._dock_widgets = set([self._view_dock, self._dock])
 
         self._opdet_views = []

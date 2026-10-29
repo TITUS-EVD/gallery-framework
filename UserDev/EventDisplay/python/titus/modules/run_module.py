@@ -10,7 +10,7 @@ import glob
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from titus.modules import Module
-from titus.gui.widgets import ElidedLabel
+from titus.gui.widgets import ElidedLabel, limit_dock_width
 
 
 _SET_AUTOADVANCE_INTERVAL = 'Run/Auto-advance interval'
@@ -114,6 +114,7 @@ class RunModule(Module):
         self._event_dock =  QtWidgets.QDockWidget('Event Controls', self._gui, objectName='_run_dock_event')
         self._event_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._event_dock.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        limit_dock_width(self._event_dock)
         frame = QtWidgets.QWidget(self._event_dock)
         main_layout = QtWidgets.QVBoxLayout()
         frame.setLayout(main_layout)

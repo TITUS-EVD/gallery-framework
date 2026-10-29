@@ -14,7 +14,8 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PIL import ImageColor
 
 from titus.modules import Module
-from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar, MovableLabel
+from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar, MovableLabel, \
+    limit_dock_width
 from titus.gui.mctruth_panel import MCTruthPanel
 import titus.drawables as drawables
 
@@ -53,6 +54,9 @@ _RECOB_CHANNELROI = 'recob::ChannelROI'
 _RAW_RAWDIGIT = 'raw::RawDigit'
 
 _MAX_WIRE_WAVEFORMS = 10
+# size in pixels of the arrows at the wires drawn in the waveform dock
+_WIRE_ARROW_HEAD = 14
+_WIRE_ARROW_TAIL = 12
 # tab10 from matplotlib
 _WIRE_COLOR_CYCLE = [QtGui.QColor(*ImageColor.getcolor(h, 'RGB')) for h in \
                     [ '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
@@ -86,6 +90,9 @@ class TpcModule(Module):
         self._draw_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
         self._view_dock =  QtWidgets.QDockWidget('TPC View Controls', self._gui, objectName='tpc_dock_view')
         self._view_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
+        # (not the waveform and MC truth docks: a plot and a table)
+        limit_dock_width(self._draw_dock)
+        limit_dock_width(self._view_dock)
         self._waveform_dock =  QtWidgets.QDockWidget('Wire Waveform', self._gui, objectName='tpc_dock_wire')
         self._waveform_dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea \
                                             | QtCore.Qt.LeftDockWidgetArea \
@@ -374,7 +381,8 @@ class TpcModule(Module):
         self._all_views_button = QtWidgets.QPushButton("All Views")
         self._all_views_button.setCheckable(True)
         self._all_views_button.clicked.connect(self.select_views)
-        plane_layout.addWidget(self._all_views_button, 0, 0, 1, 4)
+        # over the view buttons (columns 2 on), as wide as they are together
+        plane_layout.addWidget(self._all_views_button, 0, 2, 1, self._gm.current_geom.nCryos())
 
         viewport_names = self._gm.current_geom.viewNames()
         self._view_button_array = []
@@ -776,6 +784,7 @@ class TpcModule(Module):
 
         self._wirePlotItems = {}
         self._current_wire = -1
+        self._refresh_wire_marks()
 
     def _wire_kinds(self):
         ''' (radio button, product box) of each wire image, in the order a new file picks one '''
@@ -1016,6 +1025,9 @@ class TpcModule(Module):
             if self._active:
                 self._waveform_dock.hide()
                 self._dock_widgets.remove(self._waveform_dock)
+        if self._wirePlot is not None:
+            # the arrows show while the waveforms do
+            self._refresh_wire_marks()
 
     def select_views(self):
         ''' set the internal state of selected_planes and selected_cryos from buttons '''
@@ -1194,7 +1206,9 @@ class TpcModule(Module):
         self._wirePlotItems[(tpc, wire)] = {
             'plot': pg.PlotDataItem(name=f'C: {cryo} T: {tpc} P: {plane} W: {wire}', pen=pg.mkPen(_WIRE_COLOR_CYCLE[iwire])),
             'data': wireData,
-            'idx': iwire
+            'idx': iwire,
+            # the view clicked, which points an arrow at the wire
+            'view': drawer,
         }
 
         self._wirePlotItems[(tpc, wire)]['plot'].setData(self._wireData)
@@ -1226,6 +1240,20 @@ class TpcModule(Module):
         self.plotFFT()
         if len(self._wirePlotItems) == 1:
             self._wirePlot.autoRange()
+        self._refresh_wire_marks()
+
+    def _refresh_wire_marks(self):
+        ''' arrows in the wire views at the wires drawn in the waveform dock, in their colors '''
+        marks = {key: [] for key in self._wire_views}
+        # (the settings restore the number of waveforms before the controls exist)
+        option = getattr(self, '_drawWireOption', None)
+        if option is not None and option.isChecked():
+            for (tpc, wire), item in self._wirePlotItems.items():
+                for key, view in self._wire_views.items():
+                    if view is item.get('view'):
+                        marks[key].append((wire, tpc, _WIRE_COLOR_CYCLE[item['idx']]))
+        for key, view in self._wire_views.items():
+            view.set_wire_marks(marks[key])
     
 
     def plotFFT(self):
@@ -1351,6 +1379,10 @@ class WireView(pg.GraphicsLayoutWidget):
         # Connect scale changes to handle the scale bar correctly
         self._view.sigYRangeChanged.connect(self.scaleHandler)
         self._view.sigXRangeChanged.connect(self.scaleHandler)
+        # arrows at the wires drawn in the waveform dock: (item, wire, pointing up)
+        self._wire_marks = []
+        self._view.sigRangeChanged.connect(self._place_wire_marks)
+        self._view.sigResized.connect(self._place_wire_marks)
         self._xBar = None
         self.useScaleBar = False
         self._scale_bar_nwires = 100
@@ -1545,7 +1577,11 @@ class WireView(pg.GraphicsLayoutWidget):
         if self._showPlaneNoInLabel:
             label += f'PLANE {self._plane}\n'
 
-        label += self._gi.date(include_time=self._includeTimeInLabel)
+        if self._gi.is_real_data():
+            label += self._gi.date(include_time=self._includeTimeInLabel)
+        else:
+            # simulated events carry no meaningful time stamp
+            label += f'{self._geometry.name().upper()} Simulation'
 
         self._label = MovableLabel(label, anchor=(0., 0.5))
         self._label.setPos(xLoc,yLoc)
@@ -1840,6 +1876,51 @@ class WireView(pg.GraphicsLayoutWidget):
             # Make a request to draw the hits from this wire:
             self.drawHitsRequested.emit(self._plane, wire, tpc)
 
+
+    def set_wire_marks(self, marks):
+        '''
+        Arrows pointing at the wires whose waveforms are drawn, outside the
+        image: below it for the first TPC, above it for the second.
+        marks: [(wire, tpc, QColor)]
+        '''
+        for arrow, _, _ in self._wire_marks:
+            self._view.removeItem(arrow)
+        self._wire_marks = []
+        for wire, tpc, color in marks:
+            pointing_up = tpc % 2 == 0
+            arrow = pg.ArrowItem(angle=90 if pointing_up else -90, pxMode=True,
+                                 headLen=_WIRE_ARROW_HEAD, headWidth=12, tailLen=_WIRE_ARROW_TAIL, tailWidth=5,
+                                 pen=pg.mkPen(color.darker(150)), brush=color)
+            # on top of the image and the products
+            arrow.setZValue(1e6)
+            self._view.addItem(arrow, ignoreBounds=True)
+            self._wire_marks.append((arrow, wire, pointing_up))
+        self._place_wire_marks()
+
+    def _place_wire_marks(self):
+        '''
+        The arrow's tip at the image edge, with the arrow in the white space
+        beyond it; if the view shows none there, moved in to stay in view
+        '''
+        if not self._wire_marks:
+            return
+        if self._item.image is not None:
+            height = self._item.height()
+        else:
+            height = self._geometry.nTPCs() * self._geometry.tRange()
+        (_, _), (y_min, y_max) = self._view.viewRange()
+        try:
+            pixel_height = self._view.viewPixelSize()[1]
+        except Exception:
+            # not laid out yet: placed again once it is (sigResized)
+            pixel_height = 0
+        length = (_WIRE_ARROW_HEAD + _WIRE_ARROW_TAIL + 4) * pixel_height
+        for arrow, wire, pointing_up in self._wire_marks:
+            if pointing_up:
+                y = max(0, y_min + length)
+            else:
+                y = min(height, y_max - length)
+            arrow.setPos(wire + 0.5, y)
 
     def connectWireDrawingFunction(self, func):
         self._wdf = func

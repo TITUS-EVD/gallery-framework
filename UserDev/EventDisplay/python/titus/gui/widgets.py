@@ -1,6 +1,17 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 
+# Control docks (buttons, product boxes) are at most this wide: past it
+# their buttons only stretch, and the space is better given to the views.
+# Docks with plots or tables (wire waveform, MC truth) aren't limited.
+CONTROL_DOCK_MAX_WIDTH = 380
+
+
+def limit_dock_width(dock):
+    dock.setMaximumWidth(CONTROL_DOCK_MAX_WIDTH)
+    return dock
+
+
 class VerticalLabel(QtWidgets.QLabel):
 
     def __init__(self, *args):
@@ -376,35 +387,27 @@ class MovableScaleBar(pg.ScaleBar):
 
 
 class MovableLabel(pg.TextItem):
-    """ GraphicsPixmapItem which can be clicked & dragged """
+    """ TextItem which can be clicked & dragged, outlined in yellow on hover as the logo is """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         self.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.setAcceptHoverEvents(True)
         self._border_pen = QtGui.QPen(
-            QtCore.Qt.yellow, 10,
+            QtCore.Qt.yellow, 4,
             QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin
         )
+        # the label's own border (none unless given), drawn when not hovered
+        self._plain_border = self.border
 
-        # self._border = QtWidgets.QGraphicsRectItem(self.boundingRect())
-        # self._border.setPen(self._border_pen)
+    def hoverEnterEvent(self, ev):
+        super().hoverEnterEvent(ev)
+        self.border = self._border_pen
+        self.update()
 
-    # def hoverEnterEvent(self, ev):
-    #     super().hoverEnterEvent(ev)
-    #     self.scene().addItem(self._border)
-    #     self._border.setPos(self.pos())
-
-    # def mouseMoveEvent(self, ev):
-    #     super().mouseMoveEvent(ev)
-    #     self._border.setPos(self.pos())
-
-    # def hoverLeaveEvent(self, ev):
-    #     super().hoverLeaveEvent(ev)
-    #     self.scene().removeItem(self._border)
-
-    # def setScale(self, scale):
-    #     super().setScale(scale)
-    #     self._border.setScale(scale)
+    def hoverLeaveEvent(self, ev):
+        super().hoverLeaveEvent(ev)
+        self.border = self._plain_border
+        self.update()
 
 

@@ -480,6 +480,12 @@ class GalleryInterface(QtCore.QObject):
             return 0
         return self.event_handle().eventAuxiliary().subRun()
 
+    def is_real_data(self):
+        ''' whether the current event is data (art::EventAuxiliary::isRealData); True with no event '''
+        if self.event_handle() is None:
+            return True
+        return bool(self.event_handle().eventAuxiliary().isRealData())
+
     def datetime(self):
         if self.event_handle() is None:
             return None
