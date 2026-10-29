@@ -25,10 +25,13 @@ class _NumberItem(QtWidgets.QTableWidgetItem):
 class MCTruthPanel(QtWidgets.QWidget):
     '''
     dropdown: the interaction shown (filled by the MCTruth drawable);
-    show_vertex: draw the neutrino vertex; all_particles: list every
+    show_vertex: draw the neutrino vertices; all_particles: list every
     particle of the generator's record, not only the final state.
+    particlesSelected: the table's selected particles, as indices into the
+    interaction's particles.
     '''
     COLUMNS = ('Particle', 'PDG', 'KE [MeV]', 'E [GeV]', 'Status')
+    particlesSelected = QtCore.pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,6 +53,10 @@ class MCTruthPanel(QtWidgets.QWidget):
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self._table.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self._table.setToolTip('Select particles to highlight their MCTracks (turn on MCTrack in the Products)')
+        self._table.itemSelectionChanged.connect(
+            lambda: self.particlesSelected.emit(self.selected_particles()))
         self._table.setSortingEnabled(True)
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.verticalHeader().setDefaultSectionSize(self.fontMetrics().height() + 6)
@@ -58,9 +65,14 @@ class MCTruthPanel(QtWidgets.QWidget):
         # most energetic first
         self._table.sortItems(self.COLUMNS.index('KE [MeV]'), QtCore.Qt.DescendingOrder)
 
-        self.show_vertex = QtWidgets.QCheckBox('Show neutrino vertex')
-        self.show_vertex.setToolTip('Mark the neutrino interaction vertex with a cross in the wire views')
+        self.show_vertex = QtWidgets.QCheckBox('Show neutrino vertices')
+        self.show_vertex.setToolTip('Mark the neutrino interaction vertices with crosses in the wire views; '
+                                    'the selected interaction\'s is highlighted')
         self.show_vertex.setChecked(True)
+
+        # which MCTracks the selected particles are
+        self._track_note = QtWidgets.QLabel()
+        self._track_note.setWordWrap(True)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.dropdown)
@@ -71,6 +83,7 @@ class MCTruthPanel(QtWidgets.QWidget):
         options.addWidget(self.all_particles)
         layout.addLayout(options)
         layout.addWidget(self._table, stretch=1)
+        layout.addWidget(self._track_note)
         self.clear()
 
     def _show_status_column(self, show):
@@ -83,6 +96,7 @@ class MCTruthPanel(QtWidgets.QWidget):
         self.dropdown.blockSignals(False)
         self.set_summary([('', 'No MC truth selected')])
         self.set_particles([])
+        self.set_track_note('')
 
     def set_summary(self, lines):
         ''' (label, value) lines, as from titus.display.mctruth.truth_summary '''
@@ -110,10 +124,13 @@ class MCTruthPanel(QtWidgets.QWidget):
         table = self._table
         sort_column = table.horizontalHeader().sortIndicatorSection()
         order = table.horizontalHeader().sortIndicatorOrder()
+        table.blockSignals(True)
+        table.clearSelection()
         table.setSortingEnabled(False)
         table.setRowCount(len(rows))
         for i, row in enumerate(rows):
             name = QtWidgets.QTableWidgetItem(row.name)
+            name.setData(QtCore.Qt.UserRole, row.index)
             if is_genie_pseudo_particle(row.pdg):
                 name.setToolTip('GENIE pseudo-particle (e.g. nucleon cluster, hadronic system), no mass')
             table.setItem(i, 0, name)
@@ -123,7 +140,34 @@ class MCTruthPanel(QtWidgets.QWidget):
             table.setItem(i, 4, QtWidgets.QTableWidgetItem(row.status))
         table.setSortingEnabled(True)
         table.sortItems(sort_column, order)
+        table.blockSignals(False)
         self._fit_columns()
+        # a new list: nothing selected
+        self.particlesSelected.emit([])
+
+    def selected_particles(self):
+        ''' indices (into the interaction's particles) of the selected rows '''
+        rows = sorted({item.row() for item in self._table.selectedItems()})
+        return [self._table.item(r, 0).data(QtCore.Qt.UserRole) for r in rows]
+
+    def select_particles(self, indices):
+        ''' select the rows of these particles (e.g. tests) '''
+        table = self._table
+        table.blockSignals(True)
+        table.clearSelection()
+        mode = QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
+        for r in range(table.rowCount()):
+            if table.item(r, 0).data(QtCore.Qt.UserRole) in indices:
+                table.selectionModel().select(table.model().index(r, 0), mode)
+        table.blockSignals(False)
+        self.particlesSelected.emit(self.selected_particles())
+
+    def set_track_note(self, text):
+        self._track_note.setText(text)
+        self._track_note.setVisible(bool(text))
+
+    def track_note(self):
+        return self._track_note.text() if self._track_note.isVisibleTo(self) else ''
 
     def _fit_columns(self):
         table = self._table
@@ -135,9 +179,9 @@ class MCTruthPanel(QtWidgets.QWidget):
                     for c in range(table.columnCount()) if not table.isColumnHidden(c))
         table.setMinimumWidth(width + table.verticalScrollBar().sizeHint().width() + 2 * table.frameWidth())
 
-    def set_has_vertex(self, has_vertex):
-        ''' the vertex checkbox only means something for neutrino interactions '''
-        self.show_vertex.setEnabled(has_vertex)
+    def set_has_vertices(self, has_vertices):
+        ''' the vertex toggle only means something with neutrino interactions in the event '''
+        self.show_vertex.setEnabled(has_vertices)
 
     def particle_count(self):
         return self._table.rowCount()

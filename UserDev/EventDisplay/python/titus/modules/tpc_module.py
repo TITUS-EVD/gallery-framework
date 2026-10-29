@@ -107,6 +107,8 @@ class TpcModule(Module):
         self._stale_views = set()
         # views the products (hits, tracks...) were last drawn in
         self._product_views = set()
+        # generator particles selected in the MC truth dock (ParticleKeys)
+        self._selected_mc_particles = []
         # set while the product boxes are filled for a new file
         self._updating_boxes = False
         self._show_logo = False
@@ -595,6 +597,25 @@ class TpcModule(Module):
         self._mctruth_dropdown = self._mctruth_panel.dropdown
         self._show_vertex = self._mctruth_panel.show_vertex
         self._mctruth_dock.hide()
+
+    def select_mc_particles(self, keys):
+        '''
+        the MC truth dock's selected particles (ParticleKeys): highlight their
+        MCTracks. {key: [MCTrack IDs]} found, or None if no MCTracks are drawn.
+        '''
+        self._selected_mc_particles = list(keys)
+        found, drawn = {}, False
+        for drawable in self._product_box_map.values():
+            highlight = getattr(drawable, 'highlight_particles', None)
+            if highlight is None or not drawable.producers():
+                continue
+            drawn = True
+            for key, ids in highlight(self._selected_mc_particles).items():
+                found.setdefault(key, []).extend(ids)
+        return found if drawn else None
+
+    def selected_mc_particles(self):
+        return self._selected_mc_particles
 
     def show_mctruth_dock(self, show):
         ''' show the MC truth dock while there is MC truth, with the module's other docks '''

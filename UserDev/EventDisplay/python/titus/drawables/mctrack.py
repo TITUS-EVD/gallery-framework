@@ -1,6 +1,7 @@
 import numpy as np
 
 from titus.display import mc_t0
+from titus.display.mctruth import match_mctracks
 from titus.display.projection import AS_STORED
 from titus.drawables.track import Track
 from titus.readers import Tracks
@@ -15,6 +16,8 @@ def mctracks_as_tracks(mctracks):
 class MCTrack(Track):
     '''
     sim::MCTrack: simulated particle paths, projected like recob::Track.
+    The particles selected in the MC truth dock (TpcModule.select_mc_particles)
+    are highlighted.
     Corrected (the TPC module's "Correct 3D objects" option), a particle's
     time relative to the trigger is its T0, so the path lands on the hits its
     charge made (out-of-time cosmics move), and each step is drawn in the TPC
@@ -37,6 +40,26 @@ class MCTrack(Track):
         self._inputs = [{'t0': mc_t0(self._geom, m.start_t), 'track_hits': None, 'hits': None}
                         for m in self._mctracks]
         self._corrections = [{} for _ in self._data]
+
+    def drawObjects(self):
+        super().drawObjects()
+        selected = getattr(self._module, 'selected_mc_particles', None)
+        keys = selected() if selected is not None else []
+        self.highlight_particles(keys if isinstance(keys, list) else [])
+
+    def highlight_particles(self, keys):
+        '''
+        highlight the MCTracks of these generator particles (ParticleKeys,
+        titus.display.mctruth.match_mctracks); {key: [MCTrack IDs]} found
+        '''
+        selected, found = set(), {}
+        for producer, mctracks in enumerate(self._mctracks):
+            for key, rows in match_mctracks(mctracks, keys).items():
+                selected.update((producer, r) for r in rows)
+                found.setdefault(key, []).extend(int(mctracks.track_id[r]) for r in rows)
+        for line in self._drawnObjects:
+            line.set_selected(getattr(line, 'track_key', None) in selected)
+        return found
 
     def color(self, producer, row):
         origin = self._mctracks[producer].origin[row]

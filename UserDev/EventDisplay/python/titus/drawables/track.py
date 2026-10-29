@@ -69,6 +69,7 @@ class Track(ReaderDrawable):
                         if tooltip is None:
                             tooltip = self.genToolTip(tracks, row, correction)
                         line.setToolTip(tooltip)
+                        line.track_key = (producer, row)
                         items.append(line)
             self.add_to_view(view, items)
 

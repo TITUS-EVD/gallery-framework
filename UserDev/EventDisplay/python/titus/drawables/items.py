@@ -9,6 +9,9 @@ import pyqtgraph as pg
 # hover distance from a line, in screen pixels
 HOVER_PIXELS = 5
 
+# the color of selected objects (e.g. the MC truth dock's interaction and particles)
+SELECTED_COLOR = (255, 0, 255)
+
 
 def _device_transform(item):
     ''' item coordinates -> screen pixels, or None outside a view '''
@@ -31,12 +34,14 @@ class polyLine(QtWidgets.QGraphicsPathItem):
         self.setAcceptHoverEvents(True)
         self._points = points
         self._color = color if color is not None else (0, 0, 0)
+        self._base_color = self._color
+        self._width = 2
         self._style = style
         self._shape_cache = (None, None)
 
         # Initialize a path:
         path = QtGui.QPainterPath()
-        self.setPen(self._pen(2))
+        self.setPen(self._pen(self._width))
 
         # Fill the path:
         path.moveTo(points[0])
@@ -46,6 +51,16 @@ class polyLine(QtWidgets.QGraphicsPathItem):
 
     def _pen(self, width):
         return pg.mkPen(self._color, width=width, style=self._style)
+
+    def set_selected(self, selected):
+        ''' drawn thicker in SELECTED_COLOR, above other lines '''
+        self._color = SELECTED_COLOR if selected else self._base_color
+        self._width = 4 if selected else 2
+        self.setZValue(1 if selected else 0)
+        self.setPen(self._pen(self._width))
+
+    def is_selected(self):
+        return self._color == SELECTED_COLOR
 
     def shape(self):
         transform = _device_transform(self)
@@ -82,12 +97,12 @@ class polyLine(QtWidgets.QGraphicsPathItem):
 
     def hoverEnterEvent(self, e):
         QtWidgets.QGraphicsPathItem.hoverEnterEvent(self, e)
-        self.setPen(self._pen(5))
+        self.setPen(self._pen(self._width + 3))
         self.update()
 
     def hoverLeaveEvent(self, e):
         QtWidgets.QGraphicsPathItem.hoverLeaveEvent(self, e)
-        self.setPen(self._pen(2))
+        self.setPen(self._pen(self._width))
         self.update()
 
 
@@ -125,18 +140,36 @@ class CrossMarker(QtWidgets.QGraphicsPathItem):
     neutrino interaction vertex. Like Marker, it ignores the view's zoom.
     '''
 
-    def __init__(self, x, y, size=8, color=(250, 128, 114), width=3):
-        path = QtGui.QPainterPath()
-        path.moveTo(-size, -size)
-        path.lineTo(size, size)
-        path.moveTo(-size, size)
-        path.lineTo(size, -size)
-        super().__init__(path)
+    COLOR = (250, 128, 114)
+    SIZE, SELECTED_SIZE = 8, 11
+
+    def __init__(self, x, y, size=SIZE, color=COLOR, width=3):
+        super().__init__(self._cross(size))
         self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
         self.setPos(x, y)
         self.setAcceptHoverEvents(True)
         self._color, self._width = color, width
         self.setPen(pg.mkPen(color, width=width))
+
+    @staticmethod
+    def _cross(size):
+        path = QtGui.QPainterPath()
+        path.moveTo(-size, -size)
+        path.lineTo(size, size)
+        path.moveTo(-size, size)
+        path.lineTo(size, -size)
+        return path
+
+    def set_selected(self, selected):
+        ''' larger, in SELECTED_COLOR, above the other crosses '''
+        self.prepareGeometryChange()
+        self.setPath(self._cross(self.SELECTED_SIZE if selected else self.SIZE))
+        self._color = SELECTED_COLOR if selected else self.COLOR
+        self.setZValue(2 if selected else 1)
+        self.setPen(pg.mkPen(self._color, width=self._width))
+
+    def is_selected(self):
+        return self._color == SELECTED_COLOR
 
     def shape(self):
         # hover anywhere in the X's square, not only on its strokes

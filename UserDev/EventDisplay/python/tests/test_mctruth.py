@@ -68,3 +68,18 @@ def test_cosmic_summary(corsika):
     assert lines['Energies'] == f'{energy.min():.3g} to {energy.max():.3g} GeV'
     assert truth_label(corsika, 0, 'corsika') == 'Cosmic (corsika 1)'
     assert len(particle_rows(corsika, 0)) == 170 and np.isfinite([r.energy for r in particle_rows(corsika, 0)]).all()
+
+
+def test_generator_particles_match_their_mctracks(genie):
+    ''' Geant4 primaries start with the generator's energy: one MCTrack per charged final-state particle '''
+    from titus.display.mctruth import match_mctracks, particle_key
+    mctracks = DumpReader(STEP3).get(0, 'mctracks', 'mcreco')
+    keys = [particle_key(genie, 0, row.index) for row in particle_rows(genie, 0)]
+    found = match_mctracks(mctracks, keys)
+    protons = [k for k in keys if k.pdg == 2212]
+    assert len(protons) == 6 and set(found) == set(protons)
+    assert all(len(rows) == 1 and mctracks.process[rows[0]] == 'primary' for rows in found.values())
+    assert len({rows[0] for rows in found.values()}) == 6
+    # without the "primary" requirement, the 938.8 MeV proton matches scattered protons too
+    slow = min(protons, key=lambda k: k.energy)
+    assert np.sum((mctracks.pdg == 2212) & (np.abs(mctracks.start_e - slow.energy) < 1.)) > 10

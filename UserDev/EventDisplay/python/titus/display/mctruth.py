@@ -6,6 +6,8 @@ codes, an interaction's summary and its particle table. No Qt.
 from collections import Counter
 from typing import List, NamedTuple, Optional
 
+import numpy as np
+
 # simb::Origin_t
 ORIGIN_NAMES = {0: 'Unknown', 1: 'Neutrino', 2: 'Cosmic', 3: 'Supernova', 4: 'Single particle'}
 
@@ -83,19 +85,54 @@ class ParticleRow(NamedTuple):
     kinetic_energy: Optional[float]  # MeV; None without a known mass
     energy: float  # GeV
     status: str
+    index: int  # in the interaction's particles (MCTruths.particles)
 
 
 def particle_rows(truths, row, final_state_only=True) -> List[ParticleRow]:
     ''' the particles of an interaction, as the dock's table lists them '''
     pdg, status, energy = truths.particles(row)
     rows = []
-    for p, s, e in zip(pdg, status, energy):
+    for i, (p, s, e) in enumerate(zip(pdg, status, energy)):
         if final_state_only and s != FINAL_STATE:
             continue
         mass = particle_mass(p)
         kinetic = None if mass is None else max(float(e) - mass, 0.) * 1000.
-        rows.append(ParticleRow(particle_name(p), int(p), kinetic, float(e), status_name(s)))
+        rows.append(ParticleRow(particle_name(p), int(p), kinetic, float(e), status_name(s), i))
     return rows
+
+
+class ParticleKey(NamedTuple):
+    ''' what identifies a generator particle's sim::MCTrack, without track IDs in the dumps '''
+    pdg: int
+    energy: float  # MeV, as sim::MCTrack::Start().E()
+    origin: int  # simb::Origin_t of its MCTruth
+
+
+def particle_key(truths, row, index):
+    pdg, _, energy = truths.particles(row)
+    return ParticleKey(int(pdg[index]), float(energy[index]) * 1000., int(truths.origin[row]))
+
+
+# start energies of a particle and its MCTrack agree to float precision
+MATCH_TOLERANCE_MEV = 0.05
+
+
+def match_mctracks(mctracks, keys):
+    '''
+    Rows of the sim::MCTracks that are these generator particles: Geant4
+    primaries (process "primary") of the same origin and PDG code, starting
+    with the particle's energy. Neutral particles have none (mcreco makes
+    MCTracks of charged particles; electrons and photons are MCShowers).
+    {key: [rows]} for the keys with a match.
+    '''
+    primary = mctracks.process == 'primary'
+    out = {}
+    for key in keys:
+        rows = np.flatnonzero(primary & (mctracks.pdg == key.pdg) & (mctracks.origin == key.origin)
+                              & (np.abs(mctracks.start_e - key.energy) < MATCH_TOLERANCE_MEV))
+        if len(rows):
+            out[key] = rows.tolist()
+    return out
 
 
 def truth_label(truths, row, producer):

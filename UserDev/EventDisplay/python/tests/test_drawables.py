@@ -794,14 +794,15 @@ def test_mctruth_neutrino_first_with_vertex(qtbot, products, sbnd, truth_module,
 
     crosses = drawer._drawnObjects
     assert crosses and all(isinstance(c, CrossMarker) for c in crosses)
-    assert 'Neutrino interaction vertex' in crosses[0].toolTip()
+    assert crosses[0].toolTip().startswith('νμ interaction vertex')
     panel.show_vertex.setChecked(False)
     assert not any(c.isVisible() for c in crosses)
 
-    # the cosmics: described and listed, no vertex
+    # the cosmics: described and listed; the neutrino's vertex stays, not highlighted
     panel.all_particles.setChecked(False)
     panel.dropdown.setCurrentIndex(1)
-    assert ('Origin', 'Cosmic') in panel.summary() and drawer._drawnObjects == []
+    assert ('Origin', 'Cosmic') in panel.summary() and drawer._drawnObjects == crosses
+    assert not any(c.is_selected() for c in crosses) and panel.show_vertex.isEnabled()
     assert panel.particle_count() == len(reader.get(0, 'mctruths', 'corsika').particles(0)[0])
 
     # no MC truth producer: the dock is empty and hidden
@@ -1040,3 +1041,75 @@ def test_mctruth_dock_follows_the_module(qtbot):
     module._active = False
     module.show_mctruth_dock(True)
     assert module._mctruth_dock.isHidden() and module._mctruth_dock in module._dock_widgets
+
+
+def test_all_neutrino_vertices_the_selected_highlighted(qtbot, products, sbnd, truth_module):
+    ''' two neutrino interactions: both vertices drawn, the selected one highlighted; one toggle for all '''
+    from titus.readers import MCTruths
+    truths = DumpReader(STEP3).get(0, 'mctruths', 'generator')
+    arrays = truths.to_arrays()
+    # a second interaction: the same one, moved 100 cm in z
+    two = {k: np.concatenate([v, v]) for k, v in arrays.items() if not k.startswith('particle_')}
+    two['vz'] = two['vz'] + np.array([0., 100.], dtype='f4')
+    n = len(truths.particle_pdg)
+    two.update(particle_offset=[0, n, 2 * n], **{k: np.concatenate([arrays[k], arrays[k]])
+                                                  for k in ('particle_pdg', 'particle_status', 'particle_energy')})
+    products[('mctruths', 'generator::GenieGen')] = MCTruths(**two)
+    drawer = draw_truth(sbnd, truth_module, producers=['generator::GenieGen'])
+    panel = truth_module._mctruth_panel
+    crosses = drawer._crosses
+    # one cross per interaction per view (3 SBND views)
+    assert sorted(c for c, _ in crosses) == [0, 0, 0, 1, 1, 1]
+    assert all(cross.is_selected() == (choice == 0) for choice, cross in crosses)
+    panel.dropdown.setCurrentIndex(1)
+    assert all(cross.is_selected() == (choice == 1) for choice, cross in crosses)
+    assert drawer._crosses == crosses  # restyled, not redrawn
+    panel.show_vertex.setChecked(False)
+    assert not any(cross.isVisible() for _, cross in crosses)
+    panel.show_vertex.setChecked(True)
+    assert all(cross.isVisible() for _, cross in crosses)
+
+
+def test_selected_particles_highlight_their_mctracks(qtbot, products, sbnd, truth_module):
+    from titus.drawables import MCTrack
+    from titus.display.mctruth import particle_key
+    from titus.modules.tpc_module import TpcModule
+    reader = serve_all(products, STEP3)
+    # the TPC module's selection, with its product boxes
+    truth_module.select_mc_particles = lambda keys: TpcModule.select_mc_particles(truth_module, keys)
+    truth_module.selected_mc_particles = lambda: TpcModule.selected_mc_particles(truth_module)
+    truth_module._selected_mc_particles = []
+    truth_module._product_box_map = {}
+    drawer = draw_truth(sbnd, truth_module, producers=['generator::GenieGen'])
+    panel = truth_module._mctruth_panel
+    truths = reader.get(0, 'mctruths', 'generator')
+    pdg, status, energy = truths.particles(0)
+    protons = [i for i in range(len(pdg)) if status[i] == 1 and pdg[i] == 2212]
+    neutron = next(i for i in range(len(pdg)) if status[i] == 1 and pdg[i] == 2112)
+
+    # no MCTracks drawn: the dock says how to see them
+    panel.select_particles([protons[0]])
+    assert truth_module.selected_mc_particles() == [particle_key(truths, 0, protons[0])]
+    assert panel.track_note().startswith('Turn on MCTrack')
+
+    tracks = MCTrack(FakeGalleryInterface(), sbnd, truth_module)
+    tracks.set_producer('mcreco::G4')
+    truth_module._product_box_map = {'MCTrack box': tracks}
+    tracks.analyze()
+    tracks.drawObjects()
+    # drawn after the selection: highlighted already
+    highlighted = {l.track_key for l in tracks._drawnObjects if l.is_selected()}
+    assert len(highlighted) == 1
+    (producer, row), = highlighted
+    assert tracks._mctracks[producer].process[row] == 'primary'
+    assert tracks._mctracks[producer].start_e[row] == pytest.approx(energy[protons[0]] * 1000, abs=0.05)
+
+    # two protons and a neutron: two tracks, and a note on the neutron
+    panel.select_particles(protons[:2] + [neutron])
+    assert len({l.track_key for l in tracks._drawnObjects if l.is_selected()}) == 2
+    note = panel.track_note()
+    assert note.count('p: MCTrack 1000000') == 2 and 'No MCTrack for n' in note
+    # another interaction or event: nothing selected
+    panel.dropdown.setCurrentIndex(0)
+    drawer.on_selection_changed(0)
+    assert truth_module.selected_mc_particles() == [] and not any(l.is_selected() for l in tracks._drawnObjects)
