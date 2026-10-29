@@ -4,7 +4,7 @@ from PyQt5 import QtCore
 from titus.display import track_correction, track_segments
 from titus.display.projection import AS_STORED
 from titus.drawables.drawable import ReaderDrawable
-from titus.drawables.items import polyLine
+from titus.drawables.items import TrackCollection, TrackLine
 
 
 class Track(ReaderDrawable):
@@ -63,15 +63,18 @@ class Track(ReaderDrawable):
                     moved = correction is not None and correction.corrected
                     tooltip = None
                     for segment in track_segments(layout, tracks, row, correction):
-                        points = [QtCore.QPointF(x, y) for x, y in zip(segment.x, segment.y)]
-                        line = polyLine(points, self.color(producer, row),
-                                        QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine)
                         if tooltip is None:
                             tooltip = self.genToolTip(tracks, row, correction)
-                        line.setToolTip(tooltip)
-                        line.track_key = (producer, row)
-                        items.append(line)
-            self.add_to_view(view, items)
+                        items.append(TrackLine(np.stack([segment.x, segment.y], axis=1), self.color(producer, row),
+                                               QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine,
+                                               tooltip=tooltip, key=(producer, row)))
+            # one item per view for all the lines: hover and repaints don't scale with their number
+            if items:
+                self.add_to_view(view, [TrackCollection(items)])
+
+    def lines(self):
+        ''' the TrackLines drawn, in all views '''
+        return [line for collection in self._drawnObjects for line in collection.lines]
 
     def genToolTip(self, tracks, row, correction):
         points = tracks.points(row)

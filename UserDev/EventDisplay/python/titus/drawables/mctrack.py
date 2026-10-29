@@ -57,8 +57,8 @@ class MCTrack(Track):
             for key, rows in match_mctracks(mctracks, keys).items():
                 selected.update((producer, r) for r in rows)
                 found.setdefault(key, []).extend(int(mctracks.track_id[r]) for r in rows)
-        for line in self._drawnObjects:
-            line.set_selected(getattr(line, 'track_key', None) in selected)
+        for line in self.lines():
+            line.set_selected(line.track_key in selected)
         return found
 
     def color(self, producer, row):

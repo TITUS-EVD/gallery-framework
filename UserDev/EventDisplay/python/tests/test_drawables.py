@@ -244,7 +244,7 @@ def test_tracks_corrected(qtbot, products, sbnd, tpc_module, capsys):
     tracks = dump.get(1, 'tracks', 'pandoraTrack')
     t0s = track_t0s(len(tracks), dump.get(1, 'pfp_tracks', 'pandoraTrack'),
                     dump.get(1, 'pfp_t0s', 'pandora'), dump.get(1, 't0s', 'pandora'))
-    lines = drawer._drawnObjects
+    lines = drawer.lines()
     dashed = [l for l in lines if l.pen().style() == QtCore.Qt.DashLine]
     assert lines and dashed
     assert any('T0 ' in l.toolTip() for l in dashed)
@@ -254,8 +254,10 @@ def test_tracks_corrected(qtbot, products, sbnd, tpc_module, capsys):
                 for s in track_segments(layout, tracks, row, track_correction(
                     layout, tracks, row, t0s[row], dump.get(1, 'track_hits', 'pandoraTrack'),
                     dump.hits(1, 'gaushit')))]
-    view_lines = [l for l in lines if l in tpc_module._wire_views[(2, 0)]._view.addedItems]
-    assert len(view_lines) == len(expected)
+    # one item per view, holding all its lines
+    (collection,) = [c for c in drawer._drawnObjects if c in tpc_module._wire_views[(2, 0)]._view.addedItems]
+    view_lines = collection.lines
+    assert len(drawer._drawnObjects) == 3 and len(view_lines) == len(expected)
     first = view_lines[0].path().elementAt(0)
     assert (first.x, first.y) == pytest.approx((expected[0].x[0], expected[0].y[0]))
 
@@ -266,7 +268,7 @@ def test_tracks_corrected(qtbot, products, sbnd, tpc_module, capsys):
 def test_tracks_as_stored(qtbot, products, sbnd, tpc_module):
     serve_reco2(products, 1)
     drawer = draw_tracks(tpc_module, sbnd, corrected=False)
-    lines = drawer._drawnObjects
+    lines = drawer.lines()
     assert lines and all(l.pen().style() == QtCore.Qt.SolidLine for l in lines)
     assert all('drawn as stored' in l.toolTip() for l in lines)
 
@@ -275,8 +277,8 @@ def test_tracks_without_associations(qtbot, products, sbnd, tpc_module, capsys):
     """ no T0s or track-hit associations in the file: no shift, TPC by readout window """
     serve_reco2(products, 1, with_associations=False)
     drawer = draw_tracks(tpc_module, sbnd)
-    assert drawer._drawnObjects
-    assert not any('T0 ' in l.toolTip() for l in drawer._drawnObjects)
+    assert drawer.lines()
+    assert not any('T0 ' in l.toolTip() for l in drawer.lines())
     assert 'Warning' not in capsys.readouterr().out
 
 
@@ -715,12 +717,12 @@ def test_mctracks_corrected_by_their_time(qtbot, products, sbnd, tpc_module, cap
         drawer.set_producer('mcreco::G4')
         drawer.analyze()
         drawer.drawObjects()
-        tips[corrected] = [l.toolTip() for l in drawer._drawnObjects]
-        assert drawer._drawnObjects
+        tips[corrected] = [l.toolTip() for l in drawer.lines()]
+        assert drawer.lines()
     assert 'Warning' not in capsys.readouterr().out
     assert any('T0 ' in t for t in tips[True]) and all('Correct 3D objects' in t for t in tips[False])
     # neutrino particles gray, cosmics black
-    colors = {l.pen().color().getRgb()[:3] for l in drawer._drawnObjects}
+    colors = {l.pen().color().getRgb()[:3] for l in drawer.lines()}
     assert (0, 0, 0) in colors
 
 
@@ -1098,7 +1100,7 @@ def test_selected_particles_highlight_their_mctracks(qtbot, products, sbnd, trut
     tracks.analyze()
     tracks.drawObjects()
     # drawn after the selection: highlighted already
-    highlighted = {l.track_key for l in tracks._drawnObjects if l.is_selected()}
+    highlighted = {l.track_key for l in tracks.lines() if l.is_selected()}
     assert len(highlighted) == 1
     (producer, row), = highlighted
     assert tracks._mctracks[producer].process[row] == 'primary'
@@ -1106,19 +1108,20 @@ def test_selected_particles_highlight_their_mctracks(qtbot, products, sbnd, trut
 
     # two protons and a neutron: two tracks, and a note on the neutron
     panel.select_particles(protons[:2] + [neutron])
-    assert len({l.track_key for l in tracks._drawnObjects if l.is_selected()}) == 2
+    assert len({l.track_key for l in tracks.lines() if l.is_selected()}) == 2
     note = panel.track_note()
     assert note.count('p: MCTrack 1000000') == 2 and 'No MCTrack for n' in note
     # another interaction or event: nothing selected
     panel.dropdown.setCurrentIndex(0)
     drawer.on_selection_changed(0)
-    assert truth_module.selected_mc_particles() == [] and not any(l.is_selected() for l in tracks._drawnObjects)
+    assert truth_module.selected_mc_particles() == [] and not any(l.is_selected() for l in tracks.lines())
 
 
 def test_hover_follows_the_line_in_a_view(qtbot):
     ''' in a pyqtgraph ViewBox (which clips its items): hover and tooltips only near the line, not its bounding box '''
     from titus.drawables.items import polyLine
     widget = pg.GraphicsLayoutWidget()
+    widget.setBackground('w')  # the line is black
     qtbot.addWidget(widget)
     widget.resize(600, 600)
     view = widget.addViewBox()
@@ -1224,3 +1227,72 @@ def test_restore_defaults_redraws_the_products(qtbot):
     assert not view.united and view.t0 == 0 and view.removed_ticks() == 0
     # redrawn after the cut was undone
     assert product.drawObjects.called and ('unite', False) in view.calls and 'range' in view.calls
+
+
+def collection_view(qtbot, lines, x_range=(0, 100), y_range=(0, 100)):
+    from titus.drawables.items import TrackCollection
+    widget = pg.GraphicsLayoutWidget()
+    widget.setBackground('w')
+    qtbot.addWidget(widget)
+    widget.resize(600, 600)
+    view = widget.addViewBox()
+    view.setRange(xRange=x_range, yRange=y_range, padding=0)
+    collection = TrackCollection(lines)
+    view.addItem(collection)
+    widget.show()
+    qtbot.waitExposed(widget)
+    # the view's transform is set once the layout has run
+    QtWidgets.QApplication.processEvents()
+    return widget, view, collection
+
+
+def test_track_collection_hover(qtbot):
+    ''' the line within HOVER_PIXELS of the mouse, on screen: at an angle, at any zoom '''
+    from titus.drawables.items import TrackLine
+    diagonal = TrackLine([(0, 0), (100, 100)], tooltip='diagonal', key=(0, 0))
+    flat = TrackLine([(0, 20), (60, 20)], tooltip='flat', key=(0, 1))
+    widget, view, collection = collection_view(qtbot, [diagonal, flat])
+    at = lambda x, y: collection.line_at(QtCore.QPointF(x, y))
+    # ~6 pixels per unit
+    assert at(50, 50.5) == 0 and at(30, 20.5) == 1
+    assert at(50, 52) is None and at(20, 80) is None  # 12 px off; far off, inside the bounding box
+    collection._hover(at(50, 50.5))
+    assert collection.toolTip() == 'diagonal'
+    assert diagonal.pen(hovered=True).widthF() > diagonal.pen().widthF()
+    collection._hover(None)
+    assert collection.toolTip() == ''
+    view.setRange(xRange=(40, 60), yRange=(40, 60), padding=0)
+    QtWidgets.QApplication.processEvents()
+    assert at(50, 50.1) == 0 and at(50, 50.5) is None
+    # one item in the scene for all the lines
+    assert [i for i in widget.scene().items() if isinstance(i, type(collection))] == [collection]
+
+
+def test_track_collection_selected_on_top(qtbot):
+    from titus.drawables.items import SELECTED_COLOR, TrackLine
+    a = TrackLine([(0, 50), (100, 50)], key='a')
+    b = TrackLine([(0, 50.2), (100, 50.2)], key='b')
+    widget, view, collection = collection_view(qtbot, [a, b])
+    b.set_selected(True)
+    assert b.is_selected() and b.pen().color().getRgb()[:3] == SELECTED_COLOR and b.pen().widthF() == 4
+    # two lines under the mouse: the selected one, drawn on top
+    assert collection.line_at(QtCore.QPointF(50, 50.1)) == 1
+    b.set_selected(False)
+    assert not b.is_selected() and b.pen().widthF() == 2
+
+
+def test_track_collection_paints_its_lines(qtbot):
+    from titus.drawables.items import TrackLine
+    lines = [TrackLine([(10, y), (90, y)], (0, 0, 0)) for y in (20, 50, 80)]
+    widget, view, collection = collection_view(qtbot, lines)
+
+    def dark_at(x, y):
+        p = view.mapViewToScene(QtCore.QPointF(x, y))
+        image = widget.grab().toImage()
+        return QtGui.QColor(image.pixel(int(p.x()), int(p.y()))).value() < 100
+
+    assert dark_at(50, 20) and dark_at(50, 50) and dark_at(50, 80) and not dark_at(50, 35)
+    # panned: the lines move with the view, the repaint skips none that are visible
+    view.translateBy(x=30)
+    QtWidgets.QApplication.processEvents()
+    assert dark_at(70, 50) and not dark_at(110, 50)  # visible: 30 to 130; the lines end at 90
