@@ -1,4 +1,5 @@
 import os
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Dict, List
@@ -15,7 +16,23 @@ def threads_enabled():
 
 def _root():
     import ROOT
+    # no PyROOT event polling thread (see evd.py); no effect once ROOT is set up
+    ROOT.PyConfig.StartGUIThread = False
     return ROOT
+
+
+def root_event_thread_running():
+    '''
+    Whether PyROOT's thread polling ROOT's event loop (gSystem.ProcessEvents,
+    started unless PyConfig.StartGUIThread is False before ROOT initializes)
+    is running: ROOT is then used from two threads already, and opening files
+    in a third crashes
+    '''
+    for thread in threading.enumerate():
+        target = getattr(thread, '_target', None)
+        if getattr(target, '__name__', '') == '_process_root_events':
+            return True
+    return False
 
 
 def release_gil(root):
@@ -345,7 +362,12 @@ class GalleryInterface(QtCore.QObject):
         if not files:
             return False
         label = ', '.join(os.path.basename(f) for f in files)
-        if not self._threaded:
+        threaded = self._threaded
+        if threaded and self._scan is scan_files and root_event_thread_running():
+            print("\033[91m WARNING\033[0m PyROOT's event thread is running (ROOT.PyConfig.StartGUIThread was "
+                  "not False before ROOT started): opening files on the GUI thread")
+            threaded = False
+        if not threaded:
             ok = self.set_input_files(files)
             self.loadingFinished.emit(ok, f'Opened {label}' if ok else f'Could not open {label}')
             return ok

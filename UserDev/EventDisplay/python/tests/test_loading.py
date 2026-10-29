@@ -280,3 +280,36 @@ def test_inactive_module_catches_up_on_file_change(qtbot):
     assert module.calls == ['file', 'update']
     module.activate()
     assert module.calls == ['file', 'update']
+
+
+def test_open_on_the_gui_thread_if_pyroot_polls_events(qtbot, monkeypatch, capsys):
+    ''' PyROOT's event polling thread uses ROOT concurrently: a background open would crash '''
+    import titus.gallery_interface.gallery_interface as gi_module
+    from titus.gallery_interface.gallery_interface import root_event_thread_running
+    stop = threading.Event()
+
+    def _process_root_events():  # the name of PyROOT's polling function (ROOT/_application.py)
+        stop.wait(5)
+
+    assert not root_event_thread_running()
+    poller = threading.Thread(target=_process_root_events, daemon=True)
+    poller.start()
+    try:
+        assert root_event_thread_running()
+        monkeypatch.setattr(gi_module, 'scan_files', lambda files: opened(files[0]))
+        gi = GalleryInterface(threaded=True)
+        log = recorder(gi)
+        assert gi.open_files(['a.root'])
+        # opened before open_files returned: no worker thread
+        assert log == [('file', 'a.root'), ('event', 1), ('finished', True)]
+        assert "PyROOT's event thread is running" in capsys.readouterr().out
+    finally:
+        stop.set()
+        poller.join()
+
+
+def test_root_setup_turns_off_the_event_thread(monkeypatch):
+    from titus.gallery_interface.gallery_interface import _root
+    root = SimpleNamespace(PyConfig=SimpleNamespace(StartGUIThread=True))
+    monkeypatch.setitem(sys.modules, 'ROOT', root)
+    assert _root() is root and root.PyConfig.StartGUIThread is False

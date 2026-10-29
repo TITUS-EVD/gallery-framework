@@ -5,6 +5,10 @@ import signal
 
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
+# No PyROOT thread polling ROOT's event loop (gSystem.ProcessEvents): TITUS
+# draws with Qt, and that thread running ROOT concurrently with the file
+# opening thread crashed it. Must be set before ROOT initializes (gROOT below).
+ROOT.PyConfig.StartGUIThread = False
 ROOT.gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
 from PyQt5 import QtCore, QtWidgets
