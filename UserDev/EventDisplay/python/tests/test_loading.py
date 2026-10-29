@@ -1,5 +1,5 @@
 """
-Opening files: one gallery open (scan_files), and in a background thread
+Opening files: TFile then gallery (scan_files), in a background thread
 (GalleryInterface.open_files) while the GUI keeps running. gallery is faked.
 """
 
@@ -26,17 +26,50 @@ BRANCHES = [
 ]
 
 
+class FakeTree:
+    ''' an Events tree: its branches, and EventAuxiliary filled by GetEntry '''
+    def __init__(self, events, branches):
+        self._events, self._branches = events, branches
+        self.EventAuxiliary = None
+        tree = self
+
+        class AuxBranch:
+            def GetEntries(self):
+                return len(tree._events)
+
+            def GetEntry(self, i):
+                run, subrun, event = tree._events[i]
+                tree.EventAuxiliary = SimpleNamespace(run=lambda: run, subRun=lambda: subrun, event=lambda: event)
+
+        self._aux = AuxBranch()
+
+    def GetBranch(self, name):
+        assert name == 'EventAuxiliary'
+        return self._aux
+
+    def GetListOfBranches(self):
+        return [SimpleNamespace(GetName=lambda n=n: n, GetTypeName=lambda t=t: t) for n, t in self._branches]
+
+
 class FakeTFile:
-    def __init__(self, name, branches):
-        self._name, self._branches = name, branches
+    def __init__(self, name, events, branches=BRANCHES, log=None):
+        self._name, self._tree, self._log = name, FakeTree(events, branches), log
 
-    def GetName(self):
-        return self._name
+    def IsZombie(self):
+        return False
 
-    def Get(self, tree):
-        assert tree == 'Events'
-        branches = [SimpleNamespace(GetName=lambda n=n: n, GetTypeName=lambda t=t: t) for n, t in self._branches]
-        return SimpleNamespace(GetListOfBranches=lambda: branches)
+    def Get(self, name):
+        assert name == 'Events'
+        return self._tree
+
+    def Close(self):
+        if self._log is not None:
+            self._log.append(('close', self._name))
+
+
+class FakeVector(list):
+    def push_back(self, value):
+        self.append(value)
 
 
 class FakeEvent:
@@ -69,12 +102,22 @@ class FakeEvent:
         return SimpleNamespace(run=lambda: run, subRun=lambda: subrun, event=lambda: event)
 
 
-def fake_root(files):
-    ''' ROOT whose gallery.Event opens these (name, events) files '''
+def fake_root(files, log=None):
+    ''' ROOT whose TFile and gallery.Event open these (name, events) files; log records the order '''
     by_name = dict(files)
-    return SimpleNamespace(
-        std=SimpleNamespace(vector={'string': list}),
-        gallery=SimpleNamespace(Event=lambda names: FakeEvent([(n, by_name[n]) for n in names])))
+    log = [] if log is None else log
+
+    def open_tfile(name):
+        log.append(('TFile', name))
+        return FakeTFile(name, by_name[name], log=log)
+
+    def open_event(names):
+        log.append(('gallery', list(names)))
+        return FakeEvent([(n, by_name[n]) for n in names])
+
+    return SimpleNamespace(std=SimpleNamespace(vector={'string': FakeVector}),
+                           TFile=SimpleNamespace(Open=open_tfile),
+                           gallery=SimpleNamespace(Event=open_event))
 
 
 def test_product_table():
@@ -101,15 +144,19 @@ def test_readable_files(tmp_path):
     assert len(warnings) == 2 and 'not a .root file' in warnings[0] and 'does not exist' in warnings[1]
 
 
-def test_scan_files_opens_once(tmp_path):
+def test_scan_files_reads_with_tfile_before_gallery(tmp_path):
+    ''' gallery's constructor crashed in the GUI when it opened a file first: TFile reads each file before '''
     names = [str(tmp_path / f) for f in ('a.root', 'b.root')]
     for n in names:
         open(n, 'w').close()
-    root = fake_root([(names[0], [(1, 1, 1), (1, 1, 2)]), (names[1], [(1, 2, 7)])])
+    log = []
+    root = fake_root([(names[0], [(1, 1, 1), (1, 1, 2)]), (names[1], [(1, 2, 7)])], log)
     result = scan_files(names, root)
+    assert log == [('TFile', names[0]), ('close', names[0]), ('TFile', names[1]), ('close', names[1]),
+                   ('gallery', names)]
     assert result.run_list == [{'run': 1, 'subrun': 1, 'event': 1}, {'run': 1, 'subrun': 1, 'event': 2},
                                {'run': 1, 'subrun': 2, 'event': 7}]
-    # products of both files, and the event back at the start
+    # products of both files, and the event at the start
     assert len(result.key_table['all']['recob::Hit']) == 2
     assert result.event.eventEntry() == 0 and result.files == names
 
@@ -125,7 +172,8 @@ def test_scan_files_errors(tmp_path):
     def broken(names):
         raise RuntimeError('xrootd says no')
 
-    root = SimpleNamespace(std=SimpleNamespace(vector={'string': list}), gallery=SimpleNamespace(Event=broken))
+    root = fake_root([(empty, [(1, 1, 1)])])
+    root.gallery.Event = broken
     with pytest.raises(OpenError, match='xrootd says no'):
         scan_files([empty], root)
 

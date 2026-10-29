@@ -88,6 +88,8 @@ class OpenedFiles:
     run_list: List[Dict[str, int]]
     key_table: Dict[str, Dict[str, tuple]]
     warnings: List[str] = field(default_factory=list)
+    # the std::vector of file names given to gallery, kept with the event
+    file_names: object = None
 
 
 def readable_files(files):
@@ -133,38 +135,65 @@ def _merge_tables(into, table):
             into[stage][type_name] += found
 
 
-def _branches(tfile):
-    return [(b.GetName(), b.GetTypeName()) for b in tfile.Get('Events').GetListOfBranches()]
+def ping_file(root, file):
+    '''
+    (run list, product table) of a file, read with ROOT's TFile before gallery
+    opens it, as TITUS always did: gallery's constructor crashed in the GUI
+    when it was the first to open the file (it reads the file's dictionaries)
+    '''
+    f = root.TFile.Open(file)
+    if not f or f.IsZombie():
+        raise OSError(f'could not open {file}')
+    try:
+        tree = f.Get('Events')
+        aux_branch = tree.GetBranch('EventAuxiliary')
+        run_list = []
+        for i in range(aux_branch.GetEntries()):
+            aux_branch.GetEntry(i)
+            aux = tree.EventAuxiliary
+            run_list.append({'run': aux.run(), 'subrun': aux.subRun(), 'event': aux.event()})
+        table = product_table([(b.GetName(), b.GetTypeName()) for b in tree.GetListOfBranches()])
+    finally:
+        f.Close()
+    return run_list, table
 
 
 def scan_files(files, root=None):
     '''
-    Open art-root files with gallery, once: the gallery.Event to read them,
-    every event's (run, subrun, event) found by stepping through them, and
-    the products in each file's Events tree (from gallery's own TFile). No
-    Qt or GUI state, so it can run in a worker thread. Raises OpenError.
+    Open art-root files: each file's (run, subrun, event)s and products read
+    with TFile (ping_file), then the gallery.Event to read them. No Qt or GUI
+    state, so it can run in a worker thread. Raises OpenError.
     '''
     root = root or _root()
     files, warnings = readable_files(files)
     if not files:
         raise OpenError('; '.join(warnings) or 'no file given')
-    try:
-        ev = root.gallery.Event(root.std.vector['string'](files))
-    except Exception as e:
-        raise OpenError(f'could not open {", ".join(files)}: {e}') from None
-    run_list, table, scanned = [], {'all': {}}, set()
-    while not ev.atEnd():
-        tfile = ev.getTFile()
-        if tfile.GetName() not in scanned:
-            scanned.add(tfile.GetName())
-            _merge_tables(table, product_table(_branches(tfile)))
-        aux = ev.eventAuxiliary()
-        run_list.append({'run': aux.run(), 'subrun': aux.subRun(), 'event': aux.event()})
-        ev.next()
+    run_list, table, opened = [], {'all': {}}, []
+    for file in files:
+        try:
+            file_runs, file_table = ping_file(root, file)
+        except (OSError, AttributeError, ReferenceError) as e:
+            warnings.append(f'could not open {file} ({e}), skipping')
+            continue
+        if not file_table['all']:
+            warnings.append(f'no products in {file}, skipping')
+            continue
+        run_list += file_runs
+        _merge_tables(table, file_table)
+        opened.append(file)
+    if not opened:
+        raise OpenError('; '.join(warnings))
     if not run_list:
-        raise OpenError(f'no events in {", ".join(files)}')
-    ev.toBegin()
-    return OpenedFiles(files=files, event=ev, run_list=run_list, key_table=table, warnings=warnings)
+        raise OpenError(f'no events in {", ".join(opened)}')
+    names = root.std.vector['string']()
+    for file in opened:
+        names.push_back(file)
+    try:
+        ev = root.gallery.Event(names)
+    except Exception as e:
+        raise OpenError(f'gallery could not open {", ".join(opened)}: {e}') from None
+    return OpenedFiles(files=opened, event=ev, run_list=run_list, key_table=table, warnings=warnings,
+                       file_names=names)
 
 
 class FileOpener(QtCore.QThread):
