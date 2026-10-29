@@ -75,13 +75,11 @@ class MCTruthPanel(QtWidgets.QWidget):
         self._track_note.setWordWrap(True)
 
         layout = QtWidgets.QVBoxLayout(self)
+        # for every interaction's vertex: above the one shown
+        layout.addWidget(self.show_vertex)
         layout.addWidget(self.dropdown)
         layout.addWidget(self._summary)
-        options = QtWidgets.QHBoxLayout()
-        options.addWidget(self.show_vertex)
-        options.addStretch()
-        options.addWidget(self.all_particles)
-        layout.addLayout(options)
+        layout.addWidget(self.all_particles, alignment=QtCore.Qt.AlignRight)
         layout.addWidget(self._table, stretch=1)
         layout.addWidget(self._track_note)
         self.clear()

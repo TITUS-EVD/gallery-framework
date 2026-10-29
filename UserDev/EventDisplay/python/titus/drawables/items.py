@@ -9,6 +9,18 @@ import pyqtgraph as pg
 # hover distance from a line, in screen pixels
 HOVER_PIXELS = 5
 
+
+def hover_on_shape(item):
+    '''
+    Make hover and tooltips follow the item's shape: items in a pyqtgraph
+    ViewBox are clipped to it, and Qt then tests a clipped item's bounding
+    rectangle (its clip path) instead of its shape, so the hover area of a
+    line at an angle filled its whole bounding box. With ItemClipsToShape
+    the clip path is the shape. The shape must contain what is painted.
+    '''
+    item.setFlag(QtWidgets.QGraphicsItem.ItemClipsToShape)
+    return item
+
 # the color of selected objects (e.g. the MC truth dock's interaction and particles)
 SELECTED_COLOR = (255, 0, 255)
 
@@ -32,6 +44,8 @@ class polyLine(QtWidgets.QGraphicsPathItem):
     def __init__(self, points, color=None, style=QtCore.Qt.SolidLine, *args):
         super(polyLine, self).__init__()
         self.setAcceptHoverEvents(True)
+        # the hover area: the line widened by HOVER_PIXELS (shape()), not the bounding box
+        hover_on_shape(self)
         self._points = points
         self._color = color if color is not None else (0, 0, 0)
         self._base_color = self._color

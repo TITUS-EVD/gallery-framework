@@ -1113,3 +1113,52 @@ def test_selected_particles_highlight_their_mctracks(qtbot, products, sbnd, trut
     panel.dropdown.setCurrentIndex(0)
     drawer.on_selection_changed(0)
     assert truth_module.selected_mc_particles() == [] and not any(l.is_selected() for l in tracks._drawnObjects)
+
+
+def test_hover_follows_the_line_in_a_view(qtbot):
+    ''' in a pyqtgraph ViewBox (which clips its items): hover and tooltips only near the line, not its bounding box '''
+    from titus.drawables.items import polyLine
+    widget = pg.GraphicsLayoutWidget()
+    qtbot.addWidget(widget)
+    widget.resize(600, 600)
+    view = widget.addViewBox()
+    view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
+    line = polyLine([QtCore.QPointF(0, 0), QtCore.QPointF(100, 100)], (0, 0, 0))
+    view.addItem(line)
+    widget.show()
+    qtbot.waitExposed(widget)
+    scene = widget.scene()
+
+    def hovered(x, y):
+        ''' what Qt finds under the point (view coordinates): hover and tooltips use this '''
+        return line in scene.items(view.mapViewToScene(QtCore.QPointF(x, y)))
+
+    # ~6 pixels per unit: on the line, 0.5 units (3 px) off, 2 units (12 px) off, far off inside the bounding box
+    assert hovered(50, 50) and hovered(50, 50.5)
+    assert not hovered(50, 52) and not hovered(20, 80)
+    # the hover distance is in screen pixels, at any zoom
+    view.setRange(xRange=(40, 60), yRange=(40, 60), padding=0)
+    QtWidgets.QApplication.processEvents()
+    assert hovered(50, 50.1) and not hovered(50, 50.5)
+    # still painted whole: the clip (the shape) is wider than the pen
+    image = widget.grab().toImage()
+    center = view.mapViewToScene(QtCore.QPointF(50, 50))
+    assert QtGui.QColor(image.pixel(int(center.x()), int(center.y()))).value() < 100
+
+
+def test_shower_hover_follows_its_cone(qtbot):
+    from titus.drawables.items import hover_on_shape
+    widget = pg.GraphicsLayoutWidget()
+    qtbot.addWidget(widget)
+    widget.resize(600, 600)
+    view = widget.addViewBox()
+    view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
+    # a thin cone along the diagonal
+    cone = hover_on_shape(QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(
+        [QtCore.QPointF(0, 0), QtCore.QPointF(100, 95), QtCore.QPointF(95, 100)])))
+    view.addItem(cone)
+    widget.show()
+    qtbot.waitExposed(widget)
+    scene = widget.scene()
+    assert cone in scene.items(view.mapViewToScene(QtCore.QPointF(60, 60)))
+    assert cone not in scene.items(view.mapViewToScene(QtCore.QPointF(20, 80)))

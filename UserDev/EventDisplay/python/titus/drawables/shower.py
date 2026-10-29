@@ -5,6 +5,7 @@ import pyqtgraph as pg
 from titus.display import ViewLayout, point_correction, position_tpcs, project_cone
 from titus.display.projection import AS_STORED, OPEN_ANGLE_TO_HALF_ANGLE
 from titus.drawables.drawable import ReaderDrawable
+from titus.drawables.items import hover_on_shape
 from titus.readers import Points
 
 
@@ -75,8 +76,8 @@ class Shower(ReaderDrawable):
                     color = self.COLORS[i % len(self.COLORS)]
                     for polygon in project_cone(layout, starts[i], direction, showers.length[i], half_angle,
                                                 shift, tpc):
-                        item = QtWidgets.QGraphicsPolygonItem(
-                            QtGui.QPolygonF([QtCore.QPointF(x, y) for x, y in zip(polygon.x, polygon.y)]))
+                        item = hover_on_shape(QtWidgets.QGraphicsPolygonItem(
+                            QtGui.QPolygonF([QtCore.QPointF(x, y) for x, y in zip(polygon.x, polygon.y)])))
                         item.setBrush(pg.mkBrush(color))
                         item.setPen(pg.mkPen(color[:3], width=1,
                                              style=QtCore.Qt.DashLine if moved else QtCore.Qt.SolidLine))
