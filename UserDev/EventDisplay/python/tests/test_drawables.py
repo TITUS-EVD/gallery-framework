@@ -753,40 +753,68 @@ def test_mctrack_time_puts_cosmics_on_their_hits(sbnd):
 
 @pytest.fixture
 def truth_module(tpc_module):
-    ''' the TPC module's MC truth dock widgets '''
-    tpc_module._mctruth_dropdown = QtWidgets.QComboBox()
-    tpc_module._mctruth_text1, tpc_module._mctruth_text2 = QtWidgets.QLabel(), QtWidgets.QLabel()
-    tpc_module._show_vertex = QtWidgets.QCheckBox()
-    tpc_module._show_vertex.setChecked(True)
-    tpc_module._mctruth_dock = QtWidgets.QWidget()
+    ''' the TPC module's MC truth panel; dock_shown records show_mctruth_dock '''
+    from titus.gui.mctruth_panel import MCTruthPanel
+    tpc_module._mctruth_panel = MCTruthPanel()
+    tpc_module.dock_shown = []
+    tpc_module.show_mctruth_dock = tpc_module.dock_shown.append
     return tpc_module
 
 
-def test_mctruth_neutrino_first_with_vertex(qtbot, products, sbnd, truth_module, capsys):
+def draw_truth(sbnd, module, producers=('generator::GenieGen', 'corsika::GenieGen')):
     from titus.drawables import MCTruth
-    from titus.drawables.items import CrossMarker
-    reader = serve_all(products, STEP3)
-    truth_module.correct_3d_objects = lambda: True
-    drawer = MCTruth(FakeGalleryInterface(), sbnd, truth_module)
-    drawer.set_producer(['generator::GenieGen', 'corsika::GenieGen'])
+    module.correct_3d_objects = lambda: True
+    drawer = MCTruth(FakeGalleryInterface(), sbnd, module)
+    drawer.set_producer(list(producers))
     drawer.analyze()
     drawer.drawObjects()
+    return drawer
+
+
+def test_mctruth_neutrino_first_with_vertex(qtbot, products, sbnd, truth_module, capsys):
+    from titus.drawables.items import CrossMarker
+    reader = serve_all(products, STEP3)
+    drawer = draw_truth(sbnd, truth_module)
     assert 'Warning' not in capsys.readouterr().out
-    dropdown = truth_module._mctruth_dropdown
-    assert dropdown.count() == 2 and dropdown.itemText(0).startswith('Neutrino')
+    panel = truth_module._mctruth_panel
+    assert [panel.dropdown.itemText(i) for i in range(2)] == ['νμ NC (generator 1)', 'Cosmic (corsika 1)']
+    summary = ' '.join(f'{label} {value}' for label, value in panel.summary())
+    for expected in ('νμ (14), 1.526 GeV', 'NC RES (type 1006)', 'Ar40', 'TPC 0', 'Final state'):
+        assert expected in summary
+    assert truth_module.dock_shown[-1] is True
+    # the final state, most energetic first; all particles with their GENIE status
     truths = reader.get(0, 'mctruths', 'generator')
-    assert truth_module._mctruth_text1.text().startswith(f'PDG: {truths.nu_pdg[0]}')
+    pdg, status, _ = truths.particles(0)
+    assert panel.particle_count() == (status == 1).sum() == 11
+    kinetic = [float(panel.cell(r, 'KE [MeV]')) for r in range(panel.particle_count())]
+    assert kinetic == sorted(kinetic, reverse=True)
+    panel.all_particles.setChecked(True)
+    assert panel.particle_count() == len(pdg) == 21
+    assert 'hadron in nucleus' in [panel.cell(r, 'Status') for r in range(21)]
+
     crosses = drawer._drawnObjects
     assert crosses and all(isinstance(c, CrossMarker) for c in crosses)
     assert 'Neutrino interaction vertex' in crosses[0].toolTip()
-    truth_module._show_vertex.setChecked(False)
+    panel.show_vertex.setChecked(False)
     assert not any(c.isVisible() for c in crosses)
 
-    # the cosmics: described, no vertex
-    dropdown.setCurrentIndex(1)
-    assert truth_module._mctruth_text1.text().startswith('Cosmic origin') and drawer._drawnObjects == []
-    drawer.clearDrawnObjects()
-    assert truth_module._mctruth_dock.isHidden()
+    # the cosmics: described and listed, no vertex
+    panel.all_particles.setChecked(False)
+    panel.dropdown.setCurrentIndex(1)
+    assert ('Origin', 'Cosmic') in panel.summary() and drawer._drawnObjects == []
+    assert panel.particle_count() == len(reader.get(0, 'mctruths', 'corsika').particles(0)[0])
+
+    # no MC truth producer: the dock is empty and hidden
+    drawer.set_producer(None)
+    assert truth_module.dock_shown[-1] is False and panel.particle_count() == 0
+
+
+def test_mctruth_dock_hidden_without_truth_in_the_event(qtbot, products, sbnd, truth_module):
+    from titus.readers import MCTruths
+    products[('mctruths', 'generator::GenieGen')] = MCTruths.empty()
+    draw_truth(sbnd, truth_module, producers=['generator::GenieGen'])
+    assert truth_module.dock_shown == [False]
+    assert truth_module._mctruth_panel.dropdown.count() == 0
 
 
 # --- optical and CRT ---
@@ -979,3 +1007,36 @@ def test_modules_import_without_header_parsing(monkeypatch):
     monkeypatch.setitem(sys.modules, 'galleryUtils', None)
     import titus.modules.truthdumper_module as truthdumper
     importlib.reload(truthdumper)
+
+
+def test_product_box_choice_for_a_new_file():
+    from titus.modules.tpc_module import box_choice
+    # MC files show the generator's truth unless another producer was chosen
+    assert box_choice('simb::MCTruth', None, ['corsika', 'generator']) == 'generator'
+    assert box_choice('simb::MCTruth', 'corsika', ['corsika', 'generator']) == 'corsika'
+    assert box_choice('simb::MCTruth', None, ['corsika']) is None
+    # other products: the previous choice, if the new file has it
+    assert box_choice('recob::Hit', 'gaushit', ['gaushit', 'fasthit']) == 'gaushit'
+    assert box_choice('recob::Hit', 'gaushit', ['fasthit']) is None
+    assert box_choice('recob::Hit', None, ['gaushit']) is None
+
+
+def test_mctruth_dock_follows_the_module(qtbot):
+    from titus.modules.tpc_module import TpcModule
+    module = TpcModule.__new__(TpcModule)
+    window = QtWidgets.QMainWindow()
+    qtbot.addWidget(window)
+    module._mctruth_dock = QtWidgets.QDockWidget('MC Truth', window)
+    window.addDockWidget(QtCore.Qt.RightDockWidgetArea, module._mctruth_dock)
+    window.show()
+    module._dock_widgets, module._active = set(), True
+    module.init_mctruth()
+    assert module._mctruth_dock.isHidden() and module._mctruth_dropdown is module._mctruth_panel.dropdown
+    module.show_mctruth_dock(True)
+    assert module._mctruth_dock.isVisible() and module._mctruth_dock in module._dock_widgets
+    module.show_mctruth_dock(False)
+    assert module._mctruth_dock.isHidden() and module._mctruth_dock not in module._dock_widgets
+    # while another view is shown: only once the TPC view is back (Module.activate shows _dock_widgets)
+    module._active = False
+    module.show_mctruth_dock(True)
+    assert module._mctruth_dock.isHidden() and module._mctruth_dock in module._dock_widgets

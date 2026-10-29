@@ -15,6 +15,7 @@ from PIL import ImageColor
 
 from titus.modules import Module
 from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar, MovableLabel
+from titus.gui.mctruth_panel import MCTruthPanel
 import titus.drawables as drawables
 
 
@@ -32,6 +33,20 @@ _DRAWABLE_LIST = {
     'Space Point': [drawables.SpacePoint, "recob::SpacePoint"],
 }
 
+
+# product type, and the producer label selected for it in a new file unless another was chosen
+_AUTO_PRODUCERS = ('simb::MCTruth', 'generator')
+
+
+def box_choice(product, current, labels):
+    '''
+    The producer label a product box selects for a new file with these
+    producer labels: the one chosen before if the file has it (else none),
+    and for MC truth the generator if nothing was chosen
+    '''
+    if current is None and product == _AUTO_PRODUCERS[0] and _AUTO_PRODUCERS[1] in labels:
+        return _AUTO_PRODUCERS[1]
+    return current if current in labels else None
 
 _RECOB_WIRE = 'recob::Wire'
 _RECOB_CHANNELROI = 'recob::ChannelROI'
@@ -75,12 +90,12 @@ class TpcModule(Module):
         self._waveform_dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea \
                                             | QtCore.Qt.LeftDockWidgetArea \
                                             | QtCore.Qt.RightDockWidgetArea)
-        self._mctruth_dock = QtWidgets.QDockWidget('MCTruth Info', self._gui, objectName='tpc_dock_mctruth')
+        self._mctruth_dock = QtWidgets.QDockWidget('MC Truth', self._gui, objectName='tpc_dock_mctruth')
         self._mctruth_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
 
-        # don't add waveform dock to this list since its visibility is set by
-        # the controls in this gui
-        self._dock_widgets = set([self._draw_dock, self._view_dock, self._mctruth_dock])
+        # don't add the waveform and MC truth docks to this list: they are
+        # shown by the controls in this gui, and when there is MC truth
+        self._dock_widgets = set([self._draw_dock, self._view_dock])
 
         self._draw_wires = False
         self._wire_drawer = None
@@ -565,37 +580,31 @@ class TpcModule(Module):
             product = self._box_products[box]
             producers = self._gi.get_producers(product, self._lsm.current_stage)
             box.set_product_and_producers(product, producers)
-            if producers is not None:
-                if current_producer in producers:
-                    box.setCurrentIndex(box.findText(current_producer))
+            labels = [p.producer() for p in producers] if producers is not None else []
+            chosen = box_choice(product, current_producer, labels)
+            if chosen is not None:
+                box.setCurrentIndex(box.findText(chosen))
             # update even if the box's producer was none
-            box.activated[str].emit(current_producer)
+            box.activated[str].emit(chosen)
 
     def init_mctruth(self):
-
-        frame = QtWidgets.QWidget(self._mctruth_dock)
-        main_layout = QtWidgets.QVBoxLayout()
-        frame.setLayout(main_layout)
-        self._mctruth_dock.setWidget(frame)
-
-        self._mctruth_dropdown = QtWidgets.QComboBox()
-        self._mctruth_text1 = QtWidgets.QLabel("Some text 1")
-        self._mctruth_text2 = QtWidgets.QLabel("Some text 2")
-        self._show_vertex = QtWidgets.QCheckBox("Show Neutrino Vertex")
-        self._show_vertex.setToolTip("Shows the neutrino vertex with a red x.")
-        self._show_vertex.setTristate(False)
-        self._show_vertex.setChecked(True)
-
-        text_layout = QtWidgets.QVBoxLayout()
-        text_layout.addStretch()
-        text_layout.addWidget(self._mctruth_dropdown)
-        text_layout.addWidget(self._mctruth_text1)
-        text_layout.addWidget(self._mctruth_text2)
-        text_layout.addWidget(self._show_vertex)
-        text_layout.addStretch()
-        main_layout.addLayout(text_layout)
-
+        ''' the MC truth dock, filled by the MCTruth drawable '''
+        self._mctruth_panel = MCTruthPanel(self._mctruth_dock)
+        self._mctruth_dock.setWidget(self._mctruth_panel)
+        # used by the MCTruth drawable
+        self._mctruth_dropdown = self._mctruth_panel.dropdown
+        self._show_vertex = self._mctruth_panel.show_vertex
         self._mctruth_dock.hide()
+
+    def show_mctruth_dock(self, show):
+        ''' show the MC truth dock while there is MC truth, with the module's other docks '''
+        if show:
+            self._dock_widgets.add(self._mctruth_dock)
+            if self._active:
+                self._mctruth_dock.show()
+        else:
+            self._dock_widgets.discard(self._mctruth_dock)
+            self._mctruth_dock.hide()
 
 
     def init_wire_waveform(self):
