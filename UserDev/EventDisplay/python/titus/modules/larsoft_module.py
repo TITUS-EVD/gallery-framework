@@ -53,6 +53,10 @@ class LArSoftModule(Module):
         self.populate_menu()
         self.ready.emit()
 
+    def on_file_change(self):
+        # the stages of the new file
+        self.populate_menu()
+
     def populate_menu(self):
         if self._stage_menu is not None:
             self._stage_menu.clear()

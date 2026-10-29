@@ -32,13 +32,14 @@ def main():
     parser.add_argument('--timerange',
                       type=int,
                       help="Overrides the number of time samples.")
+    parser.add_argument('--no-threads', action='store_true',
+                      help="Open files on the GUI thread (no background loading)")
     parser.add_argument('file', nargs='*', help="Optional input file to use")
     args = parser.parse_args()
 
     app = QtWidgets.QApplication(sys.argv)
 
-    gi = GalleryInterface()
-    gi.set_input_files(args.file)
+    gi = GalleryInterface(threaded=not args.no_threads)
 
     gui = Gui(gi)
 
@@ -52,6 +53,11 @@ def main():
     # add other services here...
 
     lsm = LArSoftModule(det_service_name, args.timerange)
+    # files from the command line are opened once the window and modules are
+    # set up, in the background, as from the file dialog
+    if args.file:
+        # (after the geometry and views, which also wait for ready)
+        lsm.ready.connect(lambda: QtCore.QTimer.singleShot(0, lambda: gi.open_files(args.file)))
     gm = GeometryModule(lsm)
     
 

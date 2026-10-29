@@ -17,6 +17,7 @@ class Module(QtCore.QObject):
         self._dock_widgets = set()
         self._active = True
         self._update_on_activation = False
+        self._file_change_on_activation = False
 
         # Note: To get settings to appear in the GUI, you must initialize a
         # settings layout and call self._settings.setValue(...)
@@ -88,6 +89,8 @@ class Module(QtCore.QObject):
 
     def _on_file_change(self):
         if not self._active:
+            # catch up when shown: its product boxes list the old file's
+            self._file_change_on_activation = True
             return
         self.on_file_change()
 
@@ -122,10 +125,16 @@ class Module(QtCore.QObject):
             dw.show()
 
         if not self._active:
-            if self._update_on_activation:
-                self._update()
-                self._update_on_activation = False
             self._active = True
+            if self._file_change_on_activation:
+                self._file_change_on_activation = False
+                self._update_on_activation = False
+                # products of the new file, and a redraw
+                self.on_file_change()
+                self._update()
+            elif self._update_on_activation:
+                self._update_on_activation = False
+                self._update()
 
 
     def deactivate(self):

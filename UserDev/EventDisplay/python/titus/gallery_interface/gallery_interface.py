@@ -1,15 +1,36 @@
 import os
-import sys
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Dict, List
 
 from PyQt5 import QtCore
 
-from ROOT import gallery
-from ROOT import TFile
-from ROOT import vector as ROOTvector
-from ROOT import string as ROOTstring
-
 from titus.readers.base import ProductCache
+
+
+def threads_enabled():
+    ''' whether files are opened in a background thread (TITUS_THREADS=0 or evd.py --no-threads turns it off) '''
+    return os.environ.get('TITUS_THREADS', '1') != '0'
+
+
+def _root():
+    import ROOT
+    return ROOT
+
+
+def release_gil(root):
+    '''
+    Let other Python threads (the GUI) run while gallery opens and walks
+    files: by default PyROOT keeps the GIL during C++ calls, so a slow open
+    in a worker thread would still freeze the GUI. Best effort: older ROOT
+    versions may not support it.
+    '''
+    event = root.gallery.Event
+    for name in ('__init__', 'next', 'toBegin', 'goToEntry'):
+        try:
+            getattr(event, name).__release_gil__ = True
+        except AttributeError:
+            pass
 
 
 class Product:
@@ -55,6 +76,113 @@ class Product:
         self._typeName = tokens[0].rstrip('s')
 
 
+class OpenError(RuntimeError):
+    pass
+
+
+@dataclass
+class OpenedFiles:
+    ''' what opening files found: the gallery.Event, its events and products '''
+    files: List[str]
+    event: object  # gallery.Event, at its first entry
+    run_list: List[Dict[str, int]]
+    key_table: Dict[str, Dict[str, tuple]]
+    warnings: List[str] = field(default_factory=list)
+
+
+def readable_files(files):
+    ''' (the files worth opening, warnings about the others) '''
+    keep, warnings = [], []
+    for file in files or []:
+        if not os.path.exists(file) and 'root://' not in file:
+            warnings.append(f'requested file {file} does not exist, skipping')
+        elif not file.endswith('.root'):
+            warnings.append(f'{file} is not a .root file, skipping')
+        else:
+            keep.append(file)
+    return keep, warnings
+
+
+def product_table(branches):
+    '''
+    {'all' and each stage: {product type: (Product, ...)}} from the
+    (name, type name) of a file's Events branches, as the product boxes
+    list them. Leaves out the event auxiliary and associations.
+    '''
+    table = {'all': {}}
+    for name, type_name in branches:
+        if type_name == 'art::EventAuxiliary':
+            continue
+        # associations are left out, except the NuMu selection's that aren't to PFParticles
+        if 'Assns' in type_name and not ('NuMu' in name and 'PFParticle' not in type_name):
+            continue
+        try:
+            product = Product(name, type_name)
+        except IndexError:
+            continue  # not a product branch
+        for stage in ('all', product.stage()):
+            table.setdefault(stage, {}).setdefault(product._typeName, ())
+            table[stage][product._typeName] += (product,)
+    return table
+
+
+def _merge_tables(into, table):
+    for stage, products in table.items():
+        for type_name, found in products.items():
+            into.setdefault(stage, {}).setdefault(type_name, ())
+            into[stage][type_name] += found
+
+
+def _branches(tfile):
+    return [(b.GetName(), b.GetTypeName()) for b in tfile.Get('Events').GetListOfBranches()]
+
+
+def scan_files(files, root=None):
+    '''
+    Open art-root files with gallery, once: the gallery.Event to read them,
+    every event's (run, subrun, event) found by stepping through them, and
+    the products in each file's Events tree (from gallery's own TFile). No
+    Qt or GUI state, so it can run in a worker thread. Raises OpenError.
+    '''
+    root = root or _root()
+    files, warnings = readable_files(files)
+    if not files:
+        raise OpenError('; '.join(warnings) or 'no file given')
+    try:
+        ev = root.gallery.Event(root.std.vector['string'](files))
+    except Exception as e:
+        raise OpenError(f'could not open {", ".join(files)}: {e}') from None
+    run_list, table, scanned = [], {'all': {}}, set()
+    while not ev.atEnd():
+        tfile = ev.getTFile()
+        if tfile.GetName() not in scanned:
+            scanned.add(tfile.GetName())
+            _merge_tables(table, product_table(_branches(tfile)))
+        aux = ev.eventAuxiliary()
+        run_list.append({'run': aux.run(), 'subrun': aux.subRun(), 'event': aux.event()})
+        ev.next()
+    if not run_list:
+        raise OpenError(f'no events in {", ".join(files)}')
+    ev.toBegin()
+    return OpenedFiles(files=files, event=ev, run_list=run_list, key_table=table, warnings=warnings)
+
+
+class FileOpener(QtCore.QThread):
+    ''' runs scan_files in a worker thread; done carries the OpenedFiles or the exception '''
+    done = QtCore.pyqtSignal(object)
+
+    def __init__(self, files, scan=scan_files, parent=None):
+        super().__init__(parent)
+        self._files, self._scan = list(files), scan
+
+    def run(self):
+        try:
+            result = self._scan(self._files)
+        except Exception as e:
+            result = e
+        self.done.emit(result)
+
+
 def position_event(ev, entry):
     '''
     Move a gallery.Event to an entry: directly with goToEntry where gallery
@@ -78,9 +206,20 @@ class GalleryInterface(QtCore.QObject):
     fileChanged = QtCore.pyqtSignal()
     dirChanged = QtCore.pyqtSignal()
     eventChanged = QtCore.pyqtSignal()
+    # a background open started (what is opened), and ended (ok, message)
+    loadingStarted = QtCore.pyqtSignal(str)
+    loadingFinished = QtCore.pyqtSignal(bool, str)
 
-    def __init__(self, file=None):
+    def __init__(self, file=None, threaded=None, scan=None):
+        """
+        threaded: open files in a background thread (open_files), default
+        threads_enabled(). scan: replaces scan_files (tests).
+        """
         super().__init__()
+        self._threaded = threads_enabled() if threaded is None else threaded
+        self._scan = scan or scan_files
+        self._opener = None
+        self._thread_safety = False
 
         self._gallery_event_handle = None
         # products of the current event, shared by the drawables
@@ -100,13 +239,11 @@ class GalleryInterface(QtCore.QObject):
         self._subrun = 0
         self._entry = 0
 
-        if file != None:
-            self.setInputFiles(file)
-
         self._current_file = ''
-        if file is not None:
-            self._current_file = file
         self._current_directory = os.getcwd()
+
+        if file is not None:
+            self.set_input_files([file] if isinstance(file, str) else file)
 
     def available_runs(self):
         '''
@@ -135,81 +272,6 @@ class GalleryInterface(QtCore.QObject):
         '''
         return list(dict.fromkeys(item['event'] for item in self._run_list))
 
-    def ping_file(self, file):
-        """
-        this function opens the file and
-        determines what is available to draw
-        """
-        # This function opens the file to see
-        # what data products are available
-
-        # Open the file
-        f = TFile.Open(file)
-        e = f.Get("Events")
-
-
-        # Get all the (run, subrun, event) IDs
-        self._run_list = []
-        self._file_entries[file] = e.GetEntries()
-        ev_aux_b = e.GetBranch("EventAuxiliary")
-
-        for i in range(ev_aux_b.GetEntries()):
-            ev_aux_b.GetEntry(i)
-            ev_aux = e.EventAuxiliary
-            self._run_list.append({
-                    'run': ev_aux.run(),
-                    'subrun': ev_aux.subRun(),
-                    'event': ev_aux.event(),
-                })
-
-
-        # prepare a dictionary of data products
-        lookUpTable = dict()
-        lookUpTable.update({"all" : dict()})
-
-        product_list = []
-        # Loop over the keys (list of trees)
-        for key in e.GetListOfBranches():
-
-            if key.GetTypeName() == 'art::EventAuxiliary':
-                continue
-
-            if "NuMu" in key.GetName() and "Assns" in key.GetTypeName():
-                if "PFParticle" in key.GetTypeName():
-                    continue
-            elif "Assns" in key.GetTypeName():
-                continue
-
-            prod=Product(key.GetName(), key.GetTypeName())
-
-            _product = prod._typeName
-
-            # Add the product to the "all" list and
-            # also to it's stage list:
-
-            # gets three items in thisKeyList, which is a list
-            # [dataProduct, producer, 'tree'] (don't care about 'tree')
-            # check if the data product is in the dict:
-            if _product in lookUpTable['all']:
-                # extend the list:
-                lookUpTable['all'][_product] += (prod, )
-            else:
-                lookUpTable['all'].update({_product: (prod,)})
-
-
-            if not (prod.stage() in lookUpTable):
-                lookUpTable.update({prod.stage() : dict()})
-            if _product in lookUpTable[prod.stage()]:
-                # extend the list:
-                lookUpTable[prod.stage()][_product] += (prod, )
-            else:
-                lookUpTable[prod.stage()].update({_product: (prod,)})
-
-
-        self._keyTable.update(lookUpTable)
-
-        f.Close()
-
     def set_input_file(self, file) -> bool:
         f = [file, ]
         return self.set_input_files(f)
@@ -228,62 +290,79 @@ class GalleryInterface(QtCore.QObject):
         self.dirChanged.emit()
 
     def set_input_files(self, files) -> bool:
-        # reset the storage manager and process
-        if self._gallery_event_handle is not None:
-            del self._gallery_event_handle
-            self._gallery_event_handle = None
-
-        if files == None:
+        """ open files now, on this thread (see open_files); False if none could be opened """
+        try:
+            result = self._scan(files)
+        except OpenError as e:
+            print(f"\033[91m WARNING\033[0m {e}")
             return False
+        self._install(result)
+        return True
 
-        _file_list = ROOTvector(ROOTstring)()
+    def is_loading(self):
+        return self._opener is not None
 
-        for file in files:
-            # First, check that the file exists:
-            try:
-                if not os.path.exists(file) and 'root://' not in file:
-                    print(f"\033[91m WARNING\033[0m requested file {file} does not exist, skipping")
-                    continue
-            except (Exception, e):
-                print(e)
-                return False
-            # Next, verify it is a root file:
-            if not file.endswith(".root"):
-                print(f"\033[91m WARNING\033[0m {file} is not a .root file, skipping")
-                continue
-
-            # Finally, ping the file to see what is available to draw
-            try:
-                self.ping_file(file)
-            except (OSError, AttributeError):
-                print(f"\033[91m WARNING\033[0m Could not open {file}, skipping")
-                continue
-
-            if len(self._keyTable['all']) > 0:
-                self._hasFile = True
-                _file_list.push_back(file)
-
-
-        # number of events available, counted by ping_file (without opening
-        # the files again: that is slow over xrootd)
-        self._n_entries = sum(self._file_entries[str(_f)] for _f in _file_list)
-
-
-        # Create an instance of the data manager:
-        if _file_list.size() == 0:
+    def open_files(self, files) -> bool:
+        """
+        Open files in a background thread (unless threading is off): the GUI
+        stays responsive, the current file stays shown until the new one is
+        open, and fileChanged then follows as with set_input_files.
+        loadingStarted/loadingFinished bracket it. False if a load is
+        already running.
+        """
+        if self.is_loading():
             return False
+        files = [files] if isinstance(files, str) else list(files or [])
+        if not files:
+            return False
+        label = ', '.join(os.path.basename(f) for f in files)
+        if not self._threaded:
+            ok = self.set_input_files(files)
+            self.loadingFinished.emit(ok, f'Opened {label}' if ok else f'Could not open {label}')
+            return ok
+        if not self._thread_safety and self._scan is scan_files:
+            root = _root()
+            root.ROOT.EnableThreadSafety()
+            release_gil(root)
+            self._thread_safety = True
+        self._opener = FileOpener(files, self._scan, parent=self)
+        self._opener.done.connect(self._on_opened)
+        self.loadingStarted.emit(f'Opening {label}...')
+        self._opener.start()
+        return True
+
+    def _on_opened(self, result):
+        opener, self._opener = self._opener, None
+        if opener is not None:
+            opener.wait()
+            opener.deleteLater()
+        if isinstance(result, Exception):
+            print(f"\033[91m WARNING\033[0m {result}")
+            self.loadingFinished.emit(False, str(result))
+            return
+        self._install(result)
+        self.loadingFinished.emit(True, f'Opened {", ".join(os.path.basename(f) for f in result.files)}')
+
+    def _install(self, result):
+        """ make opened files current, on the GUI thread """
+        for warning in result.warnings:
+            print(f"\033[91m WARNING\033[0m {warning}")
+        self._gallery_event_handle = result.event
+        self._run_list = result.run_list
+        self._keyTable = result.key_table
+        self._n_entries = len(result.run_list)
+        self._file_entries = {}
+        self._hasFile = True
 
         # TODO gallery supports vector of files chained together, but for now
         # we only consider one file opened at a time
-        self._current_file = str(_file_list[0])
+        self._current_file = result.files[0]
         self._current_directory = os.path.dirname(self._current_file)
         # if the file has no dirname, assume it is meant to be in the current directory
         if self._current_directory == '':
             self._current_directory = os.getcwd()
 
-        self._gallery_event_handle = gallery.Event(_file_list)
         self.product_cache.new_file()
-
         self._lastProcessed = -1
         self._entry = 0
 
@@ -292,7 +371,6 @@ class GalleryInterface(QtCore.QObject):
         # before processing the new event
         self.fileChanged.emit()
         self.go_to_event(0)
-        return True
 
 
     def get_stages(self):
@@ -364,27 +442,35 @@ class GalleryInterface(QtCore.QObject):
 
     # override the run,event,subrun functions:
     def run(self):
-        if self._gallery_event_handle is None:
+        if self.event_handle() is None:
             return 0
-        return self._gallery_event_handle.eventAuxiliary().run()
+        return self.event_handle().eventAuxiliary().run()
 
-    def event(self):
-        if self._gallery_event_handle is None:
+    def event(self, qevent=None):
+        '''
+        The current art event number. Called by Qt with a QEvent (this
+        overrides QObject.event), e.g. to deliver the file opener's queued
+        signal: that is handed to QObject.
+        '''
+        if qevent is not None:
+            return super().event(qevent)
+        if self.event_handle() is None:
             return 0
-        return self._gallery_event_handle.eventAuxiliary().event()
+        return self.event_handle().eventAuxiliary().event()
 
     def event_handle(self):
-        return self._gallery_event_handle
+        # while a file opens in the background, ROOT isn't used from the GUI thread
+        return None if self.is_loading() else self._gallery_event_handle
 
     def subrun(self):
-        if self._gallery_event_handle is None:
+        if self.event_handle() is None:
             return 0
-        return self._gallery_event_handle.eventAuxiliary().subRun()
+        return self.event_handle().eventAuxiliary().subRun()
 
     def datetime(self):
-        if self._gallery_event_handle is None:
+        if self.event_handle() is None:
             return None
-        ts = self._gallery_event_handle.eventAuxiliary().time().value()
+        ts = self.event_handle().eventAuxiliary().time().value()
 
         # Get the timestamp: https://github.com/LArSoft/lareventdisplay/blob/6cbc95e04f8b8fd1639d14f7ef0ad37841962027/lareventdisplay/EventDisplay/HeaderDrawer.cxx#L41
         mask32 = 0xFFFFFFFF
@@ -419,6 +505,8 @@ class GalleryInterface(QtCore.QObject):
             print("On the first event, can't go to previous.")
 
     def process_event(self, force=False):
+        if self.is_loading():
+            return
         if self._lastProcessed != self._entry or force:
             self._lastProcessed = self._entry
             self.eventChanged.emit()
@@ -430,6 +518,8 @@ class GalleryInterface(QtCore.QObject):
         subrun, run) not an event index as usual. So first of all go from
         (event, subrun, run) to event index
         '''
+        if self.is_loading():
+            return
         if self._gallery_event_handle is None:
             print('No _gallery_event_handle')
             return

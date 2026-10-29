@@ -7,8 +7,6 @@ Also supports auto-updating from a folder
 import os, time
 import glob
 
-from ROOT import TFile
-
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from titus.modules import Module
