@@ -1296,3 +1296,46 @@ def test_track_collection_paints_its_lines(qtbot):
     view.translateBy(x=30)
     QtWidgets.QApplication.processEvents()
     assert dark_at(70, 50) and not dark_at(110, 50)  # visible: 30 to 130; the lines end at 90
+
+
+def test_hover_across_track_collections(qtbot):
+    ''' reco tracks under MC tracks (added later, on top): both hover, through Qt's own hover events '''
+    from PyQt5 import QtTest
+    from titus.drawables.items import TrackCollection, TrackLine
+    widget = pg.GraphicsLayoutWidget()
+    qtbot.addWidget(widget)
+    widget.resize(600, 600)
+    view = widget.addViewBox()
+    view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
+    reco = TrackCollection([TrackLine([(0, 20), (100, 20)], tooltip='reco track', key='r'),
+                            TrackLine([(0, 90), (100, 90)], tooltip='other reco', key='r2')])
+    mc = TrackCollection([TrackLine([(0, 10), (100, 95)], tooltip='mc track', key='m')])
+    view.addItem(reco)
+    view.addItem(mc)
+    widget.show()
+    qtbot.waitExposed(widget)
+    QtWidgets.QApplication.processEvents()
+
+    def move_to(x, y):
+        scene_pos = view.mapViewToScene(QtCore.QPointF(x, y))
+        QtTest.QTest.mouseMove(widget.viewport(), widget.mapFromScene(scene_pos))
+        QtWidgets.QApplication.processEvents()
+
+    def tooltip_shown():
+        tips = [QtWidgets.QGraphicsItem.toolTip(i) for i in widget.scene().items() if QtWidgets.QGraphicsItem.toolTip(i)]
+        return tips
+
+    # a reco track where no MC track is, inside the MC collection's bounding box
+    move_to(80, 20.3)
+    assert reco._hovered == 0 and mc._hovered is None and tooltip_shown() == ['reco track']
+    # the MC track
+    move_to(50, 10 + 85 * 0.5)
+    assert mc._hovered == 0 and reco._hovered is None and tooltip_shown() == ['mc track']
+    # nothing near: nothing hovered
+    move_to(30, 60)
+    assert reco._hovered is None and mc._hovered is None and tooltip_shown() == []
+    # back to a reco track, then out of the view
+    move_to(50, 89.8)
+    assert reco._hovered == 1
+    QtTest.QTest.mouseMove(widget.viewport(), QtCore.QPoint(-50, -50))
+    QtWidgets.QApplication.processEvents()

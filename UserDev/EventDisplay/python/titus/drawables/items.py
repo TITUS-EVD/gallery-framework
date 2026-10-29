@@ -350,8 +350,12 @@ class TrackCollection(QtWidgets.QGraphicsItem):
     def _hovered_line(self):
         return None if self._hovered is None else self.lines[self._hovered]
 
-    def line_at(self, pos):
-        ''' the line within HOVER_PIXELS of an item point (on screen), or None '''
+    def nearest(self, pos):
+        '''
+        (line index, distance in pixels, selected) of the line nearest an
+        item point, within HOVER_PIXELS on screen (of several that close,
+        a selected one, drawn on top); None if none is
+        '''
         transform = _device_transform(self)
         if transform is None or len(self._segments) == 0:
             return None
@@ -364,13 +368,23 @@ class TrackCollection(QtWidgets.QGraphicsItem):
         length2 = np.einsum('ij,ij->i', ab, ab)
         t = np.clip(np.einsum('ij,ij->i', p - a, ab) / np.where(length2 > 0, length2, 1), 0, 1)
         distance = np.linalg.norm(a + t[:, None] * ab - p, axis=1)
-        nearest = int(np.argmin(distance))
-        if distance[nearest] > HOVER_PIXELS:
+        close = np.flatnonzero(distance <= HOVER_PIXELS)
+        if len(close) == 0:
             return None
-        # of several lines that close, the selected one (drawn on top)
-        close = self._owners[distance <= HOVER_PIXELS]
-        selected = [i for i in close if self.lines[i].is_selected()]
-        return int(selected[0]) if selected else int(self._owners[nearest])
+        selected = [k for k in close if self.lines[self._owners[k]].is_selected()]
+        k = min(selected or close, key=lambda k: distance[k])
+        return int(self._owners[k]), float(distance[k]), bool(selected)
+
+    def line_at(self, pos):
+        ''' the line within HOVER_PIXELS of an item point (on screen), or None '''
+        found = self.nearest(pos)
+        return None if found is None else found[0]
+
+    def siblings(self):
+        ''' the TrackCollections in the same view (e.g. reco and MC tracks), this one included '''
+        parent = self.parentItem()
+        items = parent.childItems() if parent is not None else (self.scene().items() if self.scene() else [self])
+        return [i for i in items if isinstance(i, TrackCollection) and i.isVisible()]
 
     def _hover(self, index):
         if index == self._hovered:
@@ -379,8 +393,30 @@ class TrackCollection(QtWidgets.QGraphicsItem):
         self.setToolTip(self.lines[index].toolTip() if index is not None else '')
         self.update()
 
+    def hover_at(self, scene_pos):
+        '''
+        Highlight the line nearest the mouse among all the view's
+        TrackCollections: Qt only sends hover events to the topmost item,
+        so the one receiving them (its bounding box covers the others')
+        hovers for all, and the others are cleared
+        '''
+        best, best_key = None, None
+        collections = self.siblings()
+        for collection in collections:
+            found = collection.nearest(collection.mapFromScene(scene_pos))
+            if found is None:
+                continue
+            index, distance, selected = found
+            key = (not selected, distance)
+            if best_key is None or key < best_key:
+                best, best_key = (collection, index), key
+        for collection in collections:
+            collection._hover(best[1] if best is not None and best[0] is collection else None)
+
     def hoverMoveEvent(self, e):
-        self._hover(self.line_at(e.pos()))
+        self.hover_at(e.scenePos())
 
     def hoverLeaveEvent(self, e):
-        self._hover(None)
+        # the item under the mouse now, if any, takes over (Qt sends this first)
+        for collection in self.siblings():
+            collection._hover(None)
