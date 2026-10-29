@@ -1124,23 +1124,32 @@ def test_hover_follows_the_line_in_a_view(qtbot):
     view = widget.addViewBox()
     view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
     line = polyLine([QtCore.QPointF(0, 0), QtCore.QPointF(100, 100)], (0, 0, 0))
+    line.setToolTip('track 7')
     view.addItem(line)
     widget.show()
     qtbot.waitExposed(widget)
     scene = widget.scene()
 
+    def tooltip_at(x, y):
+        ''' the tooltip Qt shows at a point (view coordinates): the topmost item with one '''
+        # (as Qt's tooltip event asks: QGraphicsItem.toolTip isn't virtual, polyLine.toolTip is for Python)
+        items = scene.items(view.mapViewToScene(QtCore.QPointF(x, y)))
+        tips = [QtWidgets.QGraphicsItem.toolTip(i) for i in items if QtWidgets.QGraphicsItem.toolTip(i)]
+        return tips[0] if tips else None
+
     def hovered(x, y):
-        ''' what Qt finds under the point (view coordinates): hover and tooltips use this '''
-        return line in scene.items(view.mapViewToScene(QtCore.QPointF(x, y)))
+        return line.hover_area() in scene.items(view.mapViewToScene(QtCore.QPointF(x, y)))
 
     # ~6 pixels per unit: on the line, 0.5 units (3 px) off, 2 units (12 px) off, far off inside the bounding box
-    assert hovered(50, 50) and hovered(50, 50.5)
-    assert not hovered(50, 52) and not hovered(20, 80)
+    assert hovered(50, 50) and hovered(50, 50.5) and tooltip_at(50, 50.5) == 'track 7'
+    assert not hovered(50, 52) and not hovered(20, 80) and tooltip_at(20, 80) is None
+    assert line.toolTip() == 'track 7'
     # the hover distance is in screen pixels, at any zoom
     view.setRange(xRange=(40, 60), yRange=(40, 60), padding=0)
     QtWidgets.QApplication.processEvents()
     assert hovered(50, 50.1) and not hovered(50, 50.5)
-    # still painted whole: the clip (the shape) is wider than the pen
+    # the line itself isn't clipped to its shape (slow repaints), and is painted whole
+    assert not line.flags() & QtWidgets.QGraphicsItem.ItemClipsToShape
     image = widget.grab().toImage()
     center = view.mapViewToScene(QtCore.QPointF(50, 50))
     assert QtGui.QColor(image.pixel(int(center.x()), int(center.y()))).value() < 100
@@ -1162,3 +1171,56 @@ def test_shower_hover_follows_its_cone(qtbot):
     scene = widget.scene()
     assert cone in scene.items(view.mapViewToScene(QtCore.QPointF(60, 60)))
     assert cone not in scene.items(view.mapViewToScene(QtCore.QPointF(20, 80)))
+
+
+class RecordingView:
+    ''' a wire view's cut and t0, and the calls the TPC module makes '''
+    def __init__(self):
+        self.united, self.t0, self.calls = True, 5, []
+
+    def uniteCathodes(self, unite):
+        self.united = unite
+        self.calls.append(('unite', unite))
+
+    def t0slide(self, t0):
+        self.t0 = t0
+
+    def restoret0(self):
+        self.t0 = 0
+
+    def restoreDefaults(self):
+        self.calls.append('levels')
+
+    def setRangeToMax(self):
+        self.calls.append('range')
+
+    def removed_ticks(self):
+        return 100 if self.united else 0
+
+
+def test_restore_defaults_redraws_the_products(qtbot):
+    ''' un-cutting the views through the controls: the products drawn on them follow '''
+    from titus.modules.tpc_module import TpcModule
+    module = TpcModule.__new__(TpcModule)
+    module._wire_views = {(2, 0): RecordingView()}
+    product = mock.Mock()
+    module._product_box_map = {'box': product}
+    module._gm = mock.Mock()
+    module._gm.current_geom.samplingRate.return_value = 500.
+    module._t0sliderLabel = QtWidgets.QLabel()
+    module._t0_redraw_timer = QtCore.QTimer()
+    module._uniteCathodes = QtWidgets.QCheckBox()
+    module._uniteCathodes.setChecked(True)
+    # (lambdas: the bare module's QObject isn't initialized, so it can't be a slot's receiver)
+    module._uniteCathodes.stateChanged.connect(lambda _: module.unite_cathodes())
+    module._t0slider = QtWidgets.QSlider()
+    module._t0slider.setRange(-100, 100)
+    module._t0slider.setValue(5)
+    module._t0slider.valueChanged.connect(lambda _: module.t0slider_worker())
+
+    module.restore_defaults()
+    view = module._wire_views[(2, 0)]
+    assert not module._uniteCathodes.isChecked() and module._t0slider.value() == 0
+    assert not view.united and view.t0 == 0 and view.removed_ticks() == 0
+    # redrawn after the cut was undone
+    assert product.drawObjects.called and ('unite', False) in view.calls and 'range' in view.calls

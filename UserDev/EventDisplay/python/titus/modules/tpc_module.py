@@ -918,12 +918,14 @@ class TpcModule(Module):
             view.toggleScale(chkstate)
 
     def restore_defaults(self):
+        # through the controls, so that the products drawn follow the views:
+        # un-cutting the images alone left them drawn with the cut, shifted
+        self._uniteCathodes.setChecked(False)
+        self._t0slider.setValue(0)
         for view in self._wire_views.values():
             view.restoreDefaults()
             view.setRangeToMax()
-            view.uniteCathodes(False)
             view.restoret0()
-            # self._t0slider.setValue(0)
     
     def use_cm(self, chkstate):
         for view in self._wire_views.values():

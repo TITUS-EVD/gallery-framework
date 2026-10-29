@@ -33,19 +33,52 @@ def _device_transform(item):
     return item.deviceTransform(scene.views()[0].viewportTransform())
 
 
+class _HoverArea(QtWidgets.QGraphicsItem):
+    '''
+    The hover area and tooltip of a polyLine, as an invisible child item: it
+    is clipped to the line's shape (hover_on_shape), so hover and tooltips
+    follow the line, and having no contents it costs nothing to paint. The
+    line itself paints unclipped: clipping each line to its shape made
+    repaints several times slower.
+    '''
+
+    def __init__(self, line):
+        super().__init__(line)
+        self._line = line
+        self.setFlag(QtWidgets.QGraphicsItem.ItemHasNoContents)
+        hover_on_shape(self)
+        self.setAcceptHoverEvents(True)
+
+    def boundingRect(self):
+        return self._line.boundingRect()
+
+    def shape(self):
+        return self._line.shape()
+
+    def paint(self, painter, option, widget=None):
+        pass
+
+    def hoverEnterEvent(self, e):
+        super().hoverEnterEvent(e)
+        self._line.set_hovered(True)
+
+    def hoverLeaveEvent(self, e):
+        super().hoverLeaveEvent(e)
+        self._line.set_hovered(False)
+
+
 class polyLine(QtWidgets.QGraphicsPathItem):
     '''
     A polyline (e.g. a projected track) that highlights on hover. The hover
-    area is the line widened by HOVER_PIXELS on screen. Qt's default shape
-    widens it in item coordinates (wires and ticks), so it grew with the
-    zoom, and filled the region between a curved line and its chord.
+    area is the line widened by HOVER_PIXELS on screen (shape(); Qt's
+    default shape widens it in item coordinates, so it grew with the zoom,
+    and filled the region between a curved line and its chord), handled by
+    a child _HoverArea, which also holds the tooltip.
     '''
 
     def __init__(self, points, color=None, style=QtCore.Qt.SolidLine, *args):
         super(polyLine, self).__init__()
-        self.setAcceptHoverEvents(True)
-        # the hover area: the line widened by HOVER_PIXELS (shape()), not the bounding box
-        hover_on_shape(self)
+        self._hover = _HoverArea(self)
         self._points = points
         self._color = color if color is not None else (0, 0, 0)
         self._base_color = self._color
@@ -109,15 +142,18 @@ class polyLine(QtWidgets.QGraphicsPathItem):
         pad_y = HOVER_PIXELS * (inverse.m12() ** 2 + inverse.m22() ** 2) ** 0.5
         return rect.adjusted(-pad_x, -pad_y, pad_x, pad_y)
 
-    def hoverEnterEvent(self, e):
-        QtWidgets.QGraphicsPathItem.hoverEnterEvent(self, e)
-        self.setPen(self._pen(self._width + 3))
-        self.update()
+    def set_hovered(self, hovered):
+        self.setPen(self._pen(self._width + 3 if hovered else self._width))
 
-    def hoverLeaveEvent(self, e):
-        QtWidgets.QGraphicsPathItem.hoverLeaveEvent(self, e)
-        self.setPen(self._pen(self._width))
-        self.update()
+    def setToolTip(self, text):
+        # on the hover area: the line's own bounding box would show it far from the line
+        self._hover.setToolTip(text)
+
+    def toolTip(self):
+        return self._hover.toolTip()
+
+    def hover_area(self):
+        return self._hover
 
 
 class Marker(QtWidgets.QGraphicsEllipseItem):
