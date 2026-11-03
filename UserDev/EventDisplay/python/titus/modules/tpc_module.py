@@ -856,9 +856,13 @@ class TpcModule(Module):
         for key, view in self._wire_views.items():
             if self._view_shown(key):
                 self._draw_wire_view(view)
+                # this event's run, data or simulation and date (hidden views: when shown)
+                view.refreshLabel()
             else:
                 self._stale_views.add(key)
         if not self._draw_wires:
+            # no wire image to take waveforms from: not those of another event or file
+            self.clear_wires()
             return
         
         if self._current_wire_drawer is not None:
@@ -1576,6 +1580,11 @@ class WireView(pg.GraphicsLayoutWidget):
         self.scene().addItem(self._logo)
 
         self.drawEventNumber()
+
+    def refreshLabel(self):
+        ''' the label for the current event, if drawn (with the logo) '''
+        if self._useLogo:
+            self.drawEventNumber()
 
     def drawEventNumber(self):
         if self._label is not None and self._label.scene() is self.scene():

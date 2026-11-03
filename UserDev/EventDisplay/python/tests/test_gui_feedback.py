@@ -13,10 +13,10 @@ sys.modules.setdefault('ROOT', mock.MagicMock())
 pytest.importorskip('PyQt5')
 from PyQt5 import QtCore, QtWidgets  # noqa: E402
 
-from titus.gallery_interface.gallery_interface import GalleryInterface, OpenError, product_table  # noqa: E402
+from titus.gallery_interface.gallery_interface import GalleryInterface, OpenedFiles, OpenError, product_table  # noqa: E402
 from titus.gui.widgets import MultiSelectionBox, recoBox  # noqa: E402
 
-from test_loading import BRANCHES, opened  # noqa: E402
+from test_loading import BRANCHES, FakeEvent, opened  # noqa: E402
 
 
 def loading_log(gi):
@@ -226,3 +226,59 @@ def test_kind_chosen_or_none_by_the_user_kept(qtbot):
     module._wires_off_by_user = True
     module._choose_wire_view()
     assert checked(module) == ['none_wire']
+
+
+class DatedEvent(FakeEvent):
+    ''' FakeEvent of data or simulation, with a time stamp (2025-03-01 12:00 UTC) '''
+    def __init__(self, files, real_data):
+        super().__init__(files)
+        self.real_data = real_data
+
+    def eventAuxiliary(self):
+        aux = super().eventAuxiliary()
+        aux.isRealData = lambda: self.real_data
+        aux.time = lambda: mock.Mock(value=lambda: 1740830400 << 32)
+        return aux
+
+
+def dated_file(name, real_data, events):
+    return OpenedFiles(files=[name], event=DatedEvent([(name, events)], real_data),
+                       run_list=[{'run': r, 'subrun': s, 'event': e} for r, s, e in events],
+                       key_table=product_table(BRANCHES))
+
+
+def test_views_follow_the_event_and_file(gui):
+    ''' the logo label and the wire waveforms: of the current event, after next and a new file '''
+    import numpy as np
+    from titus.modules import GeometryModule, LArSoftModule, TpcModule, ViewSelectModule
+    gi = gui.gallery_interface
+    lsm = LArSoftModule('sbnd', None)
+    gm = GeometryModule(lsm)
+    gm.add_gallery_interface(gi)
+    views = ViewSelectModule()
+    gui.add_module(views)
+    tpc = TpcModule(lsm, gm)
+    views.add_module(tpc, view_name='TPC')
+    gui.add_module(lsm)
+    gui.show()
+    QtWidgets.QApplication.processEvents()
+    tpc._logoOption.setChecked(True)
+    view = tpc._wire_views[(2, 0)]
+
+    def label():
+        return view._label.toPlainText().split('\n')
+
+    files = {'mc.root': dated_file('mc.root', False, [(1, 7, 100), (1, 7, 101)]),
+             'data.root': dated_file('data.root', True, [(18255, 3, 42)])}
+    gi._scan = lambda names, progress=None: files[names[0]]
+    gi.set_input_files(['mc.root'])
+    assert label() == ['SBND Simulation', 'Run 1, Subrun 7, Event 100']
+    # a waveform clicked, but no wire image in the next event
+    tpc._drawWireOption.setChecked(True)
+    tpc.drawWireOnPlot(np.zeros(10), wire=400, plane=2, tpc=0, cryo=0, drawer=view)
+    assert list(tpc._wirePlotItems) == [(0, 400)]
+    gi.next()
+    assert label() == ['SBND Simulation', 'Run 1, Subrun 7, Event 101']
+    assert tpc._wirePlotItems == {} and view._wire_marks == []
+    gi.set_input_files(['data.root'])
+    assert label() == ['SBND Data', 'Run 18255, Subrun 3, Event 42', 'March 01, 2025']

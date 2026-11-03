@@ -551,6 +551,12 @@ class FakeWireView:
     def toggleScale(self, show):
         pass
 
+    def refreshLabel(self):
+        pass
+
+    def set_wire_marks(self, marks):
+        pass
+
 
 def bare_tpc_module(selected):
     from titus.modules.tpc_module import TpcModule
@@ -563,6 +569,8 @@ def bare_tpc_module(selected):
     module._wire_drawer = mock.Mock(getPlane=lambda plane, cryo: f'image {plane}')
     module._plane_frames = mock.Mock(isChecked=lambda: True)
     module._current_wire_drawer = None
+    module._wirePlotItems = {}
+    module._drawWireOption = mock.Mock(isChecked=lambda: False)
     module._show_logo = module._show_scale_bar = False
     module._product_views = set()
     module._product_box_map = {'box': mock.Mock()}
