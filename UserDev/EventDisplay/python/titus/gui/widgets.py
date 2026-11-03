@@ -51,6 +51,64 @@ class VerticalLabel(QtWidgets.QLabel):
         painter.end()
 
 
+class ViewAlignedLabels(QtWidgets.QWidget):
+    '''
+    A column of VerticalLabels beside a pyqtgraph view (a GraphicsView and
+    its ViewBox), each centered on the part of its y range (in view
+    coordinates) that is on screen: shortened ("...") to fit in it, so that
+    the labels don't overlap, and hidden while the range is out of view.
+    Follows panning, zooming and resizing.
+    '''
+
+    def __init__(self, view_widget, viewbox, labels, width=25):
+        super().__init__()
+        self._view_widget = view_widget
+        self._viewbox = viewbox
+        self._labels = list(labels)
+        self._texts = [label.text() for label in self._labels]
+        self._ranges = []
+        for label in self._labels:
+            label.setParent(self)
+        self.setFixedWidth(width)
+        viewbox.sigRangeChanged.connect(self.place)
+        viewbox.sigResized.connect(self.place)
+
+    def set_ranges(self, ranges):
+        ''' (y0, y1) in view coordinates of each label, in order '''
+        self._ranges = list(ranges)
+        self.place()
+
+    def _column_y(self, y):
+        ''' the column's pixel row at view coordinate y '''
+        point = self._view_widget.mapFromScene(self._viewbox.mapViewToScene(QtCore.QPointF(0, y)))
+        return self.mapFromGlobal(self._view_widget.viewport().mapToGlobal(point)).y()
+
+    def place(self):
+        margin = 4
+        for label, text, (y0, y1) in zip(self._labels, self._texts, self._ranges):
+            top, bottom = sorted((self._column_y(y0), self._column_y(y1)))
+            top, bottom = max(top, 0), min(bottom, self.height())
+            metrics = label.fontMetrics()
+            shown = metrics.elidedText(text, QtCore.Qt.ElideRight, bottom - top - margin)
+            if bottom - top <= margin or shown in ('', '…'):
+                label.hide()
+                continue
+            label.setText(shown)
+            length = metrics.horizontalAdvance(shown) + margin
+            label.setGeometry(0, (top + bottom - length) // 2, self.width(), length)
+            label.show()
+        for label in self._labels[len(self._ranges):]:
+            label.hide()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.place()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.place()
+
+
 class ElidedLabel(QtWidgets.QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -18,6 +18,7 @@ class MCTruth(ReaderDrawable):
     vertex lands where its charge was read out.
     '''
     KIND = 'mctruths'
+    SIMULATION = True
 
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)

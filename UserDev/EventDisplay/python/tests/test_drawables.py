@@ -98,6 +98,26 @@ def test_missing_product_is_skipped(qtbot, products, sbnd, capsys):
     assert not drawer.getPlane(0, 0).any()
 
 
+def test_missing_simulation_product_quiet_in_data(qtbot, products, sbnd, truth_module, capsys):
+    from titus.drawables import MCTruth
+    gi = FakeGalleryInterface()
+    gi.is_real_data = lambda: True
+    truth = MCTruth(gi, sbnd, truth_module)
+    truth.set_producer('generator::GenieGen')
+    # data: no MC truth is expected, every event
+    truth.analyze()
+    assert capsys.readouterr().out == ''
+    # reconstructed products are still reported missing in data
+    wires = RecoWire(gi, sbnd)
+    wires.set_producer('caldata::Reco1')
+    wires.analyze()
+    assert 'not in this event' in capsys.readouterr().out
+    # simulation without its truth: worth a warning
+    gi.is_real_data = lambda: False
+    truth.analyze()
+    assert 'mctruths generator::GenieGen not in this event' in capsys.readouterr().out
+
+
 def test_no_producer_draws_nothing(qtbot, products, sbnd):
     drawer = RecoWire(FakeGalleryInterface(), sbnd)
     drawer.set_producer(None)
