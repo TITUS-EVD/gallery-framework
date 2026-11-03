@@ -452,18 +452,23 @@ class GalleryInterface(QtCore.QObject):
 
         return datetime.fromtimestamp(timestamp_s, timezone.utc)
 
-    def date(self, include_time=True, detector=None):
+    def event_kind(self, detector=None):
+        ''' "Data" or "Simulation", after the detector name if given (e.g. "SBND Simulation") '''
+        kind = 'Data' if self.is_real_data() else 'Simulation'
+        return f'{detector.upper()} {kind}' if detector else kind
+
+    def date(self, include_time=True):
         '''
         The event's date as shown in the GUI: its time stamp for data, while
         simulated events, which carry no meaningful time stamp, are labelled
-        "Simulation" (after the detector name, e.g. "SBND Simulation", if given)
+        "Simulation"
         '''
         dt = self.datetime()
         if dt is None:
             return 'No event selected'
 
         if not self.is_real_data():
-            return f'{detector.upper()} Simulation' if detector else 'Simulation'
+            return self.event_kind()
 
         if include_time:
             return dt.strftime("%B %d, %Y - %H:%M:%S UTC")

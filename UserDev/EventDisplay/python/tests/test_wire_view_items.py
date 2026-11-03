@@ -27,7 +27,7 @@ def sbnd():
 
 def fake_event(real_data, seconds=1740830400):
     """ an event handle as gallery's, its time stamp the seconds (here 2025-03-01 12:00 UTC) """
-    aux = SimpleNamespace(isRealData=lambda: real_data, run=lambda: 18255, event=lambda: 42,
+    aux = SimpleNamespace(isRealData=lambda: real_data, run=lambda: 18255, subRun=lambda: 3, event=lambda: 42,
                           time=lambda: SimpleNamespace(value=lambda: seconds << 32))
     return SimpleNamespace(eventAuxiliary=lambda: aux)
 
@@ -45,11 +45,12 @@ def test_date_of_data_and_simulation(qtbot):
     assert gi.date() == 'No event selected'
     gi._gallery_event_handle = fake_event(real_data=True)
     assert gi.date() == 'March 01, 2025 - 12:00:00 UTC'
-    assert gi.date(include_time=False, detector='sbnd') == 'March 01, 2025'
+    assert gi.date(include_time=False) == 'March 01, 2025'
+    assert gi.event_kind() == 'Data' and gi.event_kind(detector='sbnd') == 'SBND Data'
     # simulation: no (meaningless) time stamp, wherever the date is shown
     gi._gallery_event_handle = fake_event(real_data=False)
     assert gi.date() == gi.date(include_time=False) == 'Simulation'
-    assert gi.date(detector='sbnd') == 'SBND Simulation'
+    assert gi.event_kind(detector='icarus') == 'ICARUS Simulation'
 
 
 @pytest.fixture
@@ -76,23 +77,31 @@ def view(qtbot, sbnd):
     return view
 
 
-def test_simulation_labelled_without_a_date(view):
+def label(view):
     view.drawEventNumber()
-    assert view._label.toPlainText() == 'RUN 18255, EVENT 42\nSBND Simulation'
+    return view._label.toPlainText().split('\n')
+
+
+def test_label_lines(view):
+    # simulation: no date
+    assert label(view) == ['SBND Simulation', 'RUN 18255, SUBRUN 3, EVENT 42']
     view._gi._gallery_event_handle = fake_event(real_data=True)
-    view.drawEventNumber()
-    assert view._label.toPlainText() == 'RUN 18255, EVENT 42\nMarch 01, 2025'
+    assert label(view) == ['SBND Data', 'RUN 18255, SUBRUN 3, EVENT 42', 'March 01, 2025']
+    view.includeTimeInLabel(True)
+    view.showPlaneNoInLabel(True)
+    assert label(view) == ['SBND Data', 'RUN 18255, SUBRUN 3, EVENT 42', 'PLANE 2',
+                           'March 01, 2025 - 12:00:00 UTC']
+    # e.g. for screenshots
+    view.showRunInLabel(False)
+    view.showPlaneNoInLabel(False)
+    assert label(view) == ['SBND Data', 'March 01, 2025 - 12:00:00 UTC']
 
 
-def test_event_label_can_be_hidden(view):
+def test_label_drawn_with_the_logo(view):
     view.toggleLogo(True)
     assert view._logo.scene() is view.scene() and view._label.scene() is view.scene()
-    # e.g. for screenshots: the logo alone
-    view.showEventLabel(False)
-    assert view._logo.scene() is view.scene() and view._label.scene() is None
-    view.showEventLabel(True)
+    view.showRunInLabel(False)
     assert view._label.scene() is view.scene()
-    # no logo, no label
     view.toggleLogo(False)
     assert view._label.scene() is None
 
@@ -163,11 +172,11 @@ def test_restore_defaults_only_resets_the_tpc_page(qtbot, settings, monkeypatch)
     module = TpcModule(larsoft_module=None, geom_module=None)
     settings.setValue('MainWindow/geometry', 'kept')
     settings.setValue(tpc_module._SET_ASPECT_RATIO, True)
-    module._label_event.setChecked(False)
+    module._label_run.setChecked(False)
     module._label_font_size.setValue(30)
-    assert settings.value(tpc_module._SET_LABEL_EVENT, type=int) == QtCore.Qt.Unchecked
+    assert settings.value(tpc_module._SET_LABEL_RUN, type=int) == QtCore.Qt.Unchecked
     module.restore_settings_defaults()
-    assert module._label_event.isChecked() and module._label_font_size.value() == 16
+    assert module._label_run.isChecked() and module._label_font_size.value() == 16
     assert settings.value('MainWindow/geometry') == 'kept'
     assert settings.value(tpc_module._SET_ASPECT_RATIO, type=bool)
 

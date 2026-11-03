@@ -67,7 +67,7 @@ _SET_SCALE_BAR_LENGTH = 'TPC/Scale bar length (cm)'
 # setting to change the scale bar font size and logo size
 _SET_LABEL_FONT_SIZE = 'TPC/Label font size'
 _MAX_LABEL_FONT_SIZE = 50
-_SET_LABEL_EVENT = 'TPC/Show run and event label'
+_SET_LABEL_RUN = 'TPC/Show run, subrun and event numbers'
 _SET_LABEL_PLANE = 'TPC/Show plane number in label'
 _SET_LABEL_TIME = 'TPC/Show event time in label'
 _SET_LOGO_SIZE = 'TPC/Logo size'
@@ -138,7 +138,7 @@ class TpcModule(Module):
             _SET_N_WIRE_WAVEFORMS: 5,
             _SET_SCALE_BAR_LENGTH: 30,
             _SET_LABEL_FONT_SIZE: 16,
-            _SET_LABEL_EVENT: QtCore.Qt.Checked,
+            _SET_LABEL_RUN: QtCore.Qt.Checked,
             _SET_LABEL_PLANE: QtCore.Qt.Unchecked,
             _SET_LABEL_TIME: QtCore.Qt.Unchecked,
             _SET_LOGO_SIZE: 0.7,
@@ -181,16 +181,16 @@ class TpcModule(Module):
         )
         self._settings_layout.addWidget(self._label_font_size, 2, 1, 1, -1)
 
-        label = QtWidgets.QLabel(_SET_LABEL_EVENT.split('/')[1])
+        label = QtWidgets.QLabel(_SET_LABEL_RUN.split('/')[1])
         self._settings_layout.addWidget(label, 3, 0, 1, 1)
-        self._label_event = QtWidgets.QCheckBox()
-        self._label_event.setTristate(False)
-        self._label_event.setToolTip("Draw the run and event number (and date) next to the logo")
-        self._label_event.setChecked(self._settings_defaults[_SET_LABEL_EVENT])
-        self._label_event.stateChanged.connect(
-            lambda x: self._update_label_event(x)
+        self._label_run = QtWidgets.QCheckBox()
+        self._label_run.setTristate(False)
+        self._label_run.setToolTip("Show the run, subrun and event numbers in the label next to the logo")
+        self._label_run.setChecked(self._settings_defaults[_SET_LABEL_RUN])
+        self._label_run.stateChanged.connect(
+            lambda x: self._update_label_run(x)
         )
-        self._settings_layout.addWidget(self._label_event, 3, 1, 1, -1)
+        self._settings_layout.addWidget(self._label_run, 3, 1, 1, -1)
 
         label = QtWidgets.QLabel(_SET_LABEL_PLANE.split('/')[1])
         self._settings_layout.addWidget(label, 4, 0, 1, 1)
@@ -250,9 +250,9 @@ class TpcModule(Module):
         self._label_font_size.setValue(x)
         self._label_font_size.valueChanged.emit(x)
 
-        x = QtCore.Qt.CheckState(int(self._settings.value(_SET_LABEL_EVENT, self._settings_defaults[_SET_LABEL_EVENT])))
-        self._label_event.setCheckState(x)
-        self._label_event.stateChanged.emit(x)
+        x = QtCore.Qt.CheckState(int(self._settings.value(_SET_LABEL_RUN, self._settings_defaults[_SET_LABEL_RUN])))
+        self._label_run.setCheckState(x)
+        self._label_run.stateChanged.emit(x)
 
         x = QtCore.Qt.CheckState(self._settings.value(_SET_LABEL_PLANE, self._settings_defaults[_SET_LABEL_PLANE]))
         self._label_plane.setCheckState(x)
@@ -1111,16 +1111,16 @@ class TpcModule(Module):
         for view in self._wire_views.values():
             view.setLabelFontSize(font_size)
 
-    def _update_label_event(self, show_label: QtCore.Qt.CheckState):
+    def _update_label_run(self, show_run: QtCore.Qt.CheckState):
         '''
-        helper to toggle the run/event label drawn with the logo
+        helper to toggle the run, subrun and event numbers in the label
 
         args:
-            show_label (CheckState): checkbox state
+            show_run (CheckState): checkbox state
         '''
-        self._settings.setValue(_SET_LABEL_EVENT, show_label)
+        self._settings.setValue(_SET_LABEL_RUN, show_run)
         for view in self._wire_views.values():
-            view.showEventLabel(show_label == QtCore.Qt.Checked)
+            view.showRunInLabel(show_run == QtCore.Qt.Checked)
 
     def _update_label_plane(self, show_plane: QtCore.Qt.CheckState):
         '''
@@ -1383,7 +1383,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._logo = None
         self._label = None
         self._logo_scale = 1.0
-        self._showEventLabel = True
+        self._showRunInLabel = True
         self._showPlaneNoInLabel = False
         self._includeTimeInLabel = False
 
@@ -1548,9 +1548,6 @@ class WireView(pg.GraphicsLayoutWidget):
         if self._label is not None and self._label.scene() is self.scene():
             self.scene().removeItem(self._label)
 
-        if not self._showEventLabel:
-            return
-
         xLoc = 0
         yLoc = 0
         if self._logo:
@@ -1559,14 +1556,16 @@ class WireView(pg.GraphicsLayoutWidget):
             yLoc = self._geometry.logoPos()[1] \
                 + self._logo.sceneBoundingRect().height() / 2
 
-        label = f'RUN {self._gi.run()}, EVENT {self._gi.event()}\n'
-
+        # what it is, which event (optional), the plane (optional), and when (data only)
+        lines = [self._gi.event_kind(detector=self._geometry.name())]
+        if self._showRunInLabel:
+            lines.append(f'RUN {self._gi.run()}, SUBRUN {self._gi.subrun()}, EVENT {self._gi.event()}')
         if self._showPlaneNoInLabel:
-            label += f'PLANE {self._plane}\n'
+            lines.append(f'PLANE {self._plane}')
+        if self._gi.is_real_data():
+            lines.append(self._gi.date(include_time=self._includeTimeInLabel))
 
-        label += self._gi.date(include_time=self._includeTimeInLabel, detector=self._geometry.name())
-
-        self._label = MovableLabel(label, anchor=(0., 0.5))
+        self._label = MovableLabel('\n'.join(lines), anchor=(0., 0.5))
         self._label.setPos(xLoc,yLoc)
         self._label.setFont(QtGui.QFont("Helvetica", self._fontsize))
         self.scene().addItem(self._label)
@@ -1643,8 +1642,8 @@ class WireView(pg.GraphicsLayoutWidget):
         self.refreshScaleBar()
         self.refreshLogo()
 
-    def showEventLabel(self, show_label):
-        self._showEventLabel = show_label
+    def showRunInLabel(self, show_run):
+        self._showRunInLabel = show_run
         self.refreshLogo()
 
     def showPlaneNoInLabel(self, show_plane):
