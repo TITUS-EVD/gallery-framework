@@ -13,7 +13,7 @@ from PIL import ImageColor
 
 from titus.modules import Module
 from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar, MovableLabel, \
-    limit_dock_width
+    LineSplitter, limit_dock_width
 from titus.gui.mctruth_panel import MCTruthPanel
 import titus.drawables as drawables
 
@@ -67,9 +67,13 @@ _SET_SCALE_BAR_LENGTH = 'TPC/Scale bar length (cm)'
 # setting to change the scale bar font size and logo size
 _SET_LABEL_FONT_SIZE = 'TPC/Label font size'
 _MAX_LABEL_FONT_SIZE = 50
+_SET_LABEL_EVENT = 'TPC/Show run and event label'
 _SET_LABEL_PLANE = 'TPC/Show plane number in label'
 _SET_LABEL_TIME = 'TPC/Show event time in label'
 _SET_LOGO_SIZE = 'TPC/Logo size'
+
+# view state kept between sessions, not on the settings page
+_SET_ASPECT_RATIO = 'TPC/1:1 aspect ratio'
 
 
 class TpcModule(Module):
@@ -80,7 +84,8 @@ class TpcModule(Module):
         self._lsm = larsoft_module
         self._gm = geom_module
 
-        self._central_widget = QtWidgets.QSplitter()
+        # a thin line between the views, no window color (in screenshots too)
+        self._central_widget = LineSplitter()
         self._central_widget.setOrientation(QtCore.Qt.Vertical)
         self._central_widget.setChildrenCollapsible(False)
 
@@ -133,6 +138,7 @@ class TpcModule(Module):
             _SET_N_WIRE_WAVEFORMS: 5,
             _SET_SCALE_BAR_LENGTH: 30,
             _SET_LABEL_FONT_SIZE: 16,
+            _SET_LABEL_EVENT: QtCore.Qt.Checked,
             _SET_LABEL_PLANE: QtCore.Qt.Unchecked,
             _SET_LABEL_TIME: QtCore.Qt.Unchecked,
             _SET_LOGO_SIZE: 0.7,
@@ -175,28 +181,39 @@ class TpcModule(Module):
         )
         self._settings_layout.addWidget(self._label_font_size, 2, 1, 1, -1)
 
-        label = QtWidgets.QLabel(_SET_LABEL_PLANE.split('/')[1])
+        label = QtWidgets.QLabel(_SET_LABEL_EVENT.split('/')[1])
         self._settings_layout.addWidget(label, 3, 0, 1, 1)
+        self._label_event = QtWidgets.QCheckBox()
+        self._label_event.setTristate(False)
+        self._label_event.setToolTip("Draw the run and event number (and date) next to the logo")
+        self._label_event.setChecked(self._settings_defaults[_SET_LABEL_EVENT])
+        self._label_event.stateChanged.connect(
+            lambda x: self._update_label_event(x)
+        )
+        self._settings_layout.addWidget(self._label_event, 3, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_LABEL_PLANE.split('/')[1])
+        self._settings_layout.addWidget(label, 4, 0, 1, 1)
         self._label_plane = QtWidgets.QCheckBox()
         self._label_plane.setTristate(False)
         self._label_plane.setChecked(self._settings_defaults[_SET_LABEL_PLANE])
         self._label_plane.stateChanged.connect(
             lambda x: self._update_label_plane(x)
         )
-        self._settings_layout.addWidget(self._label_plane, 3, 1, 1, -1)
+        self._settings_layout.addWidget(self._label_plane, 4, 1, 1, -1)
 
         label = QtWidgets.QLabel(_SET_LABEL_TIME.split('/')[1])
-        self._settings_layout.addWidget(label, 4, 0, 1, 1)
+        self._settings_layout.addWidget(label, 5, 0, 1, 1)
         self._label_time = QtWidgets.QCheckBox()
         self._label_time.setTristate(False)
         self._label_time.setChecked(self._settings_defaults[_SET_LABEL_TIME])
         self._label_time.stateChanged.connect(
             lambda x: self._update_label_time(x)
         )
-        self._settings_layout.addWidget(self._label_time, 4, 1, 1, -1)
+        self._settings_layout.addWidget(self._label_time, 5, 1, 1, -1)
 
         label = QtWidgets.QLabel(_SET_LOGO_SIZE.split('/')[1])
-        self._settings_layout.addWidget(label, 5, 0, 1, 1)
+        self._settings_layout.addWidget(label, 6, 0, 1, 1)
         self._logo_size = QtWidgets.QDoubleSpinBox()
         self._logo_size.setDecimals(1)
         self._logo_size.setRange(0.2, 2)
@@ -205,16 +222,18 @@ class TpcModule(Module):
         self._logo_size.valueChanged.connect(
             lambda x: self._update_logo_size(x)
         )
-        self._settings_layout.addWidget(self._logo_size, 5, 1, 1, -1)
+        self._settings_layout.addWidget(self._logo_size, 6, 1, 1, -1)
 
         restore_btn = QtWidgets.QPushButton("Restore Defaults")
         restore_btn.clicked.connect(self.restore_settings_defaults)
-        self._settings_layout.addWidget(restore_btn, 6, 1, 1, -1)
+        self._settings_layout.addWidget(restore_btn, 7, 1, 1, -1)
 
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
 
     def restore_settings_defaults(self):
-        self._settings.clear()
+        # this page's settings only: clear() also forgot the window layout and other pages
+        for key in self._settings_defaults:
+            self._settings.remove(key)
         self.restore_from_settings()
 
     def restore_from_settings(self):
@@ -230,6 +249,10 @@ class TpcModule(Module):
         x = int(self._settings.value(_SET_LABEL_FONT_SIZE, self._settings_defaults[_SET_LABEL_FONT_SIZE]))
         self._label_font_size.setValue(x)
         self._label_font_size.valueChanged.emit(x)
+
+        x = QtCore.Qt.CheckState(int(self._settings.value(_SET_LABEL_EVENT, self._settings_defaults[_SET_LABEL_EVENT])))
+        self._label_event.setCheckState(x)
+        self._label_event.stateChanged.emit(x)
 
         x = QtCore.Qt.CheckState(self._settings.value(_SET_LABEL_PLANE, self._settings_defaults[_SET_LABEL_PLANE]))
         self._label_plane.setCheckState(x)
@@ -258,6 +281,7 @@ class TpcModule(Module):
         self._gm.geometryChanged.connect(self.init_tpc_controls)
         self._gm.geometryChanged.connect(self.init_tpc_views)
         self._gm.geometryChanged.connect(self.restore_from_settings)
+        self._gm.geometryChanged.connect(self.restore_view_state)
 
     def init_tpc_views(self):
         # TODO remove wire views from central widget if they exist (in the case
@@ -267,7 +291,8 @@ class TpcModule(Module):
 
         for c in range(self._gm.current_geom.nCryos()):
             for p in range(self._gm.current_geom.nPlanes()):
-                view = WireView(self._gm.current_geom, p, c, gallery_interface=self._gi)
+                view = WireView(self._gm.current_geom, p, c, gallery_interface=self._gi,
+                                settings=self._settings)
                 view.connectWireDrawingFunction(self.drawWireOnPlot)
                 view.connectStatusBar(self._gui.statusBar())
                 self._wire_views[(p, c)] = view
@@ -433,7 +458,7 @@ class TpcModule(Module):
 
         # add a box to restore the drawing defaults:
         self._restoreDefaults = QtWidgets.QPushButton("Reset view")
-        self._restoreDefaults.setToolTip("Reset wire view range and t0")
+        self._restoreDefaults.setToolTip("Reset wire view range, color range and t0")
         self._restoreDefaults.clicked.connect(self.restore_defaults)
 
         self._unitDisplayOption = QtWidgets.QCheckBox("Use cm")
@@ -897,7 +922,14 @@ class TpcModule(Module):
         for view in self._wire_views.values():
             view.changeColorMap(colormaptype=cmap)
 
+    def restore_view_state(self):
+        ''' the view options kept from the last session, once the controls and views exist '''
+        if self._gm.current_geom is None:
+            return
+        self._lockAspectRatio.setChecked(self._settings.value(_SET_ASPECT_RATIO, False, type=bool))
+
     def lock_aspect_ratio(self, lockstate):
+        self._settings.setValue(_SET_ASPECT_RATIO, bool(lockstate))
         for view in self._wire_views.values():
             view.lockRatio(lockstate)
 
@@ -1078,6 +1110,17 @@ class TpcModule(Module):
         self._settings.setValue(_SET_LABEL_FONT_SIZE, font_size)
         for view in self._wire_views.values():
             view.setLabelFontSize(font_size)
+
+    def _update_label_event(self, show_label: QtCore.Qt.CheckState):
+        '''
+        helper to toggle the run/event label drawn with the logo
+
+        args:
+            show_label (CheckState): checkbox state
+        '''
+        self._settings.setValue(_SET_LABEL_EVENT, show_label)
+        for view in self._wire_views.values():
+            view.showEventLabel(show_label == QtCore.Qt.Checked)
 
     def _update_label_plane(self, show_plane: QtCore.Qt.CheckState):
         '''
@@ -1278,7 +1321,7 @@ class WireView(pg.GraphicsLayoutWidget):
                 self._view.translateBy(x=x, y=y)
             self._view.sigRangeChangedManually.emit(self._view.state['mouseEnabled'])
 
-    def __init__(self, geometry, plane=-1, cryostat=0, tpc=0, gallery_interface=None):
+    def __init__(self, geometry, plane=-1, cryostat=0, tpc=0, gallery_interface=None, settings=None):
         super().__init__(border=None)
         # add a view box, which is a widget that allows an image to be shown
         self._view = self.addViewBox(border=None, defaultPadding=0)
@@ -1287,6 +1330,8 @@ class WireView(pg.GraphicsLayoutWidget):
         self._view.addItem(self._item)
 
         self._gi = gallery_interface
+        # QSettings keeping the color range between sessions (none: not kept)
+        self._settings = settings
 
         self._removed_entries = 0
         self._uniteCathodes = False
@@ -1338,6 +1383,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._logo = None
         self._label = None
         self._logo_scale = 1.0
+        self._showEventLabel = True
         self._showPlaneNoInLabel = False
         self._includeTimeInLabel = False
 
@@ -1358,18 +1404,10 @@ class WireView(pg.GraphicsLayoutWidget):
         self._upperLevel = QtWidgets.QLineEdit()
         self._lowerLevel = QtWidgets.QLineEdit()
 
-        self._upperLevel.returnPressed.connect(self.levelChanged)
-        self._lowerLevel.returnPressed.connect(self.levelChanged)
+        self._upperLevel.returnPressed.connect(self.levelEntered)
+        self._lowerLevel.returnPressed.connect(self.levelEntered)
 
-        level_lower = self._geometry.getLevels(self._plane)[0]
-        level_upper = self._geometry.getLevels(self._plane)[1]
-
-        if self._drawingRawDigits:
-            level_lower += self._geometry.getPedestal(self._plane)
-            level_upper += self._geometry.getPedestal(self._plane)
-
-        self._lowerLevel.setText(str(level_lower))
-        self._upperLevel.setText(str(level_upper))
+        self._showLevels(*self._savedLevels())
 
 
         # Fix the maximum width of the widgets:
@@ -1402,9 +1440,16 @@ class WireView(pg.GraphicsLayoutWidget):
         self._totalLayout.addWidget(self)
         self._totalLayout.addLayout(colors)
 
+        self._totalLayout.setContentsMargins(0, 0, 0, 0)
+
         self._widget = QtWidgets.QWidget()
         self._widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self._widget.setLayout(self._totalLayout)
+        # the plot's white behind the labels and color scale, not the window color
+        palette = self._widget.palette()
+        palette.setColor(QtGui.QPalette.Window, QtCore.Qt.white)
+        self._widget.setPalette(palette)
+        self._widget.setAutoFillBackground(True)
 
         # show_wrapper is false in the case of drawing blank (no data) views,
         # but true when drawing data
@@ -1448,7 +1493,9 @@ class WireView(pg.GraphicsLayoutWidget):
     def drawingRawDigits(self, status):
         if status != self._drawingRawDigits:
             self._drawingRawDigits = status
-            self.restoreDefaults()
+            # the range last used for raw digits / wires
+            self._showLevels(*self._savedLevels())
+            self._cmap.restoreState(self._colorMap)
         self._drawingRawDigits = status
 
     def changeColorMap(self, colormaptype='default'):
@@ -1501,6 +1548,9 @@ class WireView(pg.GraphicsLayoutWidget):
         if self._label is not None and self._label.scene() is self.scene():
             self.scene().removeItem(self._label)
 
+        if not self._showEventLabel:
+            return
+
         xLoc = 0
         yLoc = 0
         if self._logo:
@@ -1514,11 +1564,7 @@ class WireView(pg.GraphicsLayoutWidget):
         if self._showPlaneNoInLabel:
             label += f'PLANE {self._plane}\n'
 
-        if self._gi.is_real_data():
-            label += self._gi.date(include_time=self._includeTimeInLabel)
-        else:
-            # simulated events carry no meaningful time stamp
-            label += f'{self._geometry.name().upper()} Simulation'
+        label += self._gi.date(include_time=self._includeTimeInLabel, detector=self._geometry.name())
 
         self._label = MovableLabel(label, anchor=(0., 0.5))
         self._label.setPos(xLoc,yLoc)
@@ -1527,20 +1573,52 @@ class WireView(pg.GraphicsLayoutWidget):
 
 
     def restoreDefaults(self):
-        level_lower = self._geometry.getLevels(self._plane)[0]
-        level_upper = self._geometry.getLevels(self._plane)[1]
-
-        if self._drawingRawDigits:
-            level_lower += self._geometry.getPedestal(self._plane)
-            level_upper += self._geometry.getPedestal(self._plane)
-
-        self._lowerLevel.setText(str(level_lower))
-        self._upperLevel.setText(str(level_upper))
+        if self._settings is not None:
+            self._settings.remove(self._levelsKey())
+        self._showLevels(*self._defaultLevels())
 
         self._cmap.restoreState(self._colorMap)
 
+    # color range
+
+    def _levelsKey(self):
+        ''' settings key of this view's color range, by detector, view and raw digits or not '''
+        kind = 'raw digits' if self._drawingRawDigits else 'wires'
+        return f'TPC/Color range/{self._geometry.name()}/{kind}/plane {self._plane} cryostat {self._cryostat}'
+
+    def _defaultLevels(self):
+        level_lower, level_upper = self._geometry.getLevels(self._plane)[:2]
+        if self._drawingRawDigits:
+            level_lower += self._geometry.getPedestal(self._plane)
+            level_upper += self._geometry.getPedestal(self._plane)
+        return level_lower, level_upper
+
+    def _savedLevels(self):
+        ''' the color range the user last entered, else the detector's default '''
+        if self._settings is not None:
+            try:
+                lower, upper = (int(x) for x in self._settings.value(self._levelsKey(), []))
+                return lower, upper
+            except (TypeError, ValueError):
+                pass
+        return self._defaultLevels()
+
+    def _showLevels(self, lower, upper):
+        self._lowerLevel.setText(str(lower))
+        self._upperLevel.setText(str(upper))
+
     def getWidgetAndLayout(self):
         return self._widget,self._totalLayout
+
+    def levelEntered(self):
+        ''' the user entered a color range: applied, and kept for the next session '''
+        self.levelChanged()
+        if self._settings is not None:
+            levels = [int(self._lowerLevel.text()), int(self._upperLevel.text())]
+            if tuple(levels) == tuple(self._defaultLevels()):
+                self._settings.remove(self._levelsKey())
+            else:
+                self._settings.setValue(self._levelsKey(), levels)
 
     def levelChanged(self):
         # First, get the current values of the levels:
@@ -1563,6 +1641,10 @@ class WireView(pg.GraphicsLayoutWidget):
     def setLabelFontSize(self, font_size):
         self._fontsize = font_size
         self.refreshScaleBar()
+        self.refreshLogo()
+
+    def showEventLabel(self, show_label):
+        self._showEventLabel = show_label
         self.refreshLogo()
 
     def showPlaneNoInLabel(self, show_plane):
