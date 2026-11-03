@@ -67,7 +67,8 @@ _SET_SCALE_BAR_LENGTH = 'TPC/Scale bar length (cm)'
 # setting to change the scale bar font size and logo size
 _SET_LABEL_FONT_SIZE = 'TPC/Label font size'
 _MAX_LABEL_FONT_SIZE = 50
-_SET_LABEL_RUN = 'TPC/Show run, subrun and event numbers'
+_SET_LABEL_RUN = 'TPC/Show run and event numbers'
+_SET_LABEL_SUBRUN = 'TPC/Show subrun number'
 _SET_LABEL_PLANE = 'TPC/Show plane number in label'
 _SET_LABEL_TIME = 'TPC/Show event time in label'
 _SET_LOGO_SIZE = 'TPC/Logo size'
@@ -139,6 +140,7 @@ class TpcModule(Module):
             _SET_SCALE_BAR_LENGTH: 30,
             _SET_LABEL_FONT_SIZE: 16,
             _SET_LABEL_RUN: QtCore.Qt.Checked,
+            _SET_LABEL_SUBRUN: QtCore.Qt.Checked,
             _SET_LABEL_PLANE: QtCore.Qt.Unchecked,
             _SET_LABEL_TIME: QtCore.Qt.Unchecked,
             _SET_LOGO_SIZE: 0.7,
@@ -185,35 +187,46 @@ class TpcModule(Module):
         self._settings_layout.addWidget(label, 3, 0, 1, 1)
         self._label_run = QtWidgets.QCheckBox()
         self._label_run.setTristate(False)
-        self._label_run.setToolTip("Show the run, subrun and event numbers in the label next to the logo")
+        self._label_run.setToolTip("Show the run and event numbers in the label next to the logo")
         self._label_run.setChecked(self._settings_defaults[_SET_LABEL_RUN])
         self._label_run.stateChanged.connect(
             lambda x: self._update_label_run(x)
         )
         self._settings_layout.addWidget(self._label_run, 3, 1, 1, -1)
 
-        label = QtWidgets.QLabel(_SET_LABEL_PLANE.split('/')[1])
+        label = QtWidgets.QLabel(_SET_LABEL_SUBRUN.split('/')[1])
         self._settings_layout.addWidget(label, 4, 0, 1, 1)
+        self._label_subrun = QtWidgets.QCheckBox()
+        self._label_subrun.setTristate(False)
+        self._label_subrun.setToolTip("Show the subrun between the run and event numbers (mostly of use for simulation)")
+        self._label_subrun.setChecked(self._settings_defaults[_SET_LABEL_SUBRUN])
+        self._label_subrun.stateChanged.connect(
+            lambda x: self._update_label_subrun(x)
+        )
+        self._settings_layout.addWidget(self._label_subrun, 4, 1, 1, -1)
+
+        label = QtWidgets.QLabel(_SET_LABEL_PLANE.split('/')[1])
+        self._settings_layout.addWidget(label, 5, 0, 1, 1)
         self._label_plane = QtWidgets.QCheckBox()
         self._label_plane.setTristate(False)
         self._label_plane.setChecked(self._settings_defaults[_SET_LABEL_PLANE])
         self._label_plane.stateChanged.connect(
             lambda x: self._update_label_plane(x)
         )
-        self._settings_layout.addWidget(self._label_plane, 4, 1, 1, -1)
+        self._settings_layout.addWidget(self._label_plane, 5, 1, 1, -1)
 
         label = QtWidgets.QLabel(_SET_LABEL_TIME.split('/')[1])
-        self._settings_layout.addWidget(label, 5, 0, 1, 1)
+        self._settings_layout.addWidget(label, 6, 0, 1, 1)
         self._label_time = QtWidgets.QCheckBox()
         self._label_time.setTristate(False)
         self._label_time.setChecked(self._settings_defaults[_SET_LABEL_TIME])
         self._label_time.stateChanged.connect(
             lambda x: self._update_label_time(x)
         )
-        self._settings_layout.addWidget(self._label_time, 5, 1, 1, -1)
+        self._settings_layout.addWidget(self._label_time, 6, 1, 1, -1)
 
         label = QtWidgets.QLabel(_SET_LOGO_SIZE.split('/')[1])
-        self._settings_layout.addWidget(label, 6, 0, 1, 1)
+        self._settings_layout.addWidget(label, 7, 0, 1, 1)
         self._logo_size = QtWidgets.QDoubleSpinBox()
         self._logo_size.setDecimals(1)
         self._logo_size.setRange(0.2, 2)
@@ -222,11 +235,11 @@ class TpcModule(Module):
         self._logo_size.valueChanged.connect(
             lambda x: self._update_logo_size(x)
         )
-        self._settings_layout.addWidget(self._logo_size, 6, 1, 1, -1)
+        self._settings_layout.addWidget(self._logo_size, 7, 1, 1, -1)
 
         restore_btn = QtWidgets.QPushButton("Restore Defaults")
         restore_btn.clicked.connect(self.restore_settings_defaults)
-        self._settings_layout.addWidget(restore_btn, 7, 1, 1, -1)
+        self._settings_layout.addWidget(restore_btn, 8, 1, 1, -1)
 
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
 
@@ -253,6 +266,10 @@ class TpcModule(Module):
         x = QtCore.Qt.CheckState(int(self._settings.value(_SET_LABEL_RUN, self._settings_defaults[_SET_LABEL_RUN])))
         self._label_run.setCheckState(x)
         self._label_run.stateChanged.emit(x)
+
+        x = QtCore.Qt.CheckState(int(self._settings.value(_SET_LABEL_SUBRUN, self._settings_defaults[_SET_LABEL_SUBRUN])))
+        self._label_subrun.setCheckState(x)
+        self._label_subrun.stateChanged.emit(x)
 
         x = QtCore.Qt.CheckState(self._settings.value(_SET_LABEL_PLANE, self._settings_defaults[_SET_LABEL_PLANE]))
         self._label_plane.setCheckState(x)
@@ -1119,8 +1136,21 @@ class TpcModule(Module):
             show_run (CheckState): checkbox state
         '''
         self._settings.setValue(_SET_LABEL_RUN, show_run)
+        # the subrun is shown on the run's line
+        self._label_subrun.setEnabled(show_run == QtCore.Qt.Checked)
         for view in self._wire_views.values():
             view.showRunInLabel(show_run == QtCore.Qt.Checked)
+
+    def _update_label_subrun(self, show_subrun: QtCore.Qt.CheckState):
+        '''
+        helper to toggle the subrun number in the label
+
+        args:
+            show_subrun (CheckState): checkbox state
+        '''
+        self._settings.setValue(_SET_LABEL_SUBRUN, show_subrun)
+        for view in self._wire_views.values():
+            view.showSubrunInLabel(show_subrun == QtCore.Qt.Checked)
 
     def _update_label_plane(self, show_plane: QtCore.Qt.CheckState):
         '''
@@ -1386,6 +1416,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._label = None
         self._logo_scale = 1.0
         self._showRunInLabel = True
+        self._showSubrunInLabel = True
         self._showPlaneNoInLabel = False
         self._includeTimeInLabel = False
 
@@ -1561,9 +1592,10 @@ class WireView(pg.GraphicsLayoutWidget):
         # what it is, which event (optional), the plane (optional), and when (data only)
         lines = [self._gi.event_kind(detector=self._geometry.name())]
         if self._showRunInLabel:
-            lines.append(f'RUN {self._gi.run()}, SUBRUN {self._gi.subrun()}, EVENT {self._gi.event()}')
+            subrun = f'Subrun {self._gi.subrun()}, ' if self._showSubrunInLabel else ''
+            lines.append(f'Run {self._gi.run()}, {subrun}Event {self._gi.event()}')
         if self._showPlaneNoInLabel:
-            lines.append(f'PLANE {self._plane}')
+            lines.append(f'Plane {self._plane}')
         if self._gi.is_real_data():
             lines.append(self._gi.date(include_time=self._includeTimeInLabel))
 
@@ -1646,6 +1678,10 @@ class WireView(pg.GraphicsLayoutWidget):
 
     def showRunInLabel(self, show_run):
         self._showRunInLabel = show_run
+        self.refreshLogo()
+
+    def showSubrunInLabel(self, show_subrun):
+        self._showSubrunInLabel = show_subrun
         self.refreshLogo()
 
     def showPlaneNoInLabel(self, show_plane):

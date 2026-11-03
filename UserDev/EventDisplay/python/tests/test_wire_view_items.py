@@ -84,13 +84,16 @@ def label(view):
 
 def test_label_lines(view):
     # simulation: no date
-    assert label(view) == ['SBND Simulation', 'RUN 18255, SUBRUN 3, EVENT 42']
+    assert label(view) == ['SBND Simulation', 'Run 18255, Subrun 3, Event 42']
     view._gi._gallery_event_handle = fake_event(real_data=True)
-    assert label(view) == ['SBND Data', 'RUN 18255, SUBRUN 3, EVENT 42', 'March 01, 2025']
+    assert label(view) == ['SBND Data', 'Run 18255, Subrun 3, Event 42', 'March 01, 2025']
     view.includeTimeInLabel(True)
     view.showPlaneNoInLabel(True)
-    assert label(view) == ['SBND Data', 'RUN 18255, SUBRUN 3, EVENT 42', 'PLANE 2',
+    assert label(view) == ['SBND Data', 'Run 18255, Subrun 3, Event 42', 'Plane 2',
                            'March 01, 2025 - 12:00:00 UTC']
+    # a narrower label
+    view.showSubrunInLabel(False)
+    assert label(view)[1] == 'Run 18255, Event 42'
     # e.g. for screenshots
     view.showRunInLabel(False)
     view.showPlaneNoInLabel(False)
@@ -172,11 +175,16 @@ def test_restore_defaults_only_resets_the_tpc_page(qtbot, settings, monkeypatch)
     module = TpcModule(larsoft_module=None, geom_module=None)
     settings.setValue('MainWindow/geometry', 'kept')
     settings.setValue(tpc_module._SET_ASPECT_RATIO, True)
+    module._label_subrun.setChecked(False)
     module._label_run.setChecked(False)
     module._label_font_size.setValue(30)
     assert settings.value(tpc_module._SET_LABEL_RUN, type=int) == QtCore.Qt.Unchecked
+    assert settings.value(tpc_module._SET_LABEL_SUBRUN, type=int) == QtCore.Qt.Unchecked
+    # the subrun is part of the run's line: no choice without it
+    assert not module._label_subrun.isEnabled()
     module.restore_settings_defaults()
     assert module._label_run.isChecked() and module._label_font_size.value() == 16
+    assert module._label_subrun.isChecked() and module._label_subrun.isEnabled()
     assert settings.value('MainWindow/geometry') == 'kept'
     assert settings.value(tpc_module._SET_ASPECT_RATIO, type=bool)
 
