@@ -3,19 +3,15 @@ add_library(gallery_framework_Analysis SHARED
     ana_processor.cxx
 )
 
-target_include_directories(gallery_framework_Analysis PRIVATE ${PROJECT_SOURCE_DIR}/core)
+target_include_directories(gallery_framework_Analysis PUBLIC ${PROJECT_SOURCE_DIR}/core)
 
-ROOT_GENERATE_DICTIONARY(gallery_framework_Analysis_Dict
-    ana_base.h
-    ana_processor.h
-    MODULE gallery_framework_Analysis
-    LINKDEF LinkDef.h
-)
-
-target_link_libraries(gallery_framework_Analysis
-    ${GALLERY_LIBRARIES}
-    ${ROOT_LIBRARIES}
+target_link_libraries(gallery_framework_Analysis PUBLIC
+    gallery::gallery
+    ROOT::Core
     gallery_framework_Base
 )
 
-install(TARGETS gallery_framework_Analysis DESTINATION lib)
+titus_root_dictionary(gallery_framework_Analysis
+    ana_base.h
+    ana_processor.h
+)

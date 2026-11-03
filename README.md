@@ -27,38 +27,25 @@ This framework contains TITUS: the event display for SBND at Fermilab. TITUS all
 
 ## Requirements
 
-
-1) You need gallery.  For right now, that requires ups products, which means it uses it's own gcc/python/root and not the ones on your laptop.  If you are on the gpvms, getting gallery is super simple.  On your laptop, visit scisoft.fnal.gov to get gallery.
-
-2) You need larsoft data products: nusimdata, larcoreobj, lardataobj.  If you get gallery via ups, get these via ups too.
-
-3) We're working on a way to build gallery and larsoftobj systems without ups, using your own gcc and such.  This will come out later.
-
-4) If you want to have the display you'll need numpy and PyQt.  You can get numpy and qt5 through scisoft and ups as well.  PyQt5 you can install once qt5 is built and ready, just make sure to install it to the ups python area.
-
-
-
-## How to build and install the framework
-
-
-1) Create a build directory: `mkdir gallery_framework_build && cd gallery_framework_build`
-
-2) Run `cmake`: `cmake /path/to/gallery-framework`
-
-3) Compile with `cmake --build .`
-
-4) Make sure libraries are in your `$LD_LIBRARY_PATH`: `export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH`
+TITUS builds against the LArSoft packages from spack on cvmfs (AlmaLinux 9
+gpvms): gallery and the data products (lardataobj, larcoreobj, nusimdata,
+sbnobj). sbndcode and icaruscode are not needed. `env.sh` loads a pinned,
+consistent set of packages, the compiler they were built with, and a python
+venv with the GUI packages (PyQt5, pyqtgraph, numpy) that spack doesn't have.
 
 
 ## How to build and run the event display
 
+With spack set up:
 
-1) Make sure the framework is built.
+    source env.sh                  # the first time, also creates the python venv
+    cmake -S . -B build
+    cmake --build build -j 4
+    cd UserDev/EventDisplay/python
+    python evd.py /path/to/art-root-file.root
 
-2) Make sure you have a working Python environment with `PyQt5`
-
-3) Go to the `UserDev/EventDisplay/python` directory
-
-4) Run with `evd.py /path/to/art-root-file.root`
-
-(planned, coming soon) Install TITUS Python library: From `UserDev/EventDisplay/python`, do `pip install .`. Now you can write your own `evd.py` or copy the example and run from anywhere
+`env.sh` puts `build/lib` on `LD_LIBRARY_PATH`, where ROOT finds the product
+reader. By default only the reader library is built; `-DTITUS_LEGACY=ON` also
+builds the old gallery-framework libraries (`core/`) and the 3D viewer, which
+need larcorealg and lardataalg loaded as well. To change the LArSoft release,
+see the comments at the top of `env.sh`.

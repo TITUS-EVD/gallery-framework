@@ -1,42 +1,35 @@
 # Product extraction for titus.readers.GalleryReader. Depends only on gallery
 # and the product libraries: no geometry, services, larcorealg or lardataalg.
-# recob::ChannelROI (sbnobj) is optional.
+# recob::ChannelROI and the SBND CRT/timing products (sbnobj) are optional.
 
 add_library(EventDisplay_Reader SHARED ProductReader.cxx)
 
-find_package(sbnobj)
-message(STATUS "EventDisplay_Reader: ChannelROI support (sbnobj) = " ${sbnobj_FOUND})
-if (${sbnobj_FOUND})
+target_link_libraries(EventDisplay_Reader PRIVATE
+    gallery::gallery
+    canvas::canvas
+    cetlib_except::cetlib_except
+    larcoreobj::SimpleTypesAndConstants
+    lardataobj::RecoBase
+    lardataobj::RawData
+    lardataobj::AnalysisBase
+    lardataobj::MCBase
+    nusimdata::SimulationBase  # simb::MCTruth
+    ROOT::Core
+)
+
+set(with_channel_roi OFF)
+set(with_sbnd_products OFF)
+if (TARGET sbnobj::ICARUS_TPC)
+    set(with_channel_roi ON)
     target_compile_definitions(EventDisplay_Reader PRIVATE WITH_SBNOBJ)
-    target_include_directories(EventDisplay_Reader PRIVATE ${sbnobj_INCLUDE_DIR})
-    target_link_libraries(EventDisplay_Reader ${sbnobj_LIBRARY_DIR}/libsbnobj_ICARUS_TPC.so)
-    # SBND CRT (FEBData) and timing (DAQTimestamp) products
-    target_compile_definitions(EventDisplay_Reader PRIVATE WITH_SBNOBJ_SBND)
-    target_link_libraries(EventDisplay_Reader
-        ${sbnobj_LIBRARY_DIR}/libsbnobj_SBND_CRT.so
-        ${sbnobj_LIBRARY_DIR}/libsbnobj_SBND_Timing.so)
+    target_link_libraries(EventDisplay_Reader PRIVATE sbnobj::ICARUS_TPC)
 endif()
+if (TARGET sbnobj::SBND_CRT AND TARGET sbnobj::SBND_Timing)
+    set(with_sbnd_products ON)
+    target_compile_definitions(EventDisplay_Reader PRIVATE WITH_SBNOBJ_SBND)
+    target_link_libraries(EventDisplay_Reader PRIVATE sbnobj::SBND_CRT sbnobj::SBND_Timing)
+endif()
+message(STATUS "EventDisplay_Reader: sbnobj ${sbnobj_VERSION}: "
+    "ChannelROI ${with_channel_roi}, SBND CRT/timing ${with_sbnd_products}")
 
-# simb::MCTruth (header-only accessors; the dictionary is loaded by ROOT)
-find_package(nusimdata REQUIRED)
-target_include_directories(EventDisplay_Reader PRIVATE ${nusimdata_INCLUDE_DIRS})
-
-target_link_libraries(EventDisplay_Reader
-    ${gallery_LIBRARY_DIR}/libgallery.so
-    ${canvas_LIBRARY_DIR}/libcanvas.so
-    ${cetlib_except_LIBRARY_DIR}/libcetlib_except.so
-    ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
-    ${lardataobj_LIBRARY_DIR}/liblardataobj_RawData.so
-    ${lardataobj_LIBRARY_DIR}/liblardataobj_AnalysisBase.so
-    ${lardataobj_LIBRARY_DIR}/liblardataobj_MCBase.so
-    ${larcoreobj_LIBRARY_DIR}/liblarcoreobj_SimpleTypesAndConstants.so
-    ${ROOT_LIBRARIES}
-)
-
-ROOT_GENERATE_DICTIONARY(EventDisplay_Reader_Dict
-    ProductReader.h
-    MODULE EventDisplay_Reader
-    LINKDEF LinkDef.h
-)
-
-install(TARGETS EventDisplay_Reader DESTINATION lib)
+titus_root_dictionary(EventDisplay_Reader ProductReader.h)

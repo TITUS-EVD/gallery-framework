@@ -11,17 +11,22 @@ add_library(EventDisplay_3DViewer SHARED
     DrawVertex3D.cxx
 )
 
-target_include_directories(EventDisplay_3DViewer PRIVATE ${PROJECT_SOURCE_DIR}/core)
-
-find_package(nusimdata REQUIRED)
-target_include_directories(EventDisplay_3DViewer PRIVATE ${nusimdata_INCLUDE_DIRS})
-
 find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
-target_include_directories(EventDisplay_3DViewer PRIVATE ${Python_INCLUDE_DIRS})
 
-target_link_libraries(EventDisplay_3DViewer Python::NumPy)
+target_link_libraries(EventDisplay_3DViewer PRIVATE
+    gallery_framework_Analysis
+    gallery_framework_LArUtil
+    canvas::canvas
+    lardataobj::RecoBase
+    lardataobj::MCBase
+    lardataobj::Simulation
+    nusimdata::SimulationBase
+    Python::Python
+    Python::NumPy
+    ROOT::Core
+)
 
-ROOT_GENERATE_DICTIONARY(EventDisplay_3DViewer_Dict
+titus_root_dictionary(EventDisplay_3DViewer
     DrawMCShower3D.h
     DrawMCTrack3D.h
     DrawOpflash3D.h
@@ -33,8 +38,4 @@ ROOT_GENERATE_DICTIONARY(EventDisplay_3DViewer_Dict
     DrawTrack3D.h
     DrawVertex3D.h
     RecoBase3D.h
-    MODULE EventDisplay_3DViewer
-    LINKDEF LinkDef.h
 )
-
-install(TARGETS EventDisplay_3DViewer DESTINATION lib)

@@ -13,9 +13,24 @@ add_library(gallery_framework_LArUtil SHARED
     TimeService.cxx
 )
 
-target_include_directories(gallery_framework_LArUtil PRIVATE ${PROJECT_SOURCE_DIR}/core)
+target_include_directories(gallery_framework_LArUtil PUBLIC ${PROJECT_SOURCE_DIR}/core)
 
-ROOT_GENERATE_DICTIONARY(gallery_framework_LArUtil_Dict
+target_link_libraries(gallery_framework_LArUtil PUBLIC
+    gallery::gallery
+    canvas::canvas
+    cetlib_except::cetlib_except
+    fhiclcpp::fhiclcpp
+    messagefacility::MF_MessageLogger
+    larcoreobj::SummaryData
+    larcorealg::Geometry
+    lardataobj::RecoBase
+    lardataalg::DetectorInfo
+    CLHEP::CLHEP
+    ROOT::Core
+    gallery_framework_Base
+)
+
+titus_root_dictionary(gallery_framework_LArUtil
     ClockConstants.h
     DetectorProperties.h
     ElecClock.h
@@ -33,22 +48,4 @@ ROOT_GENERATE_DICTIONARY(gallery_framework_LArUtil_Dict
     PxUtils.h
     SimpleGeometryHelper.h
     TimeService.h
-    MODULE gallery_framework_LArUtil
-    LINKDEF LinkDef.h
 )
-
-# specify path where *_LIBRARY variable not set...
-target_link_libraries(gallery_framework_LArUtil
-    ${gallery_LIBRARY_DIR}/libgallery.so
-    ${ROOT_LIBRARIES}
-    ${CLHEP_LIBRARIES}
-    ${canvas_LIBRARY_DIR}/libcanvas.so
-    ${larcoreobj_LIBRARY_DIR}/liblarcoreobj_SummaryData.so
-    ${larcorealg_LIBRARY_DIR}/liblarcorealg_Geometry.so
-    ${lardataobj_LIBRARY_DIR}/liblardataobj_RecoBase.so
-    ${lardataalg_LIBRARY_DIR}/liblardataalg_DetectorInfo.so
-    ${cetlib_except_LIBRARY_DIR}/libcetlib_except.so 
-    gallery_framework_Base
-)
-
-install(TARGETS gallery_framework_LArUtil DESTINATION lib)

@@ -2,8 +2,9 @@ add_library(gallery_framework_Base SHARED
     messenger.cxx
 )
 
+target_link_libraries(gallery_framework_Base PUBLIC ROOT::Core)
 
-ROOT_GENERATE_DICTIONARY(gallery_framework_Base_Dict
+titus_root_dictionary(gallery_framework_Base
     AnalysisConstants.h
     DetectorStatusTypes.h
     FrameworkConstants.h
@@ -12,12 +13,4 @@ ROOT_GENERATE_DICTIONARY(gallery_framework_Base_Dict
     MCConstants.h
     messenger.h
     RawConstants.h
-    MODULE gallery_framework_Base
-    LINKDEF LinkDef.h
 )
-
-target_link_libraries(gallery_framework_Base
-    ${ROOT_LIBRARIES}
-)
-
-install(TARGETS gallery_framework_Base DESTINATION lib)
