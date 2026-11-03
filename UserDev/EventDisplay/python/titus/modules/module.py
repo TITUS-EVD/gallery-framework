@@ -2,7 +2,6 @@
 
 """ Module base class for connecting GUI elements with gallery interface """
 
-import sys
 from PyQt5 import QtCore
 
 
@@ -26,7 +25,6 @@ class Module(QtCore.QObject):
         self._settings_layout = None
 
         self._drawables = set()
-        self._thread_pool = QtCore.QThreadPool()
 
     @property
     def parent(self):
@@ -39,10 +37,6 @@ class Module(QtCore.QObject):
     @property
     def name(self):
         return self._name
-
-    @property
-    def settings_defaults(self):
-        return self._settings_defaults
 
     @property
     def settings_layout(self):
@@ -99,9 +93,6 @@ class Module(QtCore.QObject):
 
     def _update(self):
         for d in self._drawables:
-            # worker = DrawableWorker(d)
-            # worker.signals.finished.connect(d.drawObjects)
-            # self._thread_pool.start(worker)
             d.analyze()
             d.drawObjects()
         self.update()
@@ -170,16 +161,3 @@ class Module(QtCore.QObject):
     def keyPressEvent(self, e):
         return self._gui.keyPressEvent(e)
 
-
-class DrawableWorker(QtCore.QRunnable):
-    def __init__(self, drawable):
-        super().__init__()
-        self._drawable = drawable
-        self.signals = WorkerSignals()
-
-    def run(self):
-        self._drawable.analyze()
-
-
-class WorkerSignals(QtCore.QObject):
-    finished = QtCore.pyqtSignal()

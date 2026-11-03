@@ -3,7 +3,6 @@
 """
 This module adds the CRT view & associated controls
 """
-import math
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg 
@@ -143,9 +142,6 @@ class CrtView(QtWidgets.QSplitter):
         
         self._view_widget.drawCrtData(data)
         self._time_widget.drawCrtHitTimes(data)
-
-    def getWidget(self):
-        return self, self._layout
 
 
 class CrtHitsItem(pg.GraphicsObject):

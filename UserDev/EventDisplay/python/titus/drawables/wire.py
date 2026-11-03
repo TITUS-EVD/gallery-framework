@@ -70,9 +70,5 @@ class RawDigit(Wire):
     def on_data(self):
         self._signals = [raw_digit_signals(d, self._subtract_pedestal) for d in self._data]
 
-    def toggleNoiseFilter(self, filterNoise):
-        ''' the noise filter was MicroBooNE only '''
-        pass
-
     def setSubtractPedestal(self, subtract_pedestal=True):
         self._subtract_pedestal = subtract_pedestal

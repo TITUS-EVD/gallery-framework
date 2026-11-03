@@ -4,10 +4,10 @@
 This module adds run controls for gallery events: forward, back, goto, etc.
 Also supports auto-updating from a folder
 """
-import os, time
+import os
 import glob
 
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtWidgets, QtCore
 
 from titus.modules import Module
 from titus.gui.widgets import ElidedLabel, limit_dock_width
@@ -147,15 +147,6 @@ class RunModule(Module):
         prev_next_layout.addWidget(self._next_button)
         main_layout.addLayout(prev_next_layout)
 
-        # Go to event
-        self._larlite_event_entry = QtWidgets.QLineEdit()
-        self._larlite_event_entry.setToolTip("Enter an event to skip to that event.")
-        self._larlite_event_entry.returnPressed.connect(self.go_to_event)
-        event_layout = QtWidgets.QHBoxLayout()
-        event_layout.addWidget(QtWidgets.QLabel('Go to:'))
-        event_layout.addWidget(self._larlite_event_entry)
-        # main_layout.addLayout(event_layout)
-
         self._run_entry = QtWidgets.QLineEdit()
         self._run_entry.setPlaceholderText('Run')
         self._subrun_entry = QtWidgets.QLineEdit()
@@ -275,25 +266,13 @@ class RunModule(Module):
         else:
             self._auto_advance_label.setText(f'No files. Waiting: {remaining_sec:.0f} s')
 
-    def go_to_event(self):
-        """ helper function for parsing text box """
-        try:
-            event = int(self._larlite_event_entry.text())
-        except:
-            print("Error, must enter an integer")
-            self._larlite_event_entry.setText(str(self._event_manager.event()))
-            return
-        
-        print(f'Going to event {event}')
-        self._gi.go_to_event(event)
-
     def go_to_run_subrun_event(self):
         """ helper function for parsing text box """
         run = int(self._run_entry.text())
         subrun = int(self._subrun_entry.text())
         event = int(self._event_entry.text())
         
-        print(f'Going to event {event}, {subrun}, {subrun}')
+        print(f'Going to event {event}, {subrun}, {run}')
         self._gi.go_to_event(event, subrun, run)
 
     def update(self):
@@ -304,8 +283,6 @@ class RunModule(Module):
         this_evt = self._gi._entry + 1
         self._next_button.setEnabled(this_evt < evts)
         self._prev_button.setEnabled(this_evt > 1)
-
-        self._larlite_event_entry.setText(str(self._gi.event()))
 
         self._event_label.setText(f'Event: {self._gi.event()}')
         self._run_label.setText(f'Run: {self._gi.run()}')
@@ -369,14 +346,12 @@ class FileMonitor:
     _STATUS_NONE = ''
     _STATUS_WAITING = 'Waiting for new files'
 
-    def __init__(self, filedir, search_pattern, gallery_interface, delay=180, do_check=False, hours_alert=1):
+    def __init__(self, filedir, search_pattern, gallery_interface, delay=180, do_check=False):
         self._filedir = filedir
         self._search_pattern = search_pattern
         self._gi = gallery_interface
-        # self._message_bar = None
         self._delay = delay
         self._do_check = do_check
-        self._hours_alert = hours_alert
         self._status = FileMonitor._STATUS_NONE
 
         # file opening mode: either "Sequential" to move to the next file
@@ -484,8 +459,6 @@ class FileMonitor:
             self._failed_cache.add(next_file)
             del self._files[idx]
             self.callback()
-        else:
-            self._check_time(next_file)
 
     def _get_files(self):
         '''
@@ -496,9 +469,6 @@ class FileMonitor:
         for f in filter(os.path.isfile, glob.glob(self._filedir + '/' + self._search_pattern)):
             if f in self._failed_cache:
                 continue
-            # if os.path.getmtime(f) < current_file_time:
-            #     continue
-
             # make sure this is an artroot file
             # TODO essentially copies the check from ping_file in
             # gallery_interface. make the method in gallery interface const to
@@ -521,23 +491,6 @@ class FileMonitor:
             self._files = [f for f in self._files if f[1] > current_file_time]
         
         self._files = sorted(self._files, key=lambda x: x[1])
-
-
-    def _check_time(self, file):
-        '''
-        Checks how old is the last file, and if too old prints a message
-        '''
-
-        # if self._message_bar is None:
-        #     return
-
-        file_time = os.path.getmtime(file)
-        now = time.time()
-
-        hours_old = (now - file_time) / 3600
-
-        # if hours_old > self._hours_alert:
-        #     self._message_bar.showMessage(f'The last file appears to be more than {hours_old:0.1f} hour(s) old.')
 
 
     def _start_timer(self):

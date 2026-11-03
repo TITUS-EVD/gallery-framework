@@ -19,16 +19,11 @@ class Product:
     def __init__(self, name, typeName):
         self._name=name.rstrip(".")
         self._typeName=typeName
-        self._isAssociation=False
-        self._associatedProduct=None
         self._producer=None
         self._instance=None
         self._stage=None
 
         self.parse()
-
-    def append_producer(self, s):
-        self._producer += s
 
     def producer(self):
         return self._producer
@@ -41,9 +36,6 @@ class Product:
 
     def type_name(self):
         return self._typeName
-
-    def is_association(self):
-        return self._isAssociation
 
     def stage(self):
         return self._stage
@@ -257,17 +249,13 @@ class GalleryInterface(QtCore.QObject):
         self.product_cache = ProductCache()
 
         self._keyTable = {}
-        self._drawnClasses = {}
         self._lastProcessed = -1
 
         self._n_entries = 0
-        self._file_entries = {}
 
         # A list that will contain a dictionary with run, subrun, event keys
         self._run_list = []
 
-        self._run = 0
-        self._subrun = 0
         self._entry = 0
 
         self._current_file = ''
@@ -365,8 +353,6 @@ class GalleryInterface(QtCore.QObject):
         self._run_list = result.run_list
         self._keyTable = result.key_table
         self._n_entries = len(result.run_list)
-        self._file_entries = {}
-        self._hasFile = True
 
         # TODO gallery supports vector of files chained together, but for now
         # we only consider one file opened at a time
@@ -405,38 +391,13 @@ class GalleryInterface(QtCore.QObject):
 
         return self._keyTable[stage][name]
 
-    def get_all_products(self):
-        ''' Returns all available products '''
-        return self._keyTable
-
     def get_default_products(self, name, stage=None):
         '''
         Returns only the products that will be
         drawn by default, unless the user decides what to see
         in the dropdown menu
         '''
-        if stage is None:
-            stage = 'all'
-
-        if stage not in self._keyTable:
-            return None
-
-        if name not in self._keyTable[stage]:
-            return None
-
-        # TODO Remove dependence of geom from gallery_interface
-        '''
-        if self._geom.name() == 'icarus' and len(self._keyTable[stage][name]) > 3:
-            default_products = [self._keyTable[stage][name][0],
-                                self._keyTable[stage][name][1],
-                                self._keyTable[stage][name][2],
-                                self._keyTable[stage][name][3]]
-        else:
-            default_products = [self._keyTable[stage][name][0]]
-        '''
-        default_products = self._keyTable[stage][name]
-
-        return default_products
+        return self.get_products(name, stage)
 
     def get_producers(self, product, stage = None):
         ''' This function will return all producers for the given product '''
@@ -447,12 +408,6 @@ class GalleryInterface(QtCore.QObject):
                 return self._keyTable["all"][product]
         except:
             return None
-
-    # This function returns the list of products that can be drawn:
-    def getDrawableProducts(self):
-        # TODO
-        return {}
-        # return self._drawableItems.getDict()
 
     # override the run,event,subrun functions:
     def run(self):
@@ -494,7 +449,6 @@ class GalleryInterface(QtCore.QObject):
         # Get the timestamp: https://github.com/LArSoft/lareventdisplay/blob/6cbc95e04f8b8fd1639d14f7ef0ad37841962027/lareventdisplay/EventDisplay/HeaderDrawer.cxx#L41
         mask32 = 0xFFFFFFFF
         timestamp_s = (ts >> 32) & mask32
-        timestamp_us = ts & mask32
 
         return datetime.fromtimestamp(timestamp_s, timezone.utc)
 

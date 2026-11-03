@@ -5,14 +5,13 @@ This module adds the optical view & associated controls
 """
 import numpy as np
 import pyqtgraph as pg 
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtWidgets, QtCore
 
-from titus.gui.qrangeslider import QRangeSlider
-from titus.gui.optical_elements import Pmts, Arapucas, _bordercol_
+from titus.gui.optical_elements import Pmts, Arapucas
 
 from titus.modules import Module
 import titus.drawables as drawables
-from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, limit_dock_width
+from titus.gui.widgets import MultiSelectionBox, VerticalLabel, limit_dock_width
 
 # place any drawables associated with optical view here. For now, just flashes
 _RAW_OPDETWAVEFORM = 'raw::OpDetWaveform'
@@ -46,7 +45,6 @@ class OpDetModule(Module):
         self._dock_widgets = set([self._view_dock, self._dock])
 
         self._opdet_views = []
-        self._last_clicked_opdet = None
         self._selected_ch = None
         self._flashes = {}
         self._flash_drawers = {}
@@ -490,9 +488,6 @@ class OpDetModule(Module):
         self._pmts[p].drawFlashes(flashes)
 
 
-    def getWidget(self):
-        return self, self._layout
-
     def connectStatusBar(self, statusBar):
         self._statusBar = statusBar
         for t in range(0, len(self._pmts)):
@@ -500,9 +495,6 @@ class OpDetModule(Module):
             self._pmts[t].connectStatusBar(self._statusBar)
             self._arapucas[t].connectStatusBar(self._statusBar)
             self._arapucas[t].connectStatusBar(self._statusBar)
-
-    def connectMessageBar(self, messageBar):
-        self._messageBar = messageBar
 
     def opdetClickWorker(self, plot, points):
         self._selected_ch = points[0].data()['id']
@@ -539,9 +531,6 @@ class waveform_view(pg.GraphicsLayoutWidget):
         self._time_window.sigRegionChangeFinished.connect(lambda: self.timeWindowChanged.emit(self._time_window.getRegion()))
         self._wf_plot.addItem(self._time_window)
 
-
-    def getWidget(self):
-        return self._widget, self._layout
 
 
     def drawOpDetWvf(self, data):
@@ -582,9 +571,6 @@ class flash_time_view(pg.GraphicsLayoutWidget):
     def connectTimeWindow(self, tw):
         self._time_window = tw
 
-
-    def getWidget(self):
-        return self._widget, self._layout
 
 
     def clear(self):

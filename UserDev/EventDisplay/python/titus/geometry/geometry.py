@@ -21,7 +21,7 @@ from typing import Any, Dict
 import numpy as np
 
 from . import DETECTOR_DIR, load_detector
-from .detector import Detector, PlaneID
+from .detector import Detector
 
 LOGO_PATH = pathlib.Path(__file__).parent.parent.parent / 'resources' / 'logos'
 
@@ -140,12 +140,6 @@ class Geometry:
     def name(self):
         return self.detector.name
 
-    def halfwidth(self):
-        return self.detector.cryostats[0].half_width
-
-    def halfheight(self):
-        return self.detector.cryostats[0].half_height
-
     def length(self):
         return self.detector.cryostats[0].length
 
@@ -210,9 +204,6 @@ class Geometry:
         print('!!!WARNING!!!')
         self._tRange = time_range
         self._readoutWindowSize = time_range
-
-    def readoutPadding(self):
-        return self.display.get('readout_padding', 0)
 
     def time2cm(self):
         return self._time2Cm

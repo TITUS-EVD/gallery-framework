@@ -4,8 +4,6 @@
 This module adds the wire plane views and associated controls. Uses the
 geometry module to get the currently-selected geometry
 """
-import sys
-import math
 
 import numpy as np
 import pyqtgraph as pg 
@@ -264,7 +262,6 @@ class TpcModule(Module):
     def init_tpc_views(self):
         # TODO remove wire views from central widget if they exist (in the case
         # of changing geometry at runtime)
-        # self._wire_views = {}
         if self._gm.current_geom is None:
             return
 
@@ -342,12 +339,6 @@ class TpcModule(Module):
         # Set the default to be no wires (a file with wires selects them, _choose_wire_view)
         self._none_wire_button.toggle()
         self._update_wire_buttons()
-
-        # Microboone only:
-        # TODO re-enable this & add to geometry
-        # if self._geometry.name() == "uboone":
-        #     self._noiseFilterBox = QtWidgets.QCheckBox("Noise Filter")
-        #     self._noiseFilterBox.stateChanged.connect(self.noiseFilterWorker)
 
         # Now we get the list of items that are drawable:
         product_group_box = QtWidgets.QGroupBox("Products")
@@ -513,12 +504,6 @@ class TpcModule(Module):
             self._separators[i].setFrameShadow(QtWidgets.QFrame.Sunken)
             self._separators[i].setVisible(False)
 
-        self._spliTracksOption = QtWidgets.QCheckBox("Tracks on Both TPCs")
-        self._spliTracksOption.setToolTip("Split the MCTracks and Tracks so that they are projected on both TPCs.")
-        self._spliTracksOption.setTristate(False)
-        # self._spliTracksOption.stateChanged.connect(self.splitTracksWorker)
-        self._spliTracksOption.setVisible(False)
-
         self._correct_3d = QtWidgets.QCheckBox("Correct 3D objects")
         self._correct_3d.setToolTip(
             "Draw 3D objects (tracks) on their hits, using what the reconstruction stored: undo\n"
@@ -549,7 +534,6 @@ class TpcModule(Module):
         options_layout.addWidget(self._logoOption)
         options_layout.addWidget(self._plane_frames)
         options_layout.addWidget(self._correct_3d)
-        options_layout.addWidget(self._spliTracksOption)
         options_layout.addWidget(self._maxRangeButton)
         options_layout.addLayout(self._clearEvalPointsLayout)
         options_layout.addWidget(self._restoreDefaults)
@@ -607,7 +591,6 @@ class TpcModule(Module):
         self._mctruth_dock.setWidget(self._mctruth_panel)
         # used by the MCTruth drawable
         self._mctruth_dropdown = self._mctruth_panel.dropdown
-        self._show_vertex = self._mctruth_panel.show_vertex
         self._mctruth_dock.hide()
 
     def select_mc_particles(self, keys):
@@ -650,21 +633,12 @@ class TpcModule(Module):
         self._wirePlot = self._wireDrawerMain.addPlot()
         self._wirePlot.addLegend()
         self._wirePlotItems = {}
-        # pg.PlotDataItem(pen=(0,0,0))
-        # self._wirePlot.addItem(self._wirePlotItem)
 
-        # self._wireDrawerMain.setMaximumHeight(250)
         self._wireDrawerMain.setMinimumHeight(100)
         self._wireDrawerMain.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, \
                                                  QtWidgets.QSizePolicy.Minimum)
 
-        # self._wireDrawer_name = VerticalLabel("Wire Drawer")
-        # self._wireDrawer_name.setMaximumWidth(25)
-        # self._wireDrawer_name.setAlignment(QtCore.Qt.AlignCenter)
-        # self._wireDrawer_name.setToolTip("Click on a wire to display the waveform.")
-        # self._wireDrawer_name.setStyleSheet('color: rgb(169,169,169);')
         self._wireDrawerLayout = QtWidgets.QHBoxLayout()
-        # self._wireDrawerLayout.addWidget(self._wireDrawer_name)
         self._wireDrawerLayout.addWidget(self._wireDrawerMain)
 
         self._fftButton = QtWidgets.QCheckBox("FFT Wire")
@@ -738,28 +712,6 @@ class TpcModule(Module):
             drawable.analyze()
             drawable.drawObjects()
             return
-
-        # TODO untested if automatic event switching when reco products drawn
-        # self._gi.process_event()
-        
-        # self._gi.redrawProduct(self._gm.current_geom, sender.name(), prod, self)
-        self.specialHandles(sender.name(), visible)
-
-    def specialHandles(self, name, visibility):
-        '''
-        Here we handle all cases specific to 
-        the product we are drawing
-        '''
-        if name == 'MCTrack':
-            if visibility:
-                self._spliTracksOption.setVisible(False)
-            else:
-                self._spliTracksOption.setVisible(False)
-        if name == 'Track':
-            if visibility:
-                self._spliTracksOption.setVisible(False)
-            else:
-                self._spliTracksOption.setVisible(False)
 
     def change_wire(self):
         if self.sender() == self._left_wire_button:
@@ -1231,9 +1183,6 @@ class TpcModule(Module):
         for item in sorted(self._wirePlotItems.values(), key=lambda x: x['idx']):
             self._wirePlot.addItem(item['plot'])
 
-        # update the label
-        # name = f"W: {wire}, P: {plane}, T: {tpc}, C: {cryo}"
-        # self._wirePlot.setTitle(name)
         self._wirePlot.setLabel(axis='bottom', text="Time")
 
         # only autorange if we are adding the first wire, otherwise keep current view
@@ -1260,9 +1209,6 @@ class TpcModule(Module):
         '''
         Take the fft of wire data and plot it in place of the wire signal
         '''
-        # if self._wireData is None:
-        #     return
-
         do_fft = self._fftButton.isChecked()
         if do_fft:
             self._wirePlot.setLabel(axis='bottom', text="Frequency")
@@ -1338,7 +1284,6 @@ class WireView(pg.GraphicsLayoutWidget):
         self._view = self.addViewBox(border=None, defaultPadding=0)
         # add an image item which handles drawing (and refreshing) the image
         self._item = pg.ImageItem(useOpenGL=True)
-        # self._item._setPen((0,0,0))
         self._view.addItem(self._item)
 
         self._gi = gallery_interface
@@ -1564,14 +1509,6 @@ class WireView(pg.GraphicsLayoutWidget):
             yLoc = self._geometry.logoPos()[1] \
                 + self._logo.sceneBoundingRect().height() / 2
 
-        # dims = self._view.viewRange()
-        # xMin = dims[0][0]
-        # xMax = dims[0][1]
-        # yMin = dims[1][0]
-        # yMax = dims[1][1]
-        # xLoc = xMin + 0.22*(xMax - xMin)
-        # yLoc = yMax - 0.1*(yMax - yMin)
-
         label = f'RUN {self._gi.run()}, EVENT {self._gi.event()}\n'
 
         if self._showPlaneNoInLabel:
@@ -1586,9 +1523,7 @@ class WireView(pg.GraphicsLayoutWidget):
         self._label = MovableLabel(label, anchor=(0., 0.5))
         self._label.setPos(xLoc,yLoc)
         self._label.setFont(QtGui.QFont("Helvetica", self._fontsize))
-        # self._label.setFlag(self._label.GraphicsItemFlag.ItemIgnoresTransformations)
-        # self._view.addItem(self._label, ignoreBounds=True)
-        self.scene().addItem(self._label) #, ignoreBounds=True)
+        self.scene().addItem(self._label)
 
 
     def restoreDefaults(self):
@@ -1603,9 +1538,6 @@ class WireView(pg.GraphicsLayoutWidget):
         self._upperLevel.setText(str(level_upper))
 
         self._cmap.restoreState(self._colorMap)
-
-    def mouseDrag(self):
-        pass
 
     def getWidgetAndLayout(self):
         return self._widget,self._totalLayout
@@ -1767,37 +1699,11 @@ class WireView(pg.GraphicsLayoutWidget):
         if block < len(flips) and flips[block]:
             tick = self._geometry.tRange() - tick
 
-        message= str()
-
         if self._cmSpace:
-            if type(message) != str:
-                message.append("X: ")
-                message.append("{0:.1f}".format(self.q.x()*self._geometry.wire2cm()))
-            else:
-                message += "X: "
-                message += "{0:.1f}".format(self.q.x()*self._geometry.wire2cm())
+            message = (f'X: {self.q.x() * self._geometry.wire2cm():.1f}, '
+                       f'Y: {tick * self._geometry.time2cm() - self._geometry.offset(self._plane):.1f}')
         else:
-            if type(message) != str:
-                message.append("W: ")
-                message.append(str(int(self.q.x())))
-            else:
-                message += "W: "
-                message += str(int(self.q.x()))
-        
-        if self._cmSpace:
-            if type(message) != str:
-                message.append(", Y: ")
-                message.append("{0:.1f}".format(tick*self._geometry.time2cm() - self._geometry.offset(self._plane)))
-            else:
-                message += ", Y: "
-                message += "{0:.1f}".format(tick*self._geometry.time2cm() - self._geometry.offset(self._plane))
-        else:
-            if type(message) != str:
-                message.append(", T: ")
-                message.append(str(int(tick)))
-            else:
-                message += ", T: "
-                message += str(int(tick))
+            message = f'W: {int(self.q.x())}, T: {int(tick)}'
 
         max_trange = self._geometry.tRange() * self._geometry.nTPCs()
 
@@ -1928,12 +1834,6 @@ class WireView(pg.GraphicsLayoutWidget):
     def connectStatusBar(self, statusBar):
         self._statusBar = statusBar
 
-    def connectMessageBar(self, messageBar):
-        self._messageBar = messageBar
-
-    def getMessageBar(self):
-        return self._messageBar
-
     def setColorMap(self, colormaptype='default'):
         self._colorMap = self._geometry.colorMap(self._plane, colormaptype)
         self._cmap.restoreState(self._colorMap)
@@ -2038,10 +1938,6 @@ class WireView(pg.GraphicsLayoutWidget):
             line.setPen(pg.mkPen('w')) # pg.mkPen((169,169,169))) # dark grey
             line.setBrush(pg.mkBrush('w')) # pg.mkBrush((169,169,169))) # dark grey
             # Remove half a pixel (line_width/2), that would otherwise cover half a time tick
-            # line.setRect(0 + line_width/2,
-            #              x_tpc - self._geometry.cathodeGap() / 2 + line_width/2,
-            #              max_wire - line_width/2,
-            #              self._geometry.cathodeGap() - line_width/2)
             line.setRect(max_wire / 2 - self._geometry.cathodeGap() / 2 + line_width/2,
                          0 + line_width/2,
                          self._geometry.cathodeGap(),
@@ -2113,7 +2009,6 @@ class WireView(pg.GraphicsLayoutWidget):
         # Refresh the polygon and then update the path
         self._polygon.append(_in_point)
 
-        # self._polyGraphicsItem.setPolygon(self._polygon)
         self._path = QtGui.QPainterPath()
         self._path.addPolygon(self._polygon)
         self._polyGraphicsItem.setPath(self._path)

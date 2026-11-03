@@ -2,48 +2,10 @@ import os
 import sys
 import datetime
 
-from PyQt5 import Qt, QtGui, QtCore, QtWidgets
+from PyQt5 import QtGui, QtCore, QtWidgets
 
 from .widgets import LoadingOverlay
 
-
-'''
-# experimental highlight effect when hovering over the menu items
-# Not quite working & a bit hacky
-class HighlightEffect(QtWidgets.QGraphicsEffect):
-    def __init__(self):
-        super().__init__()
-
-    def draw(self, painter):
-        pixmap = QtGui.QPixmap()
-
-        if self.sourceIsPixmap():
-            pixmap, offset = self.sourcePixmap(QtCore.Qt.LogicalCoordinates)
-        else:
-            pixmap, offset = self.sourcePixmap(QtCore.Qt.DeviceCoordinates)
-            painter.setWorldTransform(QtGui.QTransform())
-        
-        painter.setBrush(QtGui.QColor(0, 0, 0, 255))
-        painter.drawRect(pixmap.rect())
-        painter.setOpacity(0.5)
-        painter.drawPixmap(offset, pixmap)
-
-
-class HighlightLabel(QtWidgets.QLabel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._widget = None
-        self._effect = HighlightEffect
-
-    def set_widget(self, w):
-        self._widget = w
-
-    def enterEvent(self, event):
-        self._widget.setGraphicsEffect(self._effect())
-
-    def leaveEvent(self, event):
-        self._widget.setGraphicsEffect(None)
-'''
 
 
 _SET_FIVEPM_REMINDER = 'General/5 PM reminder'
@@ -69,7 +31,6 @@ class Gui(QtWidgets.QMainWindow):
         self._screenshot_mode_clip.toggled.connect(
             lambda x: self._settings.setValue(_SET_SCREENSHOT_MODE, "Clipboard") if x else 0
         )
-        # self._screenshot_mode_clip.toggle()
         self._screenshot_mode_file = QtWidgets.QRadioButton('File')
         self._screenshot_mode_file.toggled.connect(
             lambda x: self._settings.setValue(_SET_SCREENSHOT_MODE, "File") if x else 0
@@ -95,7 +56,6 @@ class Gui(QtWidgets.QMainWindow):
         self._fivepm_reminder.stateChanged.connect(
             lambda x: self._settings.setValue(_SET_FIVEPM_REMINDER, x)
         )
-        # self._fivepm_reminder.toggle()
         self._settings_layout.addWidget(label3, 2, 0, 1, 1)
         self._settings_layout.addWidget(self._fivepm_reminder, 2, 1, 1, -1)
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
@@ -117,8 +77,6 @@ class Gui(QtWidgets.QMainWindow):
 
         self._central_widget = QtWidgets.QStackedWidget()
         self._central_widget.setMinimumSize(320, 240)
-        # scroll_area = QtWidgets.QScrollArea()
-        # scroll_area.setMinimumSize(320, 240)
 
         # modules may access this object thru this.centralWidget()
         self.setCentralWidget(self._central_widget)
@@ -159,11 +117,6 @@ class Gui(QtWidgets.QMainWindow):
         # screenshot controls
         self.file_menu.addSeparator()
         capture_action = QtWidgets.QAction('Screenshot (view)', self.file_menu)
-        # capture_action = QtWidgets.QWidgetAction(self.file_menu)
-        # capture_action.setText('Screenshot (view)')
-        # label = HighlightLabel("Screenshot (view)")
-        # label.set_widget(self._central_widget)
-        # capture_action.setDefaultWidget(label)
         capture_action.triggered.connect(self._on_capture_action)
         self.file_menu.addAction(capture_action)
 
@@ -335,7 +288,6 @@ class Gui(QtWidgets.QMainWindow):
         img.setDevicePixelRatio(scale);
         self._central_widget.render(img);
 
-        # img = self._central_widget.grab(self._central_widget.rect())
         if self._settings.value(_SET_SCREENSHOT_MODE) == "Clipboard":
             QtWidgets.QApplication.clipboard().setPixmap(img)
             self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
