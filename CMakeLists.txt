@@ -16,11 +16,17 @@ endif()
 
 option(TITUS_LEGACY "Also build core/ (Base, Analysis, LArUtil) and the 3D viewer" OFF)
 
+# lib, not GNUInstallDirs' lib64 on AlmaLinux: the build and an install
+# prefix have the same layout (env.sh uses <dir>/lib)
+set(CMAKE_INSTALL_LIBDIR lib CACHE PATH "Library install directory")
 include(GNUInstallDirs)
 # Libraries, dictionaries (.pcm) and rootmaps side by side in build/lib, so
 # the build can be used directly with build/lib on LD_LIBRARY_PATH
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_FULL_LIBDIR})
+# Keep the spack library dirs in the installed RPATH: spack load doesn't put
+# them on LD_LIBRARY_PATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
 
 find_package(ROOT CONFIG REQUIRED COMPONENTS Core RIO Tree)
 find_package(gallery REQUIRED)
