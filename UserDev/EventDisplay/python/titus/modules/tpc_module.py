@@ -13,7 +13,7 @@ from PIL import ImageColor
 
 from titus.modules import Module
 from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar, MovableLabel, \
-    LineSplitter, limit_dock_width
+    LineSplitter, ViewAlignedLabels, limit_dock_width
 from titus.gui.mctruth_panel import MCTruthPanel
 import titus.drawables as drawables
 
@@ -1455,25 +1455,22 @@ class WireView(pg.GraphicsLayoutWidget):
         name = f'TPC East, Plane {plane}'
         self._viewport_name_low = VerticalLabel(name)
         self._viewport_name_low.setStyleSheet('color: rgb(169,169,169);')
-        self._viewport_name_low.setMaximumWidth(25)
 
-        self._geometry.planeMix()[plane][0] - self._geometry.nPlanes()
         name = f'TPC West, Plane {plane}'
         self._viewport_name_up = VerticalLabel(name)
         self._viewport_name_up.setStyleSheet('color: rgb(169,169,169);')
-        self._viewport_name_up.setMaximumWidth(25)
+
+        # beside the image, each at the height of its TPC as the view pans and zooms
+        self._viewport_names = ViewAlignedLabels(self, self._view, [self._viewport_name_low, self._viewport_name_up])
+        self._viewport_names.set_ranges(self._tpcTickRanges())
 
         colors = QtWidgets.QVBoxLayout()
         colors.addWidget(self._upperLevel)
         colors.addWidget(self._cmap)
         colors.addWidget(self._lowerLevel)
 
-        names = QtWidgets.QVBoxLayout()
-        names.addWidget(self._viewport_name_up)
-        names.addWidget(self._viewport_name_low)
-
         self._totalLayout = QtWidgets.QHBoxLayout()
-        self._totalLayout.addLayout(names)
+        self._totalLayout.addWidget(self._viewport_names)
         self._totalLayout.addWidget(self)
         self._totalLayout.addLayout(colors)
 
@@ -1775,6 +1772,18 @@ class WireView(pg.GraphicsLayoutWidget):
         ''' ticks cut from each side of the cathode by "unite cathodes" (0 if off) '''
         return self._removed_entries
 
+    def _tpcTickRanges(self):
+        '''
+        (first, last) tick in the view of each TPC's block of the image: the
+        second above the cathode gap, both shorter by the ticks cut to unite
+        the cathodes
+        '''
+        n_ticks, n = self._geometry.tRange(), self._removed_entries
+        if self._geometry.nTPCs() == 1:
+            return [(0, n_ticks)]
+        second = n_ticks - n + int(self._geometry.cathodeGap())
+        return [(0, n_ticks - n), (second, second + n_ticks - n)]
+
     def _ticksPastCathode(self):
         _, x_cathode, _ = self._geometry.anodeCathodeTicks(self._plane, self._cryostat)[0]
         return max(int(self._geometry.tRange() - (x_cathode + self._manual_t0)), 0)
@@ -1784,6 +1793,7 @@ class WireView(pg.GraphicsLayoutWidget):
         data = self._original_image
         self._removed_entries = 0
         if data is None:
+            self._viewport_names.set_ranges(self._tpcTickRanges())
             return
         if self._uniteCathodes and self._geometry.nTPCs() == 2:
             n = self._ticksPastCathode()
@@ -1791,6 +1801,7 @@ class WireView(pg.GraphicsLayoutWidget):
             # the end of the first TPC's block and the start of the second's
             data = np.delete(data, np.r_[n_ticks - n:n_ticks, n_ticks + gap:n_ticks + gap + n], axis=1)
             self._removed_entries = n
+        self._viewport_names.set_ranges(self._tpcTickRanges())
         self._item.setImage(data, autoLevels=False)
         self._item.setLookupTable(self._cmap.getLookupTable(255))
         # Make sure the levels are actually set:

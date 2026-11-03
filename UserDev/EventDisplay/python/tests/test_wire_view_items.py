@@ -295,3 +295,68 @@ def test_reset_view_shows_the_whole_image(qtbot, sbnd):
     view.setRangeToMax()
     assert view._view.viewRange()[1] == pytest.approx([0, view._item.height()])
     assert view._item.height() < y1
+
+
+@pytest.fixture
+def framed_view(qtbot, sbnd):
+    ''' a view shown with its frame: the TPC names and the color scale '''
+    view = WireView(sbnd, plane=2, cryostat=0, gallery_interface=mock.Mock())
+    widget = view.getWidgetAndLayout()[0]
+    qtbot.addWidget(widget)
+    widget.resize(700, 400)
+    view.drawPlane(full_image(sbnd, 2))
+    widget.show()
+    qtbot.waitExposed(widget)
+    view.setWrapperVisible(True)
+    view.setRangeToMax()
+    QtWidgets.QApplication.processEvents()
+    return view
+
+
+def tpc_labels(view):
+    ''' (text, top, bottom) of the East and West labels in their column, None if hidden '''
+    labels = (view._viewport_name_low, view._viewport_name_up)
+    return [(label.text(), label.y(), label.y() + label.height()) if label.isVisible() else None for label in labels]
+
+
+def tpc_blocks(view):
+    ''' (top, bottom) of each TPC's block of the image, in the label column's pixels '''
+    return [tuple(sorted(view._viewport_names._column_y(y) for y in ticks)) for ticks in view._tpcTickRanges()]
+
+
+def beside(label, block):
+    return label is not None and block[0] <= label[1] and label[2] <= block[1]
+
+
+def test_tpc_labels_follow_the_image(framed_view):
+    view = framed_view
+    east, west = tpc_labels(view)
+    # default: each beside its TPC, East below
+    assert east[0] == 'TPC East, Plane 2' and west[0] == 'TPC West, Plane 2' and west[2] < east[1]
+    assert all(beside(label, block) for label, block in zip((east, west), tpc_blocks(view)))
+    # panned: they move with the TPCs
+    view._view.translateBy(y=-1000)
+    QtWidgets.QApplication.processEvents()
+    moved_east, moved_west = tpc_labels(view)
+    assert moved_east[1] < east[1] and beside(moved_east, tpc_blocks(view)[0])
+    # the West TPC partly out of view: shortened to fit beside it, not over the East label
+    assert moved_west[0].endswith('…') and moved_west[2] < moved_east[1]
+    assert beside(moved_west, (0, tpc_blocks(view)[1][1]))
+    # zoomed into the West TPC: no East label
+    view._view.setRange(yRange=(4000, 6000), padding=0)
+    QtWidgets.QApplication.processEvents()
+    east, west = tpc_labels(view)
+    assert east is None and west[0] == 'TPC West, Plane 2'
+
+
+def test_tpc_labels_with_the_cathodes_united(framed_view, sbnd):
+    view = framed_view
+    view.uniteCathodes(True)
+    n, gap = view.removed_ticks(), int(sbnd.cathodeGap())
+    assert n > 0
+    # the West TPC starts after the (shortened) East one and the gap
+    assert view._tpcTickRanges() == [(0, sbnd.tRange() - n), (sbnd.tRange() - n + gap, 2 * sbnd.tRange() - 2 * n + gap)]
+    QtWidgets.QApplication.processEvents()
+    assert all(beside(label, block) for label, block in zip(tpc_labels(view), tpc_blocks(view)))
+    view.uniteCathodes(False)
+    assert view._tpcTickRanges()[1][0] == sbnd.tRange() + gap

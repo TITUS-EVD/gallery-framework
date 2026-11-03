@@ -126,6 +126,8 @@ class ReaderDrawable(Drawable):
     container per producer.
     """
     KIND = None  # titus.readers.KINDS name
+    # simulation products (e.g. MC truth): not expected in data, missing there without a warning
+    SIMULATION = False
 
     def __init__(self, gallery_interface, *args, **kwargs):
         super().__init__(gallery_interface, *args, **kwargs)
@@ -157,7 +159,8 @@ class ReaderDrawable(Drawable):
             try:
                 self._data.append(self._read(ev, self.KIND, str(tag)))
             except ProductNotFound as e:
-                print(f'Warning: {e}')
+                if not (self.SIMULATION and self._gi.is_real_data()):
+                    print(f'Warning: {e}')
         self.on_data()
 
     def _product_cache(self):

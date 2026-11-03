@@ -25,6 +25,7 @@ class MCTrack(Track):
     others black.
     '''
     KIND = 'mctracks'
+    SIMULATION = True
     COLOR = (0, 0, 0)
     NEUTRINO_COLOR = (128, 128, 128)
     NEUTRINO_ORIGIN = 1  # simb::kBeamNeutrino
