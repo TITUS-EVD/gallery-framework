@@ -40,8 +40,11 @@ if (TITUS_LEGACY)
 endif()
 
 # ROOT dictionary for a library: lib<target>_rdict.pcm and lib<target>.rootmap
-# next to it in build/lib, installed with it
+# next to it in build/lib, installed with it. rootcling finds the headers
+# through the target's include directories, so the calling directory is added
+# (cetmodules used to do that for every directory).
 function(titus_root_dictionary target)
+  target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   ROOT_GENERATE_DICTIONARY(${target}_Dict ${ARGN} MODULE ${target} LINKDEF LinkDef.h)
   install(TARGETS ${target} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
   install(FILES
