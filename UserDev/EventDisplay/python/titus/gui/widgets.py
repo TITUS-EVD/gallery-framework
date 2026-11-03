@@ -21,7 +21,7 @@ class VerticalLabel(QtWidgets.QLabel):
         painter = QtGui.QPainter(self)
         painter.translate(0, self.height())
         painter.rotate(-90)
-        painter.drawText(0, self.width()/2, self.text())
+        painter.drawText(0, self.width() // 2, self.text())
         painter.end()
 
 

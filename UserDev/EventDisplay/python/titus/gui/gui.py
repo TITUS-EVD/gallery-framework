@@ -73,7 +73,7 @@ class Gui(QtWidgets.QMainWindow):
                       + (60 - datetime.datetime.now().minute) * 60\
                       + (60 - datetime.datetime.now().second)
         if seconds_to_17 > 0:
-            self._timer.start(seconds_to_17 * 1e3)
+            self._timer.start(seconds_to_17 * 1000)
 
         self._central_widget = QtWidgets.QStackedWidget()
         self._central_widget.setMinimumSize(320, 240)
@@ -169,7 +169,7 @@ class Gui(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         self._settings.beginGroup("MainWindow");
         self._settings.setValue("geometry", self.saveGeometry());
-        self._settings.setValue("state", self.saveState(1.0));
+        self._settings.setValue("state", self.saveState(1));
         self._settings.endGroup();
 
         QtCore.QCoreApplication.instance().quit()
@@ -284,7 +284,7 @@ class Gui(QtWidgets.QMainWindow):
 
         w = self._central_widget.width()
         h = self._central_widget.height()
-        img = QtGui.QPixmap(w * scale, h * scale);
+        img = QtGui.QPixmap(round(w * scale), round(h * scale));
         img.setDevicePixelRatio(scale);
         self._central_widget.render(img);
 
