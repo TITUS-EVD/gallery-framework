@@ -13,31 +13,26 @@ def limit_dock_width(dock):
 
 
 class _LineHandle(QtWidgets.QSplitterHandle):
-    ''' a white handle with a thin line along its middle '''
+    ''' a handle drawn as a plain line '''
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
-        painter.fillRect(self.rect(), self.parent().background)
-        if self.orientation() == QtCore.Qt.Vertical:
-            line = QtCore.QRect(0, self.height() // 2, self.width(), 1)
-        else:
-            line = QtCore.QRect(self.width() // 2, 0, 1, self.height())
-        painter.fillRect(line, self.parent().line_color)
+        painter.fillRect(self.rect(), self.parent().line_color)
         painter.end()
 
 
 class LineSplitter(QtWidgets.QSplitter):
     '''
-    A splitter whose handles are a thin line on the background color, e.g.
-    between plots, so that a screenshot of them has no window color between
-    them. The handles stay a few pixels wide, to be dragged.
+    A splitter whose handles are a 1 px gray line, e.g. between plots, so
+    that a screenshot of them has no window color between them; gray, not
+    to be taken for the white gaps within the TPC views (cathodes). Qt still
+    grabs such thin handles a few pixels around them.
     '''
-    background = QtGui.QColor(QtCore.Qt.white)
-    line_color = QtGui.QColor(180, 180, 180)
+    line_color = QtGui.QColor(110, 110, 110)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setHandleWidth(5)
+        self.setHandleWidth(1)
 
     def createHandle(self):
         return _LineHandle(self.orientation(), self)

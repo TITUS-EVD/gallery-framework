@@ -1325,6 +1325,8 @@ class WireView(pg.GraphicsLayoutWidget):
         super().__init__(border=None)
         # add a view box, which is a widget that allows an image to be shown
         self._view = self.addViewBox(border=None, defaultPadding=0)
+        # no white margin (pyqtgraph's default 9 px) around the image, e.g. in screenshots
+        self.ci.layout.setContentsMargins(0, 0, 0, 0)
         # add an image item which handles drawing (and refreshing) the image
         self._item = pg.ImageItem(useOpenGL=True)
         self._view.addItem(self._item)
@@ -1920,10 +1922,14 @@ class WireView(pg.GraphicsLayoutWidget):
         self._cmap.restoreState(self._colorMap)
 
     def setRangeToMax(self):
-        xR = (0, self._geometry.wRange(self._plane))
-        n_planes_per_view = self._geometry.nTPCs()
-        yR = (0, n_planes_per_view * self._geometry.tRange())
-        self._view.setRange(xRange=xR,yRange=yR, padding=0.002)
+        ''' the whole image, edge to edge: its TPCs, the cathode gaps between them (less the ticks cut to unite them) '''
+        if self._item.image is not None:
+            xR, yR = (0, self._item.width()), (0, self._item.height())
+        else:
+            n_tpcs = self._geometry.nTPCs()
+            xR = (0, self._geometry.wRange(self._plane))
+            yR = (0, n_tpcs * self._geometry.tRange() + (n_tpcs - 1) * self._geometry.cathodeGap())
+        self._view.setRange(xRange=xR, yRange=yR, padding=0)
 
     def autoRange(self,xR,yR):
         self._view.setRange(xRange=xR,yRange=yR, padding=0.002)

@@ -240,23 +240,50 @@ def test_control_docks_limited_in_width(qtbot):
     assert dock.width() <= CONTROL_DOCK_MAX_WIDTH
 
 
-def test_views_screenshot_without_window_color(qtbot, sbnd):
-    """ the TPC views' container: white, a thin line between the views """
+def full_image(sbnd, plane):
+    n_ticks = int(2 * sbnd.tRange() + sbnd.cathodeGap())
+    return np.full((sbnd.wRange(plane), n_ticks), 50, dtype=np.float32)
+
+
+def test_views_screenshot_without_border(qtbot, sbnd):
+    """ the TPC views' container: the images edge to edge, a thin line between the views """
     splitter = LineSplitter(QtCore.Qt.Vertical)
     qtbot.addWidget(splitter)
+    views = []
     for plane in (0, 1):
         # owned by the splitter
-        view = WireView(sbnd, plane=plane, cryostat=0, gallery_interface=mock.Mock())
-        splitter.addWidget(view.getWidgetAndLayout()[0])
+        views.append(WireView(sbnd, plane=plane, cryostat=0, gallery_interface=mock.Mock()))
+        views[-1].drawPlane(full_image(sbnd, plane))
+        splitter.addWidget(views[-1].getWidgetAndLayout()[0])
     splitter.resize(400, 300)
     splitter.show()
     qtbot.waitExposed(splitter)
+    for view in views:
+        # the plot alone, not the plane names and color scale at its sides
+        view.setWrapperVisible(False)
+    QtWidgets.QApplication.processEvents()
     image = splitter.grab().toImage()
-    window = splitter.palette().color(QtGui.QPalette.Window).rgb()
+    white, window = QtGui.QColor(QtCore.Qt.white).rgb(), splitter.palette().color(QtGui.QPalette.Window).rgb()
     colors = {(x, y): image.pixel(x, y) for x in (0, 200, 399) for y in range(image.height())}
     assert window not in colors.values()
-    # one line, across, in the handle
+    # no white margin: the images reach the top and bottom
+    assert all(colors[(x, y)] != white for x in (0, 200, 399) for y in (0, image.height() - 1))
+    # one line, across, in the handle (which Qt makes wider, to be dragged)
     handle = splitter.handle(1).geometry()
     line = [y for y in range(image.height()) if colors[(200, y)] == LineSplitter.line_color.rgb()]
-    assert len(line) == 1 and handle.top() <= line[0] <= handle.bottom()
+    assert len(line) == 1 and handle.top() <= line[0] <= handle.bottom() and handle.height() > 1
     assert all(colors[(x, line[0])] == LineSplitter.line_color.rgb() for x in (0, 399))
+
+
+def test_reset_view_shows_the_whole_image(qtbot, sbnd):
+    view = make_view(qtbot, sbnd)
+    view.drawPlane(full_image(sbnd, 2))
+    view.setRangeToMax()
+    (x0, x1), (y0, y1) = view._view.viewRange()
+    # both TPCs and the cathode gap between them
+    assert (x0, x1, y0, y1) == pytest.approx((0, sbnd.wRange(2), 0, 2 * sbnd.tRange() + int(sbnd.cathodeGap())))
+    # cut to unite the cathodes: still the whole (shorter) image
+    view.uniteCathodes(True)
+    view.setRangeToMax()
+    assert view._view.viewRange()[1] == pytest.approx([0, view._item.height()])
+    assert view._item.height() < y1
