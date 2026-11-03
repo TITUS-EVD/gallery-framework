@@ -3,10 +3,5 @@ if (TITUS_LEGACY)
     add_subdirectory(3DViewer)
 endif()
 
-# exclude python files we will treat as executable
-install(DIRECTORY python/ TYPE BIN PATTERN evd.py EXCLUDE)
-install(
-    FILES python/evd.py
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
-    DESTINATION bin
-)
+# The python side is not installed here: env.sh pip installs titus
+# (editable) from python/ and puts python/ (evd.py) on PATH.

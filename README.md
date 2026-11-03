@@ -41,11 +41,13 @@ With spack set up:
     source env.sh                  # the first time, also creates the python venv
     cmake -S . -B build
     cmake --build build -j 4
-    cd UserDev/EventDisplay/python
-    python evd.py /path/to/art-root-file.root
+    evd.py /path/to/art-root-file.root
 
 `env.sh` puts `build/lib` on `LD_LIBRARY_PATH`, where ROOT finds the product
-reader. By default only the reader library is built; `-DTITUS_LEGACY=ON` also
+reader, and `UserDev/EventDisplay/python` (`evd.py`) on `PATH`. To use an
+install instead of the build tree, `cmake --install build --prefix <dir>` and
+`TITUS_BUILD_DIR=<dir> source env.sh`; the install holds the libraries only,
+the python package always comes from the source tree. By default only the reader library is built; `-DTITUS_LEGACY=ON` also
 builds the old gallery-framework libraries (`core/`) and the 3D viewer, which
 need larcorealg and lardataalg loaded as well. To change the LArSoft release,
 see the comments at the top of `env.sh`.
