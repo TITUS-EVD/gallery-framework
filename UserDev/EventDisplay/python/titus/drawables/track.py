@@ -77,7 +77,8 @@ class Track(ReaderDrawable):
         return [line for collection in self._drawnObjects for line in collection.lines]
 
     def genToolTip(self, tracks, row, correction):
-        points = tracks.points(row)
+        points = self.stored(tracks).points(row)
         length = np.linalg.norm(np.diff(points, axis=0), axis=1).sum() if len(points) > 1 else 0.
         what = correction.describe() if correction is not None else AS_STORED
-        return f'Track {tracks.id[row]}: length {length:.1f} cm, {len(points)} points\n{what}'
+        return (f'Track {tracks.id[row]}: length {length:.1f} cm, {len(points)} points\n{what}'
+                + self.space_charge_note(tracks))

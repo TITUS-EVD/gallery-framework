@@ -89,4 +89,4 @@ class Shower(ReaderDrawable):
         what = correction.describe(i) if correction is not None else AS_STORED
         return (f'Shower {showers.id[i]}: length {showers.length[i]:.1f} cm, '
                 f'opening angle {np.degrees(showers.open_angle[i]):.1f} deg, best plane {showers.best_plane[i]}\n'
-                f'{what}')
+                f'{what}' + self.space_charge_note(showers))

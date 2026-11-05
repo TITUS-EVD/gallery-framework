@@ -14,6 +14,7 @@ pytest.importorskip('PyQt5')
 from PyQt5 import QtCore  # noqa: E402
 
 from titus.gallery_interface import gallery_interface  # noqa: E402
+from titus.readers.file_config import FileConfig  # noqa: E402
 from titus.gallery_interface.gallery_interface import (GalleryInterface, OpenedFiles, OpenError,  # noqa: E402
                                                        product_table, readable_files, scan_files)
 
@@ -160,27 +161,28 @@ def test_scan_files_reads_with_tfile_before_gallery(tmp_path):
     assert result.event.eventEntry() == 0 and result.files == names
 
 
-def test_scan_files_reads_the_gdml_files_were_made_with(tmp_path, monkeypatch):
+def test_scan_files_reads_the_configuration_files_were_made_with(tmp_path, monkeypatch):
     names = [str(tmp_path / f) for f in ('a.root', 'b.root', 'c.root')]
     for n in names:
         open(n, 'w').close()
-    gdmls = dict(zip(names, ['sbnd_v02_06', 'sbnd_v02_04', None]))
+    sce = 'SCEoffsets_SBND_E500_dualmap_CV_voxelTH3'
+    configs = dict(zip(names, [FileConfig('sbnd_v02_06', sce), FileConfig('sbnd_v02_04'), FileConfig()]))
     # the configuration in each file (read from its RootFileDB: test_file_config.py)
-    monkeypatch.setattr(gallery_interface, 'file_gdml', lambda tfile, path: gdmls[path])
+    monkeypatch.setattr(gallery_interface, 'file_config', lambda tfile, path: configs[path])
     root = fake_root([(n, [(1, 1, i)]) for i, n in enumerate(names)])
-    assert scan_files(names[:1], root).gdml == 'sbnd_v02_06'
-    assert scan_files(names[2:], root).gdml is None
+    assert (scan_files(names[:1], root).gdml, scan_files(names[:1], root).sce_map) == ('sbnd_v02_06', sce)
+    assert scan_files(names[2:], root).gdml is None and scan_files(names[2:], root).sce_map is None
     # chained files of different geometries: drawn with the first one's, and told
     result = scan_files(names[:2], root)
     assert result.gdml == 'sbnd_v02_06'
     assert any('different geometries (sbnd_v02_04, sbnd_v02_06)' in w for w in result.warnings)
     # the file opened in the GUI
     gi = GalleryInterface(scan=lambda files, progress=None: scan_files(files, root))
-    assert gi.file_gdml is None
+    assert gi.file_gdml is None and gi.file_sce_map is None
     gi.set_input_files(names[:1])
-    assert gi.file_gdml == 'sbnd_v02_06'
+    assert gi.file_gdml == 'sbnd_v02_06' and gi.file_sce_map == sce
     gi.set_input_files(names[1:2])
-    assert gi.file_gdml == 'sbnd_v02_04'
+    assert gi.file_gdml == 'sbnd_v02_04' and gi.file_sce_map is None
 
 
 def test_scan_files_errors(tmp_path):

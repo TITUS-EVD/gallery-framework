@@ -754,6 +754,50 @@ def test_mctracks_corrected_by_their_time(qtbot, products, sbnd, tpc_module, cap
     assert (0, 0, 0) in colors
 
 
+def test_space_charge_moves_mc_and_pandora_sce_objects(qtbot, products, sbnd, tpc_module):
+    ''' with the module's map: MC truth and pandoraSCE drawn moved, pandora as stored; text keeps the stored positions '''
+    from titus.display.space_charge import load_sce_map
+    from titus.drawables import MCTrack, MCTruth, SpacePoint
+    dump = DumpReader(DATA / 'sbnd-reco2-sce')
+    for kind, tag in [('mctracks', 'mcreco::G4'), ('mctruths', 'generator::GenieGen'),
+                      ('spacepoints', 'pandora::Reco2'), ('spacepoints', 'pandoraSCE::Reco2')]:
+        products[(kind, tag)] = dump._read(0, kind, tag)
+    sce = load_sce_map('SCEoffsets_SBND_E500_dualmap_CV_voxelTH3')
+
+    def drawn(cls, producer, sce_map):
+        tpc_module.space_charge_map = lambda: sce_map
+        drawer = cls(FakeGalleryInterface(), sbnd, tpc_module)
+        drawer.set_producer(producer)
+        drawer.analyze()
+        return drawer
+
+    points = drawn(SpacePoint, ['pandora::Reco2', 'pandoraSCE::Reco2'], sce)
+    stored, corrected = products[('spacepoints', 'pandora::Reco2')], products[('spacepoints', 'pandoraSCE::Reco2')]
+    assert points._data[0] is stored and points._data[1] is not corrected
+    assert [points.space_charge_applied(p) for p in (0, 1)] == [False, True]
+    assert np.abs(points._data[1].y - corrected.y).max() > 0.5 and points.stored(points._data[1]) is corrected
+    # the cached product itself is untouched
+    assert products[('spacepoints', 'pandoraSCE::Reco2')] is corrected
+    # no map (option off, or a file without space charge): as stored
+    assert drawn(SpacePoint, ['pandoraSCE::Reco2'], None)._data[0] is corrected
+
+    tracks = {m is not None: drawn(MCTrack, 'mcreco::G4', m) for m in (None, sce)}
+    for drawer in tracks.values():
+        drawer.drawObjects()
+    moved = [np.abs(a.points - b.points).max() for a, b in zip(tracks[True].lines(), tracks[False].lines())
+             if a.points.shape == b.points.shape and len(a.points)]
+    assert max(moved) > 1
+    assert all('space charge' in line.toolTip() and sce.name in line.toolTip() for line in tracks[True].lines())
+    assert not any('space charge' in line.toolTip() for line in tracks[False].lines())
+
+    truth = drawn(MCTruth, 'generator::GenieGen', sce)
+    original = products[('mctruths', 'generator::GenieGen')]
+    row = int(np.flatnonzero(original.has_neutrino)[0])
+    assert truth._data[0].vy[row] != original.vy[row]
+    tip = truth.vertex_tooltip(truth._data[0], row, None)
+    assert f'{original.vx[row]:.1f}, {original.vy[row]:.1f}, {original.vz[row]:.1f}' in tip and 'space charge' in tip
+
+
 def test_mctrack_time_puts_cosmics_on_their_hits(sbnd):
     ''' out-of-time cosmic muons: corrected by their MC time, their steps lie on the collection hits '''
     from titus.display import mc_t0, track_correction, track_segments

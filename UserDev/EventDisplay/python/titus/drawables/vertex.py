@@ -54,5 +54,5 @@ class Vertex(ReaderDrawable):
 
     def genToolTip(self, vertices, i, correction):
         what = correction.describe(i) if correction is not None else AS_STORED
-        x, y, z = vertices.xyz[i]
-        return f'Vertex {vertices.id[i]}: ({x:.1f}, {y:.1f}, {z:.1f}) cm\n{what}'
+        x, y, z = self.stored(vertices).xyz[i]
+        return f'Vertex {vertices.id[i]}: ({x:.1f}, {y:.1f}, {z:.1f}) cm\n{what}' + self.space_charge_note(vertices)

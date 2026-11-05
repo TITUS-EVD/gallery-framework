@@ -71,4 +71,5 @@ class MCTrack(Track):
         what = correction.describe() if correction is not None else AS_STORED
         return (f'MCTrack {mctracks.track_id[row]}: PDG {mctracks.pdg[row]}, '
                 f'{mctracks.start_e[row] / 1e3:.3f} GeV, {mctracks.process[row]}\n'
-                f'time {mc_t0(self._geom, mctracks.start_t[row]) / 1e3:.2f} us from the trigger\n{what}')
+                f'time {mc_t0(self._geom, mctracks.start_t[row]) / 1e3:.2f} us from the trigger\n{what}'
+                + self.space_charge_note(tracks))
