@@ -41,6 +41,7 @@ class MCTruth(ReaderDrawable):
             panel.all_particles.toggled.connect(lambda _: self.show_particles())
             panel.particlesSelected.connect(self.select_particles)
             panel.particlesAnnotated.connect(self.on_particles_annotated)
+            panel.annotate_secondaries.toggled.connect(lambda _: self.on_particles_annotated(panel.annotated_particles()))
 
     def panel(self):
         ''' the TPC module's MC truth panel (None in tests without one) '''

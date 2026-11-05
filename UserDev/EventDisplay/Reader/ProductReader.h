@@ -206,6 +206,8 @@ namespace titusio {
     std::vector<float> end_x;
     std::vector<float> end_y;
     std::vector<float> end_z;
+    std::vector<int> mother_track_id;
+    std::vector<int> ancestor_track_id;
     std::vector<int> mother_pdg;
     std::vector<std::string> mother_process;
     std::vector<double> mother_start_t;

@@ -8,6 +8,8 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from titus.gui.widgets import MovableLabel
+
 ANNOTATION_COLOR = (255, 255, 255)
 LINE_WIDTH = 2  # pixels
 FONT_POINT_SIZE = 12
@@ -40,12 +42,14 @@ def label_place(points):
     return middle, direction
 
 
-def annotation_items(paths, name, dashed=False):
+def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None):
     '''
     The graphics items annotating a particle in a view: its path (the
     segments it is drawn in, (n, 2) points each) in white, and its name above
     the longest segment. dashed: a straight line standing in for a
-    trajectory not known (a neutral particle's, or one without steps)
+    trajectory not known (a neutral particle's, or one without steps).
+    label_pos: where the label was moved to (view coordinates), else its
+    default place; on_moved(position): called when the user moves it.
     '''
     paths = [np.asarray(p, dtype=float) for p in paths if len(p) > 1]
     if not paths:
@@ -64,11 +68,33 @@ def annotation_items(paths, name, dashed=False):
     longest = max(paths, key=lambda p: np.linalg.norm(np.diff(p, axis=0), axis=1).sum())
     (x, y), (dx, dy) = label_place(longest)
     # its bottom middle on the line, the text along the line in the view's axes (so through zooms)
-    label = pg.TextItem(name, color=ANNOTATION_COLOR, anchor=(0.5, 1.0), rotateAxis=(dx, dy))
+    label = AnnotationLabel(name, color=ANNOTATION_COLOR, anchor=(0.5, 1.0), rotateAxis=(dx, dy), on_moved=on_moved)
     font = label.textItem.font()
     font.setBold(True)
     font.setPointSize(FONT_POINT_SIZE)
     label.setFont(font)
-    label.setPos(x, y)
+    label.setPos(*(label_pos if label_pos is not None else (x, y)))
     label.setZValue(Z_VALUE + 1)
     return [line, label]
+
+
+class AnnotationLabel(MovableLabel):
+    '''
+    A particle's name, which can be dragged (outlined on hover, as the event
+    label); on_moved(position) is called with its view position once moved
+    '''
+
+    def __init__(self, *args, on_moved=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._on_moved = on_moved
+        self._pressed_at = None
+
+    def mousePressEvent(self, ev):
+        self._pressed_at = self.pos()
+        super().mousePressEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        super().mouseReleaseEvent(ev)
+        if self._on_moved is not None and self._pressed_at is not None and self.pos() != self._pressed_at:
+            self._on_moved((self.pos().x(), self.pos().y()))
+        self._pressed_at = None

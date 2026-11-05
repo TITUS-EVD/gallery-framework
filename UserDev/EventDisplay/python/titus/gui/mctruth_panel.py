@@ -58,6 +58,10 @@ class MCTruthPanel(QtWidgets.QWidget):
         self._summary_layout.setContentsMargins(0, 0, 0, 0)
         self._summary_layout.setRowWrapPolicy(QtWidgets.QFormLayout.DontWrapRows)
 
+        self.annotate_secondaries = QtWidgets.QCheckBox('Annotate secondaries')
+        self.annotate_secondaries.setToolTip(
+            'Also annotate what the annotated particles made (decays, inelastic scatters...: the MCTracks\n'
+            'descending from them in Geant4), each with its name')
         self.all_particles = QtWidgets.QCheckBox('All particles')
         self.all_particles.setToolTip('Also list the initial, intermediate and in-nucleus particles '
                                       '(GENIE status codes), not only the final state')
@@ -97,7 +101,11 @@ class MCTruthPanel(QtWidgets.QWidget):
         layout.addWidget(self.show_vertex)
         layout.addWidget(self.dropdown)
         layout.addWidget(self._summary)
-        layout.addWidget(self.all_particles, alignment=QtCore.Qt.AlignRight)
+        options = QtWidgets.QHBoxLayout()
+        options.addWidget(self.annotate_secondaries)
+        options.addStretch()
+        options.addWidget(self.all_particles)
+        layout.addLayout(options)
         layout.addWidget(self._table, stretch=1)
         layout.addWidget(self._track_note)
         self.clear()

@@ -1305,6 +1305,112 @@ def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, prod
     assert any(abs(r.left() - wires[0] - 0.5) < 2 and abs(r.right() - wires[1] - 0.5) < 2 for r in spans)
 
 
+def kaon_lambda_event():
+    '''
+    MCTracks of a K+ (G4 ID 3, decaying to a μ+, ID 8) and of a Λ's decay
+    products (p, ID 7, π-, ID 9: the Λ, ID 4, has no MCTrack), all with steps;
+    the generator's K+ and Λ
+    '''
+    from titus.display.mctruth import ParticleKey
+    from titus.readers import MCTracks
+    vertex = np.array([-100., 0., 200.])
+    paths = {3: (vertex, [-150., -40., 300.]), 8: ([-150., -40., 300.], [-170., 20., 380.]),
+             7: ([-60., 30., 260.], [-40., 35., 290.]), 9: ([-60., 30., 260.], [-90., 60., 240.])}
+    ids = [3, 8, 7, 9]
+    steps = [np.linspace(np.asarray(paths[i][0]), np.asarray(paths[i][1]), 20) for i in ids]
+    xyz = np.vstack(steps)
+    columns = dict(track_id=ids, pdg=[321, -13, 2212, -211], origin=[1] * 4,
+                   process=['primary', 'Decay', 'Decay', 'Decay'], start_t=[0.] * 4,
+                   start_e=[1090., 300., 1100., 250.], step_offset=[0, 20, 40, 60, 80],
+                   x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2], t=np.zeros(80), e=np.ones(80),
+                   **{f'start_{a}': [paths[i][0][k] for i in ids] for k, a in enumerate('xyz')},
+                   **{f'end_{a}': [paths[i][1][k] for i in ids] for k, a in enumerate('xyz')},
+                   mother_track_id=[3, 3, 4, 4], ancestor_track_id=[3, 3, 4, 4], mother_pdg=[321, 321, 3122, 3122],
+                   mother_process=['primary'] * 4, mother_start_t=[0.] * 4, mother_start_e=[1090., 1090., 2976.74, 2976.74],
+                   **{f'mother_start_{a}': [vertex[k]] * 4 for k, a in enumerate('xyz')},
+                   # the K+ ends where it decays, the Λ where its p and π- start
+                   **{f'mother_end_{a}': [paths[3][1][k]] * 2 + [paths[7][0][k]] * 2 for k, a in enumerate('xyz')})
+    return MCTracks(**columns), ParticleKey(321, 1089.97, 1), ParticleKey(3122, 2976.70, 1)
+
+
+def test_secondaries_annotated_by_g4_parentage(qtbot, products, sbnd, tpc_module):
+    from titus.drawables import MCTrack
+    mctracks, kaon, lam = kaon_lambda_event()
+    products[('mctracks', 'mcreco::G4')] = mctracks
+    tpc_module.space_charge_map = lambda: None
+    tpc_module.correct_3d_objects = lambda: True
+    tpc_module.annotated_mc_particles = lambda: [kaon, lam]
+    labels = {}
+    for secondaries in (False, True):
+        tpc_module.annotate_secondaries = lambda s=secondaries: s
+        drawer = MCTrack(FakeGalleryInterface(), sbnd, tpc_module)
+        drawer.set_producer('mcreco::G4')
+        drawer.analyze()
+        drawer.drawObjects()
+        labels[secondaries] = sorted({i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem)})
+    assert MCTrack.descendants(mctracks, 3).tolist() == [1] and MCTrack.descendants(mctracks, 4).tolist() == [2, 3]
+    # the K+ and the Λ (dashed, from its daughters' mother), and with secondaries what they decayed to
+    assert labels[False] == ['K⁺', 'Λ']
+    assert labels[True] == ['K⁺', 'p', 'Λ', 'μ⁺', 'π⁻']
+
+
+def test_annotation_labels_can_be_moved(qtbot, products, sbnd, tpc_module):
+    from PyQt5 import QtCore, QtGui, QtTest
+    from titus.drawables import MCTrack
+    mctracks, kaon, lam = kaon_lambda_event()
+    products[('mctracks', 'mcreco::G4')] = mctracks
+    tpc_module.space_charge_map = lambda: None
+    tpc_module.correct_3d_objects = lambda: True
+    tpc_module.annotate_secondaries = lambda: False
+    annotated = [kaon]
+    tpc_module.annotated_mc_particles = lambda: annotated
+    tpc_module.widget.resize(900, 600)
+    tpc_module.widget.show()
+    qtbot.waitExposed(tpc_module.widget)
+    drawer = MCTrack(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('mcreco::G4')
+    drawer.analyze()
+    drawer.drawObjects()
+    view = tpc_module._wire_views[(2, 0)]._view
+    view.autoRange()
+
+    def label():
+        return next(i for i in drawer._annotations if isinstance(i, pg.TextItem) and i.parentItem() is view.childGroup)
+
+    default = label().pos()
+    # dragged with the mouse
+    widget = tpc_module.widget
+    start = widget.mapFromScene(label().mapToScene(label().boundingRect().center()))
+    end = start + QtCore.QPoint(60, -30)
+    QtTest.QTest.mousePress(widget.viewport(), QtCore.Qt.LeftButton, pos=start)
+    for i in range(1, 7):
+        move = QtCore.QPointF(start + (end - start) * i / 6)
+        QtCore.QCoreApplication.sendEvent(widget.viewport(), QtGui.QMouseEvent(
+            QtCore.QEvent.MouseMove, move, QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier))
+    QtTest.QTest.mouseRelease(widget.viewport(), QtCore.Qt.LeftButton, pos=end)
+    moved = label().pos()
+    assert moved != default
+    # redrawn (another view shown, corrections toggled...): where it was moved to
+    drawer.clearDrawnObjects()
+    drawer.drawObjects()
+    assert label().pos() == moved
+    # annotated again: where it goes
+    annotated[:] = []
+    drawer.annotate_particles(annotated)
+    annotated[:] = [kaon]
+    drawer.annotate_particles(annotated)
+    assert label().pos() == default
+    # moved again, then another event (its products read again): where it goes
+    drawer._label_positions = {key: (0., 0.) for key in drawer._label_positions} or \
+        {(kaon, (2, 0), 'own', 3): (0., 0.)}
+    drawer.clearDrawnObjects()
+    drawer.drawObjects()
+    assert label().pos() == QtCore.QPointF(0., 0.)
+    drawer.analyze()
+    drawer.drawObjects()
+    assert label().pos() == default
+
+
 def test_annotation_labels_read_left_to_right_along_the_path():
     from titus.drawables.annotation import annotation_items, label_place
     # half way along, its direction there

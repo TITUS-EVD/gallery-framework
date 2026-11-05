@@ -296,6 +296,8 @@ def extract_mctracks(tracks):
         columns['process'].append(str(t.Process()))
         columns['start_t'].append(t.Start().T())
         columns['start_e'].append(t.Start().E())
+        columns['mother_track_id'].append(int(t.MotherTrackID()))
+        columns['ancestor_track_id'].append(int(t.AncestorTrackID()))
         columns['mother_pdg'].append(t.MotherPdgCode())
         columns['mother_process'].append(str(t.MotherProcess()))
         columns['mother_start_t'].append(t.MotherStart().T())
