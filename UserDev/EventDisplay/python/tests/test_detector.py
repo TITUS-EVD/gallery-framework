@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import pytest
 
-from titus.geometry import PlaneID, load_detector
+from titus.geometry import Geometry, PlaneID, default_gdml, find_gdml, load_detector
 
 
 def projections(golden):
@@ -122,3 +122,40 @@ def test_unknown_detector():
         load_detector('microboone')
     with pytest.raises(LookupError):
         load_detector('sbnd', gdml='sbnd_v99')
+
+
+def test_gdml_versions():
+    # several SBND descriptions: the default one until a file says which
+    assert default_gdml('sbnd') == 'sbnd_v02_04' and load_detector('sbnd').gdml == 'sbnd_v02_04'
+    assert load_detector('sbnd', 'sbnd_v02_06').gdml == 'sbnd_v02_06'
+    # LArSoft v10's GDML without wires: the same description
+    assert find_gdml('sbnd', 'sbnd_v02_06_nowires') == 'sbnd_v02_06'
+    assert load_detector('sbnd', 'sbnd_v02_06_nowires').gdml == 'sbnd_v02_06'
+    assert find_gdml('sbnd', 'sbnd_v99') is None and find_gdml('icarus', 'sbnd_v02_06') is None
+
+
+def test_sbnd_v02_06_is_v02_04_lower_in_z(sbnd):
+    ''' what drew v10_14 files' MC 7 wires (induction) and 14 wires (collection) off their hits '''
+    v06 = load_detector('sbnd', 'sbnd_v02_06')
+    for p4, p6 in zip(sbnd.planes, v06.planes):
+        assert p4.id == p6.id and p4.n_wires == p6.n_wires
+        np.testing.assert_allclose(np.subtract(p6.center, p4.center), [0, 0, -4.2], atol=1e-6)
+        # a point 4.2 cm lower in z is on the same wire
+        point = np.array([-100., 50., 250.])
+        assert p6.wire_coordinate(point - [0, 0, 4.2]) == pytest.approx(p4.wire_coordinate(point))
+    shift = [abs(p6.wire_coordinate(np.array([-100., 50., 250.])) - p4.wire_coordinate(np.array([-100., 50., 250.])))
+             for p4, p6 in zip(sbnd.planes[:3], v06.planes[:3])]
+    assert shift == pytest.approx([7, 7, 14])
+
+
+def test_geometry_switches_gdml_in_place():
+    geom = Geometry.load('sbnd')
+    geom.override_time_range(3427)
+    v06 = load_detector('sbnd', 'sbnd_v02_06')
+    assert geom.can_switch_to(v06) and not geom.can_switch_to(load_detector('icarus'))
+    geom.set_detector(v06)
+    assert geom.gdml() == 'sbnd_v02_06' and geom.detector is v06
+    # what isn't in the description is kept
+    assert geom.tRange() == 3427 and geom.name() == 'sbnd'
+    with pytest.raises(ValueError):
+        geom.set_detector(load_detector('icarus'))

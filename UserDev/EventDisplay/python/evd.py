@@ -32,6 +32,9 @@ def main():
     parser.add_argument('--timerange',
                       type=int,
                       help="Overrides the number of time samples.")
+    parser.add_argument('--gdml', metavar='NAME_OR_JSON',
+                      help="Draw every file with this geometry (e.g. sbnd_v02_06, or a detector "
+                           "description .json) instead of the one each file was made with")
     parser.add_argument('--profile', metavar='FILE',
                       help="Profile the GUI's Python code until it is closed: write the cProfile "
                            "statistics to FILE and print the most expensive functions")
@@ -59,7 +62,7 @@ def main():
     # from the file dialog
     if args.file:
         lsm.ready.connect(lambda: QtCore.QTimer.singleShot(0, lambda: gi.set_input_files(args.file)))
-    gm = GeometryModule(lsm)
+    gm = GeometryModule(lsm, gdml=args.gdml)
     
 
     # optional to add it to the gui. Allows the user to select different

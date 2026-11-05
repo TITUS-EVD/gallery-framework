@@ -282,3 +282,80 @@ def test_views_follow_the_event_and_file(gui):
     assert tpc._wirePlotItems == {} and view._wire_marks == []
     gi.set_input_files(['data.root'])
     assert label() == ['SBND Data', 'Run 18255, Subrun 3, Event 42', 'March 01, 2025']
+
+
+def tpc_gui(gui, gdml=None):
+    ''' (gallery interface, geometry module, TPC module) of a GUI drawing SBND '''
+    from titus.modules import GeometryModule, LArSoftModule, TpcModule, ViewSelectModule
+    gi = gui.gallery_interface
+    lsm = LArSoftModule('sbnd', None)
+    gm = GeometryModule(lsm, gdml=gdml)
+    gm.add_gallery_interface(gi)
+    views = ViewSelectModule()
+    gui.add_module(views)
+    tpc = TpcModule(lsm, gm)
+    views.add_module(tpc, view_name='TPC')
+    gui.add_module(lsm)
+    gui.show()
+    QtWidgets.QApplication.processEvents()
+    return gi, gm, tpc
+
+
+def made_with(name, gdml):
+    ''' a simulated file made with this GDML (None: one whose configuration can't be read) '''
+    from dataclasses import replace
+    return replace(dated_file(name, False, [(1, 7, 100)]), gdml=gdml)
+
+
+def test_files_are_drawn_with_the_geometry_they_were_made_with(gui):
+    gi, gm, tpc = tpc_gui(gui)
+    geom = gm.current_geom
+    assert geom.gdml() == 'sbnd_v02_04'
+    switched = []
+    gm.detectorChanged.connect(lambda: switched.append(geom.gdml()))
+    # the geometry, when the file's first event is drawn
+    drawn = []
+    gi.eventChanged.connect(lambda: drawn.append(tpc._wire_views[(2, 0)]._geometry.gdml()))
+    files = {name: made_with(name, gdml) for name, gdml in
+             [('v14.root', 'sbnd_v02_06_nowires'), ('v06.root', 'sbnd_v02_04'), ('remote.root', None),
+              ('future.root', 'sbnd_v03_00')]}
+    gi._scan = lambda names, progress=None: files[names[0]]
+    gi.set_input_files(['v14.root'])
+    # in place: the views drew the file with the GDML it was made with
+    assert gm.current_geom is geom and geom.gdml() == 'sbnd_v02_06'
+    assert switched == ['sbnd_v02_06'] and drawn == ['sbnd_v02_06']
+    gi.set_input_files(['v06.root'])
+    assert switched == ['sbnd_v02_06', 'sbnd_v02_04'] and drawn[-1] == 'sbnd_v02_04'
+    # unknown: the geometry stays
+    gi.set_input_files(['v14.root'])
+    for name in ('remote.root', 'future.root'):
+        gi.set_input_files([name])
+        assert geom.gdml() == 'sbnd_v02_06'
+    assert len(switched) == 3
+
+
+def test_crt_outlines_follow_the_geometry(qtbot):
+    from titus.geometry import Geometry, load_detector
+    from titus.modules.crt_module import CrtViewWidget
+    def outlines(view):
+        return [tuple(r.rect().getRect()) for r in view._drawn_crt_modules]
+
+    geom = Geometry.load('sbnd')
+    view = CrtViewWidget(geom)
+    qtbot.addWidget(view)
+    before = outlines(view)
+    geom.set_detector(load_detector('sbnd', 'sbnd_v02_06'))
+    view.refresh_geometry()
+    fresh = CrtViewWidget(Geometry.load('sbnd', 'sbnd_v02_06'))
+    qtbot.addWidget(fresh)
+    # as drawn for v02_06 from the start (the modules 4.2 cm lower in z), and drawn once
+    assert outlines(view) == outlines(fresh) != before
+    assert sum(isinstance(i, QtWidgets.QGraphicsRectItem) for i in view._plot.items) == len(before)
+
+
+def test_a_geometry_given_on_the_command_line_is_kept(gui):
+    gi, gm, tpc = tpc_gui(gui, gdml='sbnd_v02_06')
+    assert gm.current_geom.gdml() == 'sbnd_v02_06'
+    gi._scan = lambda names, progress=None: made_with(names[0], 'sbnd_v02_04')
+    gi.set_input_files(['v06.root'])
+    assert gm.current_geom.gdml() == 'sbnd_v02_06'

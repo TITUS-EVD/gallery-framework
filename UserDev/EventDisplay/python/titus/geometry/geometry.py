@@ -59,13 +59,22 @@ def _tuples(obj):
 class Geometry:
 
     def __init__(self, detector: Detector, display: Dict[str, Any]):
-        self.detector = detector
         self.display = display
+        # --timerange (override_time_range), kept when the detector changes
+        self._time_range_override = None
+        self._configure(detector)
+
+    def _configure(self, detector):
+        ''' everything that follows from the detector description '''
+        self.detector = detector
+        display = self.display
 
         timing = detector.timing
         self._time2Cm = timing.time_to_cm
         self._tRange = timing.number_time_samples
         self._readoutWindowSize = timing.number_time_samples
+        if self._time_range_override is not None:
+            self._tRange = self._readoutWindowSize = self._time_range_override
 
         planes = detector.planes
         self._planes = planes
@@ -87,6 +96,32 @@ class Geometry:
     @classmethod
     def load(cls, detector_name, gdml=None):
         return cls(load_detector(detector_name, gdml), load_display_settings(detector_name))
+
+    def gdml(self):
+        ''' the GDML the detector description was dumped from, e.g. 'sbnd_v02_04' '''
+        return self.detector.gdml
+
+    def can_switch_to(self, detector):
+        '''
+        True if the views built for this detector can draw another description
+        of it, e.g. another GDML version: the same TPCs, planes and wire
+        counts, channels, op det and aux det (CRT) counts. Positions may differ.
+        '''
+        return (detector.name == self.detector.name
+                and [(p.id, p.n_wires) for p in detector.planes] == [(p.id, p.n_wires) for p in self.detector.planes]
+                and detector.channel_map.n_channels == self.detector.channel_map.n_channels
+                and len(detector.opdets) == len(self.detector.opdets)
+                and len(detector.auxdets) == len(self.detector.auxdets))
+
+    def set_detector(self, detector):
+        '''
+        Draw with another description of the same detector (can_switch_to),
+        e.g. the GDML a file was made with. Everything holding this Geometry
+        then uses it; views that keep positions (CRT outlines) redraw them.
+        '''
+        if not self.can_switch_to(detector):
+            raise ValueError(f'{detector.gdml} has another layout than {self.detector.gdml}')
+        self._configure(detector)
 
     # --- layout, computed from the detector ---
 
@@ -202,6 +237,7 @@ class Geometry:
         print('!!!WARNING!!!')
         print(f'Overriding time range from {self._tRange} to {time_range}.')
         print('!!!WARNING!!!')
+        self._time_range_override = time_range
         self._tRange = time_range
         self._readoutWindowSize = time_range
 

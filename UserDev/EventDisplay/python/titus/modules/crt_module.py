@@ -37,6 +37,7 @@ class CrtModule(Module):
 
     def _initialize(self):
         self._gm.geometryChanged.connect(self.init_ui)
+        self._gm.detectorChanged.connect(self._refresh_geometry)
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._dock)
 
     def init_ui(self):
@@ -46,6 +47,11 @@ class CrtModule(Module):
         self._layout.addWidget(self._crt_view)
 
         self.init_crt_controls()
+
+    def _refresh_geometry(self):
+        ''' the same geometry with other positions (GeometryModule.detectorChanged): outlines redrawn '''
+        if getattr(self, '_crt_view', None) is not None:
+            self._crt_view._view_widget.refresh_geometry()
 
     def init_crt_controls(self):
         frame = QtWidgets.QWidget(self._dock)
@@ -372,6 +378,17 @@ class CrtViewWidget(pg.GraphicsLayoutWidget):
         ''' removes all cached CrtHitsItems from this object '''
         self.clear_crt_hits()
         self._crt_hit_picture_cache = {}
+
+    def refresh_geometry(self):
+        ''' the module outlines and strip positions again, after the geometry changed (e.g. its GDML) '''
+        for rect in self._drawn_crt_modules:
+            self._plot.removeItem(rect)
+        self._drawn_crt_modules = []
+        self._crt_strips = {}
+        self._crt_strip_bounds_map = {}
+        self._init_crt_strips()
+        self.init_geometry()
+        self._clear_cache()
 
 
 class CrtTimeViewWidget(pg.GraphicsLayoutWidget):
