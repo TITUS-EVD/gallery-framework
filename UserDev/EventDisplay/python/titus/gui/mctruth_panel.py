@@ -22,16 +22,30 @@ class _NumberItem(QtWidgets.QTableWidgetItem):
         return super().__lt__(other)
 
 
+class _CheckItem(QtWidgets.QTableWidgetItem):
+    ''' an annotate checkbox, sorted checked first (in descending order) '''
+
+    def __lt__(self, other):
+        return self.checkState() < other.checkState() if isinstance(other, _CheckItem) else super().__lt__(other)
+
+
+# particles drawn as showers (sim::MCShower, no MCTrack to annotate): electrons, photons, neutral pions
+SHOWERING_PDG = (11, 22, 111)
+
+
 class MCTruthPanel(QtWidgets.QWidget):
     '''
     dropdown: the interaction shown (filled by the MCTruth drawable);
     show_vertex: draw the neutrino vertices; all_particles: list every
     particle of the generator's record, not only the final state.
     particlesSelected: the table's selected particles, as indices into the
-    interaction's particles.
+    interaction's particles; particlesAnnotated: those whose Annotate box is
+    checked (drawn with their name), the same way.
     '''
-    COLUMNS = ('Particle', 'PDG', 'KE [MeV]', 'E [GeV]', 'Status')
+    COLUMNS = ('Annotate', 'Particle', 'PDG', 'KE [MeV]', 'E [GeV]', 'Status')
+    HEADERS = {'Annotate': '✎'}
     particlesSelected = QtCore.pyqtSignal(list)
+    particlesAnnotated = QtCore.pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -49,7 +63,10 @@ class MCTruthPanel(QtWidgets.QWidget):
                                       '(GENIE status codes), not only the final state')
 
         self._table = QtWidgets.QTableWidget(0, len(self.COLUMNS))
-        self._table.setHorizontalHeaderLabels(self.COLUMNS)
+        self._table.setHorizontalHeaderLabels([self.HEADERS.get(c, c) for c in self.COLUMNS])
+        self._table.horizontalHeaderItem(self._column('Annotate')).setToolTip(
+            "Annotate: draw the particle's MCTrack in white, with its name")
+        self._table.itemChanged.connect(self._on_item_changed)
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -84,9 +101,16 @@ class MCTruthPanel(QtWidgets.QWidget):
         layout.addWidget(self._track_note)
         self.clear()
 
+    def _column(self, name):
+        return self.COLUMNS.index(name)
+
     def _show_status_column(self, show):
         self._table.setColumnHidden(self.COLUMNS.index('Status'), not show)
         self._fit_columns()
+
+    def _on_item_changed(self, item):
+        if item.column() == self._column('Annotate'):
+            self.particlesAnnotated.emit(self.annotated_particles())
 
     def clear(self):
         self.dropdown.blockSignals(True)
@@ -117,8 +141,11 @@ class MCTruthPanel(QtWidgets.QWidget):
                  layout.itemAt(r, QtWidgets.QFormLayout.FieldRole).widget().text())
                 for r in range(layout.rowCount())]
 
-    def set_particles(self, rows):
-        ''' ParticleRows (titus.display.mctruth.particle_rows) '''
+    def set_particles(self, rows, annotated=()):
+        '''
+        ParticleRows (titus.display.mctruth.particle_rows). annotated: indices
+        of particles to keep annotated (the same interaction listed again)
+        '''
         table = self._table
         sort_column = table.horizontalHeader().sortIndicatorSection()
         order = table.horizontalHeader().sortIndicatorOrder()
@@ -131,22 +158,61 @@ class MCTruthPanel(QtWidgets.QWidget):
             name.setData(QtCore.Qt.UserRole, row.index)
             if is_genie_pseudo_particle(row.pdg):
                 name.setToolTip('GENIE pseudo-particle (e.g. nucleon cluster, hadronic system), no mass')
-            table.setItem(i, 0, name)
-            table.setItem(i, 1, _NumberItem(row.pdg, '{:d}'))
-            table.setItem(i, 2, _NumberItem(row.kinetic_energy, '{:.1f}'))
-            table.setItem(i, 3, _NumberItem(row.energy, '{:.3f}'))
-            table.setItem(i, 4, QtWidgets.QTableWidgetItem(row.status))
+            table.setItem(i, self._column('Annotate'), self._annotate_item(row, row.index in annotated))
+            table.setItem(i, self._column('Particle'), name)
+            table.setItem(i, self._column('PDG'), _NumberItem(row.pdg, '{:d}'))
+            table.setItem(i, self._column('KE [MeV]'), _NumberItem(row.kinetic_energy, '{:.1f}'))
+            table.setItem(i, self._column('E [GeV]'), _NumberItem(row.energy, '{:.3f}'))
+            table.setItem(i, self._column('Status'), QtWidgets.QTableWidgetItem(row.status))
         table.setSortingEnabled(True)
         table.sortItems(sort_column, order)
         table.blockSignals(False)
         self._fit_columns()
-        # a new list: nothing selected
+        # a new list: nothing selected; annotated as asked
         self.particlesSelected.emit([])
+        self.particlesAnnotated.emit(self.annotated_particles())
+
+    @staticmethod
+    def _annotate_item(row, checked):
+        '''
+        the Annotate box of a particle: not selectable, so that checking it
+        leaves the selection (highlight) as it is. Showering particles have
+        no MCTrack to annotate yet.
+        '''
+        item = _CheckItem()
+        if abs(row.pdg) in SHOWERING_PDG:
+            item.setFlags(QtCore.Qt.ItemIsUserCheckable)
+            item.setToolTip(f'{row.name}: showers are not annotated yet')
+        else:
+            item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            item.setToolTip(f'Annotate the {row.name}: its MCTrack drawn in white, with its name')
+        item.setCheckState(QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked)
+        return item
+
+    def _particle_index(self, row):
+        return self._table.item(row, self._column('Particle')).data(QtCore.Qt.UserRole)
 
     def selected_particles(self):
         ''' indices (into the interaction's particles) of the selected rows '''
         rows = sorted({item.row() for item in self._table.selectedItems()})
-        return [self._table.item(r, 0).data(QtCore.Qt.UserRole) for r in rows]
+        return [self._particle_index(r) for r in rows]
+
+    def annotated_particles(self):
+        ''' indices (into the interaction's particles) of the particles whose Annotate box is checked '''
+        column = self._column('Annotate')
+        return sorted(self._particle_index(r) for r in range(self._table.rowCount())
+                      if self._table.item(r, column).checkState() == QtCore.Qt.Checked)
+
+    def annotate_particles(self, indices):
+        ''' check the Annotate boxes of these particles, uncheck the others (e.g. tests) '''
+        table, column = self._table, self._column('Annotate')
+        table.blockSignals(True)
+        for r in range(table.rowCount()):
+            item = table.item(r, column)
+            if item.flags() & QtCore.Qt.ItemIsEnabled:
+                item.setCheckState(QtCore.Qt.Checked if self._particle_index(r) in indices else QtCore.Qt.Unchecked)
+        table.blockSignals(False)
+        self.particlesAnnotated.emit(self.annotated_particles())
 
     def select_particles(self, indices):
         ''' select the rows of these particles (e.g. tests) '''
@@ -155,8 +221,8 @@ class MCTruthPanel(QtWidgets.QWidget):
         table.clearSelection()
         mode = QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
         for r in range(table.rowCount()):
-            if table.item(r, 0).data(QtCore.Qt.UserRole) in indices:
-                table.selectionModel().select(table.model().index(r, 0), mode)
+            if self._particle_index(r) in indices:
+                table.selectionModel().select(table.model().index(r, self._column('Particle')), mode)
         table.blockSignals(False)
         self.particlesSelected.emit(self.selected_particles())
 

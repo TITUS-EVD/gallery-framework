@@ -27,6 +27,7 @@ class Track(ReaderDrawable):
         # per producer: what the corrections need, and the corrections once computed
         self._inputs = []
         self._corrections = []
+        self._view_collections = []
 
     def on_data(self):
         self._inputs = [self._correction_inputs(tag, tracks) for tag, tracks in zip(self.producers(), self._data)]
@@ -70,7 +71,14 @@ class Track(ReaderDrawable):
                                                tooltip=tooltip, key=(producer, row)))
             # one item per view for all the lines: hover and repaints don't scale with their number
             if items:
-                self.add_to_view(view, [TrackCollection(items)])
+                collection = TrackCollection(items)
+                self.add_to_view(view, [collection])
+                self._view_collections.append((view, collection))
+
+    def clearDrawnObjects(self, obj_list=None):
+        super().clearDrawnObjects(obj_list)
+        # (wire view, TrackCollection drawn in it)
+        self._view_collections = []
 
     def lines(self):
         ''' the TrackLines drawn, in all views '''

@@ -123,6 +123,7 @@ class TpcModule(Module):
         self._product_views = set()
         # generator particles selected in the MC truth dock (ParticleKeys)
         self._selected_mc_particles = []
+        self._annotated_mc_particles = []
         # set while the product boxes are filled for a new file
         self._updating_boxes = False
         self._show_logo = False
@@ -661,6 +662,33 @@ class TpcModule(Module):
 
     def selected_mc_particles(self):
         return self._selected_mc_particles
+
+    def annotate_mc_particles(self, keys):
+        '''
+        the MC truth dock's annotated particles (ParticleKeys): their MCTracks
+        drawn in white with their names. {key: [MCTrack IDs]} found, or None
+        if no MCTracks are drawn.
+        '''
+        self._annotated_mc_particles = list(keys)
+        found, drawn = {}, False
+        for drawable in self._product_box_map.values():
+            annotate = getattr(drawable, 'annotate_particles', None)
+            if annotate is None or not drawable.producers():
+                continue
+            drawn = True
+            for key, ids in annotate(self._annotated_mc_particles).items():
+                found.setdefault(key, []).extend(ids)
+        return found if drawn else None
+
+    def annotated_mc_particles(self):
+        return self._annotated_mc_particles
+
+    def refresh_mctruth_notes(self):
+        ''' the MC truth dock's notes on its particles' MCTracks, once MCTracks are drawn (MCTrack.drawObjects) '''
+        for drawable in self._product_box_map.values():
+            refresh = getattr(drawable, 'refresh_notes', None)
+            if refresh is not None:
+                refresh()
 
     def show_mctruth_dock(self, show):
         ''' show the MC truth dock while there is MC truth, with the module's other docks '''

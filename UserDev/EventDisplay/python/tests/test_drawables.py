@@ -1189,6 +1189,99 @@ def test_selected_particles_highlight_their_mctracks(qtbot, products, sbnd, trut
     assert truth_module.selected_mc_particles() == [] and not any(l.is_selected() for l in tracks.lines())
 
 
+def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd, truth_module):
+    import dataclasses
+    from PyQt5 import QtWidgets
+    from titus.display.mctruth import particle_key
+    from titus.drawables import MCTrack
+    from titus.drawables.annotation import ANNOTATION_COLOR
+    from titus.modules.tpc_module import TpcModule
+    reader = serve_all(products, STEP3)
+    # the TPC module's selection and annotations, with its product boxes
+    for name in ('select_mc_particles', 'selected_mc_particles', 'annotate_mc_particles', 'annotated_mc_particles',
+                 'refresh_mctruth_notes'):
+        setattr(truth_module, name, getattr(TpcModule, name).__get__(truth_module))
+    truth_module._selected_mc_particles, truth_module._annotated_mc_particles = [], []
+    truth_module._product_box_map = {}
+    drawer = draw_truth(sbnd, truth_module, producers=['generator::GenieGen'])
+    panel = truth_module._mctruth_panel
+    truths = reader.get(0, 'mctruths', 'generator')
+    pdg, status, _ = truths.particles(0)
+    protons = [i for i in range(len(pdg)) if status[i] == 1 and pdg[i] == 2212]
+    neutron = next(i for i in range(len(pdg)) if status[i] == 1 and pdg[i] == 2112)
+
+    # no MCTracks drawn: the dock says how to see them
+    panel.annotate_particles([protons[0]])
+    assert truth_module.annotated_mc_particles() == [particle_key(truths, 0, protons[0])]
+    assert "Turn on MCTrack in the Products to annotate" in panel.track_note()
+
+    tracks = MCTrack(FakeGalleryInterface(), sbnd, truth_module)
+    tracks.set_producer('mcreco::G4')
+    truth_module._product_box_map = {'MCTruth box': drawer, 'MCTrack box': tracks}
+    tracks.analyze()
+    tracks.drawObjects()
+
+    def drawn():
+        labels = [i for i in tracks._annotations if isinstance(i, pg.TextItem)]
+        paths = [i for i in tracks._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
+        return labels, paths
+
+    # drawn after the annotation: annotated already, a white path and a name per view it is drawn in
+    labels, paths = drawn()
+    assert labels and len(labels) == len(paths) <= 3
+    assert {l.textItem.toPlainText() for l in labels} == {'p'}
+    assert all(p.pen().color().getRgb()[:3] == ANNOTATION_COLOR and p.pen().isCosmetic() for p in paths)
+    assert all(i.scene() is not None and i.zValue() > 0 for i in tracks._annotations)
+    # along its line, as drawn
+    key = particle_key(truths, 0, protons[0])
+    (producer, row), = tracks._rows_of([key])[0]
+    line_points = np.vstack([l.points for l in tracks.lines() if l.track_key == (producer, row)])
+    bounds = paths[0].path().boundingRect()
+    assert line_points[:, 0].min() == pytest.approx(bounds.left()) or len(paths) > 1
+    assert panel.track_note() == ''
+
+    # selecting (highlight) leaves the annotations
+    panel.select_particles([protons[1]])
+    assert len(drawn()[0]) == len(labels)
+    assert {l.track_key for l in tracks.lines() if l.is_selected()} != {(producer, row)}
+    # redrawn (e.g. another view shown, corrections toggled): annotated again
+    tracks.clearDrawnObjects()
+    assert tracks._annotations == []
+    tracks.drawObjects()
+    assert len(drawn()[0]) == len(labels)
+    # the same interaction listed with all its particles: still annotated
+    panel.all_particles.setChecked(True)
+    assert truth_module.annotated_mc_particles() == [key] and panel.annotated_particles() == [protons[0]]
+    # a neutron has no MCTrack: told
+    panel.annotate_particles([protons[0], neutron])
+    assert 'Nothing to annotate for n' in panel.track_note() and len(drawn()[0]) == len(labels)
+
+    # the next event (its products read again): nothing annotated
+    products[('mctruths', 'generator::GenieGen')] = dataclasses.replace(truths)
+    drawer.analyze()
+    drawer.drawObjects()
+    assert truth_module.annotated_mc_particles() == [] and tracks._annotations == []
+    assert panel.annotated_particles() == []
+
+
+def test_annotation_labels_read_left_to_right_along_the_path():
+    from titus.drawables.annotation import annotation_items, label_place
+    # half way along, its direction there
+    point, direction = label_place([(0, 0), (10, 0), (10, 10)])
+    np.testing.assert_allclose(point, [10, 0]) and np.testing.assert_allclose(direction / direction[0], [1, 1])
+    # drawn right to left: the label still points to +x
+    _, direction = label_place([(10, 10), (0, 0)])
+    assert direction[0] > 0
+    # vertical, and a point
+    assert label_place([(0, 5), (0, 0)])[1][1] > 0
+    np.testing.assert_allclose(label_place([(3, 3), (3, 3)])[1], [1, 0])
+    # the longest segment carries the name; nothing for a path without length
+    line, label = annotation_items([[(0, 0), (1, 0)], [(5, 0), (5, 40)]], 'μ⁻')
+    assert label.pos().x() == pytest.approx(5) and label.pos().y() == pytest.approx(20)
+    assert label.textItem.toPlainText() == 'μ⁻'
+    assert annotation_items([[(1, 1)]], 'p') == []
+
+
 def test_hover_follows_the_line_in_a_view(qtbot):
     ''' in a pyqtgraph ViewBox (which clips its items): hover and tooltips only near the line, not its bounding box '''
     from titus.drawables.items import polyLine
