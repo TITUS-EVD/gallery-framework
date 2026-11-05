@@ -129,8 +129,10 @@ class MCTruth(ReaderDrawable):
 
     def vertex_tooltip(self, truths, row, correction):
         what = correction.describe(0) if correction is not None else AS_STORED
+        note = self.space_charge_note(truths)
+        truths = self.stored(truths)
         return (f'{particle_name(truths.nu_pdg[row])} interaction vertex: ({truths.vx[row]:.1f}, {truths.vy[row]:.1f}, {truths.vz[row]:.1f}) cm, '
-                f'{mc_t0(self._geom, truths.vt[row]) / 1e3:.2f} us from the trigger\n{what}')
+                f'{mc_t0(self._geom, truths.vt[row]) / 1e3:.2f} us from the trigger\n{what}' + note)
 
     def tpc_of(self, xyz):
         ''' (cryostat, TPC) containing a point, as "C:T" (or the TPC number with one cryostat); None outside '''
@@ -146,7 +148,8 @@ class MCTruth(ReaderDrawable):
         if panel is None:
             return
         t0_us = mc_t0(self._geom, truths.vt[row]) / 1e3 if truths.has_neutrino[row] else None
-        panel.set_summary(truth_summary(truths, row, tpc_of=self.tpc_of, t0_us=t0_us))
+        # the vertex where the interaction was, not where its charge was moved
+        panel.set_summary(truth_summary(self.stored(truths), row, tpc_of=self.tpc_of, t0_us=t0_us))
         panel.set_has_vertices(any(self._data[p].has_neutrino[r] for p, r in self._choices))
         self.show_particles()
         self._module.show_mctruth_dock(True)

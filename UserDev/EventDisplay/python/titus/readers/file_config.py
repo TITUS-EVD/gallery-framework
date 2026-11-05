@@ -6,7 +6,9 @@ bytes are read where ROOT's TFile says they are, and queried with sqlite3.
 
 TITUS uses it to draw a file with the geometry it was made with (the GDML
 the Geometry service loaded), as the GDML changes between productions, e.g.
-SBND v10_06 (sbnd_v02_04) and v10_14 (sbnd_v02_06, all 4.2 cm lower in z).
+SBND v10_06 (sbnd_v02_04) and v10_14 (sbnd_v02_06, all 4.2 cm lower in z),
+and to know whether its simulation moved the charge by space charge (and
+with which map), to draw simulated particles where their charge is.
 """
 
 import collections
@@ -14,12 +16,28 @@ import os
 import re
 import sqlite3
 import tempfile
+from dataclasses import dataclass
+from typing import Optional
 
 ROOT_FILE_DB = 'RootFileDB'
 SQLITE_HEADER = b'SQLite format 3\x00'
 
 # the Geometry service's GDML file name in a parameter set blob, e.g. GDML:"sbnd_v02_06.gdml"
 _GDML = re.compile(r'\bGDML:"([^"]+)"')
+# the SpaceCharge service: whether the simulation displaced the charge, and the map it used
+_SCE_SERVICE = re.compile(r'\bservice_type:"SpaceCharge"')
+_SIM_SPATIAL_SCE = re.compile(r'\bEnableSimSpatialSCE:true\b')
+_SCE_MAP = re.compile(r'\bInputFilename:"([^"]+)"')
+
+
+@dataclass(frozen=True)
+class FileConfig:
+    ''' what TITUS uses of the configuration a file was made with; None: not known '''
+    # e.g. 'sbnd_v02_06'
+    gdml: Optional[str] = None
+    # the space charge map the simulation displaced the charge with, e.g.
+    # 'SCEoffsets_SBND_E500_dualmap_CV_voxelTH3'; None if it didn't (or not known)
+    sce_map: Optional[str] = None
 
 
 def root_file_db(tfile, path):
@@ -80,12 +98,41 @@ def gdml_from_parameter_sets(blobs):
     return found.most_common(1)[0][0]
 
 
-def file_gdml(tfile, path):
-    """ the GDML a file was made with (e.g. 'sbnd_v02_06'), None if its configuration can't be read """
+def map_name(name):
+    """ 'SCEoffsets/SCEoffsets_SBND_E500_dualmap_CV_voxelTH3.root' -> 'SCEoffsets_SBND_E500_dualmap_CV_voxelTH3' """
+    return os.path.splitext(os.path.basename(name))[0]
+
+
+def sce_map_from_parameter_sets(blobs):
+    """
+    The space charge map (as map_name) the file's simulation displaced the
+    charge with: from a SpaceCharge service with EnableSimSpatialSCE; None if
+    none was. Processes that don't simulate (e.g. reco) may load the service
+    with it off: any process that simulated it counts.
+    """
+    found = collections.Counter(map_name(m) for blob in blobs
+                                if _SCE_SERVICE.search(blob) and _SIM_SPATIAL_SCE.search(blob)
+                                for m in _SCE_MAP.findall(blob)[:1])
+    if not found:
+        return None
+    return found.most_common(1)[0][0]
+
+
+def config_from_parameter_sets(blobs):
+    return FileConfig(gdml=gdml_from_parameter_sets(blobs), sce_map=sce_map_from_parameter_sets(blobs))
+
+
+def file_config(tfile, path):
+    """ the FileConfig of a file (all None if its configuration can't be read) """
     data = root_file_db(tfile, path)
     if data is None:
-        return None
+        return FileConfig()
     try:
-        return gdml_from_parameter_sets(parameter_sets(data))
+        return config_from_parameter_sets(parameter_sets(data))
     except sqlite3.Error:
-        return None
+        return FileConfig()
+
+
+def file_gdml(tfile, path):
+    """ the GDML a file was made with (e.g. 'sbnd_v02_06'), None if its configuration can't be read """
+    return file_config(tfile, path).gdml

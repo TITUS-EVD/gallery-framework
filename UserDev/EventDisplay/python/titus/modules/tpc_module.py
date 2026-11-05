@@ -15,6 +15,7 @@ from titus.modules import Module
 from titus.gui.widgets import MultiSelectionBox, recoBox, VerticalLabel, MovablePixmapItem, MovableScaleBar, MovableLabel, \
     LineSplitter, ViewAlignedLabels, limit_dock_width
 from titus.gui.mctruth_panel import MCTruthPanel
+from titus.display.space_charge import load_sce_map
 import titus.drawables as drawables
 
 
@@ -555,6 +556,12 @@ class TpcModule(Module):
         self._correct_3d.setChecked(True)
         self._correct_3d.stateChanged.connect(self.redraw_3d_objects)
 
+        self._space_charge = QtWidgets.QCheckBox("Space charge (MC, pandoraSCE)")
+        self._space_charge.setTristate(False)
+        self._space_charge.setChecked(True)
+        self._space_charge.stateChanged.connect(self.reread_3d_objects)
+        self._update_space_charge_option()
+
         self._plane_frames = QtWidgets.QCheckBox("Plane frames")
         self._plane_frames.setToolTip("Show or hide the scale back frame.")
         self._plane_frames.setTristate(False)
@@ -576,6 +583,7 @@ class TpcModule(Module):
         options_layout.addWidget(self._logoOption)
         options_layout.addWidget(self._plane_frames)
         options_layout.addWidget(self._correct_3d)
+        options_layout.addWidget(self._space_charge)
         options_layout.addWidget(self._maxRangeButton)
         options_layout.addLayout(self._clearEvalPointsLayout)
         options_layout.addWidget(self._restoreDefaults)
@@ -726,6 +734,44 @@ class TpcModule(Module):
     def redraw_3d_objects(self):
         self.redraw_products()
 
+    def space_charge_map(self):
+        '''
+        The space charge map to draw MC truth and Pandora's SCE-corrected
+        objects with (ReaderDrawable.analyze), where their charge was moved
+        to: the one the open file's simulation used, if TITUS has it and the
+        option is on; None to draw them as stored
+        '''
+        if not self._space_charge.isEnabled() or not self._space_charge.isChecked():
+            return None
+        return load_sce_map(self._gi.file_sce_map) if self._gi.file_sce_map else None
+
+    def _update_space_charge_option(self):
+        '''
+        the option enabled for files whose simulation moved the charge by
+        space charge with a map TITUS has (its state is kept between files)
+        '''
+        name = self._gi.file_sce_map if self._gi is not None else None
+        available = name is not None and load_sce_map(name) is not None
+        self._space_charge.setEnabled(available)
+        if available:
+            what = f"with this file's map, {name}"
+        elif name is not None:
+            what = (f"this file's map, {name}, isn't included with TITUS "
+                    "(tools/dump_sce_map.py converts it)")
+            print(f"\033[91m WARNING\033[0m {what}: MC truth and pandoraSCE objects drawn as stored")
+        else:
+            what = "for files whose simulation had space charge (this one: none, or unknown)"
+        self._space_charge.setToolTip(
+            "Draw MC truth and Pandora's space charge corrected objects (pandoraSCE...) where the\n"
+            "simulation's space charge moved their charge, on their hits, " + what + ".\n"
+            "Unchecked: drawn where they were, up to about a centimetre off their charge.")
+
+    def reread_3d_objects(self):
+        ''' read the selected products again and redraw them, e.g. with or without space charge '''
+        for drawable in self._product_box_map.values():
+            drawable.analyze()
+            drawable.drawObjects()
+
     def redraw_products(self):
         ''' redraw the selected products (hits, tracks...) on the current views '''
         for drawable in self._product_box_map.values():
@@ -846,6 +892,8 @@ class TpcModule(Module):
             self._updating_boxes = False
         self._choose_wire_view()
         self._select_wire_drawer()
+        # before the new file's products are read: whether they are drawn with its space charge
+        self._update_space_charge_option()
         self._gi.process_event(True)
 
     def update(self):

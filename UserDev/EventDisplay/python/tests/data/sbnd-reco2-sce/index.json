@@ -1,0 +1,119 @@
+{
+ "schema_version": 1,
+ "meta": {
+  "detector": "sbnd",
+  "source_files": [
+   "reco2-2f8a8787-6785-46d3-a9f0-a43082f291c2.root"
+  ],
+  "created": "2026-11-05T15:15:37+00:00",
+  "root_version": "6.28/12",
+  "tool": "dump_products.py",
+  "args": [
+   "/pnfs/sbnd/persistent/users/twester/titus_test_files/v10/sbnd/mc/reco2/reco2-2f8a8787-6785-46d3-a9f0-a43082f291c2.root",
+   "--detector",
+   "sbnd",
+   "--skip",
+   "6",
+   "--events",
+   "3",
+   "--tags",
+   "gaushit,simtpc2d,mcreco,generator,pandora,pandoraSCE",
+   "--outdir",
+   "dumps/sbnd-reco2-sce-6"
+  ],
+  "errors": [
+   {
+    "label": "wires simtpc2d:wiener:DetSim",
+    "count": 3,
+    "first": "TypeError: data type '<f0' not understood"
+   },
+   {
+    "label": "cluster_hits pandora::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::Cluster,recob::Hit,void>>:\n  gallery::ValidHandle<art::Assns<recob::Cluster,recob::Hit,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "cluster_hits pandoraSCE::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::Cluster,recob::Hit,void>>:\n  gallery::ValidHandle<art::Assns<recob::Cluster,recob::Hit,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  none of the 2 overloaded methods succeeded. Full details:\n  gallery::ValidHandle<art::Assns<recob::Cluster,recob::Hit,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  gallery::ValidHandle<art::Assns<recob::Cluster,recob::Hit,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "pfp_spacepoints pandora::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::PFParticle,recob::SpacePoint,void>>:\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "pfp_spacepoints pandoraSCE::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::PFParticle,recob::SpacePoint,void>>:\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  none of the 2 overloaded methods succeeded. Full details:\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "pfp_t0s pandora::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<anab::T0,recob::PFParticle,void>>:\n  gallery::ValidHandle<art::Assns<anab::T0,recob::PFParticle,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "pfp_t0s pandoraSCE::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<anab::T0,recob::PFParticle,void>>:\n  gallery::ValidHandle<art::Assns<anab::T0,recob::PFParticle,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  none of the 2 overloaded methods succeeded. Full details:\n  gallery::ValidHandle<art::Assns<anab::T0,recob::PFParticle,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  gallery::ValidHandle<art::Assns<anab::T0,recob::PFParticle,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "pfp_vertices pandora::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::PFParticle,recob::Vertex,void>>:\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::Vertex,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "pfp_vertices pandoraSCE::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::PFParticle,recob::Vertex,void>>:\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::Vertex,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  none of the 2 overloaded methods succeeded. Full details:\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::Vertex,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  gallery::ValidHandle<art::Assns<recob::PFParticle,recob::Vertex,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "spacepoint_hits pandora::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::Hit,recob::SpacePoint,void>>:\n  gallery::ValidHandle<art::Assns<recob::Hit,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "spacepoint_hits pandoraSCE::Reco2",
+    "count": 3,
+    "first": "ValueError: Could not instantiate getValidHandle<art::Assns<recob::Hit,recob::SpacePoint,void>>:\n  gallery::ValidHandle<art::Assns<recob::Hit,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  none of the 2 overloaded methods succeeded. Full details:\n  gallery::ValidHandle<art::Assns<recob::Hit,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected\n  gallery::ValidHandle<art::Assns<recob::Hit,recob::SpacePoint,void> > gallery::Event::getValidHandle(const art::InputTag& inputTag) =>\n    ValueError: nullptr result where temporary expected"
+   },
+   {
+    "label": "wires simtpc2d:gauss:DetSim",
+    "count": 2,
+    "first": "TypeError: data type '<f0' not understood"
+   }
+  ],
+  "trimmed_from": "sbnd-reco2-sce-6",
+  "trim": {
+   "events": "1",
+   "wires": null,
+   "kinds": "hits,mctracks,mctruths,spacepoints",
+   "tags": "gaushit,pandora,pandoraSCE,mcreco,generator"
+  }
+ },
+ "events": [
+  {
+   "id": [
+    28,
+    94,
+    50
+   ],
+   "file": "event_0000.npz",
+   "products": {
+    "hits": [
+     "gaushit::Reco1"
+    ],
+    "mctracks": [
+     "mcreco::G4"
+    ],
+    "mctruths": [
+     "generator::GenieGen"
+    ],
+    "spacepoints": [
+     "pandora::Reco2",
+     "pandoraSCE::Reco2"
+    ]
+   }
+  }
+ ]
+}

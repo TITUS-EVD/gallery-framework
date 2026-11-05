@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from PyQt5 import QtCore
 
 from titus.readers.base import ProductCache
-from titus.readers.file_config import file_gdml
+from titus.readers.file_config import file_config
 
 
 def _root():
@@ -68,6 +68,8 @@ class OpenedFiles:
     timings: Dict[str, float] = field(default_factory=dict)
     # the GDML the (first) file was made with, from its configuration; None if unknown
     gdml: Optional[str] = None
+    # the space charge map its simulation displaced the charge with; None if none (or unknown)
+    sce_map: Optional[str] = None
 
     def describe_timings(self):
         return ', '.join(f'{step} {seconds:.1f} s' for step, seconds in self.timings.items())
@@ -151,11 +153,11 @@ def ping_file(root, file, timings=None):
         lap(f'run list ({n_entries} events)' if n_entries > 1 else 'run list')
         table = product_table([(b.GetName(), b.GetTypeName()) for b in tree.GetListOfBranches()])
         lap('branches')
-        gdml = file_gdml(f, file)
+        config = file_config(f, file)
         lap('configuration')
     finally:
         f.Close()
-    return run_list, table, gdml
+    return run_list, table, config
 
 
 def scan_steps(n_files):
@@ -178,11 +180,11 @@ def scan_files(files, root=None, progress=None):
     files, warnings = readable_files(files)
     if not files:
         raise OpenError('; '.join(warnings) or 'no file given')
-    run_list, table, opened, timings, gdmls = [], {'all': {}}, [], {}, []
+    run_list, table, opened, timings, configs = [], {'all': {}}, [], {}, []
     for i, file in enumerate(files):
         progress(f'Reading {os.path.basename(file)}', i)
         try:
-            file_runs, file_table, gdml = ping_file(root, file, timings)
+            file_runs, file_table, config = ping_file(root, file, timings)
         except (OSError, AttributeError, ReferenceError) as e:
             warnings.append(f'could not open {file} ({e}), skipping')
             continue
@@ -192,11 +194,12 @@ def scan_files(files, root=None, progress=None):
         run_list += file_runs
         _merge_tables(table, file_table)
         opened.append(file)
-        gdmls.append(gdml)
+        configs.append(config)
     if not opened:
         raise OpenError('; '.join(warnings))
     if not run_list:
         raise OpenError(f'no events in {", ".join(opened)}')
+    gdmls = [c.gdml for c in configs]
     if len({g for g in gdmls if g is not None}) > 1:
         warnings.append(f'the files were made with different geometries ({", ".join(sorted(set(filter(None, gdmls))))}): '
                         f'all are drawn with that of {os.path.basename(opened[0])}')
@@ -212,7 +215,7 @@ def scan_files(files, root=None, progress=None):
         raise OpenError(f'gallery could not open {", ".join(opened)}: {e}') from None
     timings['gallery'] = time.perf_counter() - start
     return OpenedFiles(files=opened, event=ev, run_list=run_list, key_table=table, warnings=warnings,
-                       file_names=names, timings=timings, gdml=gdmls[0])
+                       file_names=names, timings=timings, gdml=configs[0].gdml, sce_map=configs[0].sce_map)
 
 
 def position_event(ev, entry):
@@ -272,6 +275,8 @@ class GalleryInterface(QtCore.QObject):
         self._current_directory = os.getcwd()
         # the GDML the open file was made with (None: unknown)
         self._file_gdml = None
+        # the space charge map its simulation used (None: none, or unknown)
+        self._file_sce_map = None
 
         if file is not None:
             self.set_input_files([file] if isinstance(file, str) else file)
@@ -315,6 +320,15 @@ class GalleryInterface(QtCore.QObject):
     def file_gdml(self):
         ''' the GDML the open file was made with (e.g. 'sbnd_v02_06'), from its configuration; None if unknown '''
         return self._file_gdml
+
+    @property
+    def file_sce_map(self):
+        '''
+        the space charge map the open file's simulation displaced the charge
+        with (e.g. 'SCEoffsets_SBND_E500_dualmap_CV_voxelTH3'); None if it
+        didn't, or its configuration can't be read
+        '''
+        return self._file_sce_map
 
     @property
     def current_directory(self):
@@ -375,6 +389,7 @@ class GalleryInterface(QtCore.QObject):
         # we only consider one file opened at a time
         self._current_file = result.files[0]
         self._file_gdml = result.gdml
+        self._file_sce_map = result.sce_map
         self._current_directory = os.path.dirname(self._current_file)
         # if the file has no dirname, assume it is meant to be in the current directory
         if self._current_directory == '':

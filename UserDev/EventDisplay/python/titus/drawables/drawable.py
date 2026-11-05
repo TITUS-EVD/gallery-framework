@@ -9,6 +9,7 @@ import pyqtgraph as pg
 
 from titus.display.layout import ViewLayout
 from titus.display.projection import object_hit_tpcs, object_t0s, particle_tpcs
+from titus.display.space_charge import SpaceChargeMap, displaced, in_true_space
 from titus.readers import ProductNotFound
 from titus.readers.products import ASSOCIATIONS
 from titus.readers.gallery import (association_candidates, file_products, read_event_product, string_vector,
@@ -155,13 +156,52 @@ class ReaderDrawable(Drawable):
         ev = self._gi.event_handle()
         if ev is None:
             return
+        # per producer: as read (positions shown in text), and whether drawn moved by space charge
+        self._stored_data, self._space_charge_applied = [], []
+        sce_map = self._sce_map = self.space_charge_map()
         for tag in self.producers():
             try:
-                self._data.append(self._read(ev, self.KIND, str(tag)))
+                container = self._read(ev, self.KIND, str(tag))
             except ProductNotFound as e:
                 if not (self.SIMULATION and self._gi.is_real_data()):
                     print(f'Warning: {e}')
+                continue
+            # objects where charge was deposited (MC truth, pandoraSCE): where the simulation moved it
+            moved = sce_map is not None and in_true_space(self.KIND, tag)
+            self._data.append(displaced(container, sce_map) if moved else container)
+            self._stored_data.append(container)
+            self._space_charge_applied.append(moved)
         self.on_data()
+
+    def space_charge_map(self):
+        '''
+        The space charge map (titus.display.space_charge) the module draws
+        objects in true space with, None to draw them as stored
+        '''
+        getter = getattr(getattr(self, '_module', None), 'space_charge_map', None)
+        sce_map = getter() if callable(getter) else None
+        return sce_map if isinstance(sce_map, SpaceChargeMap) else None
+
+    def space_charge_applied(self, producer):
+        ''' whether the objects of the producer (index in self._data) were moved by the space charge map '''
+        applied = getattr(self, '_space_charge_applied', [])
+        return producer < len(applied) and applied[producer]
+
+    def _producer_of(self, container):
+        return next((p for p, c in enumerate(self._data) if c is container), None)
+
+    def stored(self, container):
+        ''' a container of self._data as read, before space charge: the positions to show in text '''
+        producer = self._producer_of(container)
+        stored = getattr(self, '_stored_data', [])
+        return stored[producer] if producer is not None and producer < len(stored) else container
+
+    def space_charge_note(self, container):
+        ''' a tooltip line for objects drawn moved by space charge (container: of self._data), else '' '''
+        producer = self._producer_of(container)
+        if producer is None or not self.space_charge_applied(producer):
+            return ''
+        return f'\ndrawn where space charge moved its charge ({self._sce_map.name})'
 
     def _product_cache(self):
         ''' the gallery interface's ProductCache, shared by all drawables (None without one) '''

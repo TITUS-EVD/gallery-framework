@@ -301,10 +301,39 @@ def tpc_gui(gui, gdml=None):
     return gi, gm, tpc
 
 
-def made_with(name, gdml):
-    ''' a simulated file made with this GDML (None: one whose configuration can't be read) '''
+def made_with(name, gdml, sce_map=None):
+    ''' a simulated file made with this GDML and space charge map (None: one whose configuration can't be read) '''
     from dataclasses import replace
-    return replace(dated_file(name, False, [(1, 7, 100)]), gdml=gdml)
+    return replace(dated_file(name, False, [(1, 7, 100)]), gdml=gdml, sce_map=sce_map)
+
+
+def test_space_charge_follows_the_file(gui, capsys):
+    gi, gm, tpc = tpc_gui(gui)
+    sbnd_map = 'SCEoffsets_SBND_E500_dualmap_CV_voxelTH3'
+    files = {'sce.root': made_with('sce.root', 'sbnd_v02_06', sbnd_map),
+             'sce2.root': made_with('sce2.root', 'sbnd_v02_06', sbnd_map),
+             'nosce.root': made_with('nosce.root', 'sbnd_v02_06'),
+             'other.root': made_with('other.root', 'sbnd_v02_06', 'SCEoffsets_ICARUS_unknown')}
+    gi._scan = lambda names, progress=None: files[names[0]]
+    option = tpc._space_charge
+    # before a file: nothing to apply
+    assert tpc.space_charge_map() is None
+    gi.set_input_files(['sce.root'])
+    assert option.isEnabled() and option.isChecked() and tpc.space_charge_map().name == sbnd_map
+    assert sbnd_map in option.toolTip()
+    # turned off: kept for the next file
+    option.setChecked(False)
+    assert tpc.space_charge_map() is None
+    gi.set_input_files(['sce2.root'])
+    assert option.isEnabled() and not option.isChecked() and tpc.space_charge_map() is None
+    option.setChecked(True)
+    # no space charge in the simulation, or a map TITUS doesn't have: as stored
+    gi.set_input_files(['nosce.root'])
+    assert not option.isEnabled() and tpc.space_charge_map() is None
+    capsys.readouterr()
+    gi.set_input_files(['other.root'])
+    assert not option.isEnabled() and tpc.space_charge_map() is None
+    assert 'SCEoffsets_ICARUS_unknown' in capsys.readouterr().out and 'dump_sce_map.py' in option.toolTip()
 
 
 def test_files_are_drawn_with_the_geometry_they_were_made_with(gui):
