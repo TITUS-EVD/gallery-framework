@@ -195,8 +195,8 @@ class MCTruth(ReaderDrawable):
             note = "Turn on MCTrack in the Products to annotate the particles' tracks"
         elif keys:
             missing = sorted({particle_name(k.pdg) for k in keys if k not in tracks})
-            note = (f'Nothing to annotate for {", ".join(missing)} (no MCTrack drawn: neutral, '
-                    f'or no steps in the views shown)') if missing else ''
+            note = (f'Nothing to annotate for {", ".join(missing)} (no trajectory, start or end '
+                    f'known in the views shown)') if missing else ''
         self._set_note('annotated', note)
 
     def refresh_notes(self):

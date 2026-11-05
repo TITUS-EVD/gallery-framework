@@ -25,13 +25,14 @@ from ..readers.products import MCTracks, MCTruths, Points, Showers, Tracks
 
 SCE_DIR = pathlib.Path(__file__).parent.parent / 'detectors' / 'sce'
 
-# the position columns of each container moved by the map
+# the position columns of each container moved by the map, (x, y, z) column names
 POSITION_COLUMNS = {
-    Points: ('x', 'y', 'z'),
-    Tracks: ('x', 'y', 'z'),
-    MCTracks: ('x', 'y', 'z'),
-    Showers: ('start_x', 'start_y', 'start_z'),
-    MCTruths: ('vx', 'vy', 'vz'),
+    Points: [('x', 'y', 'z')],
+    Tracks: [('x', 'y', 'z')],
+    MCTracks: [('x', 'y', 'z')] + [tuple(f'{p}_{a}' for a in 'xyz')
+                                   for p in ('start', 'end', 'mother_start', 'mother_end')],
+    Showers: [('start_x', 'start_y', 'start_z')],
+    MCTruths: [('vx', 'vy', 'vz')],
 }
 
 # product kinds in true (deposited) space: simulated ones, and the reco ones
@@ -127,9 +128,14 @@ def in_true_space(kind, tag):
 
 def displaced(container, sce_map):
     ''' a copy of a container with its positions moved by the map (the container itself is shared, e.g. cached) '''
-    columns = POSITION_COLUMNS.get(type(container))
-    if columns is None or len(getattr(container, columns[0])) == 0:
+    triples = [columns for columns in POSITION_COLUMNS.get(type(container), [])
+               if len(getattr(container, columns[0]))]
+    if not triples:
         return container
-    xyz = np.stack([getattr(container, c) for c in columns], axis=1)
-    moved = sce_map.displace(xyz)
-    return dataclasses.replace(container, **{c: moved[:, a] for a, c in enumerate(columns)})
+    moved = {}
+    for columns in triples:
+        xyz = np.stack([getattr(container, c) for c in columns], axis=1).astype(float)
+        known = np.all(np.isfinite(xyz), axis=1)
+        xyz[known] = sce_map.displace(xyz[known])
+        moved.update({c: xyz[:, a] for a, c in enumerate(columns)})
+    return dataclasses.replace(container, **moved)

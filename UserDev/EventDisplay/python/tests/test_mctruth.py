@@ -83,3 +83,21 @@ def test_generator_particles_match_their_mctracks(genie):
     # without the "primary" requirement, the 938.8 MeV proton matches scattered protons too
     slow = min(protons, key=lambda k: k.energy)
     assert np.sum((mctracks.pdg == 2212) & (np.abs(mctracks.start_e - slow.energy) < 1.)) > 10
+
+
+def test_kaons_match_despite_geant4_masses():
+    '''
+    Geant4 recomputes a primary's energy with its own mass: a K+ starts up to
+    ~0.1 MeV off the generator's (the most near rest), so the nearest primary is its MCTrack
+    '''
+    from titus.display.mctruth import ParticleKey, match_mctracks
+    from titus.readers import MCTracks
+    columns = dict(track_id=[1, 2, 3, 4], pdg=[321, 321, 321, -321], origin=[1, 1, 1, 1],
+                   process=['primary', 'primary', 'kaon+Inelastic', 'primary'], start_t=[0.] * 4,
+                   start_e=[520.08, 1090.0, 520.0, 700.0], step_offset=[0, 0, 0, 0, 0],
+                   x=[], y=[], z=[], t=[], e=[])
+    mctracks = MCTracks(**columns)
+    slow, fast, anti = ParticleKey(321, 520.0, 1), ParticleKey(321, 1089.97, 1), ParticleKey(-321, 700.0, 1)
+    found = match_mctracks(mctracks, [slow, fast, anti, ParticleKey(321, 800., 1), ParticleKey(321, 520., 2)])
+    # each its own primary (not the scattered K+ at exactly its energy); none for no primary that near, or another origin
+    assert found == {slow: [0], fast: [1], anti: [3]}

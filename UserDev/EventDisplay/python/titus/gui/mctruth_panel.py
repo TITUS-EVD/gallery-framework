@@ -65,7 +65,8 @@ class MCTruthPanel(QtWidgets.QWidget):
         self._table = QtWidgets.QTableWidget(0, len(self.COLUMNS))
         self._table.setHorizontalHeaderLabels([self.HEADERS.get(c, c) for c in self.COLUMNS])
         self._table.horizontalHeaderItem(self._column('Annotate')).setToolTip(
-            "Annotate: draw the particle's MCTrack in white, with its name")
+            "Annotate: draw the particle's MCTrack in white, with its name (dashed and straight\n"
+            "from its start to its end without a trajectory, e.g. neutral particles)")
         self._table.itemChanged.connect(self._on_item_changed)
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -185,7 +186,7 @@ class MCTruthPanel(QtWidgets.QWidget):
             item.setToolTip(f'{row.name}: showers are not annotated yet')
         else:
             item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-            item.setToolTip(f'Annotate the {row.name}: its MCTrack drawn in white, with its name')
+            item.setToolTip(f'Annotate the {row.name}: drawn in white, with its name')
         item.setCheckState(QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked)
         return item
 

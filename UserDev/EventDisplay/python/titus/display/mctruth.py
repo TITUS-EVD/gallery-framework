@@ -113,25 +113,30 @@ def particle_key(truths, row, index):
     return ParticleKey(int(pdg[index]), float(energy[index]) * 1000., int(truths.origin[row]))
 
 
-# start energies of a particle and its MCTrack agree to float precision
-MATCH_TOLERANCE_MEV = 0.05
+# start energies of a particle and its MCTrack: to float precision (1e-4 MeV) for most
+# species, but Geant4 recomputes them from the momentum with its own masses, e.g. K+
+# 0.035 MeV off at 1 GeV (more near rest): the nearest primary within this is the one
+MATCH_TOLERANCE_MEV = 0.5
 
 
 def match_mctracks(mctracks, keys):
     '''
-    Rows of the sim::MCTracks that are these generator particles: Geant4
-    primaries (process "primary") of the same origin and PDG code, starting
-    with the particle's energy. Neutral particles have none (mcreco makes
-    MCTracks of charged particles; electrons and photons are MCShowers).
-    {key: [rows]} for the keys with a match.
+    Rows of the sim::MCTracks that are these generator particles: the Geant4
+    primary (process "primary") of the same origin and PDG code starting with
+    the energy nearest the particle's. Neutral particles have none (mcreco
+    makes MCTracks of charged particles; electrons and photons are
+    MCShowers). {key: [rows]} for the keys with a match.
     '''
     primary = mctracks.process == 'primary'
     out = {}
     for key in keys:
-        rows = np.flatnonzero(primary & (mctracks.pdg == key.pdg) & (mctracks.origin == key.origin)
-                              & (np.abs(mctracks.start_e - key.energy) < MATCH_TOLERANCE_MEV))
-        if len(rows):
-            out[key] = rows.tolist()
+        rows = np.flatnonzero(primary & (mctracks.pdg == key.pdg) & (mctracks.origin == key.origin))
+        if len(rows) == 0:
+            continue
+        difference = np.abs(mctracks.start_e[rows] - key.energy)
+        nearest = int(np.argmin(difference))
+        if difference[nearest] < MATCH_TOLERANCE_MEV:
+            out[key] = [int(rows[nearest])]
     return out
 
 

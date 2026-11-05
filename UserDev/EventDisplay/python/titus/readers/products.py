@@ -373,10 +373,26 @@ class MCTracks(Columns):
     sim::MCTrack: per track its G4 track ID, PDG code, origin, creating
     process, and start time (G4 time, ns) and energy (MeV). Steps of track i
     are rows step_offset[i] to step_offset[i + 1] of x, y, z (cm), t (ns), e (MeV).
+    Per track also its start and end points (kept without steps), and its
+    mother's PDG code, creating process and start (time, energy, position)
+    and end points: a neutral primary has no MCTrack, but its daughters'
+    mother is it. Products read before these were (older dumps) have them
+    nan ('' and 0 for the process and PDG code).
     """
     DTYPES: ClassVar[Dict[str, str]] = {
         'track_id': 'i4', 'pdg': 'i4', 'origin': 'i4', 'process': 'U', 'start_t': 'f8', 'start_e': 'f4',
         'step_offset': 'i8', 'x': 'f4', 'y': 'f4', 'z': 'f4', 't': 'f8', 'e': 'f4',
+        'start_x': 'f4', 'start_y': 'f4', 'start_z': 'f4', 'end_x': 'f4', 'end_y': 'f4', 'end_z': 'f4',
+        'mother_pdg': 'i4', 'mother_process': 'U', 'mother_start_t': 'f8', 'mother_start_e': 'f4',
+        'mother_start_x': 'f4', 'mother_start_y': 'f4', 'mother_start_z': 'f4',
+        'mother_end_x': 'f4', 'mother_end_y': 'f4', 'mother_end_z': 'f4',
+    }
+    # per track, added later: their value when not read
+    OPTIONAL: ClassVar[Dict[str, object]] = {
+        **{c: np.nan for c in ('start_x', 'start_y', 'start_z', 'end_x', 'end_y', 'end_z', 'mother_start_t',
+                               'mother_start_e', 'mother_start_x', 'mother_start_y', 'mother_start_z',
+                               'mother_end_x', 'mother_end_y', 'mother_end_z')},
+        'mother_pdg': 0, 'mother_process': '',
     }
     track_id: np.ndarray
     pdg: np.ndarray
@@ -390,6 +406,33 @@ class MCTracks(Columns):
     z: np.ndarray
     t: np.ndarray
     e: np.ndarray
+    start_x: np.ndarray = None
+    start_y: np.ndarray = None
+    start_z: np.ndarray = None
+    end_x: np.ndarray = None
+    end_y: np.ndarray = None
+    end_z: np.ndarray = None
+    mother_pdg: np.ndarray = None
+    mother_process: np.ndarray = None
+    mother_start_t: np.ndarray = None
+    mother_start_e: np.ndarray = None
+    mother_start_x: np.ndarray = None
+    mother_start_y: np.ndarray = None
+    mother_start_z: np.ndarray = None
+    mother_end_x: np.ndarray = None
+    mother_end_y: np.ndarray = None
+    mother_end_z: np.ndarray = None
+
+    def __post_init__(self):
+        n = len(np.asarray(self.track_id))
+        for name, value in self.OPTIONAL.items():
+            if getattr(self, name) is None:
+                object.__setattr__(self, name, [value] * n)
+        super().__post_init__()
+
+    @classmethod
+    def from_arrays(cls, arrays):
+        return super().from_arrays({**{name: None for name in cls.OPTIONAL}, **arrays})
 
     def __len__(self):
         return len(self.track_id)
@@ -399,6 +442,18 @@ class MCTracks(Columns):
         arrays = {f.name: [] for f in fields(cls)}
         arrays['step_offset'] = [0]
         return cls(**arrays)
+
+    def start(self, row) -> np.ndarray:
+        return np.array([self.start_x[row], self.start_y[row], self.start_z[row]], dtype=float)
+
+    def end(self, row) -> np.ndarray:
+        return np.array([self.end_x[row], self.end_y[row], self.end_z[row]], dtype=float)
+
+    def mother_start(self, row) -> np.ndarray:
+        return np.array([self.mother_start_x[row], self.mother_start_y[row], self.mother_start_z[row]], dtype=float)
+
+    def mother_end(self, row) -> np.ndarray:
+        return np.array([self.mother_end_x[row], self.mother_end_y[row], self.mother_end_z[row]], dtype=float)
 
     def points(self, row) -> np.ndarray:
         """ (n, 3) step positions of a track """
