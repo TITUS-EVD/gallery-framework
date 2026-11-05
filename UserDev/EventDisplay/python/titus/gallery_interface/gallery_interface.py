@@ -2,11 +2,12 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from PyQt5 import QtCore
 
 from titus.readers.base import ProductCache
+from titus.readers.file_config import file_gdml
 
 
 def _root():
@@ -65,6 +66,8 @@ class OpenedFiles:
     file_names: object = None
     # seconds per step: 'TFile' (all files), 'gallery'
     timings: Dict[str, float] = field(default_factory=dict)
+    # the GDML the (first) file was made with, from its configuration; None if unknown
+    gdml: Optional[str] = None
 
     def describe_timings(self):
         return ', '.join(f'{step} {seconds:.1f} s' for step, seconds in self.timings.items())
@@ -115,9 +118,10 @@ def _merge_tables(into, table):
 
 def ping_file(root, file, timings=None):
     '''
-    (run list, product table) of a file, read with ROOT's TFile before gallery
-    opens it, as TITUS always did: gallery's constructor crashed in the GUI
-    when it was the first to open the file (it reads the file's dictionaries).
+    (run list, product table, GDML) of a file, read with ROOT's TFile before
+    gallery opens it, as TITUS always did: gallery's constructor crashed in
+    the GUI when it was the first to open the file (it reads the file's
+    dictionaries). GDML: the one the file was made with, None if unknown.
     timings: {step: seconds} to add this file's steps to.
     '''
     timings = {} if timings is None else timings
@@ -147,9 +151,11 @@ def ping_file(root, file, timings=None):
         lap(f'run list ({n_entries} events)' if n_entries > 1 else 'run list')
         table = product_table([(b.GetName(), b.GetTypeName()) for b in tree.GetListOfBranches()])
         lap('branches')
+        gdml = file_gdml(f, file)
+        lap('configuration')
     finally:
         f.Close()
-    return run_list, table
+    return run_list, table, gdml
 
 
 def scan_steps(n_files):
@@ -172,11 +178,11 @@ def scan_files(files, root=None, progress=None):
     files, warnings = readable_files(files)
     if not files:
         raise OpenError('; '.join(warnings) or 'no file given')
-    run_list, table, opened, timings = [], {'all': {}}, [], {}
+    run_list, table, opened, timings, gdmls = [], {'all': {}}, [], {}, []
     for i, file in enumerate(files):
         progress(f'Reading {os.path.basename(file)}', i)
         try:
-            file_runs, file_table = ping_file(root, file, timings)
+            file_runs, file_table, gdml = ping_file(root, file, timings)
         except (OSError, AttributeError, ReferenceError) as e:
             warnings.append(f'could not open {file} ({e}), skipping')
             continue
@@ -186,10 +192,14 @@ def scan_files(files, root=None, progress=None):
         run_list += file_runs
         _merge_tables(table, file_table)
         opened.append(file)
+        gdmls.append(gdml)
     if not opened:
         raise OpenError('; '.join(warnings))
     if not run_list:
         raise OpenError(f'no events in {", ".join(opened)}')
+    if len({g for g in gdmls if g is not None}) > 1:
+        warnings.append(f'the files were made with different geometries ({", ".join(sorted(set(filter(None, gdmls))))}): '
+                        f'all are drawn with that of {os.path.basename(opened[0])}')
     timings['TFile total'] = time.perf_counter() - start
     start = time.perf_counter()
     progress('Opening with gallery', scan_steps(n_given) - 1)
@@ -202,7 +212,7 @@ def scan_files(files, root=None, progress=None):
         raise OpenError(f'gallery could not open {", ".join(opened)}: {e}') from None
     timings['gallery'] = time.perf_counter() - start
     return OpenedFiles(files=opened, event=ev, run_list=run_list, key_table=table, warnings=warnings,
-                       file_names=names, timings=timings)
+                       file_names=names, timings=timings, gdml=gdmls[0])
 
 
 def position_event(ev, entry):
@@ -260,6 +270,8 @@ class GalleryInterface(QtCore.QObject):
 
         self._current_file = ''
         self._current_directory = os.getcwd()
+        # the GDML the open file was made with (None: unknown)
+        self._file_gdml = None
 
         if file is not None:
             self.set_input_files([file] if isinstance(file, str) else file)
@@ -298,6 +310,11 @@ class GalleryInterface(QtCore.QObject):
     @property
     def current_file(self):
         return self._current_file
+
+    @property
+    def file_gdml(self):
+        ''' the GDML the open file was made with (e.g. 'sbnd_v02_06'), from its configuration; None if unknown '''
+        return self._file_gdml
 
     @property
     def current_directory(self):
@@ -357,6 +374,7 @@ class GalleryInterface(QtCore.QObject):
         # TODO gallery supports vector of files chained together, but for now
         # we only consider one file opened at a time
         self._current_file = result.files[0]
+        self._file_gdml = result.gdml
         self._current_directory = os.path.dirname(self._current_file)
         # if the file has no dirname, assume it is meant to be in the current directory
         if self._current_directory == '':

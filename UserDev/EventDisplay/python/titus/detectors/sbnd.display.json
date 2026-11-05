@@ -1,4 +1,6 @@
 {
+ "_default_gdml": "drawn until a file says which GDML it was made with (read from its configuration), or when it can't be read",
+ "default_gdml": "sbnd_v02_04",
  "view_names": [
   "U",
   "V",
