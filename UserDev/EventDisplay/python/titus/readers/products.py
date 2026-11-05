@@ -373,16 +373,18 @@ class MCTracks(Columns):
     sim::MCTrack: per track its G4 track ID, PDG code, origin, creating
     process, and start time (G4 time, ns) and energy (MeV). Steps of track i
     are rows step_offset[i] to step_offset[i + 1] of x, y, z (cm), t (ns), e (MeV).
-    Per track also its start and end points (kept without steps), and its
-    mother's PDG code, creating process and start (time, energy, position)
-    and end points: a neutral primary has no MCTrack, but its daughters'
-    mother is it. Products read before these were (older dumps) have them
-    nan ('' and 0 for the process and PDG code).
+    Per track also its start and end points (kept without steps), its
+    mother's and its ancestor's (the primary it descends from) G4 track IDs,
+    and its mother's PDG code, creating process and start (time, energy,
+    position) and end points: a neutral primary has no MCTrack, but its
+    daughters' mother is it. Products read before these were (older dumps)
+    have them nan ('' for the process, 0 for the PDG code, -1 for the IDs).
     """
     DTYPES: ClassVar[Dict[str, str]] = {
         'track_id': 'i4', 'pdg': 'i4', 'origin': 'i4', 'process': 'U', 'start_t': 'f8', 'start_e': 'f4',
         'step_offset': 'i8', 'x': 'f4', 'y': 'f4', 'z': 'f4', 't': 'f8', 'e': 'f4',
         'start_x': 'f4', 'start_y': 'f4', 'start_z': 'f4', 'end_x': 'f4', 'end_y': 'f4', 'end_z': 'f4',
+        'mother_track_id': 'i4', 'ancestor_track_id': 'i4',
         'mother_pdg': 'i4', 'mother_process': 'U', 'mother_start_t': 'f8', 'mother_start_e': 'f4',
         'mother_start_x': 'f4', 'mother_start_y': 'f4', 'mother_start_z': 'f4',
         'mother_end_x': 'f4', 'mother_end_y': 'f4', 'mother_end_z': 'f4',
@@ -392,7 +394,7 @@ class MCTracks(Columns):
         **{c: np.nan for c in ('start_x', 'start_y', 'start_z', 'end_x', 'end_y', 'end_z', 'mother_start_t',
                                'mother_start_e', 'mother_start_x', 'mother_start_y', 'mother_start_z',
                                'mother_end_x', 'mother_end_y', 'mother_end_z')},
-        'mother_pdg': 0, 'mother_process': '',
+        'mother_pdg': 0, 'mother_process': '', 'mother_track_id': -1, 'ancestor_track_id': -1,
     }
     track_id: np.ndarray
     pdg: np.ndarray
@@ -412,6 +414,8 @@ class MCTracks(Columns):
     end_x: np.ndarray = None
     end_y: np.ndarray = None
     end_z: np.ndarray = None
+    mother_track_id: np.ndarray = None
+    ancestor_track_id: np.ndarray = None
     mother_pdg: np.ndarray = None
     mother_process: np.ndarray = None
     mother_start_t: np.ndarray = None

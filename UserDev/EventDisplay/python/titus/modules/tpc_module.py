@@ -683,6 +683,11 @@ class TpcModule(Module):
     def annotated_mc_particles(self):
         return self._annotated_mc_particles
 
+    def annotate_secondaries(self):
+        ''' whether the annotated particles' descendants are annotated too (the MC truth dock's option) '''
+        panel = getattr(self, '_mctruth_panel', None)
+        return panel is not None and panel.annotate_secondaries.isChecked()
+
     def refresh_mctruth_notes(self):
         ''' the MC truth dock's notes on its particles' MCTracks, once MCTracks are drawn (MCTrack.drawObjects) '''
         for drawable in self._product_box_map.values():

@@ -393,6 +393,8 @@ namespace titusio {
     for (auto* v : {&start_x, &start_y, &start_z, &end_x, &end_y, &end_z, &mother_start_e, &mother_start_x,
                     &mother_start_y, &mother_start_z, &mother_end_x, &mother_end_y, &mother_end_z})
       v->clear();
+    mother_track_id.clear();
+    ancestor_track_id.clear();
     mother_pdg.clear();
     mother_process.clear();
     mother_start_t.clear();
@@ -551,6 +553,8 @@ namespace titusio {
       out.end_x.push_back(track.End().X());
       out.end_y.push_back(track.End().Y());
       out.end_z.push_back(track.End().Z());
+      out.mother_track_id.push_back(track.MotherTrackID());
+      out.ancestor_track_id.push_back(track.AncestorTrackID());
       out.mother_pdg.push_back(track.MotherPdgCode());
       out.mother_process.push_back(track.MotherProcess());
       out.mother_start_t.push_back(track.MotherStart().T());

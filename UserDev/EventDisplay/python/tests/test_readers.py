@@ -468,6 +468,7 @@ class FakeMCTrack(FakeVector):
     def __init__(self, steps, **methods):
         super().__init__(steps)
         methods = {'End': methods.get('Start'), 'MotherPdgCode': methods.get('PdgCode'),
+                   'MotherTrackID': methods.get('TrackID'), 'AncestorTrackID': methods.get('TrackID'),
                    'MotherProcess': methods.get('Process'), 'MotherStart': methods.get('Start'),
                    'MotherEnd': methods.get('Start'), **methods}
         for k, v in methods.items():
@@ -506,12 +507,14 @@ def test_extract_mctracks():
     # a Λ's decay proton: no steps, its start, end and mother kept
     decay = FakeMCTrack([], TrackID=6, PdgCode=2212, Origin=1, Process='Decay', Start=FakeStep(4, 5, 6, 30, 950),
                         End=FakeStep(7, 8, 9, 40, 938), MotherPdgCode=3122, MotherProcess='primary',
+                        MotherTrackID=4, AncestorTrackID=4,
                         MotherStart=FakeStep(0, 0, 0, 1, 1200), MotherEnd=FakeStep(4, 5, 6, 30, 1150))
     tracks = dump_products.extract_mctracks([track, decay])
     assert tracks.process.tolist() == ['primary', 'Decay']
     assert tracks.points(0).tolist() == [[0, 0, 0], [1, 2, 3]] and len(tracks.points(1)) == 0
     assert tracks.start(1).tolist() == [4, 5, 6] and tracks.end(1).tolist() == [7, 8, 9]
     assert (tracks.mother_pdg[1], tracks.mother_process[1], tracks.mother_start_e[1]) == (3122, 'primary', 1200)
+    assert (tracks.mother_track_id[1], tracks.ancestor_track_id[1]) == (4, 4)
     assert tracks.mother_start(1).tolist() == [0, 0, 0] and tracks.mother_end(1).tolist() == [4, 5, 6]
 
 
