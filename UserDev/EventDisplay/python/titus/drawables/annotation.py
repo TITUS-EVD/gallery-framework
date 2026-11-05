@@ -6,7 +6,7 @@ tracks, and its name above the line, along it.
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5 import QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 ANNOTATION_COLOR = (255, 255, 255)
 LINE_WIDTH = 2  # pixels
@@ -40,11 +40,12 @@ def label_place(points):
     return middle, direction
 
 
-def annotation_items(paths, name):
+def annotation_items(paths, name, dashed=False):
     '''
     The graphics items annotating a particle in a view: its path (the
     segments it is drawn in, (n, 2) points each) in white, and its name above
-    the longest segment
+    the longest segment. dashed: a straight line standing in for a
+    trajectory not known (a neutral particle's, or one without steps)
     '''
     paths = [np.asarray(p, dtype=float) for p in paths if len(p) > 1]
     if not paths:
@@ -55,7 +56,7 @@ def annotation_items(paths, name):
         for x, y in points[1:]:
             path.lineTo(x, y)
     line = QtWidgets.QGraphicsPathItem(path)
-    pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH)
+    pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH, style=QtCore.Qt.DashLine if dashed else QtCore.Qt.SolidLine)
     pen.setCosmetic(True)
     line.setPen(pen)
     line.setZValue(Z_VALUE)

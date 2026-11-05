@@ -1,18 +1,44 @@
 import numpy as np
 
-from titus.display import mc_t0
-from titus.display.mctruth import match_mctracks, particle_name
+from titus.display import mc_t0, track_correction, track_segments
+from titus.display.mctruth import MATCH_TOLERANCE_MEV, match_mctracks, particle_name
 from titus.display.projection import AS_STORED
 from titus.drawables.annotation import annotation_items
 from titus.drawables.drawable import add_items, remove_items
 from titus.drawables.track import Track
 from titus.readers import Tracks
 
+# straight paths (particles without a trajectory) are projected through points this far apart (cm)
+STRAIGHT_STEP_CM = 1.
+
 
 def mctracks_as_tracks(mctracks):
     ''' sim::MCTrack steps as Tracks trajectories (every step valid), for the track projection '''
     return Tracks(id=mctracks.track_id, point_offset=mctracks.step_offset, x=mctracks.x, y=mctracks.y,
                   z=mctracks.z, valid=np.ones(len(mctracks.x), dtype=bool))
+
+
+def straight_path(mctracks, key, own_rows):
+    '''
+    (start, end, G4 start time, MCTrack row) of a generator particle drawn as
+    a straight line, without a trajectory: its MCTrack's own start and end (a
+    charged particle mcreco kept no steps of), else, for a particle without
+    an MCTrack (neutral), the mother's start and end of a daughter whose
+    mother it is (e.g. a Λ's decay proton). None if neither is known.
+    '''
+    def usable(start, end):
+        return np.all(np.isfinite(start)) and np.all(np.isfinite(end)) and not np.allclose(start, end)
+
+    for row in own_rows:
+        if usable(mctracks.start(row), mctracks.end(row)):
+            return mctracks.start(row), mctracks.end(row), float(mctracks.start_t[row]), row
+    daughters = np.flatnonzero((mctracks.mother_pdg == key.pdg) & (mctracks.mother_process == 'primary')
+                               & (mctracks.process != 'primary') & (mctracks.origin == key.origin)
+                               & (np.abs(mctracks.mother_start_e - key.energy) < MATCH_TOLERANCE_MEV))
+    for row in daughters:
+        if usable(mctracks.mother_start(row), mctracks.mother_end(row)):
+            return mctracks.mother_start(row), mctracks.mother_end(row), float(mctracks.mother_start_t[row]), row
+    return None
 
 
 class MCTrack(Track):
@@ -100,7 +126,47 @@ class MCTrack(Track):
             if items:
                 add_items(view._view, items)
                 self._annotations.extend(items)
+        # no trajectory drawn (neutral, or no steps kept): a dashed straight line
+        for key in keys:
+            if key in drawn:
+                continue
+            ids = self._annotate_straight(key, rows)
+            if ids:
+                drawn.add(key)
+                found[key] = ids
         return {key: ids for key, ids in found.items() if key in drawn}
+
+    def _annotate_straight(self, key, rows):
+        '''
+        draw a particle without a trajectory as a dashed straight line, in
+        each view (rows: {(producer, row): key} of the matched MCTracks);
+        [MCTrack ID] it was found from, or []
+        '''
+        for producer, stored in enumerate(self._stored_data):
+            own = [r for (p, r), k in rows.items() if p == producer and k == key]
+            path = straight_path(stored, key, own)
+            if path is None:
+                continue
+            start, end, g4_time, row = path
+            n = int(np.ceil(np.linalg.norm(end - start) / STRAIGHT_STEP_CM)) + 1
+            xyz = start + np.linspace(0, 1, min(max(n, 2), 5000))[:, None] * (end - start)
+            if self.space_charge_applied(producer):
+                xyz = self._sce_map.displace(xyz)
+            line = Tracks(id=[int(stored.track_id[row])], point_offset=[0, len(xyz)], x=xyz[:, 0], y=xyz[:, 1],
+                          z=xyz[:, 2], valid=np.ones(len(xyz), dtype=bool))
+            name, drawn = particle_name(key.pdg), False
+            for view in self.views():
+                layout = self.view_layout(view)
+                correction = track_correction(layout, line, 0, t0=mc_t0(self._geom, g4_time)) if self.corrected() else None
+                segments = [np.stack([s.x, s.y], axis=1) for s in track_segments(layout, line, 0, correction)]
+                items = annotation_items(segments, name, dashed=True)
+                if items:
+                    add_items(view._view, items)
+                    self._annotations.extend(items)
+                    drawn = True
+            if drawn:
+                return [int(stored.track_id[row])]
+        return []
 
     def highlight_particles(self, keys):
         '''

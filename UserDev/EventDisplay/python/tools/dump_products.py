@@ -287,7 +287,7 @@ def extract_mctruths(truths):
 
 
 def extract_mctracks(tracks):
-    columns = {name: [] for name in ('track_id', 'pdg', 'origin', 'process', 'start_t', 'start_e')}
+    columns = {name: [] for name in MCTracks.DTYPES if name not in ('step_offset', 'x', 'y', 'z', 't', 'e')}
     steps = []
     for t in tracks:
         columns['track_id'].append(t.TrackID())
@@ -296,6 +296,14 @@ def extract_mctracks(tracks):
         columns['process'].append(str(t.Process()))
         columns['start_t'].append(t.Start().T())
         columns['start_e'].append(t.Start().E())
+        columns['mother_pdg'].append(t.MotherPdgCode())
+        columns['mother_process'].append(str(t.MotherProcess()))
+        columns['mother_start_t'].append(t.MotherStart().T())
+        columns['mother_start_e'].append(t.MotherStart().E())
+        for prefix, step in (('start', t.Start()), ('end', t.End()),
+                             ('mother_start', t.MotherStart()), ('mother_end', t.MotherEnd())):
+            for axis, value in zip('xyz', (step.X(), step.Y(), step.Z())):
+                columns[f'{prefix}_{axis}'].append(value)
         steps.append(np.array([(s.X(), s.Y(), s.Z(), s.T(), s.E()) for s in (t[i] for i in range(t.size()))],
                               dtype='f8').reshape(-1, 5))
     offsets, flat = _ragged(steps, 'f8')

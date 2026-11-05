@@ -1264,6 +1264,47 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     assert panel.annotated_particles() == []
 
 
+def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, products, sbnd, tpc_module):
+    ''' a Λ (no MCTrack: from its decay proton's mother) and a K+ mcreco kept no steps of: straight, dashed '''
+    from PyQt5 import QtCore, QtWidgets
+    from titus.display.mctruth import ParticleKey
+    from titus.drawables import MCTrack
+    from titus.readers import MCTracks
+    vertex, decay, kaon_end = [-100., 0., 200.], [-60., 30., 260.], [-150., -40., 300.]
+    columns = dict(track_id=[3, 7], pdg=[321, 2212], origin=[1, 1], process=['primary', 'Decay'],
+                   start_t=[0., 1.], start_e=[1090., 1100.], step_offset=[0, 0, 0], x=[], y=[], z=[], t=[], e=[],
+                   start_x=[vertex[0], decay[0]], start_y=[vertex[1], decay[1]], start_z=[vertex[2], decay[2]],
+                   end_x=[kaon_end[0], -40.], end_y=[kaon_end[1], 35.], end_z=[kaon_end[2], 270.],
+                   mother_pdg=[321, 3122], mother_process=['primary', 'primary'], mother_start_t=[0., 0.],
+                   mother_start_e=[1090., 2976.74], mother_start_x=[vertex[0]] * 2, mother_start_y=[vertex[1]] * 2,
+                   mother_start_z=[vertex[2]] * 2, mother_end_x=[kaon_end[0], decay[0]],
+                   mother_end_y=[kaon_end[1], decay[1]], mother_end_z=[kaon_end[2], decay[2]])
+    products[('mctracks', 'mcreco::G4')] = MCTracks(**columns)
+    tpc_module.space_charge_map = lambda: None
+    tpc_module.correct_3d_objects = lambda: True
+    lam, kaon, neutron = ParticleKey(3122, 2976.70, 1), ParticleKey(321, 1089.97, 1), ParticleKey(2112, 1200., 1)
+    tpc_module.annotated_mc_particles = lambda: [lam, kaon, neutron]
+    drawer = MCTrack(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('mcreco::G4')
+    drawer.analyze()
+    drawer.drawObjects()
+    # no trajectories at all, both annotated in each view
+    assert drawer.lines() == []
+    paths = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
+    labels = sorted(i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem))
+    assert labels == sorted(['K⁺', 'Λ'] * 3) and len(paths) == 6
+    assert all(p.pen().style() == QtCore.Qt.DashLine for p in paths)
+    found = drawer.annotate_particles([lam, kaon, neutron])
+    assert found == {lam: [7], kaon: [3]}
+    # the Λ's line from the vertex to its decay, in the collection view: across the wires of that z range
+    collection = sbnd.detector.planes[2]
+    wires = sorted(float(collection.wire_coordinate(np.array([p]))[0]) for p in (vertex, decay))
+    # (line, label) per particle and view
+    pairs = list(zip(drawer._annotations[::2], drawer._annotations[1::2]))
+    spans = [line.path().boundingRect() for line, label in pairs if label.textItem.toPlainText() == 'Λ']
+    assert any(abs(r.left() - wires[0] - 0.5) < 2 and abs(r.right() - wires[1] - 0.5) < 2 for r in spans)
+
+
 def test_annotation_labels_read_left_to_right_along_the_path():
     from titus.drawables.annotation import annotation_items, label_place
     # half way along, its direction there

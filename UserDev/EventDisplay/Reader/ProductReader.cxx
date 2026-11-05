@@ -390,6 +390,12 @@ namespace titusio {
     process.clear();
     start_t.clear();
     start_e.clear();
+    for (auto* v : {&start_x, &start_y, &start_z, &end_x, &end_y, &end_z, &mother_start_e, &mother_start_x,
+                    &mother_start_y, &mother_start_z, &mother_end_x, &mother_end_y, &mother_end_z})
+      v->clear();
+    mother_pdg.clear();
+    mother_process.clear();
+    mother_start_t.clear();
     step_offset.assign(1, 0);
     x.clear();
     y.clear();
@@ -539,6 +545,22 @@ namespace titusio {
       out.process.push_back(track.Process());
       out.start_t.push_back(track.Start().T());
       out.start_e.push_back(track.Start().E());
+      out.start_x.push_back(track.Start().X());
+      out.start_y.push_back(track.Start().Y());
+      out.start_z.push_back(track.Start().Z());
+      out.end_x.push_back(track.End().X());
+      out.end_y.push_back(track.End().Y());
+      out.end_z.push_back(track.End().Z());
+      out.mother_pdg.push_back(track.MotherPdgCode());
+      out.mother_process.push_back(track.MotherProcess());
+      out.mother_start_t.push_back(track.MotherStart().T());
+      out.mother_start_e.push_back(track.MotherStart().E());
+      out.mother_start_x.push_back(track.MotherStart().X());
+      out.mother_start_y.push_back(track.MotherStart().Y());
+      out.mother_start_z.push_back(track.MotherStart().Z());
+      out.mother_end_x.push_back(track.MotherEnd().X());
+      out.mother_end_y.push_back(track.MotherEnd().Y());
+      out.mother_end_z.push_back(track.MotherEnd().Z());
       for (auto const& step : track) {
         out.x.push_back(step.X());
         out.y.push_back(step.Y());

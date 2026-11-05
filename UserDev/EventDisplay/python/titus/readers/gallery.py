@@ -52,7 +52,10 @@ def to_numpy(vector, dtype):
 def columns_to_container(kind, columns):
     """ a titusio column struct (filled) to the products.py container """
     cls = KINDS[kind].container
-    arrays = {name: to_numpy(getattr(columns, name), dtype) for name, dtype in cls.DTYPES.items()}
+    # columns added later (cls.OPTIONAL) may be missing from a reader library built before them
+    optional = getattr(cls, 'OPTIONAL', {})
+    arrays = {name: to_numpy(getattr(columns, name), dtype) for name, dtype in cls.DTYPES.items()
+              if name not in optional or hasattr(columns, name)}
     if cls is RawDigits:
         arrays['adc'] = arrays['adc'].reshape(len(arrays['channel']), int(columns.width))
         return RawDigits(**arrays)

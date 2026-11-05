@@ -189,7 +189,10 @@ namespace titusio {
     void clear();
   };
 
-  /// sim::MCTrack; steps of track i are step_offset[i] to step_offset[i + 1]
+  /// sim::MCTrack; steps of track i are step_offset[i] to step_offset[i + 1].
+  /// Start and end points of the track and of its mother (mcreco keeps
+  /// them even without steps, and for mothers without an MCTrack, e.g.
+  /// neutral primaries)
   struct MCTrackColumns {
     std::vector<int> track_id;
     std::vector<int> pdg;
@@ -197,6 +200,22 @@ namespace titusio {
     std::vector<std::string> process;
     std::vector<double> start_t;
     std::vector<float> start_e;
+    std::vector<float> start_x;
+    std::vector<float> start_y;
+    std::vector<float> start_z;
+    std::vector<float> end_x;
+    std::vector<float> end_y;
+    std::vector<float> end_z;
+    std::vector<int> mother_pdg;
+    std::vector<std::string> mother_process;
+    std::vector<double> mother_start_t;
+    std::vector<float> mother_start_e;
+    std::vector<float> mother_start_x;
+    std::vector<float> mother_start_y;
+    std::vector<float> mother_start_z;
+    std::vector<float> mother_end_x;
+    std::vector<float> mother_end_y;
+    std::vector<float> mother_end_z;
     std::vector<long long> step_offset;
     std::vector<float> x;
     std::vector<float> y;
