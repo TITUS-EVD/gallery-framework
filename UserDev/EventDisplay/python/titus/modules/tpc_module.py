@@ -80,6 +80,7 @@ _MCTRACK = 'sim::MCTrack'
 
 # view state kept between sessions, not on the settings page
 _SET_ASPECT_RATIO = 'TPC/1:1 aspect ratio'
+_SET_MC_VERTEX = 'TPC/Show neutrino vertices'
 
 
 class TpcModule(Module):
@@ -130,6 +131,8 @@ class TpcModule(Module):
         self._annotated_mc_particles = []
         # and those whose secondaries are annotated
         self._annotated_mc_secondaries = []
+        # and those drawn with their paths (None: all)
+        self._annotated_mc_paths = None
         # draws the annotations, with MCTracks of its own (not a product box)
         self._mc_annotations = None
         # set while the product boxes are filled for a new file
@@ -675,6 +678,9 @@ class TpcModule(Module):
         self._mctruth_dock.setWidget(self._mctruth_panel)
         # used by the MCTruth drawable
         self._mctruth_dropdown = self._mctruth_panel.dropdown
+        # the neutrino vertices drawn or not as last session (off at first)
+        self._mctruth_panel.show_vertex.setChecked(self._settings.value(_SET_MC_VERTEX, False, type=bool))
+        self._mctruth_panel.show_vertex.toggled.connect(lambda shown: self._settings.setValue(_SET_MC_VERTEX, shown))
         self._mctruth_dock.hide()
 
     def select_mc_particles(self, keys):
@@ -696,19 +702,22 @@ class TpcModule(Module):
     def selected_mc_particles(self):
         return self._selected_mc_particles
 
-    def annotate_mc_particles(self, keys, secondaries=()):
+    def annotate_mc_particles(self, keys, secondaries=(), paths=None):
         '''
         the MC truth dock's annotated particles (ParticleKeys): their MCTracks
         drawn in white with their names, and the descendants of those in
-        secondaries, whether MCTracks are drawn (product box) or not.
+        secondaries, whether MCTracks are drawn (product box) or not; with
+        their paths for the particles in paths (None: all), else names only.
         {key: [MCTrack IDs]} found, or None if the file has no MCTracks.
         '''
         self._annotated_mc_particles = list(keys)
         self._annotated_mc_secondaries = list(secondaries)
+        self._annotated_mc_paths = None if paths is None else list(paths)
         annotations = self._mc_annotations
         if annotations is None or not annotations.producers():
             return None
-        return annotations.annotate_particles(self._annotated_mc_particles, self._annotated_mc_secondaries)
+        return annotations.annotate_particles(self._annotated_mc_particles, self._annotated_mc_secondaries,
+                                              self._annotated_mc_paths)
 
     def annotated_mc_particles(self):
         return self._annotated_mc_particles
@@ -721,10 +730,9 @@ class TpcModule(Module):
         ''' point size of the annotated particles' names (settings page) '''
         return self._annotation_font_size.value()
 
-    def annotation_lines_shown(self):
-        ''' whether the annotated particles' paths are drawn, or their names only (the MC truth dock's option) '''
-        panel = getattr(self, '_mctruth_panel', None)
-        return panel is None or panel.show_paths.isChecked()
+    def annotated_mc_paths(self):
+        ''' the particles whose annotations are drawn with their paths (the MC truth dock's Tr boxes), None: all '''
+        return self._annotated_mc_paths
 
     def _update_mc_annotation_producers(self):
         '''

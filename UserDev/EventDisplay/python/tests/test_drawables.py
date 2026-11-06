@@ -1097,9 +1097,10 @@ def test_product_box_choice_for_a_new_file():
     assert box_choice('recob::Hit', None, ['gaushit']) is None
 
 
-def test_mctruth_dock_follows_the_module(qtbot):
+def test_mctruth_dock_follows_the_module(qtbot, tmp_path):
     from titus.modules.tpc_module import TpcModule
     module = TpcModule.__new__(TpcModule)
+    module._settings = QtCore.QSettings(str(tmp_path / 'titus.ini'), QtCore.QSettings.IniFormat)
     window = QtWidgets.QMainWindow()
     qtbot.addWidget(window)
     module._mctruth_dock = QtWidgets.QDockWidget('MC Truth', window)
@@ -1108,6 +1109,11 @@ def test_mctruth_dock_follows_the_module(qtbot):
     module._dock_widgets, module._active = set(), True
     module.init_mctruth()
     assert module._mctruth_dock.isHidden() and module._mctruth_dropdown is module._mctruth_panel.dropdown
+    # the neutrino vertices: off at first, then as the user left them
+    assert not module._mctruth_panel.show_vertex.isChecked()
+    module._mctruth_panel.show_vertex.setChecked(True)
+    module.init_mctruth()
+    assert module._mctruth_panel.show_vertex.isChecked()
     module.show_mctruth_dock(True)
     assert module._mctruth_dock.isVisible() and module._mctruth_dock in module._dock_widgets
     module.show_mctruth_dock(False)
@@ -1200,10 +1206,10 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     reader = serve_all(products, STEP3)
     # the TPC module's selection and annotations, with its product boxes
     for name in ('select_mc_particles', 'selected_mc_particles', 'annotate_mc_particles', 'annotated_mc_particles',
-                 'annotated_mc_secondaries', 'annotation_lines_shown', 'refresh_mctruth_notes'):
+                 'annotated_mc_secondaries', 'annotated_mc_paths', 'refresh_mctruth_notes'):
         setattr(truth_module, name, getattr(TpcModule, name).__get__(truth_module))
     truth_module._selected_mc_particles, truth_module._annotated_mc_particles = [], []
-    truth_module._annotated_mc_secondaries = []
+    truth_module._annotated_mc_secondaries, truth_module._annotated_mc_paths = [], None
     truth_module._product_box_map = {}
     truth_module._mc_annotations = None
     drawer = draw_truth(sbnd, truth_module, producers=['generator::GenieGen'])
@@ -1267,11 +1273,15 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     assert annotations._annotations == []
     annotations.drawObjects()
     assert len(drawn()[0]) == len(labels)
-    # names only
-    panel.show_paths.setChecked(False)
+    # names only: Show paths, or the particle's Tr box
+    panel.show_all_paths(False)
     assert len(drawn()[0]) == len(labels) and drawn()[1] == []
-    panel.show_paths.setChecked(True)
+    panel.show_all_paths(True)
     assert len(drawn()[1]) == len(labels)
+    panel.annotate_particles([protons[0]], paths=[protons[1]])
+    assert len(drawn()[0]) == len(labels) and drawn()[1] == []
+    assert truth_module.annotated_mc_paths() == [particle_key(truths, 0, protons[1])]
+    panel.show_all_paths(True)
     # the same interaction listed with all its particles: still annotated
     panel.all_particles.setChecked(True)
     assert truth_module.annotated_mc_particles() == [key] and panel.annotated_particles() == [protons[0]]
@@ -1408,33 +1418,37 @@ def test_annotations_read_only_once_something_is_annotated(qtbot, products, sbnd
     assert drawer._stale
 
 
-def test_annotation_font_size_and_names_only(qtbot, products, sbnd, tpc_module):
-    from PyQt5 import QtWidgets
+def test_annotation_font_size_and_paths_per_particle(qtbot, products, sbnd, tpc_module):
+    from PyQt5 import QtCore, QtWidgets
     from titus.drawables import MCTrackAnnotations
     from titus.drawables.annotation import FONT_POINT_SIZE
-    mctracks, kaon, _ = kaon_lambda_event()
+    mctracks, kaon, lam = kaon_lambda_event()
     products[('mctracks', 'mcreco::G4')] = mctracks
     tpc_module.space_charge_map = lambda: None
     tpc_module.correct_3d_objects = lambda: True
-    tpc_module.annotated_mc_particles = lambda: [kaon]
-    tpc_module.annotated_mc_secondaries = lambda: []
+    tpc_module.annotated_mc_particles = lambda: [kaon, lam]
+    tpc_module.annotated_mc_secondaries = lambda: [kaon]
     drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
     drawer.set_producer('mcreco::G4')
     drawer.analyze()
 
-    def drawn(size, lines):
+    def drawn(size, paths):
         tpc_module.annotation_font_size = lambda: size
-        tpc_module.annotation_lines_shown = lambda: lines
+        tpc_module.annotated_mc_paths = lambda: paths
         drawer.drawObjects()
         labels = [i for i in drawer._annotations if isinstance(i, pg.TextItem)]
-        paths = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
-        return {l.textItem.font().pointSize() for l in labels}, len(labels), len(paths)
+        lines = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
+        return ({l.textItem.font().pointSize() for l in labels}, len(labels),
+                sorted({'dashed' if l.pen().style() == QtCore.Qt.DashLine else 'solid' for l in lines}), len(lines))
 
-    assert drawn(20, True) == ({20}, 3, 3)
-    # names only, still where the path is
-    assert drawn(8, False) == ({8}, 3, 0)
-    # the module says nothing usable: the default
-    assert drawn(None, True)[0] == {FONT_POINT_SIZE}
+    # the K+, the μ+ it decayed to and the Λ, in 3 views: all with their paths (None: all)
+    assert drawn(20, None) == ({20}, 9, ['dashed', 'solid'], 9)
+    # only the neutral's dashed line: the K+ and its secondary names only, still where their paths are
+    assert drawn(8, [lam]) == ({8}, 9, ['dashed'], 3)
+    # names only
+    assert drawn(12, []) == ({12}, 9, [], 0)
+    # the module says nothing usable: the default size, all paths
+    assert drawn(None, 'not a list') == ({FONT_POINT_SIZE}, 9, ['dashed', 'solid'], 9)
 
 
 def test_annotation_labels_can_be_moved(qtbot, products, sbnd, tpc_module):

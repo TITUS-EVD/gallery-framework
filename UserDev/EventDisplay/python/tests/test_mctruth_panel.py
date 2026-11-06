@@ -98,5 +98,33 @@ def test_secondaries_boxes_per_particle(panel):
     assert panel.secondaries_particles() == []
 
 
-def test_show_paths_on_by_default(panel):
-    assert panel.show_paths.isChecked()
+def test_paths_boxes_per_particle_and_show_paths(panel, qtbot):
+    Qt = QtCore.Qt
+    emitted = []
+    panel.particlesAnnotated.connect(emitted.append)
+    assert panel._table.horizontalHeaderItem(panel.COLUMNS.index('Paths')).text() == 'Tr'
+    # all on by default (the γ's box, disabled, left out)
+    assert panel.show_paths.checkState() == Qt.Checked and panel.paths_particles() == [0, 1, 4]
+    # one off: Show paths partly checked, and the change emitted
+    click(panel, 4, 'Paths')
+    assert panel.paths_particles() == [0, 1] and panel.show_paths.checkState() == Qt.PartiallyChecked
+    assert len(emitted) == 1
+    # Show paths clicked: all on; again: all off
+    qtbot.mouseClick(panel.show_paths, Qt.LeftButton)
+    assert panel.paths_particles() == [0, 1, 4] and panel.show_paths.checkState() == Qt.Checked
+    qtbot.mouseClick(panel.show_paths, Qt.LeftButton)
+    assert panel.paths_particles() == [] and panel.show_paths.checkState() == Qt.Unchecked
+    assert len(emitted) == 3
+    # every box on again by hand: checked
+    for index in (0, 1, 4):
+        click(panel, index, 'Paths')
+    assert panel.show_paths.checkState() == Qt.Checked
+    # the same interaction listed again: kept if asked; another: as Show paths says
+    panel.annotate_particles([], paths=[1])
+    panel.set_particles(ROWS, paths=panel.paths_particles())
+    assert panel.paths_particles() == [1] and panel.show_paths.checkState() == Qt.PartiallyChecked
+    panel.set_particles(ROWS)
+    assert panel.paths_particles() == [0, 1, 4]
+    panel.show_all_paths(False)
+    panel.set_particles(ROWS)
+    assert panel.paths_particles() == [] and panel.show_paths.checkState() == Qt.Unchecked

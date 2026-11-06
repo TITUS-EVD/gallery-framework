@@ -29,6 +29,13 @@ class _CheckItem(QtWidgets.QTableWidgetItem):
         return self.checkState() < other.checkState() if isinstance(other, _CheckItem) else super().__lt__(other)
 
 
+class _AllCheckBox(QtWidgets.QCheckBox):
+    ''' the checkbox of a column of boxes: partly checked when they differ; a click checks or unchecks them all '''
+
+    def nextCheckState(self):
+        self.setCheckState(QtCore.Qt.Unchecked if self.checkState() == QtCore.Qt.Checked else QtCore.Qt.Checked)
+
+
 # particles drawn as showers (sim::MCShower, no MCTrack to annotate): electrons, photons, neutral pions
 SHOWERING_PDG = (11, 22, 111)
 
@@ -42,13 +49,17 @@ class MCTruthPanel(QtWidgets.QWidget):
     interaction's particles; particlesAnnotated: those whose Annotate box is
     checked (drawn with their name), the same way, emitted too when a
     Secondaries box changes (secondaries_particles: those whose descendants
-    are annotated). show_paths: annotations drawn with their paths, else
-    their names only.
+    are annotated) or a Paths box (paths_particles: those whose annotations,
+    the particle's and its secondaries', are drawn with their paths, else
+    names only). show_paths checks or unchecks all the Paths boxes.
     '''
-    COLUMNS = ('Annotate', 'Secondaries', 'Particle', 'PDG', 'KE [MeV]', 'E [GeV]', 'Status')
-    HEADERS = {'Annotate': '✎', 'Secondaries': '2°'}
+    COLUMNS = ('Annotate', 'Secondaries', 'Paths', 'Particle', 'PDG', 'KE [MeV]', 'E [GeV]', 'Status')
+    HEADERS = {'Annotate': '✎', 'Secondaries': '2°', 'Paths': 'Tr'}
     # the checkbox columns
-    CHECKS = ('Annotate', 'Secondaries')
+    CHECKS = ('Annotate', 'Secondaries', 'Paths')
+    TOOLTIPS = {'Annotate': 'Annotate the {}: drawn in white, with its name',
+                'Secondaries': 'Annotate what the {} made, each with its name',
+                'Paths': "Draw the {}'s annotated paths (its own and its secondaries'); unchecked, only names"}
     particlesSelected = QtCore.pyqtSignal(list)
     particlesAnnotated = QtCore.pyqtSignal(list)
 
@@ -63,9 +74,11 @@ class MCTruthPanel(QtWidgets.QWidget):
         self._summary_layout.setContentsMargins(0, 0, 0, 0)
         self._summary_layout.setRowWrapPolicy(QtWidgets.QFormLayout.DontWrapRows)
 
-        self.show_paths = QtWidgets.QCheckBox('Show paths')
+        self.show_paths = _AllCheckBox('Show paths')
         self.show_paths.setChecked(True)
-        self.show_paths.setToolTip("Draw the annotated particles' paths in white; unchecked, only their names")
+        self.show_paths.setToolTip("Draw the annotated particles' paths in white; unchecked, only their names.\n"
+                                   "Sets every particle's Tr box (partly checked: some are off)")
+        self.show_paths.clicked.connect(lambda: self.show_all_paths(self.show_paths.checkState() == QtCore.Qt.Checked))
         self.all_particles = QtWidgets.QCheckBox('All particles')
         self.all_particles.setToolTip('Also list the initial, intermediate and in-nucleus particles '
                                       '(GENIE status codes), not only the final state')
@@ -78,6 +91,9 @@ class MCTruthPanel(QtWidgets.QWidget):
         self._table.horizontalHeaderItem(self._column('Secondaries')).setToolTip(
             "Secondaries: annotate what the particle made (decays, inelastic scatters...: the MCTracks\n"
             "descending from it in Geant4), each with its name")
+        self._table.horizontalHeaderItem(self._column('Paths')).setToolTip(
+            "Tr: draw the paths of the particle's annotations (its own and its secondaries');\n"
+            "unchecked, only their names (e.g. only the dashed lines of neutral particles)")
         self._table.itemChanged.connect(self._on_item_changed)
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -97,7 +113,8 @@ class MCTruthPanel(QtWidgets.QWidget):
         self.show_vertex = QtWidgets.QCheckBox('Show neutrino vertices')
         self.show_vertex.setToolTip('Mark the neutrino interaction vertices with crosses in the wire views; '
                                     'the selected interaction\'s is highlighted')
-        self.show_vertex.setChecked(True)
+        # off unless asked (the TPC module keeps the choice between sessions)
+        self.show_vertex.setChecked(False)
 
         # which MCTracks the selected particles are
         self._track_note = QtWidgets.QLabel()
@@ -126,7 +143,22 @@ class MCTruthPanel(QtWidgets.QWidget):
 
     def _on_item_changed(self, item):
         if item.column() in [self._column(c) for c in self.CHECKS]:
+            if item.column() == self._column('Paths'):
+                self._show_paths_state()
             self.particlesAnnotated.emit(self.annotated_particles())
+
+    def _show_paths_state(self):
+        ''' Show paths as the Tr boxes are: checked, unchecked, or partly checked if they differ '''
+        boxes = [self._table.item(r, self._column('Paths')) for r in range(self._table.rowCount())]
+        states = {b.checkState() for b in boxes if b.flags() & QtCore.Qt.ItemIsEnabled}
+        if states:
+            self.show_paths.setCheckState(states.pop() if len(states) == 1 else QtCore.Qt.PartiallyChecked)
+
+    def show_all_paths(self, show):
+        ''' check (or uncheck) every Tr box: the annotations drawn with their paths, or names only '''
+        indices = [self._particle_index(r) for r in range(self._table.rowCount())] if show else []
+        self.annotate_particles(self.annotated_particles(), paths=indices)
+        self.show_paths.setCheckState(QtCore.Qt.Checked if show else QtCore.Qt.Unchecked)
 
     def clear(self):
         self.dropdown.blockSignals(True)
@@ -157,12 +189,16 @@ class MCTruthPanel(QtWidgets.QWidget):
                  layout.itemAt(r, QtWidgets.QFormLayout.FieldRole).widget().text())
                 for r in range(layout.rowCount())]
 
-    def set_particles(self, rows, annotated=(), secondaries=()):
+    def set_particles(self, rows, annotated=(), secondaries=(), paths=None):
         '''
         ParticleRows (titus.display.mctruth.particle_rows). annotated,
-        secondaries: indices of particles to keep annotated, and with their
-        secondaries (the same interaction listed again)
+        secondaries, paths: indices of particles to keep annotated, with
+        their secondaries, with their paths (the same interaction listed
+        again); paths None: every Tr box as Show paths says (checked unless
+        unchecked)
         '''
+        if paths is None:
+            paths = [] if self.show_paths.checkState() == QtCore.Qt.Unchecked else [row.index for row in rows]
         table = self._table
         sort_column = table.horizontalHeader().sortIndicatorSection()
         order = table.horizontalHeader().sortIndicatorOrder()
@@ -175,9 +211,8 @@ class MCTruthPanel(QtWidgets.QWidget):
             name.setData(QtCore.Qt.UserRole, row.index)
             if is_genie_pseudo_particle(row.pdg):
                 name.setToolTip('GENIE pseudo-particle (e.g. nucleon cluster, hadronic system), no mass')
-            table.setItem(i, self._column('Annotate'), self._annotate_item(row, row.index in annotated))
-            table.setItem(i, self._column('Secondaries'),
-                          self._annotate_item(row, row.index in secondaries, secondaries=True))
+            for column, checked in (('Annotate', annotated), ('Secondaries', secondaries), ('Paths', paths)):
+                table.setItem(i, self._column(column), self._annotate_item(row, row.index in checked, column))
             table.setItem(i, self._column('Particle'), name)
             table.setItem(i, self._column('PDG'), _NumberItem(row.pdg, '{:d}'))
             table.setItem(i, self._column('KE [MeV]'), _NumberItem(row.kinetic_energy, '{:.1f}'))
@@ -187,16 +222,17 @@ class MCTruthPanel(QtWidgets.QWidget):
         table.sortItems(sort_column, order)
         table.blockSignals(False)
         self._fit_columns()
+        self._show_paths_state()
         # a new list: nothing selected; annotated as asked
         self.particlesSelected.emit([])
         self.particlesAnnotated.emit(self.annotated_particles())
 
-    @staticmethod
-    def _annotate_item(row, checked, secondaries=False):
+    @classmethod
+    def _annotate_item(cls, row, checked, column='Annotate'):
         '''
-        the Annotate (or Secondaries) box of a particle: not selectable, so
-        that checking it leaves the selection (highlight) as it is. Showering
-        particles have no MCTrack to annotate yet.
+        the Annotate, Secondaries or Paths box of a particle: not
+        selectable, so that checking it leaves the selection (highlight) as
+        it is. Showering particles have no MCTrack to annotate yet.
         '''
         item = _CheckItem()
         if abs(row.pdg) in SHOWERING_PDG:
@@ -204,8 +240,7 @@ class MCTruthPanel(QtWidgets.QWidget):
             item.setToolTip(f'{row.name}: showers are not annotated yet')
         else:
             item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-            item.setToolTip(f'Annotate what the {row.name} made, each with its name' if secondaries
-                            else f'Annotate the {row.name}: drawn in white, with its name')
+            item.setToolTip(cls.TOOLTIPS[column].format(row.name))
         item.setCheckState(QtCore.Qt.Checked if checked else QtCore.Qt.Unchecked)
         return item
 
@@ -218,9 +253,10 @@ class MCTruthPanel(QtWidgets.QWidget):
         return [self._particle_index(r) for r in rows]
 
     def _checked(self, name):
-        column = self._column(name)
-        return sorted(self._particle_index(r) for r in range(self._table.rowCount())
-                      if self._table.item(r, column).checkState() == QtCore.Qt.Checked)
+        ''' the particles whose box of this column is checked (showers' boxes, disabled, left out) '''
+        items = [(r, self._table.item(r, self._column(name))) for r in range(self._table.rowCount())]
+        return sorted(self._particle_index(r) for r, item in items
+                      if item.checkState() == QtCore.Qt.Checked and item.flags() & QtCore.Qt.ItemIsEnabled)
 
     def annotated_particles(self):
         ''' indices (into the interaction's particles) of the particles whose Annotate box is checked '''
@@ -230,14 +266,18 @@ class MCTruthPanel(QtWidgets.QWidget):
         ''' indices (into the interaction's particles) of the particles whose Secondaries box is checked '''
         return self._checked('Secondaries')
 
-    def annotate_particles(self, indices, secondaries=None):
+    def paths_particles(self):
+        ''' indices (into the interaction's particles) of the particles whose Tr (Paths) box is checked '''
+        return self._checked('Paths')
+
+    def annotate_particles(self, indices, secondaries=None, paths=None):
         '''
         check the Annotate boxes of these particles, uncheck the others; the
-        same for the Secondaries boxes, unless secondaries is None (e.g. tests)
+        same for the Secondaries and Paths boxes, unless None (e.g. tests)
         '''
         table = self._table
         table.blockSignals(True)
-        for name, checked in (('Annotate', indices), ('Secondaries', secondaries)):
+        for name, checked in (('Annotate', indices), ('Secondaries', secondaries), ('Paths', paths)):
             if checked is None:
                 continue
             for r in range(table.rowCount()):
@@ -246,6 +286,8 @@ class MCTruthPanel(QtWidgets.QWidget):
                     item.setCheckState(QtCore.Qt.Checked if self._particle_index(r) in checked
                                        else QtCore.Qt.Unchecked)
         table.blockSignals(False)
+        if paths is not None:
+            self._show_paths_state()
         self.particlesAnnotated.emit(self.annotated_particles())
 
     def select_particles(self, indices):

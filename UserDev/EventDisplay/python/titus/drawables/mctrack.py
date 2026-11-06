@@ -126,7 +126,8 @@ class MCTrackAnnotations(MCTrack):
     the TPC module (not a product box: annotating needs no MCTracks drawn),
     only once something is annotated, and projects the annotated ones only.
     The module says what and how: annotated_mc_particles,
-    annotated_mc_secondaries, annotation_font_size, annotation_lines_shown.
+    annotated_mc_secondaries, annotated_mc_paths (None: all drawn with
+    their paths), annotation_font_size.
     '''
 
     def __init__(self, gallery_interface, geom, tpc_module, *args, **kwargs):
@@ -161,20 +162,19 @@ class MCTrackAnnotations(MCTrack):
 
     def drawObjects(self):
         self.annotate_particles(self._module_keys('annotated_mc_particles'),
-                                self._module_keys('annotated_mc_secondaries'))
+                                self._module_keys('annotated_mc_secondaries'),
+                                self._module_keys('annotated_mc_paths', default=None))
 
-    def _module_keys(self, name):
+    def _module_keys(self, name, default=()):
         getter = getattr(self._module, name, None)
-        keys = getter() if callable(getter) else []
-        return keys if isinstance(keys, list) else []
+        keys = getter() if callable(getter) else None
+        return keys if isinstance(keys, list) else (None if default is None else [])
 
-    def _style(self):
-        ''' (label font size, whether the paths are drawn), as the module says '''
+    def _font_size(self):
+        ''' of the labels, as the module says '''
         size = getattr(self._module, 'annotation_font_size', None)
         size = size() if callable(size) else None
-        lines = getattr(self._module, 'annotation_lines_shown', None)
-        lines = lines() if callable(lines) else True
-        return (size if isinstance(size, int) and size > 0 else FONT_POINT_SIZE), lines is not False
+        return size if isinstance(size, int) and size > 0 else FONT_POINT_SIZE
 
     def clearDrawnObjects(self, obj_list=None):
         super().clearDrawnObjects(obj_list)
@@ -184,14 +184,16 @@ class MCTrackAnnotations(MCTrack):
         remove_items(self._annotations)
         self._annotations = []
 
-    def annotate_particles(self, keys, secondaries=()):
+    def annotate_particles(self, keys, secondaries=(), paths=None):
         '''
         annotate these generator particles (ParticleKeys) in each view, in
         white with their names: the MCTrack's path as MCTrack draws it
         (corrected, with space charge), else (neutral, or no steps kept) a
         dashed straight line from its start to its end; and the descendants
         (G4 parentage) of the particles in secondaries, annotated themselves
-        or not. Labels can be moved: their positions are kept while the
+        or not. paths: the particles whose annotations (theirs and their
+        secondaries') are drawn with their paths, the others names only;
+        None: all. Labels can be moved: their positions are kept while the
         particle stays annotated. {key: [MCTrack IDs]} of the particles of
         keys drawn in a view
         '''
@@ -203,20 +205,21 @@ class MCTrackAnnotations(MCTrack):
             return {}
         self._read_if_stale()
         rows, _ = self._rows_of(wanted)
-        style = self._style()
+        font_size = self._font_size()
         # {(view, producer, row): view points of its segments}, projected once
-        paths = {}
+        projected = {}
         drawn = {}
         for key in wanted:
+            style = (font_size, paths is None or key in paths)
             for producer, mctracks in enumerate(self._stored_data):
                 own = [r for (p, r), k in rows.items() if p == producer and k == key]
                 primary, primary_id = self._primary_target(mctracks, key, own)
                 if key in keys and primary is not None and \
-                        self._annotate(key, producer, mctracks, *primary, paths, style):
+                        self._annotate(key, producer, mctracks, *primary, projected, style):
                     drawn.setdefault(key, []).append(int(mctracks.track_id[primary[1]]))
                 if key in secondaries and primary_id is not None:
                     for r in self.descendants(mctracks, primary_id):
-                        self._annotate(key, producer, mctracks, 'own', int(r), mctracks.pdg[r], paths, style)
+                        self._annotate(key, producer, mctracks, 'own', int(r), mctracks.pdg[r], projected, style)
         return drawn
 
     def _segments(self, view, producer, row, paths):
