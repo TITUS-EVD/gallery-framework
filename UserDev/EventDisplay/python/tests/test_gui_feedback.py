@@ -388,3 +388,44 @@ def test_a_geometry_given_on_the_command_line_is_kept(gui):
     gi._scan = lambda names, progress=None: made_with(names[0], 'sbnd_v02_04')
     gi.set_input_files(['v06.root'])
     assert gm.current_geom.gdml() == 'sbnd_v02_06'
+
+
+def test_mc_annotations_need_no_mctrack_box(gui):
+    ''' the MC truth dock annotates with the file's MCTracks, or those chosen in the MCTrack box '''
+    from dataclasses import replace
+    gi, gm, tpc = tpc_gui(gui)
+    mctracks = [('sim::MCTracks_mcreco__G4.', 'vector<sim::MCTrack>'),
+                ('sim::MCTracks_other__G4.', 'vector<sim::MCTrack>')]
+    files = {'mc.root': replace(dated_file('mc.root', False, [(1, 7, 100)]), key_table=product_table(BRANCHES + mctracks)),
+             'reco.root': dated_file('reco.root', False, [(1, 7, 100)])}
+    gi._scan = lambda names, progress=None: files[names[0]]
+    gi.set_input_files(['mc.root'])
+    annotations = tpc._mc_annotations
+    assert annotations in tpc._drawables and annotations not in tpc._product_box_map.values()
+    # no MCTrack chosen in the box: all of them
+    box = next(b for b, product in tpc._box_products.items() if product == 'sim::MCTrack')
+    assert tpc._product_box_map[box].producers() == []
+    assert sorted(annotations.producers()) == ['mcreco::G4', 'other::G4']
+    # one chosen: that one, as drawn
+    box.setCurrentIndex(box.findText('mcreco'))
+    box.activated[str].emit('mcreco')
+    assert annotations.producers() == ['mcreco::G4']
+    box.activated[str].emit('--Select--')
+    assert sorted(annotations.producers()) == ['mcreco::G4', 'other::G4']
+    # a file without: nothing to annotate with
+    gi.set_input_files(['reco.root'])
+    assert annotations.producers() == [] and tpc.annotate_mc_particles([]) is None
+
+
+def test_annotation_font_size_setting(gui):
+    gi, gm, tpc = tpc_gui(gui)
+    assert tpc.annotation_font_size() == 12
+    redrawn = []
+    tpc._mc_annotations.drawObjects = lambda: redrawn.append(tpc.annotation_font_size())
+    tpc._annotation_font_size.setValue(20)
+    assert redrawn == [20] and int(tpc._settings.value('TPC/MC annotation font size')) == 20
+    tpc.restore_settings_defaults()
+    assert tpc.annotation_font_size() == 12 and redrawn[-1] == 12
+    # names only: the dock's option
+    tpc._mctruth_panel.show_paths.setChecked(False)
+    assert not tpc.annotation_lines_shown()

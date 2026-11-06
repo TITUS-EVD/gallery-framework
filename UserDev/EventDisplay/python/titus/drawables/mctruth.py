@@ -41,7 +41,7 @@ class MCTruth(ReaderDrawable):
             panel.all_particles.toggled.connect(lambda _: self.show_particles())
             panel.particlesSelected.connect(self.select_particles)
             panel.particlesAnnotated.connect(self.on_particles_annotated)
-            panel.annotate_secondaries.toggled.connect(lambda _: self.on_particles_annotated(panel.annotated_particles()))
+            panel.show_paths.toggled.connect(lambda _: self.on_particles_annotated(panel.annotated_particles()))
 
     def panel(self):
         ''' the TPC module's MC truth panel (None in tests without one) '''
@@ -168,9 +168,10 @@ class MCTruth(ReaderDrawable):
         # the same interaction listed again (e.g. all particles): its annotations stay
         same = self._listed is not None and self._listed[0] is truths and self._listed[1] == row
         annotated = panel.annotated_particles() if same else ()
+        secondaries = panel.secondaries_particles() if same else ()
         self._listed = (truths, row)
         panel.set_particles(particle_rows(truths, row, final_state_only=not panel.all_particles.isChecked()),
-                            annotated=annotated)
+                            annotated=annotated, secondaries=secondaries)
 
     def toggle_cross(self):
         show = self.panel().show_vertex.isChecked()
@@ -186,14 +187,19 @@ class MCTruth(ReaderDrawable):
         self._set_note('selected', self.track_note(keys, tracks))
 
     def on_particles_annotated(self, indices):
-        ''' particles annotated in the dock: their MCTracks drawn in white with their names '''
-        selected = self.selected()
+        '''
+        particles annotated in the dock: their MCTracks drawn in white with
+        their names, and those of their secondaries if asked
+        '''
+        selected, panel = self.selected(), self.panel()
         keys = [] if selected is None else [particle_key(*selected, i) for i in indices]
+        secondaries = [] if selected is None or panel is None else \
+            [particle_key(*selected, i) for i in panel.secondaries_particles()]
         annotate = getattr(self._module, 'annotate_mc_particles', None)
-        tracks = None if annotate is None else annotate(keys)
+        tracks = None if annotate is None else annotate(keys, secondaries)
         note = ''
-        if keys and tracks is None:
-            note = "Turn on MCTrack in the Products to annotate the particles' tracks"
+        if (keys or secondaries) and tracks is None:
+            note = "No MCTracks (sim::MCTrack) in this file to annotate the particles with"
         elif keys:
             missing = sorted({particle_name(k.pdg) for k in keys if k not in tracks})
             note = (f'Nothing to annotate for {", ".join(missing)} (no trajectory, start or end '
@@ -201,11 +207,14 @@ class MCTruth(ReaderDrawable):
         self._set_note('annotated', note)
 
     def refresh_notes(self):
-        ''' the dock's notes (and highlights, annotations) again, e.g. once MCTracks are drawn or removed '''
+        '''
+        the dock's note on the selected particles (and their highlights)
+        again, e.g. once MCTracks are drawn or removed; annotations don't
+        depend on them
+        '''
         panel = self.panel()
         if panel is not None:
             self.select_particles(panel.selected_particles())
-            self.on_particles_annotated(panel.annotated_particles())
 
     def _set_note(self, which, text):
         self._notes[which] = text

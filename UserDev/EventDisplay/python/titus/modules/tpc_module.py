@@ -73,6 +73,10 @@ _SET_LABEL_SUBRUN = 'TPC/Show subrun number'
 _SET_LABEL_PLANE = 'TPC/Show plane number in label'
 _SET_LABEL_TIME = 'TPC/Show event time in label'
 _SET_LOGO_SIZE = 'TPC/Logo size'
+# the names of the particles annotated in the MC truth dock
+_SET_ANNOTATION_FONT_SIZE = 'TPC/MC annotation font size'
+_MAX_ANNOTATION_FONT_SIZE = 40
+_MCTRACK = 'sim::MCTrack'
 
 # view state kept between sessions, not on the settings page
 _SET_ASPECT_RATIO = 'TPC/1:1 aspect ratio'
@@ -124,6 +128,10 @@ class TpcModule(Module):
         # generator particles selected in the MC truth dock (ParticleKeys)
         self._selected_mc_particles = []
         self._annotated_mc_particles = []
+        # and those whose secondaries are annotated
+        self._annotated_mc_secondaries = []
+        # draws the annotations, with MCTracks of its own (not a product box)
+        self._mc_annotations = None
         # set while the product boxes are filled for a new file
         self._updating_boxes = False
         self._show_logo = False
@@ -146,6 +154,7 @@ class TpcModule(Module):
             _SET_LABEL_PLANE: QtCore.Qt.Unchecked,
             _SET_LABEL_TIME: QtCore.Qt.Unchecked,
             _SET_LOGO_SIZE: 0.7,
+            _SET_ANNOTATION_FONT_SIZE: 12,
         }
         self._init_settings_page()
 
@@ -239,9 +248,21 @@ class TpcModule(Module):
         )
         self._settings_layout.addWidget(self._logo_size, 7, 1, 1, -1)
 
+        label = QtWidgets.QLabel(_SET_ANNOTATION_FONT_SIZE.split('/')[1])
+        self._settings_layout.addWidget(label, 8, 0, 1, 1)
+        self._annotation_font_size = QtWidgets.QSpinBox()
+        self._annotation_font_size.setRange(4, _MAX_ANNOTATION_FONT_SIZE)
+        self._annotation_font_size.setSingleStep(1)
+        self._annotation_font_size.setToolTip("Font size (points) of the particle names annotated in the MC truth dock")
+        self._annotation_font_size.setValue(self._settings_defaults[_SET_ANNOTATION_FONT_SIZE])
+        self._annotation_font_size.valueChanged.connect(
+            lambda x: self._update_annotation_font_size(x)
+        )
+        self._settings_layout.addWidget(self._annotation_font_size, 8, 1, 1, -1)
+
         restore_btn = QtWidgets.QPushButton("Restore Defaults")
         restore_btn.clicked.connect(self.restore_settings_defaults)
-        self._settings_layout.addWidget(restore_btn, 8, 1, 1, -1)
+        self._settings_layout.addWidget(restore_btn, 9, 1, 1, -1)
 
         self._settings_layout.setRowStretch(self._settings_layout.rowCount(), 1)
 
@@ -284,6 +305,10 @@ class TpcModule(Module):
         x = float(self._settings.value(_SET_LOGO_SIZE, self._settings_defaults[_SET_LOGO_SIZE]))
         self._logo_size.setValue(x)
         self._logo_size.valueChanged.emit(x)
+
+        x = int(self._settings.value(_SET_ANNOTATION_FONT_SIZE, self._settings_defaults[_SET_ANNOTATION_FONT_SIZE]))
+        self._annotation_font_size.setValue(x)
+        self._annotation_font_size.valueChanged.emit(x)
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -403,6 +428,13 @@ class TpcModule(Module):
 
         product_group_box.setLayout(drawable_layout)
         main_layout.addWidget(product_group_box)
+
+        # the MC truth dock's annotations, whether MCTracks are drawn or not
+        if self._mc_annotations is not None:
+            self.remove_drawable(self._mc_annotations)
+        self._mc_annotations = self.register_drawable(
+            drawables.MCTrackAnnotations(self._gi, self._gm.current_geom, self))
+        self._update_mc_annotation_producers()
 
 
         # these are the view options
@@ -635,6 +667,7 @@ class TpcModule(Module):
                 box.setCurrentIndex(box.findText(chosen))
             # update even if the box's producer was none
             box.activated[str].emit(chosen)
+        self._update_mc_annotation_producers()
 
     def init_mctruth(self):
         ''' the MC truth dock, filled by the MCTruth drawable '''
@@ -663,30 +696,55 @@ class TpcModule(Module):
     def selected_mc_particles(self):
         return self._selected_mc_particles
 
-    def annotate_mc_particles(self, keys):
+    def annotate_mc_particles(self, keys, secondaries=()):
         '''
         the MC truth dock's annotated particles (ParticleKeys): their MCTracks
-        drawn in white with their names. {key: [MCTrack IDs]} found, or None
-        if no MCTracks are drawn.
+        drawn in white with their names, and the descendants of those in
+        secondaries, whether MCTracks are drawn (product box) or not.
+        {key: [MCTrack IDs]} found, or None if the file has no MCTracks.
         '''
         self._annotated_mc_particles = list(keys)
-        found, drawn = {}, False
-        for drawable in self._product_box_map.values():
-            annotate = getattr(drawable, 'annotate_particles', None)
-            if annotate is None or not drawable.producers():
-                continue
-            drawn = True
-            for key, ids in annotate(self._annotated_mc_particles).items():
-                found.setdefault(key, []).extend(ids)
-        return found if drawn else None
+        self._annotated_mc_secondaries = list(secondaries)
+        annotations = self._mc_annotations
+        if annotations is None or not annotations.producers():
+            return None
+        return annotations.annotate_particles(self._annotated_mc_particles, self._annotated_mc_secondaries)
 
     def annotated_mc_particles(self):
         return self._annotated_mc_particles
 
-    def annotate_secondaries(self):
-        ''' whether the annotated particles' descendants are annotated too (the MC truth dock's option) '''
+    def annotated_mc_secondaries(self):
+        ''' the annotated particles' whose descendants are annotated too (the MC truth dock's 2° boxes) '''
+        return self._annotated_mc_secondaries
+
+    def annotation_font_size(self):
+        ''' point size of the annotated particles' names (settings page) '''
+        return self._annotation_font_size.value()
+
+    def annotation_lines_shown(self):
+        ''' whether the annotated particles' paths are drawn, or their names only (the MC truth dock's option) '''
         panel = getattr(self, '_mctruth_panel', None)
-        return panel is not None and panel.annotate_secondaries.isChecked()
+        return panel is None or panel.show_paths.isChecked()
+
+    def _update_mc_annotation_producers(self):
+        '''
+        the MCTracks the annotations are drawn with: those of the MCTrack
+        product box if one is chosen, else all of the file's (current stage)
+        '''
+        if self._mc_annotations is None:
+            return
+        chosen = [d.producers() for d, product in ((self._product_box_map[b], self._box_products[b])
+                                                   for b in self._product_box_map) if product == _MCTRACK]
+        chosen = next((p for p in chosen if p), None)
+        if chosen is None:
+            producers = self._gi.get_producers(_MCTRACK, self._lsm.current_stage) or []
+            chosen = [p.full_name() for p in producers]
+        self._mc_annotations.set_producer(chosen or None)
+
+    def _refresh_mc_annotations(self):
+        ''' draw the annotations again (e.g. another style), as the dock has them '''
+        if self._mc_annotations is not None:
+            self._mc_annotations.drawObjects()
 
     def refresh_mctruth_notes(self):
         ''' the MC truth dock's notes on its particles' MCTracks, once MCTracks are drawn (MCTrack.drawObjects) '''
@@ -799,15 +857,20 @@ class TpcModule(Module):
             "simulation's space charge moved their charge, on their hits, " + what + ".\n"
             "Unchecked: drawn where they were, up to about a centimetre off their charge.")
 
+    def _product_drawables(self):
+        ''' the drawables of the product boxes, and the MC truth dock's annotations '''
+        extra = [self._mc_annotations] if self._mc_annotations is not None else []
+        return list(self._product_box_map.values()) + extra
+
     def reread_3d_objects(self):
         ''' read the selected products again and redraw them, e.g. with or without space charge '''
-        for drawable in self._product_box_map.values():
+        for drawable in self._product_drawables():
             drawable.analyze()
             drawable.drawObjects()
 
     def redraw_products(self):
         ''' redraw the selected products (hits, tracks...) on the current views '''
-        for drawable in self._product_box_map.values():
+        for drawable in self._product_drawables():
             drawable.clearDrawnObjects()
             drawable.drawObjects()
 
@@ -821,10 +884,16 @@ class TpcModule(Module):
             self._product_box_map[sender].set_producer(None)
             self._product_box_map[sender].clearDrawnObjects()
             product = None
+        elif product is not None:
+            self._product_box_map[sender].set_producer(product.full_name())
+
+        if self._box_products.get(sender) == _MCTRACK and not self._updating_boxes:
+            # the annotations are drawn with the MCTracks chosen (else all): annotated again with them
+            self._update_mc_annotation_producers()
+            self._refresh_mc_annotations()
 
         if product is not None:
             drawable = self._product_box_map[sender]
-            drawable.set_producer(product.full_name())
             if self._updating_boxes:
                 # new file: everything is read and drawn once the boxes are set
                 return
@@ -1201,6 +1270,11 @@ class TpcModule(Module):
             result[key]['idx'] = old_idx % x
         self._wirePlotItems = result
         self.refresh_wire_view()
+
+    def _update_annotation_font_size(self, font_size: int):
+        ''' the annotated particles' names in this font size (points), drawn again '''
+        self._settings.setValue(_SET_ANNOTATION_FONT_SIZE, font_size)
+        self._refresh_mc_annotations()
 
     def _update_label_font_size(self, font_size: int):
         '''
