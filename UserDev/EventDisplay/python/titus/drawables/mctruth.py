@@ -41,7 +41,6 @@ class MCTruth(ReaderDrawable):
             panel.all_particles.toggled.connect(lambda _: self.show_particles())
             panel.particlesSelected.connect(self.select_particles)
             panel.particlesAnnotated.connect(self.on_particles_annotated)
-            panel.show_paths.toggled.connect(lambda _: self.on_particles_annotated(panel.annotated_particles()))
 
     def panel(self):
         ''' the TPC module's MC truth panel (None in tests without one) '''
@@ -169,9 +168,10 @@ class MCTruth(ReaderDrawable):
         same = self._listed is not None and self._listed[0] is truths and self._listed[1] == row
         annotated = panel.annotated_particles() if same else ()
         secondaries = panel.secondaries_particles() if same else ()
+        paths = panel.paths_particles() if same else None
         self._listed = (truths, row)
         panel.set_particles(particle_rows(truths, row, final_state_only=not panel.all_particles.isChecked()),
-                            annotated=annotated, secondaries=secondaries)
+                            annotated=annotated, secondaries=secondaries, paths=paths)
 
     def toggle_cross(self):
         show = self.panel().show_vertex.isChecked()
@@ -189,14 +189,19 @@ class MCTruth(ReaderDrawable):
     def on_particles_annotated(self, indices):
         '''
         particles annotated in the dock: their MCTracks drawn in white with
-        their names, and those of their secondaries if asked
+        their names, and those of their secondaries if asked; their paths
+        drawn for the particles whose Tr box is checked
         '''
         selected, panel = self.selected(), self.panel()
-        keys = [] if selected is None else [particle_key(*selected, i) for i in indices]
-        secondaries = [] if selected is None or panel is None else \
-            [particle_key(*selected, i) for i in panel.secondaries_particles()]
+
+        def keys_of(indices):
+            return [] if selected is None else [particle_key(*selected, i) for i in indices]
+
+        keys = keys_of(indices)
+        secondaries = [] if panel is None else keys_of(panel.secondaries_particles())
+        paths = None if panel is None else keys_of(panel.paths_particles())
         annotate = getattr(self._module, 'annotate_mc_particles', None)
-        tracks = None if annotate is None else annotate(keys, secondaries)
+        tracks = None if annotate is None else annotate(keys, secondaries, paths)
         note = ''
         if (keys or secondaries) and tracks is None:
             note = "No MCTracks (sim::MCTrack) in this file to annotate the particles with"

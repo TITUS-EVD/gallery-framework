@@ -426,6 +426,33 @@ def test_annotation_font_size_setting(gui):
     assert redrawn == [20] and int(tpc._settings.value('TPC/MC annotation font size')) == 20
     tpc.restore_settings_defaults()
     assert tpc.annotation_font_size() == 12 and redrawn[-1] == 12
-    # names only: the dock's option
-    tpc._mctruth_panel.show_paths.setChecked(False)
-    assert not tpc.annotation_lines_shown()
+    # which particles are drawn with their paths, as the dock says (None: all)
+    tpc.annotate_mc_particles([])
+    assert tpc.annotated_mc_paths() is None
+    tpc.annotate_mc_particles([], paths=[])
+    assert tpc.annotated_mc_paths() == []
+
+
+def test_module_docks_where_they_were_last_session(gui, qtbot):
+    ''' the window state is restored before the modules make their docks: they are put back where they were '''
+    from titus.gui import Gui
+    gi, gm, tpc = tpc_gui(gui)
+    Qt = QtCore.Qt
+    # by default: the MC truth dock on the right, the view controls on the left
+    assert gui.dockWidgetArea(tpc._mctruth_dock) == Qt.RightDockWidgetArea
+    gui.addDockWidget(Qt.LeftDockWidgetArea, tpc._mctruth_dock)
+    gui.addDockWidget(Qt.BottomDockWidgetArea, tpc._view_dock)
+    # closed while another view was shown (its docks hidden), as closeEvent saves it without quitting the tests
+    tpc.deactivate()
+    gui._settings.beginGroup('MainWindow')
+    gui._settings.setValue('state', gui.saveState(1))
+    gui._settings.endGroup()
+
+    # next session: the same settings file (the fixture's)
+    again = Gui(GalleryInterface())
+    qtbot.addWidget(again)
+    _, _, tpc2 = tpc_gui(again)
+    assert again.dockWidgetArea(tpc2._mctruth_dock) == Qt.LeftDockWidgetArea
+    assert again.dockWidgetArea(tpc2._view_dock) == Qt.BottomDockWidgetArea
+    # the TPC view's docks shown with it; the MC truth dock hidden until there is MC truth, as before
+    assert not tpc2._view_dock.isHidden() and tpc2._mctruth_dock.isHidden()

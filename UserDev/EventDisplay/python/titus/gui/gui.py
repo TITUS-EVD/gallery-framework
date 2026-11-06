@@ -174,6 +174,19 @@ class Gui(QtWidgets.QMainWindow):
 
         QtCore.QCoreApplication.instance().quit()
 
+    def addDockWidget(self, area, dock, *args):
+        '''
+        Place a module's dock where it was last session, else in area: the
+        window state is restored before the modules make their docks, and Qt
+        only puts a dock created after restoreState back in its place through
+        restoreDockWidget, not addDockWidget. A dock placed already is moved
+        to area.
+        '''
+        # (not isFloating: a dock made without a parent window is one until added)
+        placed = self.dockWidgetArea(dock) != QtCore.Qt.NoDockWidgetArea
+        if placed or not self.restoreDockWidget(dock):
+            super().addDockWidget(area, dock, *args)
+
     def add_module(self, module):
         module_type = type(module).__name__
         if module_type in self._modules:
