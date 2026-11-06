@@ -42,8 +42,20 @@ class Module(QtCore.QObject):
     def settings_layout(self):
         return self._settings_layout
 
+    @property
+    def central_widget(self):
+        return self._central_widget
+
     def restore_from_settings(self):
         pass
+
+    def screenshot_layer(self):
+        '''
+        (name, graphics items) that a screenshot of the view saved to a file
+        puts in an image of its own (the name added to its file's), on a
+        transparent background, and leaves out of the view's; None: one image
+        '''
+        return None
 
     def is_active(self):
         return self._active

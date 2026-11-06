@@ -76,6 +76,8 @@ _SET_LOGO_SIZE = 'TPC/Logo size'
 # the names of the particles annotated in the MC truth dock
 _SET_ANNOTATION_FONT_SIZE = 'TPC/MC annotation font size'
 _SET_ANNOTATION_ROTATE = 'TPC/Rotate MC annotation labels'
+# view screenshots saved to files: the annotations in an image of their own
+_SET_ANNOTATION_LAYER = 'TPC/Separate MC annotation layer in screenshots'
 _MAX_ANNOTATION_FONT_SIZE = 40
 _MCTRACK = 'sim::MCTrack'
 
@@ -160,6 +162,7 @@ class TpcModule(Module):
             _SET_LOGO_SIZE: 0.7,
             _SET_ANNOTATION_FONT_SIZE: 12,
             _SET_ANNOTATION_ROTATE: True,
+            _SET_ANNOTATION_LAYER: False,
         }
         self._init_settings_page()
 
@@ -272,6 +275,16 @@ class TpcModule(Module):
         self._annotation_rotate.setChecked(self._settings_defaults[_SET_ANNOTATION_ROTATE])
         self._annotation_rotate.toggled.connect(self._update_annotation_rotate)
         annotation_layout.addWidget(self._annotation_rotate, 1, 1, 1, -1)
+        annotation_layout.addWidget(QtWidgets.QLabel('Separate annotation layer in screenshots'), 2, 0, 1, 1)
+        self._annotation_layer = QtWidgets.QCheckBox()
+        self._annotation_layer.setToolTip("Screenshots of the view saved to files: the annotations in a second image "
+                                          "(_annotations.png) on a transparent background, the wire planes without them. "
+                                          "Not window screenshots or the clipboard")
+        self._annotation_layer.setChecked(self._settings_defaults[_SET_ANNOTATION_LAYER])
+        self._annotation_layer.toggled.connect(
+            lambda x: self._settings.setValue(_SET_ANNOTATION_LAYER, bool(x))
+        )
+        annotation_layout.addWidget(self._annotation_layer, 2, 1, 1, -1)
         self._settings_layout.addWidget(annotations, 8, 0, 1, -1)
 
         restore_btn = QtWidgets.QPushButton("Restore Defaults")
@@ -327,6 +340,10 @@ class TpcModule(Module):
         x = self._settings.value(_SET_ANNOTATION_ROTATE, self._settings_defaults[_SET_ANNOTATION_ROTATE], type=bool)
         self._annotation_rotate.setChecked(x)
         self._annotation_rotate.toggled.emit(x)
+
+        x = self._settings.value(_SET_ANNOTATION_LAYER, self._settings_defaults[_SET_ANNOTATION_LAYER], type=bool)
+        self._annotation_layer.setChecked(x)
+        self._annotation_layer.toggled.emit(x)
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -744,6 +761,13 @@ class TpcModule(Module):
     def annotation_labels_rotated(self):
         ''' whether the annotated particles' names are written along their paths, else level (settings page) '''
         return self._annotation_rotate.isChecked()
+
+    def screenshot_layer(self):
+        ''' the MC annotations drawn, if the settings page puts them in an image of their own '''
+        if not self._annotation_layer.isChecked() or self._mc_annotations is None:
+            return None
+        items = self._mc_annotations.drawn_items()
+        return ('annotations', items) if items else None
 
     def annotation_font_size(self):
         ''' point size of the annotated particles' names (settings page) '''
