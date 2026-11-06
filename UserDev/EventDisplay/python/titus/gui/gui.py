@@ -4,7 +4,7 @@ import datetime
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 
-from titus.drawables.items import rendered_at
+from titus.drawables.items import rendered_at, render_only, transparent
 from .widgets import LoadingOverlay
 
 
@@ -293,26 +293,62 @@ class Gui(QtWidgets.QMainWindow):
         self._gi.current_directory = dir_path
 
     def _on_capture_action(self):
-        ''' Capture just the central widget '''
+        '''
+        Capture just the central widget. Saved to a file, the current
+        module's screenshot layer (e.g. the TPC's MC annotations), if it has
+        one, goes in a second image of the same size, on a transparent
+        background, and not in the first
+        '''
         scale = float(self._settings.value(_SET_SCREENSHOT_SCALE))
+        to_clipboard = self._settings.value(_SET_SCREENSHOT_MODE) == "Clipboard"
+        module = self._current_module()
+        layer = None if to_clipboard or module is None else module.screenshot_layer()
+        layer_name, layer_items = layer if layer else (None, [])
 
-        w = self._central_widget.width()
-        h = self._central_widget.height()
-        img = QtGui.QPixmap(round(w * scale), round(h * scale));
-        img.setDevicePixelRatio(scale);
+        img = self._central_widget_pixmap(scale)
         # lines as thick (and dashes as long) for the image's size as on screen
-        with rendered_at(scale):
+        with rendered_at(scale), transparent(layer_items):
             self._central_widget.render(img);
 
-        if self._settings.value(_SET_SCREENSHOT_MODE) == "Clipboard":
+        if to_clipboard:
             QtWidgets.QApplication.clipboard().setPixmap(img)
             self.statusBar().showMessage('Screenshot copied to clipboard', 3000)
-        else:
-            fname = self._screenshot_filename()
-            file = QtCore.QFile(fname)
-            file.open(QtCore.QIODevice.WriteOnly)
-            img.save(file, "PNG")
+            return
+        fname = self._screenshot_filename()
+        file = QtCore.QFile(fname)
+        file.open(QtCore.QIODevice.WriteOnly)
+        img.save(file, "PNG")
+        if not layer_items:
             self.statusBar().showMessage(f'Screenshot saved to {fname}', 3000)
+            return
+        overlay = self._central_widget_pixmap(scale)
+        overlay.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(overlay)
+        try:
+            with rendered_at(scale):
+                render_only(painter, layer_items, self._central_widget)
+        finally:
+            painter.end()
+        overlay_name = f'{os.path.splitext(fname)[0]}_{layer_name}.png'
+        file = QtCore.QFile(overlay_name)
+        file.open(QtCore.QIODevice.WriteOnly)
+        overlay.save(file, "PNG")
+        self.statusBar().showMessage(f'Screenshot saved to {fname} and {overlay_name}', 3000)
+
+    def _central_widget_pixmap(self, scale):
+        ''' an image for the central widget, scale times its size on screen '''
+        w = self._central_widget.width()
+        h = self._central_widget.height()
+        img = QtGui.QPixmap(round(w * scale), round(h * scale))
+        img.setDevicePixelRatio(scale)
+        return img
+
+    def _current_module(self):
+        ''' the module whose view is shown (the central widget's), or None '''
+        current = self._central_widget.currentWidget()
+        if current is None:
+            return None
+        return next((m for m in self._modules.values() if m.central_widget is current), None)
 
     def _on_capture_screen_action(self):
         ''' Capture the whole application '''

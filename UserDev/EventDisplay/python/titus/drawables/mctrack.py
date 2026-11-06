@@ -185,6 +185,10 @@ class MCTrackAnnotations(MCTrack):
         super().clearDrawnObjects(obj_list)
         self._clear_annotations()
 
+    def drawn_items(self):
+        ''' the graphics items of the annotations drawn, in the views '''
+        return list(self._annotations)
+
     def _clear_annotations(self):
         remove_items(self._annotations)
         self._annotations = []

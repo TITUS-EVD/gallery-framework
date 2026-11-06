@@ -37,6 +37,72 @@ def render_pen(pen):
     return pen
 
 
+@contextlib.contextmanager
+def transparent(items):
+    '''
+    while these graphics items (and their children) aren't painted, e.g. in
+    a screenshot without them: fully transparent rather than hidden, so that
+    their views' ranges and bounds stay as they are
+    '''
+    opacities = [(item, item.opacity()) for item in items]
+    for item, _ in opacities:
+        item.setOpacity(0.)
+    try:
+        yield
+    finally:
+        for item, opacity in opacities:
+            item.setOpacity(opacity)
+
+
+def _others(scene, keep):
+    ''' the items of a scene not to paint for only those of keep (with their children) to be painted '''
+    keep = set(keep)
+    ancestors = set()
+    for item in keep:
+        parent = item.parentItem()
+        while parent is not None:
+            ancestors.add(parent)
+            parent = parent.parentItem()
+    others = []
+
+    def visit(children):
+        for child in children:
+            if child in ancestors:
+                visit(child.childItems())
+            elif child not in keep:
+                others.append(child)
+    visit([item for item in scene.items() if item.parentItem() is None])
+    return others
+
+
+def render_only(painter, items, widget):
+    '''
+    paint these graphics items alone, on no background, where rendering
+    widget (QWidget.render) paints them: each of their scenes as its views
+    shown in widget draw it, at their place in widget, the scene's other
+    items and the views' backgrounds left out
+    '''
+    scenes = {}
+    for item in items:
+        if item.scene() is not None:
+            scenes.setdefault(item.scene(), []).append(item)
+    for scene, keep in scenes.items():
+        views = [v for v in scene.views() if v.isVisible() and widget.isAncestorOf(v)]
+        if not views:
+            continue
+        with transparent(_others(scene, keep)):
+            for view in views:
+                viewport = view.viewport()
+                target = QtCore.QRectF(QtCore.QPointF(viewport.mapTo(widget, QtCore.QPoint(0, 0))),
+                                       QtCore.QSizeF(viewport.size()))
+                background = view.backgroundBrush()
+                view.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.NoBrush))
+                try:
+                    view.render(painter, target, viewport.rect())
+                finally:
+                    view.setBackgroundBrush(background)
+
+
 def hover_on_shape(item):
     '''
     Make hover and tooltips follow the item's shape: items in a pyqtgraph

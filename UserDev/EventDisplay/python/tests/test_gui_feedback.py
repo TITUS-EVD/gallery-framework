@@ -469,3 +469,81 @@ def test_module_docks_where_they_were_last_session(gui, qtbot):
     assert again.dockWidgetArea(tpc2._view_dock) == Qt.BottomDockWidgetArea
     # the TPC view's docks shown with it; the MC truth dock hidden until there is MC truth, as before
     assert not tpc2._view_dock.isHidden() and tpc2._mctruth_dock.isHidden()
+
+
+def _view_pixels(image, view, widget, scale):
+    ''' the RGBA pixels (h, w, 4) of an image of widget (scale times its size) where view's viewport is '''
+    import numpy as np
+    image = image.toImage().convertToFormat(image.toImage().Format_RGBA8888)
+    pixels = np.frombuffer(image.constBits().asstring(image.sizeInBytes()), dtype=np.uint8)
+    pixels = pixels.reshape(image.height(), image.bytesPerLine() // 4, 4)[:, :image.width()]
+    corner = view.viewport().mapTo(widget, QtCore.QPoint(0, 0))
+    size = view.viewport().size()
+    x0, y0 = round(corner.x() * scale), round(corner.y() * scale)
+    return pixels[y0:y0 + round(size.height() * scale), x0:x0 + round(size.width() * scale)]
+
+
+def test_annotation_layer_in_screenshots(gui, monkeypatch, tmp_path):
+    ''' with the setting, a view screenshot saved to a file puts the annotations in a transparent image of their own '''
+    from PyQt5 import QtGui
+    from titus.drawables.annotation import annotation_items
+    from titus.drawables.drawable import add_items
+    gi, gm, tpc = tpc_gui(gui)
+    monkeypatch.chdir(tmp_path)
+    view = next(v for v in tpc._wire_views.values() if v.isVisible())
+    # a black view, so the white annotations would show in it
+    view.setBackground('k')
+    view._view.disableAutoRange()
+    view._view.setRange(QtCore.QRectF(0, 0, 100, 100), padding=0)
+    items = annotation_items([[(10, 50), (90, 50)]], 'mu-')
+    add_items(view._view, items)
+    tpc._mc_annotations._annotations = list(items)
+    QtWidgets.QApplication.processEvents()
+    widget, scale = gui._central_widget, 2.0
+    gui._settings.setValue('General/Screenshot scale', scale)
+    gui._settings.setValue('General/Screenshot mode', 'File')
+    captured = []
+    monkeypatch.setattr(QtGui.QPixmap, 'save', lambda self, file, fmt: captured.append((file.fileName(), QtGui.QPixmap(self))) or True)
+
+    # off by default: one image, the annotations in it
+    assert not tpc._annotation_layer.isChecked() and tpc.screenshot_layer() is None
+    gui._on_capture_action()
+    assert len(captured) == 1
+    white = (_view_pixels(captured[0][1], view, widget, scale)[..., :3] > 200).all(axis=-1)
+    assert white.any()
+
+    tpc._annotation_layer.setChecked(True)
+    assert tpc._settings.value('TPC/Separate MC annotation layer in screenshots', type=bool) is True
+    assert tpc.screenshot_layer() == ('annotations', items)
+    captured.clear()
+    gui._on_capture_action()
+    (name, base), (layer_name, layer) = captured
+    assert layer_name == name[:-len('.png')] + '_annotations.png'
+    assert layer.size() == base.size() and layer.hasAlphaChannel()
+    # the wire planes without the annotations
+    assert not (_view_pixels(base, view, widget, scale)[..., :3] > 200).all(axis=-1).any()
+    # the annotations alone, where they were drawn, on nothing
+    pixels = _view_pixels(layer, view, widget, scale)
+    drawn = pixels[..., 3] > 0
+    assert (drawn == white).mean() > 0.99
+    image = layer.toImage()
+    assert image.pixelColor(0, 0).alpha() == 0 and image.pixelColor(image.width() - 1, image.height() - 1).alpha() == 0
+    # all as it was
+    assert all(item.opacity() == 1 for item in items) and view.backgroundBrush().color() == QtGui.QColor(QtCore.Qt.black)
+    assert all(item.opacity() == 1 for item in view._view.addedItems)
+
+    # the window, and the clipboard: one image
+    captured.clear()
+    gui._on_capture_screen_action()
+    assert len(captured) == 1
+    gui._settings.setValue('General/Screenshot mode', 'Clipboard')
+    gui._on_capture_action()
+    assert len(captured) == 1
+    clip = QtWidgets.QApplication.clipboard().pixmap()
+    assert (_view_pixels(clip, view, widget, scale)[..., :3] > 200).all(axis=-1).any()
+
+    # back to one image, kept between sessions
+    tpc.restore_settings_defaults()
+    assert not tpc._annotation_layer.isChecked()
+    box = tpc._annotation_layer.parentWidget()
+    assert isinstance(box, QtWidgets.QGroupBox) and box is tpc._annotation_rotate.parentWidget()
