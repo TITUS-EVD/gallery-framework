@@ -4,6 +4,7 @@ import datetime
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 
+from titus.drawables.items import rendered_at
 from .widgets import LoadingOverlay
 
 
@@ -299,7 +300,9 @@ class Gui(QtWidgets.QMainWindow):
         h = self._central_widget.height()
         img = QtGui.QPixmap(round(w * scale), round(h * scale));
         img.setDevicePixelRatio(scale);
-        self._central_widget.render(img);
+        # lines as thick (and dashes as long) for the image's size as on screen
+        with rendered_at(scale):
+            self._central_widget.render(img);
 
         if self._settings.value(_SET_SCREENSHOT_MODE) == "Clipboard":
             QtWidgets.QApplication.clipboard().setPixmap(img)

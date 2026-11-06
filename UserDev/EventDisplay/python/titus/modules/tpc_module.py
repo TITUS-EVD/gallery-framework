@@ -75,6 +75,7 @@ _SET_LABEL_TIME = 'TPC/Show event time in label'
 _SET_LOGO_SIZE = 'TPC/Logo size'
 # the names of the particles annotated in the MC truth dock
 _SET_ANNOTATION_FONT_SIZE = 'TPC/MC annotation font size'
+_SET_ANNOTATION_ROTATE = 'TPC/Rotate MC annotation labels'
 _MAX_ANNOTATION_FONT_SIZE = 40
 _MCTRACK = 'sim::MCTrack'
 
@@ -158,6 +159,7 @@ class TpcModule(Module):
             _SET_LABEL_TIME: QtCore.Qt.Unchecked,
             _SET_LOGO_SIZE: 0.7,
             _SET_ANNOTATION_FONT_SIZE: 12,
+            _SET_ANNOTATION_ROTATE: True,
         }
         self._init_settings_page()
 
@@ -251,8 +253,10 @@ class TpcModule(Module):
         )
         self._settings_layout.addWidget(self._logo_size, 7, 1, 1, -1)
 
-        label = QtWidgets.QLabel(_SET_ANNOTATION_FONT_SIZE.split('/')[1])
-        self._settings_layout.addWidget(label, 8, 0, 1, 1)
+        # the MC truth dock's annotations
+        annotations = QtWidgets.QGroupBox('MC annotations')
+        annotation_layout = QtWidgets.QGridLayout(annotations)
+        annotation_layout.addWidget(QtWidgets.QLabel('Label font size'), 0, 0, 1, 1)
         self._annotation_font_size = QtWidgets.QSpinBox()
         self._annotation_font_size.setRange(4, _MAX_ANNOTATION_FONT_SIZE)
         self._annotation_font_size.setSingleStep(1)
@@ -261,7 +265,14 @@ class TpcModule(Module):
         self._annotation_font_size.valueChanged.connect(
             lambda x: self._update_annotation_font_size(x)
         )
-        self._settings_layout.addWidget(self._annotation_font_size, 8, 1, 1, -1)
+        annotation_layout.addWidget(self._annotation_font_size, 0, 1, 1, -1)
+        annotation_layout.addWidget(QtWidgets.QLabel('Rotate labels along their paths'), 1, 0, 1, 1)
+        self._annotation_rotate = QtWidgets.QCheckBox()
+        self._annotation_rotate.setToolTip("Write the particle names along their paths; unchecked, level")
+        self._annotation_rotate.setChecked(self._settings_defaults[_SET_ANNOTATION_ROTATE])
+        self._annotation_rotate.toggled.connect(self._update_annotation_rotate)
+        annotation_layout.addWidget(self._annotation_rotate, 1, 1, 1, -1)
+        self._settings_layout.addWidget(annotations, 8, 0, 1, -1)
 
         restore_btn = QtWidgets.QPushButton("Restore Defaults")
         restore_btn.clicked.connect(self.restore_settings_defaults)
@@ -312,6 +323,10 @@ class TpcModule(Module):
         x = int(self._settings.value(_SET_ANNOTATION_FONT_SIZE, self._settings_defaults[_SET_ANNOTATION_FONT_SIZE]))
         self._annotation_font_size.setValue(x)
         self._annotation_font_size.valueChanged.emit(x)
+
+        x = self._settings.value(_SET_ANNOTATION_ROTATE, self._settings_defaults[_SET_ANNOTATION_ROTATE], type=bool)
+        self._annotation_rotate.setChecked(x)
+        self._annotation_rotate.toggled.emit(x)
 
     def _initialize(self):
         self._gui.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._draw_dock)
@@ -725,6 +740,10 @@ class TpcModule(Module):
     def annotated_mc_secondaries(self):
         ''' the annotated particles' whose descendants are annotated too (the MC truth dock's 2° boxes) '''
         return self._annotated_mc_secondaries
+
+    def annotation_labels_rotated(self):
+        ''' whether the annotated particles' names are written along their paths, else level (settings page) '''
+        return self._annotation_rotate.isChecked()
 
     def annotation_font_size(self):
         ''' point size of the annotated particles' names (settings page) '''
@@ -1278,6 +1297,11 @@ class TpcModule(Module):
             result[key]['idx'] = old_idx % x
         self._wirePlotItems = result
         self.refresh_wire_view()
+
+    def _update_annotation_rotate(self, rotate: bool):
+        ''' the annotated particles' names along their paths or level, drawn again '''
+        self._settings.setValue(_SET_ANNOTATION_ROTATE, bool(rotate))
+        self._refresh_mc_annotations()
 
     def _update_annotation_font_size(self, font_size: int):
         ''' the annotated particles' names in this font size (points), drawn again '''

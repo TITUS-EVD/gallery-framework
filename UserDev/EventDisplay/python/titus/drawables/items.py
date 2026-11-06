@@ -3,12 +3,38 @@ Graphics items for drawables in the wire views, whose hover area is a
 fixed number of screen pixels at any zoom.
 """
 
+import contextlib
+
 import numpy as np
 from PyQt5 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 
 # hover distance from a line, in screen pixels
 HOVER_PIXELS = 5
+
+# how many image pixels a screen pixel is while rendering (screenshots, rendered_at): QWidget.render paints
+# the views on their own device, so cosmetic pens (widths and dashes in pixels) can't tell
+_render_scale = 1.
+
+
+@contextlib.contextmanager
+def rendered_at(scale):
+    ''' while rendering an image this many times the screen's size: the lines widened as much '''
+    global _render_scale
+    before, _render_scale = _render_scale, float(scale)
+    try:
+        yield
+    finally:
+        _render_scale = before
+
+
+def render_pen(pen):
+    ''' a cosmetic pen as drawn in the image rendered (rendered_at): widened, its dashes with it '''
+    if _render_scale == 1. or not pen.isCosmetic():
+        return pen
+    pen = QtGui.QPen(pen)
+    pen.setWidthF(max(pen.widthF(), 1.) * _render_scale)
+    return pen
 
 
 def hover_on_shape(item):
@@ -344,7 +370,7 @@ class TrackCollection(QtWidgets.QGraphicsItem):
         order = sorted((i for i in np.flatnonzero(visible)), key=lambda i: drawable[i].is_selected())
         for i in order:
             line = drawable[i]
-            painter.setPen(line.pen(hovered=line is self._hovered_line()))
+            painter.setPen(render_pen(line.pen(hovered=line is self._hovered_line())))
             painter.drawPolyline(line.polygon)
 
     def _hovered_line(self):
