@@ -13,6 +13,8 @@ from titus.gui.widgets import MovableLabel
 
 ANNOTATION_COLOR = (255, 255, 255)
 LINE_WIDTH = 2  # pixels
+# dashed lines (no trajectory known): dash and gap lengths, in line widths (Qt's DashLine is 4, 2)
+DASH_PATTERN = (4, 4)
 FONT_POINT_SIZE = 12
 # above the tracks (TrackCollection) and their highlight
 Z_VALUE = 10
@@ -64,7 +66,9 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, f
         for x, y in points[1:]:
             path.lineTo(x, y)
     line = QtWidgets.QGraphicsPathItem(path)
-    pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH, style=QtCore.Qt.DashLine if dashed else QtCore.Qt.SolidLine)
+    pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH)
+    if dashed:
+        pen.setDashPattern(list(DASH_PATTERN))
     pen.setCosmetic(True)
     line.setPen(pen)
     line.setZValue(Z_VALUE)
@@ -74,7 +78,7 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, f
     # its bottom middle on the line, the text along the line in the view's axes (so through zooms)
     label = AnnotationLabel(name, color=ANNOTATION_COLOR, anchor=(0.5, 1.0), rotateAxis=(dx, dy), on_moved=on_moved)
     font = label.textItem.font()
-    font.setBold(True)
+    font.setBold(False)
     font.setPointSize(font_size)
     label.setFont(font)
     label.setPos(*(label_pos if label_pos is not None else (x, y)))
