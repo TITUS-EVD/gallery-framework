@@ -426,6 +426,19 @@ def test_annotation_font_size_setting(gui):
     assert redrawn == [20] and int(tpc._settings.value('TPC/MC annotation font size')) == 20
     tpc.restore_settings_defaults()
     assert tpc.annotation_font_size() == 12 and redrawn[-1] == 12
+    # labels along their paths by default; level kept, and redrawn
+    assert tpc.annotation_labels_rotated()
+    count = len(redrawn)
+    tpc._annotation_rotate.setChecked(False)
+    assert not tpc.annotation_labels_rotated() and len(redrawn) == count + 1
+    assert tpc._settings.value('TPC/Rotate MC annotation labels', type=bool) is False
+    tpc.restore_from_settings()
+    assert not tpc.annotation_labels_rotated()
+    tpc.restore_settings_defaults()
+    assert tpc.annotation_labels_rotated()
+    # the annotation settings together, in their group box
+    box = tpc._annotation_rotate.parentWidget()
+    assert isinstance(box, QtWidgets.QGroupBox) and box is tpc._annotation_font_size.parentWidget()
     # which particles are drawn with their paths, as the dock says (None: all)
     tpc.annotate_mc_particles([])
     assert tpc.annotated_mc_paths() is None

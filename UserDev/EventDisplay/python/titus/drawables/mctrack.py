@@ -176,6 +176,11 @@ class MCTrackAnnotations(MCTrack):
         size = size() if callable(size) else None
         return size if isinstance(size, int) and size > 0 else FONT_POINT_SIZE
 
+    def _rotated(self):
+        ''' whether the labels are written along their paths (else level), as the module says '''
+        rotated = getattr(self._module, 'annotation_labels_rotated', None)
+        return (rotated() if callable(rotated) else True) is not False
+
     def clearDrawnObjects(self, obj_list=None):
         super().clearDrawnObjects(obj_list)
         self._clear_annotations()
@@ -205,12 +210,12 @@ class MCTrackAnnotations(MCTrack):
             return {}
         self._read_if_stale()
         rows, _ = self._rows_of(wanted)
-        font_size = self._font_size()
+        font_size, rotate = self._font_size(), self._rotated()
         # {(view, producer, row): view points of its segments}, projected once
         projected = {}
         drawn = {}
         for key in wanted:
-            style = (font_size, paths is None or key in paths)
+            style = (font_size, paths is None or key in paths, rotate)
             for producer, mctracks in enumerate(self._stored_data):
                 own = [r for (p, r), k in rows.items() if p == producer and k == key]
                 primary, primary_id = self._primary_target(mctracks, key, own)
@@ -257,13 +262,13 @@ class MCTrackAnnotations(MCTrack):
         '''
         annotate one MCTrack (mode 'own') or the mother of one ('mother') in
         each view: its trajectory as drawn, else a dashed straight line from
-        start to end. style: (font size, paths drawn). True if drawn in a view.
+        start to end. style: (font size, paths drawn, labels rotated). True if drawn in a view.
         '''
         if mode == 'own':
             start, end, g4_time = mctracks.start(row), mctracks.end(row), float(mctracks.start_t[row])
         else:
             start, end, g4_time = mctracks.mother_start(row), mctracks.mother_end(row), float(mctracks.mother_start_t[row])
-        font_size, show_line = style
+        font_size, show_line, rotate = style
         straight = None
         drawn = False
         for view in self.views():
@@ -279,7 +284,7 @@ class MCTrackAnnotations(MCTrack):
             items = annotation_items(segments, particle_name(pdg), dashed=dashed,
                                      label_pos=self._label_positions.get(label_key),
                                      on_moved=lambda pos, k=label_key: self._label_positions.__setitem__(k, pos),
-                                     font_size=font_size, show_line=show_line)
+                                     font_size=font_size, show_line=show_line, rotate=rotate)
             if items:
                 add_items(view._view, items)
                 self._annotations.extend(items)

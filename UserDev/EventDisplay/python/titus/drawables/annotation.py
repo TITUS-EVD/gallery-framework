@@ -9,6 +9,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from titus.drawables.items import render_pen
 from titus.gui.widgets import MovableLabel
 
 ANNOTATION_COLOR = (255, 255, 255)
@@ -45,8 +46,17 @@ def label_place(points):
     return middle, direction
 
 
+class AnnotationPath(QtWidgets.QGraphicsPathItem):
+    ''' a particle's path, its pixel width and dashes widened in images rendered larger (titus.drawables.items) '''
+
+    def paint(self, painter, option, widget=None):
+        painter.setPen(render_pen(self.pen()))
+        painter.setBrush(self.brush())
+        painter.drawPath(self.path())
+
+
 def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, font_size=FONT_POINT_SIZE,
-                     show_line=True):
+                     show_line=True, rotate=True):
     '''
     The graphics items annotating a particle in a view: its path (the
     segments it is drawn in, (n, 2) points each) in white, and its name above
@@ -55,7 +65,8 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, f
     label_pos: where the label was moved to (view coordinates), else its
     default place; on_moved(position): called when the user moves it.
     font_size: of the name, in points; show_line: False for the name only
-    (still placed along the path).
+    (still placed along the path); rotate: the name along the path, else
+    level.
     '''
     paths = [np.asarray(p, dtype=float) for p in paths if len(p) > 1]
     if not paths:
@@ -65,7 +76,7 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, f
         path.moveTo(*points[0])
         for x, y in points[1:]:
             path.lineTo(x, y)
-    line = QtWidgets.QGraphicsPathItem(path)
+    line = AnnotationPath(path)
     pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH)
     if dashed:
         pen.setDashPattern(list(DASH_PATTERN))
@@ -75,8 +86,9 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, f
 
     longest = max(paths, key=lambda p: np.linalg.norm(np.diff(p, axis=0), axis=1).sum())
     (x, y), (dx, dy) = label_place(longest)
-    # its bottom middle on the line, the text along the line in the view's axes (so through zooms)
-    label = AnnotationLabel(name, color=ANNOTATION_COLOR, anchor=(0.5, 1.0), rotateAxis=(dx, dy), on_moved=on_moved)
+    # its bottom middle on the line, the text along the line in the view's axes (so through zooms), or level
+    label = AnnotationLabel(name, color=ANNOTATION_COLOR, anchor=(0.5, 1.0), rotateAxis=(dx, dy) if rotate else None,
+                            on_moved=on_moved)
     font = label.textItem.font()
     font.setBold(False)
     font.setPointSize(font_size)

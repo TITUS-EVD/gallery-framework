@@ -1524,6 +1524,49 @@ def test_annotation_labels_read_left_to_right_along_the_path():
     assert label.pos().x() == pytest.approx(5) and label.pos().y() == pytest.approx(20)
     assert label.textItem.toPlainText() == 'μ⁻' and not label.textItem.font().bold()
     assert annotation_items([[(1, 1)]], 'p') == []
+    # along the path (vertical here) by default, else level, at the same place
+    assert label.rotateAxis is not None and label.rotateAxis.y() != 0
+    _, level = annotation_items([[(0, 0), (1, 0)], [(5, 0), (5, 40)]], 'μ⁻', rotate=False)
+    assert level.rotateAxis is None and level.angle == 0 and level.pos() == label.pos()
+
+
+def test_screenshot_lines_as_thick_as_on_screen(qtbot):
+    ''' a screenshot renders the views larger: the lines and dashes drawn in pixels as much larger '''
+    from titus.drawables.annotation import annotation_items
+    from titus.drawables.items import TrackCollection, TrackLine, render_pen, rendered_at
+    container = QtWidgets.QWidget()
+    qtbot.addWidget(container)
+    widget = pg.GraphicsLayoutWidget(container)
+    widget.setBackground('k')
+    widget.resize(400, 300)
+    container.resize(400, 300)
+    view = widget.addViewBox()
+    view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
+    dashed, _ = annotation_items([[(5, 80), (95, 80)]], 'n', dashed=True)
+    view.addItem(dashed)
+    view.addItem(TrackCollection([TrackLine(np.array([(5., 20.), (95., 20.)]), (255, 255, 255), QtCore.Qt.SolidLine)]))
+    container.show()
+    qtbot.waitExposed(container)
+
+    def measured(scale):
+        ''' (dashed line thickness, its first dash length, track thickness) in image pixels '''
+        img = QtGui.QPixmap(round(400 * scale), round(300 * scale))
+        img.setDevicePixelRatio(scale)
+        with rendered_at(scale):
+            container.render(img)
+        bright = pg.imageToArray(img.toImage(), copy=True, transpose=False)[..., :3].sum(axis=-1) > 300
+        half = bright.shape[0] // 2
+        rows = [r for r in range(half) if bright[r].sum() > 10]
+        runs = np.diff(np.flatnonzero(np.diff(bright[rows[len(rows) // 2]].astype(int))))
+        return len(rows), runs[1], sum(1 for r in range(half, bright.shape[0]) if bright[r].sum() > 10)
+
+    on_screen, doubled = measured(1), measured(2)
+    assert doubled == tuple(2 * x for x in on_screen)
+    # only while rendering, and not for pens in view units
+    pen = pg.mkPen('w', width=2)
+    assert render_pen(pen) is pen
+    with rendered_at(3):
+        assert render_pen(pen).widthF() == 6 and render_pen(pg.mkPen('w', width=2, cosmetic=False)).widthF() == 2
 
 
 def test_hover_follows_the_line_in_a_view(qtbot):
