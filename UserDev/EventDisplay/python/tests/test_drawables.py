@@ -1326,7 +1326,7 @@ def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, prod
     paths = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
     labels = sorted(i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem))
     assert labels == sorted(['K⁺', 'Λ'] * 3) and len(paths) == 6
-    assert all(p.pen().style() == QtCore.Qt.DashLine for p in paths)
+    assert all(p.pen().style() == QtCore.Qt.CustomDashLine and p.pen().dashPattern() == [4., 4.] for p in paths)
     found = drawer.annotate_particles([lam, kaon, neutron])
     assert found == {lam: [7], kaon: [3]}
     # the Λ's line from the vertex to its decay, in the collection view: across the wires of that z range
@@ -1439,7 +1439,7 @@ def test_annotation_font_size_and_paths_per_particle(qtbot, products, sbnd, tpc_
         labels = [i for i in drawer._annotations if isinstance(i, pg.TextItem)]
         lines = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
         return ({l.textItem.font().pointSize() for l in labels}, len(labels),
-                sorted({'dashed' if l.pen().style() == QtCore.Qt.DashLine else 'solid' for l in lines}), len(lines))
+                sorted({'dashed' if l.pen().style() == QtCore.Qt.CustomDashLine else 'solid' for l in lines}), len(lines))
 
     # the K+, the μ+ it decayed to and the Λ, in 3 views: all with their paths (None: all)
     assert drawn(20, None) == ({20}, 9, ['dashed', 'solid'], 9)
@@ -1522,7 +1522,7 @@ def test_annotation_labels_read_left_to_right_along_the_path():
     # the longest segment carries the name; nothing for a path without length
     line, label = annotation_items([[(0, 0), (1, 0)], [(5, 0), (5, 40)]], 'μ⁻')
     assert label.pos().x() == pytest.approx(5) and label.pos().y() == pytest.approx(20)
-    assert label.textItem.toPlainText() == 'μ⁻'
+    assert label.textItem.toPlainText() == 'μ⁻' and not label.textItem.font().bold()
     assert annotation_items([[(1, 1)]], 'p') == []
 
 
