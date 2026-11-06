@@ -594,6 +594,7 @@ def bare_tpc_module(selected):
     module._show_logo = module._show_scale_bar = False
     module._product_views = set()
     module._product_box_map = {'box': mock.Mock()}
+    module._mc_annotations = None
     return module
 
 
@@ -1193,16 +1194,18 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     import dataclasses
     from PyQt5 import QtWidgets
     from titus.display.mctruth import particle_key
-    from titus.drawables import MCTrack
+    from titus.drawables import MCTrack, MCTrackAnnotations
     from titus.drawables.annotation import ANNOTATION_COLOR
     from titus.modules.tpc_module import TpcModule
     reader = serve_all(products, STEP3)
     # the TPC module's selection and annotations, with its product boxes
     for name in ('select_mc_particles', 'selected_mc_particles', 'annotate_mc_particles', 'annotated_mc_particles',
-                 'refresh_mctruth_notes'):
+                 'annotated_mc_secondaries', 'annotation_lines_shown', 'refresh_mctruth_notes'):
         setattr(truth_module, name, getattr(TpcModule, name).__get__(truth_module))
     truth_module._selected_mc_particles, truth_module._annotated_mc_particles = [], []
+    truth_module._annotated_mc_secondaries = []
     truth_module._product_box_map = {}
+    truth_module._mc_annotations = None
     drawer = draw_truth(sbnd, truth_module, producers=['generator::GenieGen'])
     panel = truth_module._mctruth_panel
     truths = reader.get(0, 'mctruths', 'generator')
@@ -1210,20 +1213,24 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     protons = [i for i in range(len(pdg)) if status[i] == 1 and pdg[i] == 2212]
     neutron = next(i for i in range(len(pdg)) if status[i] == 1 and pdg[i] == 2112)
 
-    # no MCTracks drawn: the dock says how to see them
+    # a file without MCTracks: the dock says so
     panel.annotate_particles([protons[0]])
     assert truth_module.annotated_mc_particles() == [particle_key(truths, 0, protons[0])]
-    assert "Turn on MCTrack in the Products to annotate" in panel.track_note()
+    assert "No MCTracks (sim::MCTrack) in this file" in panel.track_note()
 
-    tracks = MCTrack(FakeGalleryInterface(), sbnd, truth_module)
-    tracks.set_producer('mcreco::G4')
-    truth_module._product_box_map = {'MCTruth box': drawer, 'MCTrack box': tracks}
-    tracks.analyze()
-    tracks.drawObjects()
+    # the module's own MCTracks: annotated with no MCTrack product box chosen
+    annotations = MCTrackAnnotations(FakeGalleryInterface(), sbnd, truth_module)
+    annotations.set_producer('mcreco::G4')
+    truth_module._mc_annotations = annotations
+    truth_module._product_box_map = {'MCTruth box': drawer}
+    annotations.analyze()
+    annotations.drawObjects()
+    # (the dock's note follows its boxes)
+    panel.annotate_particles([protons[0]])
 
     def drawn():
-        labels = [i for i in tracks._annotations if isinstance(i, pg.TextItem)]
-        paths = [i for i in tracks._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
+        labels = [i for i in annotations._annotations if isinstance(i, pg.TextItem)]
+        paths = [i for i in annotations._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
         return labels, paths
 
     # drawn after the annotation: annotated already, a white path and a name per view it is drawn in
@@ -1231,24 +1238,40 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     assert labels and len(labels) == len(paths) <= 3
     assert {l.textItem.toPlainText() for l in labels} == {'p'}
     assert all(p.pen().color().getRgb()[:3] == ANNOTATION_COLOR and p.pen().isCosmetic() for p in paths)
-    assert all(i.scene() is not None and i.zValue() > 0 for i in tracks._annotations)
-    # along its line, as drawn
+    assert all(i.scene() is not None and i.zValue() > 0 for i in annotations._annotations)
+    assert panel.track_note() == ''
+    # along its line as the MCTrack box draws it, once chosen
+    tracks = MCTrack(FakeGalleryInterface(), sbnd, truth_module)
+    tracks.set_producer('mcreco::G4')
+    truth_module._product_box_map['MCTrack box'] = tracks
+    tracks.analyze()
+    tracks.drawObjects()
     key = particle_key(truths, 0, protons[0])
     (producer, row), = tracks._rows_of([key])[0]
     line_points = np.vstack([l.points for l in tracks.lines() if l.track_key == (producer, row)])
     bounds = paths[0].path().boundingRect()
     assert line_points[:, 0].min() == pytest.approx(bounds.left()) or len(paths) > 1
-    assert panel.track_note() == ''
+    # drawing the MCTracks leaves the annotations
+    assert len(drawn()[0]) == len(labels)
 
     # selecting (highlight) leaves the annotations
     panel.select_particles([protons[1]])
     assert len(drawn()[0]) == len(labels)
     assert {l.track_key for l in tracks.lines() if l.is_selected()} != {(producer, row)}
-    # redrawn (e.g. another view shown, corrections toggled): annotated again
+    # the MCTracks removed again: still annotated
+    tracks.set_producer(None)
     tracks.clearDrawnObjects()
-    assert tracks._annotations == []
-    tracks.drawObjects()
+    assert tracks.lines() == [] and len(drawn()[0]) == len(labels)
+    # redrawn (e.g. another view shown, corrections toggled): annotated again
+    annotations.clearDrawnObjects()
+    assert annotations._annotations == []
+    annotations.drawObjects()
     assert len(drawn()[0]) == len(labels)
+    # names only
+    panel.show_paths.setChecked(False)
+    assert len(drawn()[0]) == len(labels) and drawn()[1] == []
+    panel.show_paths.setChecked(True)
+    assert len(drawn()[1]) == len(labels)
     # the same interaction listed with all its particles: still annotated
     panel.all_particles.setChecked(True)
     assert truth_module.annotated_mc_particles() == [key] and panel.annotated_particles() == [protons[0]]
@@ -1260,7 +1283,7 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     products[('mctruths', 'generator::GenieGen')] = dataclasses.replace(truths)
     drawer.analyze()
     drawer.drawObjects()
-    assert truth_module.annotated_mc_particles() == [] and tracks._annotations == []
+    assert truth_module.annotated_mc_particles() == [] and annotations._annotations == []
     assert panel.annotated_particles() == []
 
 
@@ -1268,7 +1291,7 @@ def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, prod
     ''' a Λ (no MCTrack: from its decay proton's mother) and a K+ mcreco kept no steps of: straight, dashed '''
     from PyQt5 import QtCore, QtWidgets
     from titus.display.mctruth import ParticleKey
-    from titus.drawables import MCTrack
+    from titus.drawables import MCTrackAnnotations
     from titus.readers import MCTracks
     vertex, decay, kaon_end = [-100., 0., 200.], [-60., 30., 260.], [-150., -40., 300.]
     columns = dict(track_id=[3, 7], pdg=[321, 2212], origin=[1, 1], process=['primary', 'Decay'],
@@ -1284,7 +1307,7 @@ def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, prod
     tpc_module.correct_3d_objects = lambda: True
     lam, kaon, neutron = ParticleKey(3122, 2976.70, 1), ParticleKey(321, 1089.97, 1), ParticleKey(2112, 1200., 1)
     tpc_module.annotated_mc_particles = lambda: [lam, kaon, neutron]
-    drawer = MCTrack(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
     drawer.set_producer('mcreco::G4')
     drawer.analyze()
     drawer.drawObjects()
@@ -1333,41 +1356,101 @@ def kaon_lambda_event():
     return MCTracks(**columns), ParticleKey(321, 1089.97, 1), ParticleKey(3122, 2976.70, 1)
 
 
-def test_secondaries_annotated_by_g4_parentage(qtbot, products, sbnd, tpc_module):
-    from titus.drawables import MCTrack
+def test_secondaries_annotated_by_g4_parentage_per_particle(qtbot, products, sbnd, tpc_module):
+    from titus.drawables import MCTrackAnnotations
     mctracks, kaon, lam = kaon_lambda_event()
     products[('mctracks', 'mcreco::G4')] = mctracks
     tpc_module.space_charge_map = lambda: None
     tpc_module.correct_3d_objects = lambda: True
-    tpc_module.annotated_mc_particles = lambda: [kaon, lam]
     labels = {}
-    for secondaries in (False, True):
-        tpc_module.annotate_secondaries = lambda s=secondaries: s
-        drawer = MCTrack(FakeGalleryInterface(), sbnd, tpc_module)
+    cases = {'none': ([kaon, lam], []), 'kaon': ([kaon, lam], [kaon]), 'both': ([kaon, lam], [kaon, lam]),
+             # the Λ's decay products, the Λ itself not annotated
+             'only lambda secondaries': ([kaon], [lam])}
+    for case, (annotated, secondaries) in cases.items():
+        tpc_module.annotated_mc_particles = lambda a=annotated: a
+        tpc_module.annotated_mc_secondaries = lambda s=secondaries: s
+        drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
         drawer.set_producer('mcreco::G4')
         drawer.analyze()
         drawer.drawObjects()
-        labels[secondaries] = sorted({i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem)})
-    assert MCTrack.descendants(mctracks, 3).tolist() == [1] and MCTrack.descendants(mctracks, 4).tolist() == [2, 3]
+        labels[case] = sorted({i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem)})
+    descendants = MCTrackAnnotations.descendants
+    assert descendants(mctracks, 3).tolist() == [1] and descendants(mctracks, 4).tolist() == [2, 3]
     # the K+ and the Λ (dashed, from its daughters' mother), and with secondaries what they decayed to
-    assert labels[False] == ['K⁺', 'Λ']
-    assert labels[True] == ['K⁺', 'p', 'Λ', 'μ⁺', 'π⁻']
+    assert labels['none'] == ['K⁺', 'Λ']
+    assert labels['kaon'] == ['K⁺', 'Λ', 'μ⁺']
+    assert labels['both'] == ['K⁺', 'p', 'Λ', 'μ⁺', 'π⁻']
+    assert labels['only lambda secondaries'] == ['K⁺', 'p', 'π⁻']
+    # what was drawn of the annotated particles themselves
+    assert drawer.annotate_particles([kaon], [lam]) == {kaon: [3]}
+
+
+def test_annotations_read_only_once_something_is_annotated(qtbot, products, sbnd, tpc_module):
+    from titus.drawables import MCTrackAnnotations
+    mctracks, kaon, _ = kaon_lambda_event()
+    products[('mctracks', 'mcreco::G4')] = mctracks
+    tpc_module.space_charge_map = lambda: None
+    tpc_module.correct_3d_objects = lambda: True
+    annotated = []
+    tpc_module.annotated_mc_particles = lambda: annotated
+    tpc_module.annotated_mc_secondaries = lambda: []
+    drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('mcreco::G4')
+    drawer.analyze()
+    drawer.drawObjects()
+    # another event, nothing annotated: nothing read
+    assert drawer._stored_data == [] and drawer._stale
+    annotated.append(kaon)
+    drawer.drawObjects()
+    assert drawer._stored_data == [mctracks] and not drawer._stale and drawer._annotations
+    # another producer: read again when annotating
+    drawer.set_producer(['mcreco::G4', 'other::G4'])
+    assert drawer._stale
+
+
+def test_annotation_font_size_and_names_only(qtbot, products, sbnd, tpc_module):
+    from PyQt5 import QtWidgets
+    from titus.drawables import MCTrackAnnotations
+    from titus.drawables.annotation import FONT_POINT_SIZE
+    mctracks, kaon, _ = kaon_lambda_event()
+    products[('mctracks', 'mcreco::G4')] = mctracks
+    tpc_module.space_charge_map = lambda: None
+    tpc_module.correct_3d_objects = lambda: True
+    tpc_module.annotated_mc_particles = lambda: [kaon]
+    tpc_module.annotated_mc_secondaries = lambda: []
+    drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('mcreco::G4')
+    drawer.analyze()
+
+    def drawn(size, lines):
+        tpc_module.annotation_font_size = lambda: size
+        tpc_module.annotation_lines_shown = lambda: lines
+        drawer.drawObjects()
+        labels = [i for i in drawer._annotations if isinstance(i, pg.TextItem)]
+        paths = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
+        return {l.textItem.font().pointSize() for l in labels}, len(labels), len(paths)
+
+    assert drawn(20, True) == ({20}, 3, 3)
+    # names only, still where the path is
+    assert drawn(8, False) == ({8}, 3, 0)
+    # the module says nothing usable: the default
+    assert drawn(None, True)[0] == {FONT_POINT_SIZE}
 
 
 def test_annotation_labels_can_be_moved(qtbot, products, sbnd, tpc_module):
     from PyQt5 import QtCore, QtGui, QtTest
-    from titus.drawables import MCTrack
+    from titus.drawables import MCTrackAnnotations
     mctracks, kaon, lam = kaon_lambda_event()
     products[('mctracks', 'mcreco::G4')] = mctracks
     tpc_module.space_charge_map = lambda: None
     tpc_module.correct_3d_objects = lambda: True
-    tpc_module.annotate_secondaries = lambda: False
+    tpc_module.annotated_mc_secondaries = lambda: []
     annotated = [kaon]
     tpc_module.annotated_mc_particles = lambda: annotated
     tpc_module.widget.resize(900, 600)
     tpc_module.widget.show()
     qtbot.waitExposed(tpc_module.widget)
-    drawer = MCTrack(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
     drawer.set_producer('mcreco::G4')
     drawer.analyze()
     drawer.drawObjects()
@@ -1520,6 +1603,7 @@ def test_restore_defaults_redraws_the_products(qtbot):
     module._wire_views = {(2, 0): RecordingView()}
     product = mock.Mock()
     module._product_box_map = {'box': product}
+    module._mc_annotations = None
     module._gm = mock.Mock()
     module._gm.current_geom.samplingRate.return_value = 500.
     module._t0sliderLabel = QtWidgets.QLabel()

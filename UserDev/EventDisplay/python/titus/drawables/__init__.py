@@ -8,7 +8,7 @@ from titus.drawables.track import Track
 from titus.drawables.cluster import Cluster
 from titus.drawables.shower import Shower
 from titus.drawables.vertex import Vertex
-from titus.drawables.mctrack import MCTrack
+from titus.drawables.mctrack import MCTrack, MCTrackAnnotations
 from titus.drawables.mctruth import MCTruth
 from titus.drawables.endpoint2d import EndPoint2D
 from titus.drawables.spacepoint import SpacePoint

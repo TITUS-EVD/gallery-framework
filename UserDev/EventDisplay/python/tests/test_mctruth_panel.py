@@ -27,11 +27,11 @@ def panel(qtbot):
 
 
 def click(panel, index, column):
-    ''' click a particle's cell: an Annotate box on its check indicator '''
+    ''' click a particle's cell: an Annotate or Secondaries box on its check indicator '''
     table = panel._table
     row = next(r for r in range(table.rowCount()) if panel._particle_index(r) == index)
     rect = table.visualItemRect(table.item(row, panel.COLUMNS.index(column)))
-    pos = QtCore.QPoint(rect.left() + 10, rect.center().y()) if column == 'Annotate' else rect.center()
+    pos = QtCore.QPoint(rect.left() + 10, rect.center().y()) if column in panel.CHECKS else rect.center()
     QtTest.QTest.mouseClick(table.viewport(), QtCore.Qt.LeftButton, pos=pos)
 
 
@@ -70,3 +70,33 @@ def test_listed_again_annotations_kept_if_asked(panel):
     assert panel.annotated_particles() == [] and emitted[-1] == []
     # the other columns where they were, by name
     assert {panel.cell(r, 'PDG') for r in range(panel.particle_count())} == {'13', '2212', '22', '321'}
+
+
+def test_secondaries_boxes_per_particle(panel):
+    annotated, selected = [], []
+    panel.particlesAnnotated.connect(annotated.append)
+    panel.particlesSelected.connect(selected.append)
+    assert panel._table.horizontalHeaderItem(panel.COLUMNS.index('Secondaries')).text() == '2°'
+    # independent of the Annotate boxes and of the selection; each change emitted
+    click(panel, 4, 'Secondaries')
+    assert panel.secondaries_particles() == [4] and panel.annotated_particles() == [] and selected == []
+    click(panel, 0, 'Annotate')
+    click(panel, 0, 'Secondaries')
+    assert panel.secondaries_particles() == [0, 4] and panel.annotated_particles() == [0]
+    assert annotated == [[], [0], [0]]
+    # showers: not yet
+    click(panel, 2, 'Secondaries')
+    assert panel.secondaries_particles() == [0, 4]
+    # the same interaction listed again: kept if asked; set (e.g. tests) with the Annotate boxes
+    panel.set_particles(ROWS, annotated=[0], secondaries=panel.secondaries_particles())
+    assert panel.secondaries_particles() == [0, 4]
+    panel.annotate_particles([1])
+    assert panel.annotated_particles() == [1] and panel.secondaries_particles() == [0, 4]
+    panel.annotate_particles([1], secondaries=[1])
+    assert panel.secondaries_particles() == [1]
+    panel.set_particles(ROWS)
+    assert panel.secondaries_particles() == []
+
+
+def test_show_paths_on_by_default(panel):
+    assert panel.show_paths.isChecked()

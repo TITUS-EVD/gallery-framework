@@ -1,7 +1,8 @@
 """
 Annotations of MC truth particles in the wire views (the MC truth dock's
 Annotate boxes): the particle's projected path in solid white, over the
-tracks, and its name above the line, along it.
+tracks (unless only the names are shown), and its name above the line,
+along it.
 """
 
 import numpy as np
@@ -42,7 +43,8 @@ def label_place(points):
     return middle, direction
 
 
-def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None):
+def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, font_size=FONT_POINT_SIZE,
+                     show_line=True):
     '''
     The graphics items annotating a particle in a view: its path (the
     segments it is drawn in, (n, 2) points each) in white, and its name above
@@ -50,6 +52,8 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None):
     trajectory not known (a neutral particle's, or one without steps).
     label_pos: where the label was moved to (view coordinates), else its
     default place; on_moved(position): called when the user moves it.
+    font_size: of the name, in points; show_line: False for the name only
+    (still placed along the path).
     '''
     paths = [np.asarray(p, dtype=float) for p in paths if len(p) > 1]
     if not paths:
@@ -71,11 +75,11 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None):
     label = AnnotationLabel(name, color=ANNOTATION_COLOR, anchor=(0.5, 1.0), rotateAxis=(dx, dy), on_moved=on_moved)
     font = label.textItem.font()
     font.setBold(True)
-    font.setPointSize(FONT_POINT_SIZE)
+    font.setPointSize(font_size)
     label.setFont(font)
     label.setPos(*(label_pos if label_pos is not None else (x, y)))
     label.setZValue(Z_VALUE + 1)
-    return [line, label]
+    return [line, label] if show_line else [label]
 
 
 class AnnotationLabel(MovableLabel):
