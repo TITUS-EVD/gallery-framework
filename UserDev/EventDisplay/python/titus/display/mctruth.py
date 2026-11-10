@@ -118,19 +118,28 @@ def particle_key(truths, row, index):
 # 0.035 MeV off at 1 GeV (more near rest): the nearest primary within this is the one
 MATCH_TOLERANCE_MEV = 0.5
 
+# generator particles Geant4 tracks as others: a K⁰ or K̄⁰ becomes a K⁰S or
+# K⁰L as Geant4 takes it on (G4PrimaryTransformer), its energy kept
+_G4_PDGS = {311: (311, 310, 130), -311: (-311, 310, 130)}
+
+
+def g4_pdgs(pdg):
+    ''' the PDG codes Geant4 may track a generator particle as: its own, or a K⁰'s K⁰S and K⁰L '''
+    return _G4_PDGS.get(int(pdg), (int(pdg),))
+
 
 def match_mctracks(mctracks, keys):
     '''
     Rows of the sim::MCTracks that are these generator particles: the Geant4
-    primary (process "primary") of the same origin and PDG code starting with
-    the energy nearest the particle's. Neutral particles have none (mcreco
+    primary (process "primary") of the same origin and PDG code (g4_pdgs)
+    starting with the energy nearest the particle's. Neutral particles have none (mcreco
     makes MCTracks of charged particles; electrons and photons are
     MCShowers). {key: [rows]} for the keys with a match.
     '''
     primary = mctracks.process == 'primary'
     out = {}
     for key in keys:
-        rows = np.flatnonzero(primary & (mctracks.pdg == key.pdg) & (mctracks.origin == key.origin))
+        rows = np.flatnonzero(primary & np.isin(mctracks.pdg, g4_pdgs(key.pdg)) & (mctracks.origin == key.origin))
         if len(rows) == 0:
             continue
         difference = np.abs(mctracks.start_e[rows] - key.energy)

@@ -1395,6 +1395,72 @@ def test_secondaries_annotated_by_g4_parentage_per_particle(qtbot, products, sbn
     assert drawer.annotate_particles([kaon], [lam]) == {kaon: [3]}
 
 
+
+def neutral_kaon_event(generator_pdg, g4_pdg, daughters):
+    '''
+    MCTracks of what a generator's neutral kaon (generator_pdg, 3000 MeV)
+    made: Geant4 tracked it as g4_pdg (G4 ID 5, no MCTrack of its own) to
+    where daughters, [(G4 ID, PDG code)], start; the generator's particle
+    '''
+    from titus.display.mctruth import ParticleKey
+    from titus.readers import MCTracks
+    vertex, end = np.array([-100., 0., 200.]), np.array([-60., 30., 260.])
+    ids, pdgs = [d[0] for d in daughters], [d[1] for d in daughters]
+    n = len(ids)
+    stops = [end + [10. * (i + 1), -20. * i, 30.] for i in range(n)]
+    xyz = np.vstack([np.linspace(end, stop, 20) for stop in stops])
+    columns = dict(track_id=ids, pdg=pdgs, origin=[1] * n, process=['kaon0LInelastic'] * n, start_t=[1.] * n,
+                   start_e=[1200.] * n, step_offset=list(range(0, 20 * n + 1, 20)),
+                   x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2], t=np.zeros(20 * n), e=np.ones(20 * n),
+                   **{f'start_{a}': [end[k]] * n for k, a in enumerate('xyz')},
+                   **{f'end_{a}': [s[k] for s in stops] for k, a in enumerate('xyz')},
+                   mother_track_id=[5] * n, ancestor_track_id=[5] * n, mother_pdg=[g4_pdg] * n,
+                   mother_process=['primary'] * n, mother_start_t=[0.] * n, mother_start_e=[3000.02] * n,
+                   **{f'mother_start_{a}': [vertex[k]] * n for k, a in enumerate('xyz')},
+                   **{f'mother_end_{a}': [end[k]] * n for k, a in enumerate('xyz')})
+    return MCTracks(**columns), ParticleKey(generator_pdg, 3000., 1)
+
+
+@pytest.mark.parametrize('generator_pdg, g4_pdg, daughters, names', [
+    (311, 130, [(11, 321), (12, 2212)], ['K⁺', 'p']),
+    (-311, 310, [(11, 211), (12, -211)], ['π⁺', 'π⁻']),
+])
+def test_neutral_kaons_annotated_as_the_k0l_or_k0s_geant4_made(qtbot, products, sbnd, tpc_module,
+                                                               generator_pdg, g4_pdg, daughters, names):
+    ''' a generator's K⁰ (K̄⁰) is a K⁰L or K⁰S in Geant4: dashed to where it ends, and its secondaries '''
+    import dataclasses
+    from PyQt5 import QtCore, QtWidgets
+    from titus.display.mctruth import g4_pdgs, match_mctracks, particle_name
+    from titus.drawables import MCTrackAnnotations
+    mctracks, k0 = neutral_kaon_event(generator_pdg, g4_pdg, daughters)
+    products[('mctracks', 'mcreco::G4')] = mctracks
+    tpc_module.space_charge_map = lambda: None
+    tpc_module.correct_3d_objects = lambda: True
+    tpc_module.annotated_mc_particles = lambda: [k0]
+    secondaries = []
+    tpc_module.annotated_mc_secondaries = lambda: secondaries
+    drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('mcreco::G4')
+    drawer.analyze()
+    drawer.drawObjects()
+    labels = [i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem)]
+    paths = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
+    # the generator's name, dashed, in each view
+    assert labels == [particle_name(generator_pdg)] * 3 and len(paths) == 3
+    assert all(p.pen().style() == QtCore.Qt.CustomDashLine for p in paths)
+    assert drawer.annotate_particles([k0]) == {k0: [11]}
+    # and what it made, from its G4 track ID
+    secondaries.append(k0)
+    drawer.drawObjects()
+    labels = sorted({i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem)})
+    assert labels == sorted([particle_name(generator_pdg)] + names)
+    # other particles as they were; an MCTrack of the K⁰L or K⁰S (mcreco makes none): the K⁰'s
+    assert g4_pdgs(321) == (321,) and set(g4_pdgs(generator_pdg)) == {generator_pdg, 130, 310}
+    primary = dataclasses.replace(mctracks, process=np.array(['primary'] + ['Decay'] * (len(daughters) - 1)),
+                                  pdg=np.array([g4_pdg] + [d[1] for d in daughters[1:]]),
+                                  start_e=np.array([3000.02] + [1200.] * (len(daughters) - 1)))
+    assert match_mctracks(primary, [k0]) == {k0: [0]}
+
 def test_annotations_read_only_once_something_is_annotated(qtbot, products, sbnd, tpc_module):
     from titus.drawables import MCTrackAnnotations
     mctracks, kaon, _ = kaon_lambda_event()
