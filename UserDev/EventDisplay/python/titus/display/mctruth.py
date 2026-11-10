@@ -119,7 +119,8 @@ def particle_key(truths, row, index):
 MATCH_TOLERANCE_MEV = 0.5
 
 # generator particles Geant4 tracks as others: a K⁰ or K̄⁰ becomes a K⁰S or
-# K⁰L as Geant4 takes it on (G4PrimaryTransformer), its energy kept
+# K⁰L, its energy kept: as Geant4 takes it on (G4PrimaryTransformer, the
+# K⁰S or K⁰L the primary), or (SBND 2026) as the K⁰ primary's daughter
 _G4_PDGS = {311: (311, 310, 130), -311: (-311, 310, 130)}
 
 

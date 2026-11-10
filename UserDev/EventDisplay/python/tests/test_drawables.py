@@ -1407,11 +1407,13 @@ def test_secondaries_annotated_by_g4_parentage_per_particle(qtbot, products, sbn
 
 
 
-def neutral_kaon_event(generator_pdg, g4_pdg, daughters):
+def neutral_kaon_event(generator_pdg, g4_pdg, daughters, ancestor=5):
     '''
     MCTracks of what a generator's neutral kaon (generator_pdg, 3000 MeV)
     made: Geant4 tracked it as g4_pdg (G4 ID 5, no MCTrack of its own) to
-    where daughters, [(G4 ID, PDG code)], start; the generator's particle
+    where daughters, [(G4 ID, PDG code)], start; the generator's particle.
+    ancestor: the G4 primary, 5 (the K⁰S or K⁰L itself), or (SBND 2026) the
+    K⁰ whose daughter it is (no MCTrack either)
     '''
     from titus.display.mctruth import ParticleKey
     from titus.readers import MCTracks
@@ -1425,14 +1427,14 @@ def neutral_kaon_event(generator_pdg, g4_pdg, daughters):
                    x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2], t=np.zeros(20 * n), e=np.ones(20 * n),
                    **{f'start_{a}': [end[k]] * n for k, a in enumerate('xyz')},
                    **{f'end_{a}': [s[k] for s in stops] for k, a in enumerate('xyz')},
-                   mother_track_id=[5] * n, ancestor_track_id=[5] * n, mother_pdg=[g4_pdg] * n,
+                   mother_track_id=[5] * n, ancestor_track_id=[ancestor] * n, mother_pdg=[g4_pdg] * n,
                    mother_process=['primary'] * n, mother_start_t=[0.] * n, mother_start_e=[3000.02] * n,
                    **{f'mother_start_{a}': [vertex[k]] * n for k, a in enumerate('xyz')},
                    **{f'mother_end_{a}': [end[k]] * n for k, a in enumerate('xyz')})
     return MCTracks(**columns), ParticleKey(generator_pdg, 3000., 1)
 
 
-@pytest.mark.parametrize('production', ['processes named', 'every process primary'])
+@pytest.mark.parametrize('production', ['processes named', 'every process primary', 'K0 primary, K0L its daughter'])
 @pytest.mark.parametrize('generator_pdg, g4_pdg, daughters, names', [
     (311, 130, [(11, 321), (12, 2212)], ['K⁺', 'p']),
     (-311, 310, [(11, 211), (12, -211)], ['π⁺', 'π⁻']),
@@ -1444,8 +1446,10 @@ def test_neutral_kaons_annotated_as_the_k0l_or_k0s_geant4_made(qtbot, products, 
     from PyQt5 import QtCore, QtWidgets
     from titus.display.mctruth import ParticleKey, g4_pdgs, match_mctracks, particle_name
     from titus.drawables import MCTrackAnnotations
-    mctracks, k0 = neutral_kaon_event(generator_pdg, g4_pdg, daughters)
-    if production == 'every process primary':
+    # (SBND 2026: the K⁰ is the primary, G4 ID 3, the K⁰S or K⁰L its daughter; all processes "primary")
+    mctracks, k0 = neutral_kaon_event(generator_pdg, g4_pdg, daughters,
+                                      ancestor=3 if production.startswith('K0 primary') else 5)
+    if production != 'processes named':
         mctracks = every_process_primary(mctracks)
     products[('mctracks', 'mcreco::G4')] = mctracks
     tpc_module.space_charge_map = lambda: None
@@ -1472,6 +1476,7 @@ def test_neutral_kaons_annotated_as_the_k0l_or_k0s_geant4_made(qtbot, products, 
     assert g4_pdgs(321) == (321,) and set(g4_pdgs(generator_pdg)) == {generator_pdg, 130, 310}
     # (a primary: its own mother and ancestor)
     primary = dataclasses.replace(mctracks, track_id=np.array([5] + [d[0] for d in daughters[1:]]),
+                                  ancestor_track_id=np.full(len(daughters), 5),
                                   pdg=np.array([g4_pdg] + [d[1] for d in daughters[1:]]),
                                   start_e=np.array([3000.02] + [1200.] * (len(daughters) - 1)))
     assert match_mctracks(primary, [k0]) == {k0: [0]}

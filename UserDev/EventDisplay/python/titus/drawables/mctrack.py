@@ -25,7 +25,8 @@ def straight_path(mctracks, key, own_rows):
     charged particle mcreco kept no steps of), else, for a particle without
     an MCTrack (neutral), the mother's start and end of a daughter whose
     mother it is (e.g. a Λ's decay proton; a K⁰'s, the K⁰S or K⁰L Geant4
-    made it, g4_pdgs). None if neither is known.
+    made it, g4_pdgs: the primary, or the K⁰ primary's daughter, so not
+    asked to be a primary). None if neither is known.
     '''
     def usable(start, end):
         return np.all(np.isfinite(start)) and np.all(np.isfinite(end)) and not np.allclose(start, end)
@@ -33,7 +34,9 @@ def straight_path(mctracks, key, own_rows):
     for row in own_rows:
         if usable(mctracks.start(row), mctracks.end(row)):
             return mctracks.start(row), mctracks.end(row), float(mctracks.start_t[row]), row
-    daughters = np.flatnonzero(np.isin(mctracks.mother_pdg, g4_pdgs(key.pdg)) & primary_daughters(mctracks)
+    pdgs = g4_pdgs(key.pdg)
+    became = np.isin(mctracks.mother_pdg, [p for p in pdgs if p != key.pdg])
+    daughters = np.flatnonzero(np.isin(mctracks.mother_pdg, pdgs) & (primary_daughters(mctracks) | became)
                                & (mctracks.origin == key.origin)
                                & (np.abs(mctracks.mother_start_e - key.energy) < MATCH_TOLERANCE_MEV))
     for row in daughters:
