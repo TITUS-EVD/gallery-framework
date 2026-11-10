@@ -1,7 +1,7 @@
 import numpy as np
 
 from titus.display import mc_t0, track_correction, track_segments
-from titus.display.mctruth import MATCH_TOLERANCE_MEV, match_mctracks, particle_name
+from titus.display.mctruth import MATCH_TOLERANCE_MEV, g4_pdgs, match_mctracks, particle_name
 from titus.display.projection import AS_STORED
 from titus.drawables.annotation import FONT_POINT_SIZE, annotation_items
 from titus.drawables.drawable import ReaderDrawable, add_items, remove_items
@@ -24,7 +24,8 @@ def straight_path(mctracks, key, own_rows):
     a straight line, without a trajectory: its MCTrack's own start and end (a
     charged particle mcreco kept no steps of), else, for a particle without
     an MCTrack (neutral), the mother's start and end of a daughter whose
-    mother it is (e.g. a Λ's decay proton). None if neither is known.
+    mother it is (e.g. a Λ's decay proton; a K⁰'s, the K⁰S or K⁰L Geant4
+    made it, g4_pdgs). None if neither is known.
     '''
     def usable(start, end):
         return np.all(np.isfinite(start)) and np.all(np.isfinite(end)) and not np.allclose(start, end)
@@ -32,7 +33,7 @@ def straight_path(mctracks, key, own_rows):
     for row in own_rows:
         if usable(mctracks.start(row), mctracks.end(row)):
             return mctracks.start(row), mctracks.end(row), float(mctracks.start_t[row]), row
-    daughters = np.flatnonzero((mctracks.mother_pdg == key.pdg) & (mctracks.mother_process == 'primary')
+    daughters = np.flatnonzero(np.isin(mctracks.mother_pdg, g4_pdgs(key.pdg)) & (mctracks.mother_process == 'primary')
                                & (mctracks.process != 'primary') & (mctracks.origin == key.origin)
                                & (np.abs(mctracks.mother_start_e - key.energy) < MATCH_TOLERANCE_MEV))
     for row in daughters:
