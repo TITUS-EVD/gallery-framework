@@ -547,3 +547,40 @@ def test_annotation_layer_in_screenshots(gui, monkeypatch, tmp_path):
     assert not tpc._annotation_layer.isChecked()
     box = tpc._annotation_layer.parentWidget()
     assert isinstance(box, QtWidgets.QGroupBox) and box is tpc._annotation_rotate.parentWidget()
+
+
+def test_logo_and_scale_bar_in_the_annotation_layer(gui, monkeypatch, tmp_path):
+    ''' the separate annotation layer takes the views' logos, labels and scale bars too, even with no annotations '''
+    from PyQt5 import QtGui
+    gi, gm, tpc = tpc_gui(gui)
+    monkeypatch.chdir(tmp_path)
+    view = next(v for v in tpc._wire_views.values() if v.isVisible())
+    tpc._annotation_layer.setChecked(True)
+    # nothing over the wire planes: one image
+    assert tpc.screenshot_layer() is None
+
+    tpc._logoOption.setChecked(True)
+    tpc._scaleBarOption.setChecked(True)
+    QtWidgets.QApplication.processEvents()
+    overlays = view.overlay_items()
+    assert set(overlays) == {view._logo, view._label, view._xBar}
+    name, items = tpc.screenshot_layer()
+    assert name == 'annotations' and set(overlays) <= set(items)
+
+    widget, scale = gui._central_widget, 1.0
+    gui._settings.setValue('General/Screenshot scale', scale)
+    gui._settings.setValue('General/Screenshot mode', 'File')
+    captured = []
+    monkeypatch.setattr(QtGui.QPixmap, 'save', lambda self, file, fmt: captured.append((file.fileName(), QtGui.QPixmap(self))) or True)
+    gui._on_capture_action()
+    (_, base), (layer_name, layer) = captured
+    assert layer_name.endswith('_annotations.png')
+    # the logo and scale bar drawn in the layer, at least where the view is
+    assert (_view_pixels(layer, view, widget, scale)[..., 3] > 0).any()
+    # and painted again as before, on screen
+    assert all(item.opacity() == 1 for item in overlays)
+
+    # hidden: not in the layer
+    tpc._logoOption.setChecked(False)
+    tpc._scaleBarOption.setChecked(False)
+    assert view.overlay_items() == [] and tpc.screenshot_layer() is None

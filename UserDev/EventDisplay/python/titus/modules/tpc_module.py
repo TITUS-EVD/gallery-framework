@@ -277,8 +277,8 @@ class TpcModule(Module):
         annotation_layout.addWidget(self._annotation_rotate, 1, 1, 1, -1)
         annotation_layout.addWidget(QtWidgets.QLabel('Separate annotation layer in screenshots'), 2, 0, 1, 1)
         self._annotation_layer = QtWidgets.QCheckBox()
-        self._annotation_layer.setToolTip("Screenshots of the view saved to files: the annotations in a second image "
-                                          "(_annotations.png) on a transparent background, the wire planes without them. "
+        self._annotation_layer.setToolTip("Screenshots of the view saved to files: the annotations, logo and scale bar in a second "
+                                          "image (_annotations.png) on a transparent background, the wire planes without them. "
                                           "Not window screenshots or the clipboard")
         self._annotation_layer.setChecked(self._settings_defaults[_SET_ANNOTATION_LAYER])
         self._annotation_layer.toggled.connect(
@@ -763,10 +763,16 @@ class TpcModule(Module):
         return self._annotation_rotate.isChecked()
 
     def screenshot_layer(self):
-        ''' the MC annotations drawn, if the settings page puts them in an image of their own '''
-        if not self._annotation_layer.isChecked() or self._mc_annotations is None:
+        '''
+        the MC annotations drawn, and the views' logos (with their labels)
+        and scale bars shown, if the settings page puts them in an image of
+        their own
+        '''
+        if not self._annotation_layer.isChecked():
             return None
-        items = self._mc_annotations.drawn_items()
+        items = [] if self._mc_annotations is None else self._mc_annotations.drawn_items()
+        for view in self._wire_views.values():
+            items.extend(view.overlay_items())
         return ('annotations', items) if items else None
 
     def annotation_font_size(self):
@@ -1745,6 +1751,15 @@ class WireView(pg.GraphicsLayoutWidget):
 
     def changeColorMap(self, colormaptype='default'):
         self.setColorMap(colormaptype)
+
+    def overlay_items(self):
+        ''' the graphics items drawn over the wire planes: the logo and its label, the scale bar, those shown '''
+        items = []
+        if self._useLogo:
+            items += [self._logo, self._label]
+        if self.useScaleBar:
+            items.append(self._xBar)
+        return [item for item in items if item is not None and item.scene() is self.scene()]
 
     def toggleScale(self, scaleBool):
         self.useScaleBar = scaleBool
