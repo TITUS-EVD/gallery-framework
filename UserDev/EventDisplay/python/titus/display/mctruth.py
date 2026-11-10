@@ -128,15 +128,35 @@ def g4_pdgs(pdg):
     return _G4_PDGS.get(int(pdg), (int(pdg),))
 
 
+def g4_primaries(mctracks):
+    '''
+    which sim::MCTracks are Geant4 primaries (generator particles): those
+    that are their own ancestor (mcreco: a primary's mother and ancestor are
+    itself). Some productions (SBND 2026) call every MCTrack's process
+    "primary", so the process is only used without parentage (-1: readers
+    and dumps older than it).
+    '''
+    known = mctracks.ancestor_track_id >= 0
+    return np.where(known, mctracks.track_id == mctracks.ancestor_track_id, mctracks.process == 'primary')
+
+
+def primary_daughters(mctracks):
+    ''' which sim::MCTracks a Geant4 primary made: their mother is their ancestor (else, as g4_primaries, by process) '''
+    known = mctracks.ancestor_track_id >= 0
+    by_id = (mctracks.mother_track_id == mctracks.ancestor_track_id) & (mctracks.track_id != mctracks.ancestor_track_id)
+    by_process = (mctracks.mother_process == 'primary') & (mctracks.process != 'primary')
+    return np.where(known, by_id, by_process)
+
+
 def match_mctracks(mctracks, keys):
     '''
     Rows of the sim::MCTracks that are these generator particles: the Geant4
-    primary (process "primary") of the same origin and PDG code (g4_pdgs)
+    primary (g4_primaries) of the same origin and PDG code (g4_pdgs)
     starting with the energy nearest the particle's. Neutral particles have none (mcreco
     makes MCTracks of charged particles; electrons and photons are
     MCShowers). {key: [rows]} for the keys with a match.
     '''
-    primary = mctracks.process == 'primary'
+    primary = g4_primaries(mctracks)
     out = {}
     for key in keys:
         rows = np.flatnonzero(primary & np.isin(mctracks.pdg, g4_pdgs(key.pdg)) & (mctracks.origin == key.origin))

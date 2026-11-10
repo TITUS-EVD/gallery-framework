@@ -1,7 +1,7 @@
 import numpy as np
 
 from titus.display import mc_t0, track_correction, track_segments
-from titus.display.mctruth import MATCH_TOLERANCE_MEV, g4_pdgs, match_mctracks, particle_name
+from titus.display.mctruth import MATCH_TOLERANCE_MEV, g4_pdgs, match_mctracks, particle_name, primary_daughters
 from titus.display.projection import AS_STORED
 from titus.drawables.annotation import FONT_POINT_SIZE, annotation_items
 from titus.drawables.drawable import ReaderDrawable, add_items, remove_items
@@ -33,8 +33,8 @@ def straight_path(mctracks, key, own_rows):
     for row in own_rows:
         if usable(mctracks.start(row), mctracks.end(row)):
             return mctracks.start(row), mctracks.end(row), float(mctracks.start_t[row]), row
-    daughters = np.flatnonzero(np.isin(mctracks.mother_pdg, g4_pdgs(key.pdg)) & (mctracks.mother_process == 'primary')
-                               & (mctracks.process != 'primary') & (mctracks.origin == key.origin)
+    daughters = np.flatnonzero(np.isin(mctracks.mother_pdg, g4_pdgs(key.pdg)) & primary_daughters(mctracks)
+                               & (mctracks.origin == key.origin)
                                & (np.abs(mctracks.mother_start_e - key.energy) < MATCH_TOLERANCE_MEV))
     for row in daughters:
         if usable(mctracks.mother_start(row), mctracks.mother_end(row)):

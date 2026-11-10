@@ -1366,9 +1366,20 @@ def kaon_lambda_event():
     return MCTracks(**columns), ParticleKey(321, 1089.97, 1), ParticleKey(3122, 2976.70, 1)
 
 
-def test_secondaries_annotated_by_g4_parentage_per_particle(qtbot, products, sbnd, tpc_module):
+def every_process_primary(mctracks):
+    ''' MCTracks as some productions (SBND 2026) write them: every process and mother process "primary" '''
+    import dataclasses
+    n = len(mctracks.track_id)
+    return dataclasses.replace(mctracks, process=np.array(['primary'] * n), mother_process=np.array(['primary'] * n))
+
+
+@pytest.mark.parametrize('production', ['processes named', 'every process primary'])
+def test_secondaries_annotated_by_g4_parentage_per_particle(qtbot, products, sbnd, tpc_module, production):
+    ''' by G4 track IDs, whatever the processes are called '''
     from titus.drawables import MCTrackAnnotations
     mctracks, kaon, lam = kaon_lambda_event()
+    if production == 'every process primary':
+        mctracks = every_process_primary(mctracks)
     products[('mctracks', 'mcreco::G4')] = mctracks
     tpc_module.space_charge_map = lambda: None
     tpc_module.correct_3d_objects = lambda: True
@@ -1421,18 +1432,21 @@ def neutral_kaon_event(generator_pdg, g4_pdg, daughters):
     return MCTracks(**columns), ParticleKey(generator_pdg, 3000., 1)
 
 
+@pytest.mark.parametrize('production', ['processes named', 'every process primary'])
 @pytest.mark.parametrize('generator_pdg, g4_pdg, daughters, names', [
     (311, 130, [(11, 321), (12, 2212)], ['K⁺', 'p']),
     (-311, 310, [(11, 211), (12, -211)], ['π⁺', 'π⁻']),
 ])
 def test_neutral_kaons_annotated_as_the_k0l_or_k0s_geant4_made(qtbot, products, sbnd, tpc_module,
-                                                               generator_pdg, g4_pdg, daughters, names):
+                                                               generator_pdg, g4_pdg, daughters, names, production):
     ''' a generator's K⁰ (K̄⁰) is a K⁰L or K⁰S in Geant4: dashed to where it ends, and its secondaries '''
     import dataclasses
     from PyQt5 import QtCore, QtWidgets
-    from titus.display.mctruth import g4_pdgs, match_mctracks, particle_name
+    from titus.display.mctruth import ParticleKey, g4_pdgs, match_mctracks, particle_name
     from titus.drawables import MCTrackAnnotations
     mctracks, k0 = neutral_kaon_event(generator_pdg, g4_pdg, daughters)
+    if production == 'every process primary':
+        mctracks = every_process_primary(mctracks)
     products[('mctracks', 'mcreco::G4')] = mctracks
     tpc_module.space_charge_map = lambda: None
     tpc_module.correct_3d_objects = lambda: True
@@ -1456,10 +1470,13 @@ def test_neutral_kaons_annotated_as_the_k0l_or_k0s_geant4_made(qtbot, products, 
     assert labels == sorted([particle_name(generator_pdg)] + names)
     # other particles as they were; an MCTrack of the K⁰L or K⁰S (mcreco makes none): the K⁰'s
     assert g4_pdgs(321) == (321,) and set(g4_pdgs(generator_pdg)) == {generator_pdg, 130, 310}
-    primary = dataclasses.replace(mctracks, process=np.array(['primary'] + ['Decay'] * (len(daughters) - 1)),
+    # (a primary: its own mother and ancestor)
+    primary = dataclasses.replace(mctracks, track_id=np.array([5] + [d[0] for d in daughters[1:]]),
                                   pdg=np.array([g4_pdg] + [d[1] for d in daughters[1:]]),
                                   start_e=np.array([3000.02] + [1200.] * (len(daughters) - 1)))
     assert match_mctracks(primary, [k0]) == {k0: [0]}
+    # a secondary is no generator particle, its process called "primary" or not
+    assert match_mctracks(mctracks, [ParticleKey(daughters[0][1], 1200., 1)]) == {}
 
 def test_annotations_read_only_once_something_is_annotated(qtbot, products, sbnd, tpc_module):
     from titus.drawables import MCTrackAnnotations
