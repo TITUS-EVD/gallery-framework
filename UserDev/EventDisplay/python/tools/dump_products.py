@@ -270,12 +270,13 @@ def extract_mctruths(truths):
         if has_nu:
             nu = t.GetNeutrino()
             p = nu.Nu()
-            values = (p.PdgCode(), p.E(), p.Vx(), p.Vy(), p.Vz(), p.T(), nu.Mode(), nu.InteractionType(), nu.CCNC())
+            values = (p.PdgCode(), p.E(), p.Vx(), p.Vy(), p.Vz(), p.T(), nu.Mode(), nu.InteractionType(), nu.CCNC(),
+                      p.Px(), p.Py(), p.Pz())
         else:
             nan = float('nan')
-            values = (0, nan, nan, nan, nan, nan, -1, -1, -1)
-        for name, value in zip(('nu_pdg', 'nu_energy', 'vx', 'vy', 'vz', 'vt', 'mode', 'interaction_type', 'ccnc'),
-                               values):
+            values = (0, nan, nan, nan, nan, nan, -1, -1, -1, nan, nan, nan)
+        for name, value in zip(('nu_pdg', 'nu_energy', 'vx', 'vy', 'vz', 'vt', 'mode', 'interaction_type', 'ccnc',
+                                'nu_px', 'nu_py', 'nu_pz'), values):
             columns[name].append(value)
         particles.append([(q.PdgCode(), q.StatusCode(), q.E())
                           for q in (t.GetParticle(i) for i in range(t.NParticles()))])

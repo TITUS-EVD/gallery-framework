@@ -1,9 +1,16 @@
+import numpy as np
+
 from titus.display import ViewLayout, mc_t0, point_correction, position_tpcs, project_objects
-from titus.display.mctruth import particle_key, particle_name, particle_rows, truth_label, truth_summary
-from titus.display.projection import AS_STORED
-from titus.drawables.drawable import ReaderDrawable
+from titus.display.mctruth import neutrino_path, particle_key, particle_name, particle_rows, truth_label, \
+    truth_summary
+from titus.display.projection import AS_STORED, track_correction, track_segments
+from titus.drawables.annotation import FONT_POINT_SIZE, annotation_items
+from titus.drawables.drawable import ReaderDrawable, add_items, remove_items
 from titus.drawables.items import CrossMarker
-from titus.readers import Points
+from titus.readers import Points, Tracks
+
+# the neutrino's line is projected through points this far apart (cm)
+NEUTRINO_STEP_CM = 1.
 
 
 class MCTruth(ReaderDrawable):
@@ -15,7 +22,11 @@ class MCTruth(ReaderDrawable):
     highlighted. Selecting particles in the dock highlights their MCTracks
     (TpcModule.select_mc_particles). Corrected (the TPC module's "Correct 3D
     objects" option), each interaction's time is undone like a T0, so its
-    vertex lands where its charge was read out.
+    vertex lands where its charge was read out. With the dock's Neutrino
+    path, the shown interaction's incoming neutrino is annotated: a dashed
+    line from outside the active volume to the vertex, with an arrowhead
+    there and its name (titus.drawables.annotation), corrected and moved by
+    space charge as the vertex is.
     '''
     KIND = 'mctruths'
     SIMULATION = True
@@ -33,7 +44,11 @@ class MCTruth(ReaderDrawable):
         # the interaction whose particles the dock lists, (truths, row)
         self._listed = None
         # the dock's notes on the selected and the annotated particles' MCTracks
-        self._notes = {'selected': '', 'annotated': ''}
+        self._notes = {'selected': '', 'annotated': '', 'neutrino': ''}
+        # the neutrino's annotation (graphics items, in the views), and where its labels were moved:
+        # {(producer, row, (plane, cryostat)): (x, y)}
+        self._nu_items = []
+        self._nu_label_positions = {}
         panel = self.panel()
         if panel is not None:
             panel.dropdown.currentIndexChanged.connect(self.on_selection_changed)
@@ -41,12 +56,14 @@ class MCTruth(ReaderDrawable):
             panel.all_particles.toggled.connect(lambda _: self.show_particles())
             panel.particlesSelected.connect(self.select_particles)
             panel.particlesAnnotated.connect(self.on_particles_annotated)
+            panel.show_neutrino.toggled.connect(lambda _: self.draw_neutrino())
 
     def panel(self):
         ''' the TPC module's MC truth panel (None in tests without one) '''
         return getattr(self._module, '_mctruth_panel', None)
 
     def on_data(self):
+        self._nu_label_positions = {}
         self._choices = sorted(((p, row) for p, truths in enumerate(self._data) for row in range(len(truths))),
                                key=lambda c: not self._data[c[0]].has_neutrino[c[1]])
         self._selected = 0
@@ -76,6 +93,7 @@ class MCTruth(ReaderDrawable):
             truths, row = self.selected()
             self.describe(truths, row)
             self.style_crosses()
+            self.draw_neutrino()
 
     def corrected(self):
         return getattr(self._module, 'correct_3d_objects', lambda: True)()
@@ -92,6 +110,7 @@ class MCTruth(ReaderDrawable):
         if selected is None:
             # no MC truth in this event
             self.hide_dock()
+            self.draw_neutrino()
             return
         self.describe(*selected)
         panel = self.panel()
@@ -122,6 +141,67 @@ class MCTruth(ReaderDrawable):
                         self._crosses.append((choice, cross))
             self.add_to_view(view, items)
         self.style_crosses()
+        self.draw_neutrino()
+
+    def draw_neutrino(self):
+        '''
+        the shown interaction's neutrino annotated, if the dock says so: in
+        each view, a dashed line to the vertex with an arrowhead, and its name
+        '''
+        remove_items(self._nu_items)
+        self._nu_items = []
+        panel, selected = self.panel(), self.selected()
+        if panel is None or not panel.show_neutrino.isChecked() or selected is None \
+                or not selected[0].has_neutrino[selected[1]]:
+            self._set_note('neutrino', '')
+            return
+        truths, row = selected
+        stored, producer = self.stored(truths), self._producer_of(truths)
+        momentum = stored.nu_momentum(row)
+        vertex = np.array([stored.vx[row], stored.vy[row], stored.vz[row]], dtype=float)
+        path = neutrino_path(self._geom.detector, vertex, momentum)
+        if path is None:
+            self._set_note('neutrino', 'No neutrino direction in this file (the reader may predate it: rebuild it)'
+                           if not np.all(np.isfinite(momentum)) else 'The neutrino vertex is outside the TPCs')
+            return
+        self._set_note('neutrino', '')
+        start, end = path
+        n = int(np.ceil(np.linalg.norm(end - start) / NEUTRINO_STEP_CM)) + 1
+        xyz = start + np.linspace(0, 1, max(n, 2))[:, None] * (end - start)
+        if producer is not None and self.space_charge_applied(producer):
+            xyz = self._sce_map.displace(xyz)
+        line = Tracks(id=[row], point_offset=[0, len(xyz)], x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2],
+                      valid=np.ones(len(xyz), dtype=bool))
+        # where the arrow points: the last two points, projected as the line is
+        tip = Tracks(id=[row], point_offset=[0, 2], x=xyz[-2:, 0], y=xyz[-2:, 1], z=xyz[-2:, 2],
+                     valid=np.ones(2, dtype=bool))
+        t0 = mc_t0(self._geom, float(truths.vt[row]))
+        font_size = getattr(self._module, 'annotation_font_size', lambda: FONT_POINT_SIZE)()
+        rotate = getattr(self._module, 'annotation_labels_rotated', lambda: True)() is not False
+        for view in self.views():
+            layout = self.view_layout(view)
+            segments, tip_segments = (
+                track_segments(layout, t, 0, track_correction(layout, t, 0, t0=t0) if self.corrected() else None)
+                for t in (line, tip))
+            segments = [np.stack([s.x, s.y], axis=1) for s in segments]
+            if not segments:
+                continue
+            if tip_segments:
+                # the vertex's segment last, for the arrowhead
+                at = np.array([tip_segments[-1].x[-1], tip_segments[-1].y[-1]])
+                segments.sort(key=lambda s: -np.linalg.norm(s[-1] - at))
+            label_key = (producer, row, (view.plane(), view.cryostat()))
+            items = annotation_items(segments, particle_name(truths.nu_pdg[row]), line_style='dashed',
+                                     label_pos=self._nu_label_positions.get(label_key),
+                                     on_moved=lambda pos, k=label_key: self._nu_label_positions.__setitem__(k, pos),
+                                     font_size=font_size if isinstance(font_size, int) and font_size > 0
+                                     else FONT_POINT_SIZE, rotate=rotate, arrow=True)
+            add_items(view._view, items)
+            self._nu_items.extend(items)
+
+    def drawn_items(self):
+        ''' the graphics items of the neutrino's annotation, in the views '''
+        return list(self._nu_items)
 
     def style_crosses(self):
         ''' the selected interaction's vertex highlighted '''
@@ -131,6 +211,8 @@ class MCTruth(ReaderDrawable):
     def clearDrawnObjects(self, obj_list=None):
         super().clearDrawnObjects(obj_list)
         self._crosses = []
+        remove_items(self._nu_items)
+        self._nu_items = []
 
     def vertex_tooltip(self, truths, row, correction):
         what = correction.describe(0) if correction is not None else AS_STORED

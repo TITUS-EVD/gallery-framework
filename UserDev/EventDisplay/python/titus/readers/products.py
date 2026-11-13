@@ -325,8 +325,10 @@ class EndPoints2D(Columns):
 class MCTruths(Columns):
     """
     simb::MCTruth. The neutrino columns are set if has_neutrino (vertex in
-    cm, time in ns, energy in GeV; mode, interaction_type and ccnc as in
-    simb::MCNeutrino). Particles of truth i are rows particle_offset[i] to
+    cm, time in ns, energy and momentum nu_px, nu_py, nu_pz in GeV; mode,
+    interaction_type and ccnc as in simb::MCNeutrino). The momentum, read
+    later than the rest, is nan in products read before it (older dumps,
+    or a reader library built before). Particles of truth i are rows particle_offset[i] to
     particle_offset[i + 1] of the particle_* columns (energy in GeV, status
     1 = final state).
     """
@@ -335,7 +337,10 @@ class MCTruths(Columns):
         'vx': 'f4', 'vy': 'f4', 'vz': 'f4', 'vt': 'f8',
         'mode': 'i4', 'interaction_type': 'i4', 'ccnc': 'i4',
         'particle_offset': 'i8', 'particle_pdg': 'i4', 'particle_status': 'i4', 'particle_energy': 'f4',
+        'nu_px': 'f4', 'nu_py': 'f4', 'nu_pz': 'f4',
     }
+    # per truth, added later: their value when not read
+    OPTIONAL: ClassVar[Dict[str, object]] = {c: np.nan for c in ('nu_px', 'nu_py', 'nu_pz')}
     origin: np.ndarray
     has_neutrino: np.ndarray
     nu_pdg: np.ndarray
@@ -351,9 +356,27 @@ class MCTruths(Columns):
     particle_pdg: np.ndarray
     particle_status: np.ndarray
     particle_energy: np.ndarray
+    nu_px: np.ndarray = None
+    nu_py: np.ndarray = None
+    nu_pz: np.ndarray = None
+
+    def __post_init__(self):
+        n = len(np.asarray(self.origin))
+        for name, value in self.OPTIONAL.items():
+            if getattr(self, name) is None:
+                object.__setattr__(self, name, [value] * n)
+        super().__post_init__()
+
+    @classmethod
+    def from_arrays(cls, arrays):
+        return super().from_arrays({**{name: None for name in cls.OPTIONAL}, **arrays})
 
     def __len__(self):
         return len(self.origin)
+
+    def nu_momentum(self, row):
+        ''' the incoming neutrino's momentum (3,), GeV: nan if not read, or no neutrino '''
+        return np.array([self.nu_px[row], self.nu_py[row], self.nu_pz[row]], dtype=float)
 
     @classmethod
     def empty(cls):

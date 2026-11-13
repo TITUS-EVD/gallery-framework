@@ -51,7 +51,9 @@ class MCTruthPanel(QtWidgets.QWidget):
     Secondaries box changes (secondaries_particles: those whose descendants
     are annotated) or a Paths box (paths_particles: those whose annotations,
     the particle's and its secondaries', are drawn with their paths, else
-    names only). show_paths checks or unchecks all the Paths boxes.
+    names only). show_paths checks or unchecks all the Paths boxes;
+    secondary_paths unchecked draws every secondary's annotation as a name
+    only, whatever its particle's Paths box (particlesAnnotated emitted).
     '''
     COLUMNS = ('Annotate', 'Secondaries', 'Paths', 'Particle', 'PDG', 'KE [MeV]', 'E [GeV]', 'Status')
     HEADERS = {'Annotate': '✎', 'Secondaries': '2°', 'Paths': 'Tr'}
@@ -79,6 +81,11 @@ class MCTruthPanel(QtWidgets.QWidget):
         self.show_paths.setToolTip("Draw the annotated particles' paths in white; unchecked, only their names.\n"
                                    "Sets every particle's Tr box (partly checked: some are off)")
         self.show_paths.clicked.connect(lambda: self.show_all_paths(self.show_paths.checkState() == QtCore.Qt.Checked))
+        self.secondary_paths = QtWidgets.QCheckBox("Secondaries' paths")
+        self.secondary_paths.setChecked(True)
+        self.secondary_paths.setToolTip("Draw the paths of the annotated secondaries (2°) too; unchecked, only\n"
+                                        "their names, e.g. a Λ's line with its decay products' names alone")
+        self.secondary_paths.toggled.connect(lambda _: self.particlesAnnotated.emit(self.annotated_particles()))
         self.all_particles = QtWidgets.QCheckBox('All particles')
         self.all_particles.setToolTip('Also list the initial, intermediate and in-nucleus particles '
                                       '(GENIE status codes), not only the final state')
@@ -115,6 +122,10 @@ class MCTruthPanel(QtWidgets.QWidget):
                                     'the selected interaction\'s is highlighted')
         # off unless asked (the TPC module keeps the choice between sessions)
         self.show_vertex.setChecked(False)
+        self.show_neutrino = QtWidgets.QCheckBox('Neutrino path')
+        self.show_neutrino.setToolTip("Annotate the interaction's incoming neutrino: a dashed white line from\n"
+                                      "outside the TPCs to its vertex, with an arrowhead and its name")
+        self.show_neutrino.setChecked(False)
 
         # which MCTracks the selected particles are
         self._track_note = QtWidgets.QLabel()
@@ -122,11 +133,16 @@ class MCTruthPanel(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         # for every interaction's vertex: above the one shown
-        layout.addWidget(self.show_vertex)
+        vertex_options = QtWidgets.QHBoxLayout()
+        vertex_options.addWidget(self.show_vertex)
+        vertex_options.addWidget(self.show_neutrino)
+        vertex_options.addStretch()
+        layout.addLayout(vertex_options)
         layout.addWidget(self.dropdown)
         layout.addWidget(self._summary)
         options = QtWidgets.QHBoxLayout()
         options.addWidget(self.show_paths)
+        options.addWidget(self.secondary_paths)
         options.addStretch()
         options.addWidget(self.all_particles)
         layout.addLayout(options)
@@ -320,8 +336,9 @@ class MCTruthPanel(QtWidgets.QWidget):
         table.setMinimumWidth(width + table.verticalScrollBar().sizeHint().width() + 2 * table.frameWidth())
 
     def set_has_vertices(self, has_vertices):
-        ''' the vertex toggle only means something with neutrino interactions in the event '''
+        ''' the vertex and neutrino toggles only mean something with neutrino interactions in the event '''
         self.show_vertex.setEnabled(has_vertices)
+        self.show_neutrino.setEnabled(has_vertices)
 
     def particle_count(self):
         return self._table.rowCount()

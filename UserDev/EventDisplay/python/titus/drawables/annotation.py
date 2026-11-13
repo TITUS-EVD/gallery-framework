@@ -2,7 +2,9 @@
 Annotations of MC truth particles in the wire views (the MC truth dock's
 Annotate boxes): the particle's projected path in solid white, over the
 tracks (unless only the names are shown), and its name above the line,
-along it.
+along it. A straight line standing in for a trajectory not known (e.g. a
+neutral particle's) is dotted; the incoming neutrino's (the dock's Neutrino
+path) is dashed, with an arrowhead at the vertex.
 """
 
 import numpy as np
@@ -14,8 +16,14 @@ from titus.gui.widgets import MovableLabel
 
 ANNOTATION_COLOR = (255, 255, 255)
 LINE_WIDTH = 2  # pixels
-# dashed lines (no trajectory known): dash and gap lengths, in line widths (Qt's DashLine is 4, 2)
+# dash and gap lengths, in line widths (Qt's DashLine is 4, 2): the neutrino's dashed line,
+# and the dotted straight lines of the particles without a trajectory (e.g. neutral)
 DASH_PATTERN = (4, 4)
+DOT_PATTERN = (1, 2)
+LINE_PATTERNS = {'solid': None, 'dashed': DASH_PATTERN, 'dotted': DOT_PATTERN}
+# arrowheads: length and half width, in line widths
+ARROW_LENGTH = 6
+ARROW_HALF_WIDTH = 2.5
 FONT_POINT_SIZE = 12
 # above the tracks (TrackCollection) and their highlight
 Z_VALUE = 10
@@ -47,21 +55,79 @@ def label_place(points):
 
 
 class AnnotationPath(QtWidgets.QGraphicsPathItem):
-    ''' a particle's path, its pixel width and dashes widened in images rendered larger (titus.drawables.items) '''
+    '''
+    a particle's path, its pixel width and dashes widened in images rendered
+    larger (titus.drawables.items). arrow: (tip, from) view points, an
+    arrowhead at tip pointing away from from, its size in pixels whatever
+    the zoom
+    '''
+
+    def __init__(self, path, arrow=None):
+        super().__init__(path)
+        self.arrow = arrow
 
     def paint(self, painter, option, widget=None):
-        painter.setPen(render_pen(self.pen()))
+        pen = render_pen(self.pen())
+        painter.setPen(pen)
         painter.setBrush(self.brush())
         painter.drawPath(self.path())
+        if self.arrow is not None:
+            head = arrowhead(painter.transform(), *self.arrow, max(pen.widthF(), 1.))
+            if head is not None:
+                painter.save()
+                painter.resetTransform()
+                solid = QtGui.QPen(pen)
+                solid.setStyle(QtCore.Qt.SolidLine)
+                solid.setJoinStyle(QtCore.Qt.MiterJoin)
+                painter.setPen(solid)
+                painter.setBrush(pen.color())
+                painter.drawPolygon(head)
+                painter.restore()
+
+    def boundingRect(self):
+        ''' with room for the arrowhead, which is sized in pixels '''
+        rect = super().boundingRect()
+        if self.arrow is None or self.scene() is None or not self.scene().views():
+            return rect
+        to_device = self.deviceTransform(self.scene().views()[0].viewportTransform())
+        to_item, invertible = to_device.inverted()
+        if not invertible:
+            return rect
+        reach = 2 * ARROW_LENGTH * max(self.pen().widthF(), 1.)
+        dx = to_item.map(QtCore.QLineF(0, 0, reach, 0)).length()
+        dy = to_item.map(QtCore.QLineF(0, 0, 0, reach)).length()
+        return rect.adjusted(-dx, -dy, dx, dy)
 
 
-def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, font_size=FONT_POINT_SIZE,
-                     show_line=True, rotate=True):
+def arrowhead(to_device, tip, start, width):
+    '''
+    the triangle (QPolygonF, device coordinates) of an arrowhead at view
+    point tip, pointing from view point start, for a line of this pixel
+    width; None if the two points are the same on screen
+    '''
+    tip = to_device.map(QtCore.QPointF(*tip))
+    start = to_device.map(QtCore.QPointF(*start))
+    d = np.array([tip.x() - start.x(), tip.y() - start.y()])
+    norm = np.linalg.norm(d)
+    if norm < 1e-6:
+        return None
+    d /= norm
+    n = np.array([-d[1], d[0]])
+    t = np.array([tip.x(), tip.y()])
+    base = t - ARROW_LENGTH * width * d
+    corners = [t, base + ARROW_HALF_WIDTH * width * n, base - ARROW_HALF_WIDTH * width * n]
+    return QtGui.QPolygonF([QtCore.QPointF(*c) for c in corners])
+
+
+def annotation_items(paths, name, line_style='solid', label_pos=None, on_moved=None, font_size=FONT_POINT_SIZE,
+                     show_line=True, rotate=True, arrow=False):
     '''
     The graphics items annotating a particle in a view: its path (the
     segments it is drawn in, (n, 2) points each) in white, and its name above
-    the longest segment. dashed: a straight line standing in for a
-    trajectory not known (a neutral particle's, or one without steps).
+    the longest segment. line_style: 'solid', 'dotted' (a straight line
+    standing in for a trajectory not known: a neutral particle's, or one
+    without steps) or 'dashed' (the incoming neutrino's). arrow: an
+    arrowhead at the end of the last segment.
     label_pos: where the label was moved to (view coordinates), else its
     default place; on_moved(position): called when the user moves it.
     font_size: of the name, in points; show_line: False for the name only
@@ -76,10 +142,11 @@ def annotation_items(paths, name, dashed=False, label_pos=None, on_moved=None, f
         path.moveTo(*points[0])
         for x, y in points[1:]:
             path.lineTo(x, y)
-    line = AnnotationPath(path)
+    line = AnnotationPath(path, arrow=(tuple(paths[-1][-1]), tuple(paths[-1][max(0, len(paths[-1]) - 6)])) if arrow else None)
     pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH)
-    if dashed:
-        pen.setDashPattern(list(DASH_PATTERN))
+    pattern = LINE_PATTERNS[line_style]
+    if pattern is not None:
+        pen.setDashPattern(list(pattern))
     pen.setCosmetic(True)
     line.setPen(pen)
     line.setZValue(Z_VALUE)

@@ -376,6 +376,9 @@ namespace titusio {
     mode.clear();
     interaction_type.clear();
     ccnc.clear();
+    nu_px.clear();
+    nu_py.clear();
+    nu_pz.clear();
     particle_offset.assign(1, 0);
     particle_pdg.clear();
     particle_status.clear();
@@ -510,6 +513,9 @@ namespace titusio {
         out.mode.push_back(nu.Mode());
         out.interaction_type.push_back(nu.InteractionType());
         out.ccnc.push_back(nu.CCNC());
+        out.nu_px.push_back(particle.Px());
+        out.nu_py.push_back(particle.Py());
+        out.nu_pz.push_back(particle.Pz());
       }
       else {
         auto const nan = std::numeric_limits<float>::quiet_NaN();
@@ -522,6 +528,9 @@ namespace titusio {
         out.mode.push_back(-1);
         out.interaction_type.push_back(-1);
         out.ccnc.push_back(-1);
+        out.nu_px.push_back(nan);
+        out.nu_py.push_back(nan);
+        out.nu_pz.push_back(nan);
       }
       for (int i = 0; i < truth.NParticles(); ++i) {
         auto const& particle = truth.GetParticle(i);

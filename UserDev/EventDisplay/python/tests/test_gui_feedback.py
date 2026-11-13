@@ -584,3 +584,47 @@ def test_logo_and_scale_bar_in_the_annotation_layer(gui, monkeypatch, tmp_path):
     tpc._logoOption.setChecked(False)
     tpc._scaleBarOption.setChecked(False)
     assert view.overlay_items() == [] and tpc.screenshot_layer() is None
+
+
+def test_secondary_paths_option_kept_between_sessions(gui, qtbot):
+    ''' the MC truth dock's Secondaries' paths: on at first, re-annotates when toggled, remembered '''
+    from titus.gui import Gui
+    gi, gm, tpc = tpc_gui(gui)
+    panel = tpc._mctruth_panel
+    assert panel.secondary_paths.isChecked() and tpc.annotated_mc_secondary_paths() is True
+    with qtbot.waitSignal(panel.particlesAnnotated):
+        panel.secondary_paths.setChecked(False)
+    assert tpc.annotated_mc_secondary_paths() is False
+    assert tpc._settings.value('TPC/Draw MC annotated secondaries paths', type=bool) is False
+
+    # next session: the same settings file (the fixture's)
+    again = Gui(GalleryInterface())
+    qtbot.addWidget(again)
+    _, _, tpc2 = tpc_gui(again)
+    assert not tpc2._mctruth_panel.secondary_paths.isChecked() and tpc2.annotated_mc_secondary_paths() is False
+
+
+def test_neutrino_path_option_and_screenshot_layer(gui, qtbot, monkeypatch):
+    ''' the MC truth dock's Neutrino path: off at first, remembered; its annotation in the separate layer '''
+    from types import SimpleNamespace
+    from titus.gui import Gui
+    gi, gm, tpc = tpc_gui(gui)
+    panel = tpc._mctruth_panel
+    assert not panel.show_neutrino.isChecked()
+    panel.show_neutrino.setChecked(True)
+    assert tpc._settings.value('TPC/Draw MC neutrino path', type=bool) is True
+    again = Gui(GalleryInterface())
+    qtbot.addWidget(again)
+    _, _, tpc2 = tpc_gui(again)
+    assert tpc2._mctruth_panel.show_neutrino.isChecked()
+
+    # the neutrino's line and name: with the annotations in their own image
+    nu_items = [QtWidgets.QGraphicsLineItem(), QtWidgets.QGraphicsLineItem()]
+    redrawn = []
+    drawable = SimpleNamespace(drawn_items=lambda: nu_items, draw_neutrino=lambda: redrawn.append(1))
+    monkeypatch.setattr(tpc, '_mctruth_drawables', lambda: [drawable])
+    tpc._annotation_layer.setChecked(True)
+    assert tpc.screenshot_layer() == ('annotations', nu_items)
+    # drawn again with the other annotations, e.g. another font size
+    tpc._refresh_mc_annotations()
+    assert redrawn == [1]

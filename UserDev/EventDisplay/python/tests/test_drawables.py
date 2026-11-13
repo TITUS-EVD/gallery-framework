@@ -885,6 +885,72 @@ def test_mctruth_neutrino_first_with_vertex(qtbot, products, sbnd, truth_module,
     assert truth_module.dock_shown[-1] is False and panel.particle_count() == 0
 
 
+
+def test_neutrino_path_from_outside_the_active_volume(sbnd):
+    from titus.display.mctruth import NEUTRINO_MARGIN_CM, neutrino_path
+    detector = sbnd.detector
+    lo = np.min([t.active_bounds.min for t in detector.tpcs], axis=0)
+    vertex = np.array([50., 0., 200.])
+    # along the beam (+z): in through the upstream face, the margin before it
+    start, end = neutrino_path(detector, vertex, [0, 0, 0.8])
+    assert np.allclose(end, vertex) and np.allclose(start, [50, 0, lo[2] - NEUTRINO_MARGIN_CM])
+    # coming down: in through the top
+    hi = np.max([t.active_bounds.max for t in detector.tpcs], axis=0)
+    start, _ = neutrino_path(detector, vertex, [0, -1, 0.001])
+    assert np.isclose(start[1], hi[1] + NEUTRINO_MARGIN_CM, atol=0.1)
+    # no direction (a reader or dump without the momentum), or the vertex outside: nothing
+    assert neutrino_path(detector, vertex, [np.nan] * 3) is None
+    assert neutrino_path(detector, vertex, [0, 0, 0]) is None
+    assert neutrino_path(detector, [50, 0, lo[2] - 50], [0, 0, 1]) is None
+
+
+def test_neutrino_annotated_with_a_dashed_arrow(qtbot, products, sbnd, truth_module):
+    ''' the dock's Neutrino path: a dashed line ending with an arrowhead at the vertex, named; its own toggle '''
+    from PyQt5 import QtCore
+    from titus.drawables.annotation import AnnotationPath, DASH_PATTERN
+    from titus.drawables.items import CrossMarker
+    from titus.readers import MCTruths
+    reader = serve_all(products, STEP3)
+    truth_module._view_shown = lambda key: True
+    # a dump from before the momentum was read: a note, nothing drawn
+    drawer = draw_truth(sbnd, truth_module)
+    panel = truth_module._mctruth_panel
+    panel.show_neutrino.setChecked(True)
+    assert drawer.drawn_items() == [] and 'No neutrino direction' in panel._track_note.text()
+
+    arrays = reader.get(0, 'mctruths', 'generator').to_arrays()
+    arrays.update(nu_px=[0.], nu_py=[0.], nu_pz=[1.5])
+    products[('mctruths', 'generator::GenieGen')] = MCTruths(**arrays)
+    # a new dock: the first drawable's still follows the old one
+    from titus.gui.mctruth_panel import MCTruthPanel
+    panel = truth_module._mctruth_panel = MCTruthPanel()
+    drawer = draw_truth(sbnd, truth_module)
+    assert not panel.show_neutrino.isChecked() and drawer.drawn_items() == []
+    assert drawer.drawn_items() == []
+    panel.show_neutrino.setChecked(True)
+    items = drawer.drawn_items()
+    lines = [i for i in items if isinstance(i, AnnotationPath)]
+    labels = [i.textItem.toPlainText() for i in items if isinstance(i, pg.TextItem)]
+    assert len(lines) == 3 and labels == ['νμ'] * 3 and 'No neutrino direction' not in panel._track_note.text()
+    assert all(l.pen().style() == QtCore.Qt.CustomDashLine and l.pen().dashPattern() == list(DASH_PATTERN)
+               for l in lines)
+    # the arrowhead where the vertex's cross is, in each view
+    crosses = [c for c in drawer._drawnObjects if isinstance(c, CrossMarker)]
+    for line in lines:
+        tip = np.array(line.arrow[0])
+        assert min(np.linalg.norm(tip - [c.pos().x(), c.pos().y()]) for c in crosses) < 3
+    # the vertex toggle leaves it, the cosmics' interaction (no neutrino) has none
+    panel.show_vertex.setChecked(False)
+    assert all(i.isVisible() for i in drawer.drawn_items())
+    panel.dropdown.setCurrentIndex(1)
+    assert drawer.drawn_items() == []
+    panel.dropdown.setCurrentIndex(0)
+    assert len(drawer.drawn_items()) == 6
+    # the product box unset, as the TPC module does it
+    drawer.set_producer(None)
+    drawer.clearDrawnObjects()
+    assert drawer.drawn_items() == [] and all(i.scene() is None for i in items)
+
 def test_mctruth_dock_hidden_without_truth_in_the_event(qtbot, products, sbnd, truth_module):
     from titus.readers import MCTruths
     products[('mctruths', 'generator::GenieGen')] = MCTruths.empty()
@@ -1326,7 +1392,8 @@ def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, prod
     paths = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
     labels = sorted(i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem))
     assert labels == sorted(['K⁺', 'Λ'] * 3) and len(paths) == 6
-    assert all(p.pen().style() == QtCore.Qt.CustomDashLine and p.pen().dashPattern() == [4., 4.] for p in paths)
+    # dotted: straight lines standing in for trajectories not known
+    assert all(p.pen().style() == QtCore.Qt.CustomDashLine and p.pen().dashPattern() == [1., 2.] for p in paths)
     found = drawer.annotate_particles([lam, kaon, neutron])
     assert found == {lam: [7], kaon: [3]}
     # the Λ's line from the vertex to its decay, in the collection view: across the wires of that z range
@@ -1539,6 +1606,36 @@ def test_annotation_font_size_and_paths_per_particle(qtbot, products, sbnd, tpc_
     assert drawn(None, 'not a list') == ({FONT_POINT_SIZE}, 9, ['dashed', 'solid'], 9)
 
 
+
+def test_secondaries_names_only_without_their_paths(qtbot, products, sbnd, tpc_module):
+    ''' the module's secondary paths off: the annotated particles keep their lines, their secondaries only their names '''
+    from PyQt5 import QtCore, QtWidgets
+    from titus.drawables import MCTrackAnnotations
+    mctracks, kaon, lam = kaon_lambda_event()
+    products[('mctracks', 'mcreco::G4')] = mctracks
+    tpc_module.space_charge_map = lambda: None
+    tpc_module.correct_3d_objects = lambda: True
+    tpc_module.annotated_mc_particles = lambda: [kaon, lam]
+    tpc_module.annotated_mc_secondaries = lambda: [kaon]
+    tpc_module.annotated_mc_paths = lambda: None
+    drawer = MCTrackAnnotations(FakeGalleryInterface(), sbnd, tpc_module)
+    drawer.set_producer('mcreco::G4')
+    drawer.analyze()
+
+    def drawn(secondary_paths):
+        tpc_module.annotated_mc_secondary_paths = lambda: secondary_paths
+        drawer.drawObjects()
+        labels = [i for i in drawer._annotations if isinstance(i, pg.TextItem)]
+        lines = [i for i in drawer._annotations if isinstance(i, QtWidgets.QGraphicsPathItem)]
+        return (sorted(l.textItem.toPlainText() for l in labels if l.textItem.toPlainText().startswith('μ')),
+                len(labels), sorted('dashed' if l.pen().style() == QtCore.Qt.CustomDashLine else 'solid'
+                                    for l in lines))
+
+    names, n_labels, lines = drawn(True)
+    assert len(names) == 3 and n_labels == 9 and lines == ['dashed'] * 3 + ['solid'] * 6
+    # the K+'s and the Λ's lines (3 views each), the μ+ still named in each view
+    assert drawn(False) == (names, 9, ['dashed'] * 3 + ['solid'] * 3)
+
 def test_annotation_labels_can_be_moved(qtbot, products, sbnd, tpc_module):
     from PyQt5 import QtCore, QtGui, QtTest
     from titus.drawables import MCTrackAnnotations
@@ -1630,7 +1727,7 @@ def test_screenshot_lines_as_thick_as_on_screen(qtbot):
     container.resize(400, 300)
     view = widget.addViewBox()
     view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
-    dashed, _ = annotation_items([[(5, 80), (95, 80)]], 'n', dashed=True)
+    dashed, _ = annotation_items([[(5, 80), (95, 80)]], 'n', line_style='dashed')
     view.addItem(dashed)
     view.addItem(TrackCollection([TrackLine(np.array([(5., 20.), (95., 20.)]), (255, 255, 255), QtCore.Qt.SolidLine)]))
     container.show()
@@ -1880,3 +1977,38 @@ def test_hover_across_track_collections(qtbot):
     assert reco._hovered == 1
     QtTest.QTest.mouseMove(widget.viewport(), QtCore.QPoint(-50, -50))
     QtWidgets.QApplication.processEvents()
+
+
+def test_arrowhead_at_the_end_the_same_size_at_any_zoom(qtbot):
+    ''' the neutrino's arrowhead: a triangle wider than the line at its end, nothing past it, as big zoomed in '''
+    from PyQt5 import QtGui
+    from titus.drawables.annotation import ARROW_HALF_WIDTH, ARROW_LENGTH, LINE_WIDTH, annotation_items
+    widget = pg.GraphicsLayoutWidget()
+    qtbot.addWidget(widget)
+    widget.setBackground('k')
+    widget.resize(400, 300)
+    view = widget.addViewBox()
+    view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
+    line, _ = annotation_items([[(5, 50), (60, 50)]], 'νμ', line_style='dashed', arrow=True)
+    view.addItem(line)
+    widget.show()
+    qtbot.waitExposed(widget)
+
+    def head():
+        ''' (pixel columns lit past the tip, the widest lit run just before it), in pixels '''
+        QtWidgets.QApplication.processEvents()
+        image = widget.grab().toImage()
+        bright = pg.imageToArray(image, copy=True, transpose=False)[..., :3].sum(axis=-1) > 300
+        ratio = widget.devicePixelRatioF()
+        tip = widget.mapFromScene(view.mapViewToScene(QtCore.QPointF(60, 50)))
+        x, y = round(tip.x() * ratio), round(tip.y() * ratio)
+        past = bright[:, x + round(3 * ratio):].any(axis=0).sum()
+        widest = max(bright[:, x - c].sum() for c in range(1, round((ARROW_LENGTH * LINE_WIDTH + 3) * ratio)))
+        return past, widest / ratio
+
+    past, widest = head()
+    assert past == 0 and widest > 2 * LINE_WIDTH and widest <= 2 * ARROW_HALF_WIDTH * LINE_WIDTH + 2
+    # zoomed in 4x around the tip: the same size on screen
+    view.setRange(xRange=(47.5, 72.5), yRange=(37.5, 62.5), padding=0)
+    _, zoomed = head()
+    assert abs(zoomed - widest) <= 1
