@@ -185,6 +185,11 @@ class MCTrackAnnotations(MCTrack):
         rotated = getattr(self._module, 'annotation_labels_rotated', None)
         return (rotated() if callable(rotated) else True) is not False
 
+    def _secondary_paths(self):
+        ''' whether the secondaries are drawn with their paths (else names only), as the module says '''
+        drawn = getattr(self._module, 'annotated_mc_secondary_paths', None)
+        return (drawn() if callable(drawn) else True) is not False
+
     def clearDrawnObjects(self, obj_list=None):
         super().clearDrawnObjects(obj_list)
         self._clear_annotations()
@@ -205,8 +210,9 @@ class MCTrackAnnotations(MCTrack):
         dashed straight line from its start to its end; and the descendants
         (G4 parentage) of the particles in secondaries, annotated themselves
         or not. paths: the particles whose annotations (theirs and their
-        secondaries') are drawn with their paths, the others names only;
-        None: all. Labels can be moved: their positions are kept while the
+        secondaries', unless the module's annotated_mc_secondary_paths is
+        False: the secondaries' names only) are drawn with their paths, the
+        others names only; None: all. Labels can be moved: their positions are kept while the
         particle stays annotated. {key: [MCTrack IDs]} of the particles of
         keys drawn in a view
         '''
@@ -218,7 +224,7 @@ class MCTrackAnnotations(MCTrack):
             return {}
         self._read_if_stale()
         rows, _ = self._rows_of(wanted)
-        font_size, rotate = self._font_size(), self._rotated()
+        font_size, rotate, secondary_paths = self._font_size(), self._rotated(), self._secondary_paths()
         # {(view, producer, row): view points of its segments}, projected once
         projected = {}
         drawn = {}
@@ -231,8 +237,11 @@ class MCTrackAnnotations(MCTrack):
                         self._annotate(key, producer, mctracks, *primary, projected, style):
                     drawn.setdefault(key, []).append(int(mctracks.track_id[primary[1]]))
                 if key in secondaries and primary_id is not None:
+                    # names only unless the module draws the secondaries' paths
+                    secondary_style = (font_size, style[1] and secondary_paths, rotate)
                     for r in self.descendants(mctracks, primary_id):
-                        self._annotate(key, producer, mctracks, 'own', int(r), mctracks.pdg[r], projected, style)
+                        self._annotate(key, producer, mctracks, 'own', int(r), mctracks.pdg[r], projected,
+                                       secondary_style)
         return drawn
 
     def _segments(self, view, producer, row, paths):
@@ -289,7 +298,7 @@ class MCTrackAnnotations(MCTrack):
                     continue
                 segments = self._straight_segments(view, straight, g4_time)
             label_key = (key, (view.plane(), view.cryostat()), mode, int(mctracks.track_id[row]))
-            items = annotation_items(segments, particle_name(pdg), dashed=dashed,
+            items = annotation_items(segments, particle_name(pdg), line_style='dotted' if dashed else 'solid',
                                      label_pos=self._label_positions.get(label_key),
                                      on_moved=lambda pos, k=label_key: self._label_positions.__setitem__(k, pos),
                                      font_size=font_size, show_line=show_line, rotate=rotate)

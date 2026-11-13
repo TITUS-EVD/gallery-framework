@@ -84,6 +84,10 @@ _MCTRACK = 'sim::MCTrack'
 # view state kept between sessions, not on the settings page
 _SET_ASPECT_RATIO = 'TPC/1:1 aspect ratio'
 _SET_MC_VERTEX = 'TPC/Show neutrino vertices'
+# the MC truth dock's incoming neutrino annotated
+_SET_MC_NEUTRINO_PATH = 'TPC/Draw MC neutrino path'
+# the MC truth dock's annotated secondaries drawn with their paths, else names only
+_SET_MC_SECONDARY_PATHS = 'TPC/Draw MC annotated secondaries paths'
 
 
 class TpcModule(Module):
@@ -713,6 +717,15 @@ class TpcModule(Module):
         # the neutrino vertices drawn or not as last session (off at first)
         self._mctruth_panel.show_vertex.setChecked(self._settings.value(_SET_MC_VERTEX, False, type=bool))
         self._mctruth_panel.show_vertex.toggled.connect(lambda shown: self._settings.setValue(_SET_MC_VERTEX, shown))
+        # the neutrino annotated or not as last session (not at first)
+        self._mctruth_panel.show_neutrino.setChecked(self._settings.value(_SET_MC_NEUTRINO_PATH, False, type=bool))
+        self._mctruth_panel.show_neutrino.toggled.connect(
+            lambda shown: self._settings.setValue(_SET_MC_NEUTRINO_PATH, shown))
+        # the secondaries' paths drawn or not as last session (drawn at first)
+        self._mctruth_panel.secondary_paths.setChecked(
+            self._settings.value(_SET_MC_SECONDARY_PATHS, True, type=bool))
+        self._mctruth_panel.secondary_paths.toggled.connect(
+            lambda shown: self._settings.setValue(_SET_MC_SECONDARY_PATHS, shown))
         self._mctruth_dock.hide()
 
     def select_mc_particles(self, keys):
@@ -771,6 +784,8 @@ class TpcModule(Module):
         if not self._annotation_layer.isChecked():
             return None
         items = [] if self._mc_annotations is None else self._mc_annotations.drawn_items()
+        for drawable in self._mctruth_drawables():
+            items.extend(drawable.drawn_items())
         for view in self._wire_views.values():
             items.extend(view.overlay_items())
         return ('annotations', items) if items else None
@@ -778,6 +793,11 @@ class TpcModule(Module):
     def annotation_font_size(self):
         ''' point size of the annotated particles' names (settings page) '''
         return self._annotation_font_size.value()
+
+    def annotated_mc_secondary_paths(self):
+        ''' whether the annotated secondaries are drawn with their paths, else names only (the MC truth dock's option) '''
+        panel = getattr(self, '_mctruth_panel', None)
+        return panel is None or panel.secondary_paths.isChecked()
 
     def annotated_mc_paths(self):
         ''' the particles whose annotations are drawn with their paths (the MC truth dock's Tr boxes), None: all '''
@@ -802,6 +822,12 @@ class TpcModule(Module):
         ''' draw the annotations again (e.g. another style), as the dock has them '''
         if self._mc_annotations is not None:
             self._mc_annotations.drawObjects()
+        for drawable in self._mctruth_drawables():
+            drawable.draw_neutrino()
+
+    def _mctruth_drawables(self):
+        ''' the MCTruth drawables drawn (their neutrino annotations) '''
+        return [d for d in self._product_box_map.values() if isinstance(d, drawables.MCTruth) and d.producers()]
 
     def refresh_mctruth_notes(self):
         ''' the MC truth dock's notes on its particles' MCTracks, once MCTracks are drawn (MCTrack.drawObjects) '''

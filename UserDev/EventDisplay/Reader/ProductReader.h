@@ -167,8 +167,9 @@ namespace titusio {
     void clear();
   };
 
-  /// simb::MCTruth; neutrino columns are set if has_neutrino. Particles of
-  /// truth i are particle_offset[i] to particle_offset[i + 1]
+  /// simb::MCTruth; neutrino columns are set if has_neutrino (nu_px, nu_py,
+  /// nu_pz: the incoming neutrino's momentum, GeV). Particles of truth i
+  /// are particle_offset[i] to particle_offset[i + 1]
   struct MCTruthColumns {
     std::vector<int> origin;
     std::vector<unsigned char> has_neutrino;
@@ -181,6 +182,9 @@ namespace titusio {
     std::vector<int> mode;
     std::vector<int> interaction_type;
     std::vector<int> ccnc;
+    std::vector<float> nu_px;
+    std::vector<float> nu_py;
+    std::vector<float> nu_pz;
     std::vector<long long> particle_offset;
     std::vector<int> particle_pdg;
     std::vector<int> particle_status;

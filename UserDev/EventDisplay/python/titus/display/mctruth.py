@@ -213,3 +213,33 @@ def truth_summary(truths, row, tpc_of=None, t0_us=None):
     if not truths.has_neutrino[row] and final.any():
         lines.append(('Energies', f'{energy[final].min():.3g} to {energy[final].max():.3g} GeV'))
     return lines
+
+
+# the incoming neutrino's line starts this far outside the active volume (cm)
+NEUTRINO_MARGIN_CM = 20.
+
+
+def neutrino_path(detector, vertex, momentum, margin=NEUTRINO_MARGIN_CM):
+    '''
+    (start, end) of the incoming neutrino's straight line: from margin
+    outside where it entered the active volume of the cryostat holding its
+    vertex (its TPCs' together) to the vertex. None if the vertex isn't in
+    one, or the direction isn't known (momentum nan or 0)
+    '''
+    vertex = np.asarray(vertex, dtype=float)
+    momentum = np.asarray(momentum, dtype=float)
+    if not (np.all(np.isfinite(vertex)) and np.all(np.isfinite(momentum))) or not momentum.any():
+        return None
+    for cryostat in detector.cryostats:
+        lo = np.min([t.active_bounds.min for t in cryostat.tpcs], axis=0)
+        hi = np.max([t.active_bounds.max for t in cryostat.tpcs], axis=0)
+        if np.all((vertex >= lo) & (vertex <= hi)):
+            break
+    else:
+        return None
+    u = momentum / np.linalg.norm(momentum)
+    # back from the vertex (-u) to the first face crossed
+    with np.errstate(divide='ignore', invalid='ignore'):
+        back = np.where(u > 0, (vertex - lo) / u, np.where(u < 0, (vertex - hi) / u, np.inf))
+    entry = vertex - back.min() * u
+    return entry - margin * u, vertex

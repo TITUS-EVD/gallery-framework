@@ -487,7 +487,8 @@ def test_extract_clusters_and_endpoints():
 
 
 def test_extract_mctruths():
-    nu = fake(Nu=fake(PdgCode=14, E=1.5, Vx=1., Vy=2., Vz=3., T=10.), Mode=0, InteractionType=1001, CCNC=0)
+    nu = fake(Nu=fake(PdgCode=14, E=1.5, Vx=1., Vy=2., Vz=3., T=10., Px=0., Py=0.1, Pz=1.5), Mode=0,
+              InteractionType=1001, CCNC=0)
     particles = [fake(PdgCode=13, StatusCode=1, E=1.2), fake(PdgCode=2212, StatusCode=1, E=1.0)]
     neutrino = SimpleNamespace(Origin=lambda: 1, NeutrinoSet=lambda: True, GetNeutrino=lambda: nu,
                                NParticles=lambda: 2, GetParticle=lambda i: particles[i])
@@ -496,9 +497,20 @@ def test_extract_mctruths():
     truths = dump_products.extract_mctruths([neutrino, cosmic])
     assert truths.nu_pdg.tolist() == [14, 0] and truths.has_neutrino.tolist() == [True, False]
     assert (truths.vx[0], truths.vz[0]) == (1, 3) and np.isnan(truths.vx[1])
+    assert np.allclose(truths.nu_momentum(0), [0, 0.1, 1.5]) and np.isnan(truths.nu_momentum(1)).all()
     pdg, status, energy = truths.particles(0)
     assert pdg.tolist() == [13, 2212] and truths.particles(1)[0].tolist() == [13]
     assert len(dump_products.extract_mctruths([])) == 0
+
+
+def test_mctruths_without_the_neutrino_momentum():
+    ''' read before the momentum was (older dumps, readers): nan, the rest as it was '''
+    from titus.readers import MCTruths
+    arrays = {name: [] for name in MCTruths.DTYPES if not name.startswith('nu_p')}
+    arrays.update(origin=[1], has_neutrino=[True], nu_pdg=[14], nu_energy=[1.], vx=[0], vy=[0], vz=[0], vt=[0],
+                  mode=[0], interaction_type=[1001], ccnc=[0], particle_offset=[0, 0])
+    truths = MCTruths.from_arrays(arrays)
+    assert np.isnan(truths.nu_momentum(0)).all() and truths.nu_pdg.tolist() == [14]
 
 
 def test_extract_mctracks():
