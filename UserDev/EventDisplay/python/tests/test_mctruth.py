@@ -25,6 +25,13 @@ def corsika():
     return DumpReader(STEP3).get(0, 'mctruths', 'corsika')
 
 
+def test_particle_names_as_rich_text():
+    from titus.display.mctruth import name_html
+    assert [name_html(particle_name(p)) for p in (14, -12, 16, 130, 310)] == \
+        ['ν<sub>μ</sub>', 'ν̄<sub>e</sub>', 'ν<sub>τ</sub>', 'K⁰<sub>L</sub>', 'K⁰<sub>S</sub>']
+    assert [name_html(n) for n in ('μ⁻', 'K⁰', 'Ar40', '<x>')] == ['μ⁻', 'K⁰', 'Ar40', '&lt;x&gt;']
+
+
 def test_particle_names_and_masses():
     assert [particle_name(p) for p in (13, -13, 2212, 111, 14, -12)] == ['μ⁻', 'μ⁺', 'p', 'π⁰', 'νμ', 'ν̄e']
     # nuclei (10LZZZAAAI) and GENIE's own codes

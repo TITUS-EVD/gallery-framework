@@ -11,6 +11,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from titus.display.mctruth import name_html
 from titus.drawables.items import render_pen
 from titus.gui.widgets import MovableLabel
 
@@ -19,7 +20,7 @@ LINE_WIDTH = 2  # pixels
 # dash and gap lengths, in line widths (Qt's DashLine is 4, 2): the neutrino's dashed line,
 # and the dotted straight lines of the particles without a trajectory (e.g. neutral)
 DASH_PATTERN = (4, 4)
-DOT_PATTERN = (1, 2)
+DOT_PATTERN = (1, 4)
 LINE_PATTERNS = {'solid': None, 'dashed': DASH_PATTERN, 'dotted': DOT_PATTERN}
 # arrowheads: length and half width, in line widths
 ARROW_LENGTH = 6
@@ -154,8 +155,11 @@ def annotation_items(paths, name, line_style='solid', label_pos=None, on_moved=N
     longest = max(paths, key=lambda p: np.linalg.norm(np.diff(p, axis=0), axis=1).sum())
     (x, y), (dx, dy) = label_place(longest)
     # its bottom middle on the line, the text along the line in the view's axes (so through zooms), or level
-    label = AnnotationLabel(name, color=ANNOTATION_COLOR, anchor=(0.5, 1.0), rotateAxis=(dx, dy) if rotate else None,
+    # as rich text for the subscripts (ν<sub>μ</sub>), its color and font the defaults (TextItem ignores
+    # color= when given html=)
+    label = AnnotationLabel(html=name_html(name), anchor=(0.5, 1.0), rotateAxis=(dx, dy) if rotate else None,
                             on_moved=on_moved)
+    label.setColor(ANNOTATION_COLOR)
     font = label.textItem.font()
     font.setBold(False)
     font.setPointSize(font_size)

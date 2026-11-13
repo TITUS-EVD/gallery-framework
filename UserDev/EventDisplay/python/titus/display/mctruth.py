@@ -3,6 +3,8 @@ MC truth for the MC truth dock: particle names, masses and GENIE status
 codes, an interaction's summary and its particle table. No Qt.
 """
 
+import html
+import re
 from collections import Counter
 from typing import List, NamedTuple, Optional
 
@@ -57,6 +59,18 @@ def particle_name(pdg):
     if is_genie_pseudo_particle(pdg):
         return f'GENIE {pdg}'
     return str(pdg)
+
+
+# a neutrino's flavour and a K⁰'s S/L: the subscripts Unicode has no characters for (μ, τ)
+_SUBSCRIPTED = re.compile(r'^(ν̄?|K⁰)([eμτLS])$')
+
+
+def name_html(name):
+    ''' a particle name as rich text, with its subscript (νμ → ν<sub>μ</sub>, K⁰L → K⁰<sub>L</sub>) '''
+    match = _SUBSCRIPTED.match(name)
+    if match is None:
+        return html.escape(name)
+    return f'{match.group(1)}<sub>{match.group(2)}</sub>'
 
 
 def is_genie_pseudo_particle(pdg):

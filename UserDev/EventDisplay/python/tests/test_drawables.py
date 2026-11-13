@@ -1363,9 +1363,10 @@ def test_annotated_particles_drawn_white_with_their_names(qtbot, products, sbnd,
     assert panel.annotated_particles() == []
 
 
-def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, products, sbnd, tpc_module):
-    ''' a Λ (no MCTrack: from its decay proton's mother) and a K+ mcreco kept no steps of: straight, dashed '''
+def test_particles_without_a_trajectory_annotated_with_a_dotted_line(qtbot, products, sbnd, tpc_module):
+    ''' a Λ (no MCTrack: from its decay proton's mother) and a K+ mcreco kept no steps of: straight, dotted '''
     from PyQt5 import QtCore, QtWidgets
+    from titus.drawables.annotation import DOT_PATTERN
     from titus.display.mctruth import ParticleKey
     from titus.drawables import MCTrackAnnotations
     from titus.readers import MCTracks
@@ -1393,7 +1394,7 @@ def test_particles_without_a_trajectory_annotated_with_a_dashed_line(qtbot, prod
     labels = sorted(i.textItem.toPlainText() for i in drawer._annotations if isinstance(i, pg.TextItem))
     assert labels == sorted(['K⁺', 'Λ'] * 3) and len(paths) == 6
     # dotted: straight lines standing in for trajectories not known
-    assert all(p.pen().style() == QtCore.Qt.CustomDashLine and p.pen().dashPattern() == [1., 2.] for p in paths)
+    assert all(p.pen().style() == QtCore.Qt.CustomDashLine and p.pen().dashPattern() == list(DOT_PATTERN) for p in paths)
     found = drawer.annotate_particles([lam, kaon, neutron])
     assert found == {lam: [7], kaon: [3]}
     # the Λ's line from the vertex to its decay, in the collection view: across the wires of that z range
@@ -1694,7 +1695,7 @@ def test_annotation_labels_can_be_moved(qtbot, products, sbnd, tpc_module):
 
 
 def test_annotation_labels_read_left_to_right_along_the_path():
-    from titus.drawables.annotation import annotation_items, label_place
+    from titus.drawables.annotation import ANNOTATION_COLOR, annotation_items, label_place
     # half way along, its direction there
     point, direction = label_place([(0, 0), (10, 0), (10, 10)])
     np.testing.assert_allclose(point, [10, 0]) and np.testing.assert_allclose(direction / direction[0], [1, 1])
@@ -1708,6 +1709,11 @@ def test_annotation_labels_read_left_to_right_along_the_path():
     line, label = annotation_items([[(0, 0), (1, 0)], [(5, 0), (5, 40)]], 'μ⁻')
     assert label.pos().x() == pytest.approx(5) and label.pos().y() == pytest.approx(20)
     assert label.textItem.toPlainText() == 'μ⁻' and not label.textItem.font().bold()
+    assert label.textItem.defaultTextColor() == pg.mkColor(ANNOTATION_COLOR)
+    # a neutrino's flavour as a subscript, in white too
+    _, nu = annotation_items([[(0, 0), (10, 0)]], 'νμ')
+    assert nu.textItem.toPlainText() == 'νμ' and '<sub>' not in nu.textItem.toPlainText()
+    assert 'vertical-align:sub' in nu.textItem.toHtml() and nu.textItem.defaultTextColor() == pg.mkColor(ANNOTATION_COLOR)
     assert annotation_items([[(1, 1)]], 'p') == []
     # along the path (vertical here) by default, else level, at the same place
     assert label.rotateAxis is not None and label.rotateAxis.y() != 0
