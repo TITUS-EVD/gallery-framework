@@ -1985,6 +1985,41 @@ def test_hover_across_track_collections(qtbot):
     QtWidgets.QApplication.processEvents()
 
 
+def test_dotted_lines_kept_clear_of_their_ends(qtbot):
+    ''' a neutral's dotted line: no dot within the gap of either end (the hits where it was made and ended),
+    its first dot just past the gap, at any zoom; solid lines as they were '''
+    from titus.drawables.annotation import ARROW_GAP, LINE_WIDTH, annotation_items
+    widget = pg.GraphicsLayoutWidget()
+    qtbot.addWidget(widget)
+    widget.setBackground('k')
+    widget.resize(400, 100)
+    view = widget.addViewBox()
+    view.setRange(xRange=(-5, 65), yRange=(40, 60), padding=0)
+    dotted, _ = annotation_items([[(0, 50), (20, 50)], [(20, 50), (43, 50)]], 'γ', line_style='dotted')
+    assert dotted.padded == [(0., 50.), (43., 50.)] and dotted.arrow is None
+    solid, _ = annotation_items([[(0, 50), (43, 50)]], 'μ⁻')
+    assert solid.padded == [] and solid.pen().dashOffset() == 0
+    view.addItem(dotted)
+    widget.show()
+    qtbot.waitExposed(widget)
+
+    def gaps():
+        ''' the unlit pixels after the start and before the end '''
+        QtWidgets.QApplication.processEvents()
+        bright = pg.imageToArray(widget.grab().toImage(), copy=True, transpose=False)[..., :3].sum(axis=-1) > 300
+        ratio = widget.devicePixelRatioF()
+        start, end = (widget.mapFromScene(view.mapViewToScene(QtCore.QPointF(x, 50))).x() * ratio for x in (0, 43))
+        lit = np.flatnonzero(bright.any(axis=0))
+        return (lit.min() - start) / ratio, (end - lit.max() - 1) / ratio
+
+    gap = ARROW_GAP * LINE_WIDTH
+    first, last = gaps()
+    assert gap - 1 <= first <= gap + 1 and last >= gap - 1
+    view.setRange(xRange=(-2, 33), yRange=(45, 55), padding=0)
+    first, _ = gaps()
+    assert gap - 1 <= first <= gap + 1
+
+
 def test_arrowhead_at_the_end_the_same_size_at_any_zoom(qtbot):
     ''' the neutrino's arrowhead: a triangle wider than the line at its end, stopping short of the vertex with
     the line (nothing in the gap or past it), as big zoomed in '''

@@ -26,7 +26,8 @@ LINE_PATTERNS = {'solid': None, 'dashed': DASH_PATTERN, 'dotted': DOT_PATTERN}
 ARROW_LENGTH = 6
 ARROW_HALF_WIDTH = 2.5
 # clear space between the arrowhead's (outlined) tip and the vertex it points to, in line widths, so
-# the vertex stays visible; the line stops there too
+# the vertex stays visible; the line stops there too. Also kept clear at both ends of a dotted line,
+# so that no dot sits on the hits where the particle was made or ended
 ARROW_GAP = 3
 FONT_POINT_SIZE = 12
 # above the tracks (TrackCollection) and their highlight
@@ -63,35 +64,42 @@ class AnnotationPath(QtWidgets.QGraphicsPathItem):
     a particle's path, its pixel width and dashes widened in images rendered
     larger (titus.drawables.items). arrow: (tip, from) view points, an
     arrowhead pointing at tip, away from from, stopping ARROW_GAP short of
-    it (as does the line), its size and gap in pixels whatever the zoom
+    it (as does the line), its size and gap in pixels whatever the zoom.
+    padded: view points the line stays ARROW_GAP clear of (a dotted line's
+    ends)
     '''
 
-    def __init__(self, path, arrow=None):
+    def __init__(self, path, arrow=None, padded=()):
         super().__init__(path)
         self.arrow = arrow
+        self.padded = [tuple(p) for p in padded]
 
     def paint(self, painter, option, widget=None):
         pen = render_pen(self.pen())
         painter.setPen(pen)
         painter.setBrush(self.brush())
-        if self.arrow is None:
+        clear = self.padded + ([self.arrow[0]] if self.arrow is not None else [])
+        if not clear:
             painter.drawPath(self.path())
             return
         width = max(pen.widthF(), 1.)
         gap = ARROW_GAP * width
-        # the line clipped to outside the gap around the tip (in pixels: through any transform)
+        # the line clipped to outside the gaps (in pixels: through any transform)
         to_device = painter.transform()
-        tip = to_device.map(QtCore.QPointF(*self.arrow[0]))
+        centres = [to_device.map(QtCore.QPointF(*p)) for p in clear]
         painter.save()
         painter.resetTransform()
         outside = QtGui.QPainterPath()
-        outside.addRect(QtCore.QRectF(tip.x() - 1e5, tip.y() - 1e5, 2e5, 2e5))
+        outside.addRect(QtCore.QRectF(centres[0].x() - 1e5, centres[0].y() - 1e5, 2e5, 2e5))
         around = QtGui.QPainterPath()
-        around.addEllipse(tip, gap, gap)
+        for centre in centres:
+            around.addEllipse(centre, gap, gap)
         painter.setClipPath(outside.subtracted(around), QtCore.Qt.IntersectClip)
         painter.setTransform(to_device)
         painter.drawPath(self.path())
         painter.restore()
+        if self.arrow is None:
+            return
         head = arrowhead(to_device, *self.arrow, width, gap=gap)
         if head is not None:
             painter.save()
@@ -165,11 +173,17 @@ def annotation_items(paths, name, line_style='solid', label_pos=None, on_moved=N
         path.moveTo(*points[0])
         for x, y in points[1:]:
             path.lineTo(x, y)
-    line = AnnotationPath(path, arrow=(tuple(paths[-1][-1]), tuple(paths[-1][max(0, len(paths[-1]) - 6)])) if arrow else None)
+    dotted = line_style == 'dotted'
+    line = AnnotationPath(path, arrow=(tuple(paths[-1][-1]), tuple(paths[-1][max(0, len(paths[-1]) - 6)])) if arrow else None,
+                          padded=(paths[0][0], paths[-1][-1]) if dotted else ())
     pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH)
     pattern = LINE_PATTERNS[line_style]
     if pattern is not None:
         pen.setDashPattern(list(pattern))
+    if dotted:
+        # the first dot (square capped: half a width longer each way) just past the gap at the start,
+        # rather than on it and clipped, leaving a longer gap
+        pen.setDashOffset(sum(pattern) - (ARROW_GAP + 0.5))
     pen.setCosmetic(True)
     line.setPen(pen)
     line.setZValue(Z_VALUE)
