@@ -20,7 +20,7 @@ LINE_WIDTH = 2  # pixels
 # dash and gap lengths, in line widths (Qt's DashLine is 4, 2): the neutrino's dashed line,
 # and the dotted straight lines of the particles without a trajectory (e.g. neutral)
 DASH_PATTERN = (4, 4)
-DOT_PATTERN = (1, 4)
+DOT_PATTERN = (1, 8)
 LINE_PATTERNS = {'solid': None, 'dashed': DASH_PATTERN, 'dotted': DOT_PATTERN}
 # arrowheads: length and half width, in line widths
 ARROW_LENGTH = 6
