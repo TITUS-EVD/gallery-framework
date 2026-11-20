@@ -17,17 +17,18 @@ from titus.gui.widgets import MovableLabel
 
 ANNOTATION_COLOR = (255, 255, 255)
 LINE_WIDTH = 2  # pixels
+DOT_WIDTH = 3  # pixels: a dotted line's dots, a little bigger than the lines are wide
 # dash and gap lengths, in line widths (Qt's DashLine is 4, 2): the neutrino's dashed line,
 # and the dotted straight lines of the particles without a trajectory (e.g. neutral)
 DASH_PATTERN = (4, 4)
-# dots: round capped (a circle the line's width) dashes of almost no length; Qt draws nothing for
-# a dash of exactly 0
-DOT_PATTERN = (0.01, 8.99)
+# dots: round capped (a circle DOT_WIDTH across) dashes of almost no length, every 18 pixels (in
+# DOT_WIDTHs, as Qt counts); Qt draws nothing for a dash of exactly 0
+DOT_PATTERN = (0.01, 5.99)
 LINE_PATTERNS = {'solid': None, 'dashed': DASH_PATTERN, 'dotted': DOT_PATTERN}
 # arrowheads: length and half width, in line widths
 ARROW_LENGTH = 6
 ARROW_HALF_WIDTH = 2.5
-# clear space between the arrowhead's (outlined) tip and the vertex it points to, in line widths, so
+# clear space between the arrowhead's (outlined) tip and the vertex it points to, in LINE_WIDTHs, so
 # the vertex stays visible; the line stops there too. Also kept clear at both ends of a dotted line,
 # so that no dot sits on the hits where the particle was made or ended
 ARROW_GAP = 3
@@ -88,7 +89,8 @@ class AnnotationPath(QtWidgets.QGraphicsPathItem):
         # pixels, even with its transform reset, are the screen's, which the image's device pixel ratio scales
         # up; only a cosmetic pen's width isn't, hence render_pen for the strokes
         width = max(self.pen().widthF(), 1.)
-        gap = ARROW_GAP * width
+        # the same whatever this line's width (a dotted line's is DOT_WIDTH)
+        gap = ARROW_GAP * LINE_WIDTH
         # the line clipped to outside the gaps (in pixels: through any transform)
         to_device = painter.transform()
         centres = [to_device.map(QtCore.QPointF(*p)) for p in clear]
@@ -181,15 +183,15 @@ def annotation_items(paths, name, line_style='solid', label_pos=None, on_moved=N
     dotted = line_style == 'dotted'
     line = AnnotationPath(path, arrow=(tuple(paths[-1][-1]), tuple(paths[-1][max(0, len(paths[-1]) - 6)])) if arrow else None,
                           padded=(paths[0][0], paths[-1][-1]) if dotted else ())
-    pen = pg.mkPen(ANNOTATION_COLOR, width=LINE_WIDTH)
+    pen = pg.mkPen(ANNOTATION_COLOR, width=DOT_WIDTH if dotted else LINE_WIDTH)
     pattern = LINE_PATTERNS[line_style]
     if pattern is not None:
         pen.setDashPattern(list(pattern))
     if dotted:
         pen.setCapStyle(QtCore.Qt.RoundCap)
-        # the first dot (its centre half a width past its edge) just past the gap at the start,
-        # rather than on it and clipped, leaving a longer gap
-        pen.setDashOffset(sum(pattern) - (ARROW_GAP + 0.5))
+        # the first dot (its centre half a dot past its edge) just past the gap at the start, rather
+        # than on it and clipped, leaving a longer gap; in DOT_WIDTHs
+        pen.setDashOffset(sum(pattern) - (ARROW_GAP * LINE_WIDTH / DOT_WIDTH + 0.5))
     pen.setCosmetic(True)
     line.setPen(pen)
     line.setZValue(Z_VALUE)

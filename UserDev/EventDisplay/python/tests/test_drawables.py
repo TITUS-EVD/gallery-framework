@@ -1990,7 +1990,7 @@ def test_hover_across_track_collections(qtbot):
 def test_dotted_lines_kept_clear_of_their_ends(qtbot):
     ''' a neutral's dotted line: no dot within the gap of either end (the hits where it was made and ended),
     its first dot just past the gap, at any zoom; solid lines as they were '''
-    from titus.drawables.annotation import ARROW_GAP, LINE_WIDTH, annotation_items
+    from titus.drawables.annotation import ARROW_GAP, DOT_WIDTH, LINE_WIDTH, annotation_items
     widget = pg.GraphicsLayoutWidget()
     qtbot.addWidget(widget)
     widget.setBackground('k')
@@ -2002,6 +2002,8 @@ def test_dotted_lines_kept_clear_of_their_ends(qtbot):
     solid, _ = annotation_items([[(0, 50), (43, 50)]], 'μ⁻')
     assert solid.padded == [] and solid.pen().dashOffset() == 0
     assert dotted.pen().capStyle() == QtCore.Qt.RoundCap and solid.pen().capStyle() != QtCore.Qt.RoundCap
+    # the dots bigger than the lines are wide
+    assert dotted.pen().widthF() == DOT_WIDTH > solid.pen().widthF() == LINE_WIDTH
     view.addItem(dotted)
     widget.show()
     qtbot.waitExposed(widget)
