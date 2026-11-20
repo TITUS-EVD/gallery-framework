@@ -905,7 +905,7 @@ def test_neutrino_path_from_outside_the_active_volume(sbnd):
 
 
 def test_neutrino_annotated_with_a_dashed_arrow(qtbot, products, sbnd, truth_module):
-    ''' the dock's Neutrino path: a dashed line ending with an arrowhead at the vertex, named; its own toggle '''
+    ''' the dock's Neutrino path: a dashed line ending with an arrowhead pointing at the vertex, named; its own toggle '''
     from PyQt5 import QtCore
     from titus.drawables.annotation import AnnotationPath, DASH_PATTERN
     from titus.drawables.items import CrossMarker
@@ -1986,9 +1986,10 @@ def test_hover_across_track_collections(qtbot):
 
 
 def test_arrowhead_at_the_end_the_same_size_at_any_zoom(qtbot):
-    ''' the neutrino's arrowhead: a triangle wider than the line at its end, nothing past it, as big zoomed in '''
+    ''' the neutrino's arrowhead: a triangle wider than the line at its end, stopping short of the vertex with
+    the line (nothing in the gap or past it), as big zoomed in '''
     from PyQt5 import QtGui
-    from titus.drawables.annotation import ARROW_HALF_WIDTH, ARROW_LENGTH, LINE_WIDTH, annotation_items
+    from titus.drawables.annotation import ARROW_GAP, ARROW_HALF_WIDTH, ARROW_LENGTH, LINE_WIDTH, annotation_items
     widget = pg.GraphicsLayoutWidget()
     qtbot.addWidget(widget)
     widget.setBackground('k')
@@ -2001,20 +2002,25 @@ def test_arrowhead_at_the_end_the_same_size_at_any_zoom(qtbot):
     qtbot.waitExposed(widget)
 
     def head():
-        ''' (pixel columns lit past the tip, the widest lit run just before it), in pixels '''
+        ''' (pixel columns lit in the gap before the vertex or past it, the widest lit run before the gap,
+        the first lit column before the vertex), in pixels '''
         QtWidgets.QApplication.processEvents()
         image = widget.grab().toImage()
         bright = pg.imageToArray(image, copy=True, transpose=False)[..., :3].sum(axis=-1) > 300
         ratio = widget.devicePixelRatioF()
         tip = widget.mapFromScene(view.mapViewToScene(QtCore.QPointF(60, 50)))
         x, y = round(tip.x() * ratio), round(tip.y() * ratio)
-        past = bright[:, x + round(3 * ratio):].any(axis=0).sum()
-        widest = max(bright[:, x - c].sum() for c in range(1, round((ARROW_LENGTH * LINE_WIDTH + 3) * ratio)))
-        return past, widest / ratio
+        gap = round((ARROW_GAP * LINE_WIDTH - 1) * ratio)
+        past = bright[:, x - gap:].any(axis=0).sum()
+        widest = max(bright[:, x - c].sum() for c in range(gap, gap + round((ARROW_LENGTH * LINE_WIDTH + 6) * ratio)))
+        first = next(c for c in range(gap, x) if bright[:, x - c].any())
+        return past, widest / ratio, first / ratio
 
-    past, widest = head()
+    past, widest, first = head()
     assert past == 0 and widest > 2 * LINE_WIDTH and widest <= 2 * ARROW_HALF_WIDTH * LINE_WIDTH + 2
+    # the outlined point the gap's width before the vertex, not much further
+    assert first <= ARROW_GAP * LINE_WIDTH + 2
     # zoomed in 4x around the tip: the same size on screen
     view.setRange(xRange=(47.5, 72.5), yRange=(37.5, 62.5), padding=0)
-    _, zoomed = head()
-    assert abs(zoomed - widest) <= 1
+    past, zoomed, _ = head()
+    assert past == 0 and abs(zoomed - widest) <= 1

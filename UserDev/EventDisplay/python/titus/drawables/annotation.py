@@ -25,6 +25,9 @@ LINE_PATTERNS = {'solid': None, 'dashed': DASH_PATTERN, 'dotted': DOT_PATTERN}
 # arrowheads: length and half width, in line widths
 ARROW_LENGTH = 6
 ARROW_HALF_WIDTH = 2.5
+# clear space between the arrowhead's (outlined) tip and the vertex it points to, in line widths, so
+# the vertex stays visible; the line stops there too
+ARROW_GAP = 3
 FONT_POINT_SIZE = 12
 # above the tracks (TrackCollection) and their highlight
 Z_VALUE = 10
@@ -59,8 +62,8 @@ class AnnotationPath(QtWidgets.QGraphicsPathItem):
     '''
     a particle's path, its pixel width and dashes widened in images rendered
     larger (titus.drawables.items). arrow: (tip, from) view points, an
-    arrowhead at tip pointing away from from, its size in pixels whatever
-    the zoom
+    arrowhead pointing at tip, away from from, stopping ARROW_GAP short of
+    it (as does the line), its size and gap in pixels whatever the zoom
     '''
 
     def __init__(self, path, arrow=None):
@@ -71,19 +74,35 @@ class AnnotationPath(QtWidgets.QGraphicsPathItem):
         pen = render_pen(self.pen())
         painter.setPen(pen)
         painter.setBrush(self.brush())
+        if self.arrow is None:
+            painter.drawPath(self.path())
+            return
+        width = max(pen.widthF(), 1.)
+        gap = ARROW_GAP * width
+        # the line clipped to outside the gap around the tip (in pixels: through any transform)
+        to_device = painter.transform()
+        tip = to_device.map(QtCore.QPointF(*self.arrow[0]))
+        painter.save()
+        painter.resetTransform()
+        outside = QtGui.QPainterPath()
+        outside.addRect(QtCore.QRectF(tip.x() - 1e5, tip.y() - 1e5, 2e5, 2e5))
+        around = QtGui.QPainterPath()
+        around.addEllipse(tip, gap, gap)
+        painter.setClipPath(outside.subtracted(around), QtCore.Qt.IntersectClip)
+        painter.setTransform(to_device)
         painter.drawPath(self.path())
-        if self.arrow is not None:
-            head = arrowhead(painter.transform(), *self.arrow, max(pen.widthF(), 1.))
-            if head is not None:
-                painter.save()
-                painter.resetTransform()
-                solid = QtGui.QPen(pen)
-                solid.setStyle(QtCore.Qt.SolidLine)
-                solid.setJoinStyle(QtCore.Qt.MiterJoin)
-                painter.setPen(solid)
-                painter.setBrush(pen.color())
-                painter.drawPolygon(head)
-                painter.restore()
+        painter.restore()
+        head = arrowhead(to_device, *self.arrow, width, gap=gap)
+        if head is not None:
+            painter.save()
+            painter.resetTransform()
+            solid = QtGui.QPen(pen)
+            solid.setStyle(QtCore.Qt.SolidLine)
+            solid.setJoinStyle(QtCore.Qt.MiterJoin)
+            painter.setPen(solid)
+            painter.setBrush(pen.color())
+            painter.drawPolygon(head)
+            painter.restore()
 
     def boundingRect(self):
         ''' with room for the arrowhead, which is sized in pixels '''
@@ -100,11 +119,12 @@ class AnnotationPath(QtWidgets.QGraphicsPathItem):
         return rect.adjusted(-dx, -dy, dx, dy)
 
 
-def arrowhead(to_device, tip, start, width):
+def arrowhead(to_device, tip, start, width, gap=0.):
     '''
-    the triangle (QPolygonF, device coordinates) of an arrowhead at view
-    point tip, pointing from view point start, for a line of this pixel
-    width; None if the two points are the same on screen
+    the triangle (QPolygonF, device coordinates) of an arrowhead pointing
+    at view point tip, from view point start, for a line of this pixel
+    width, its outline's point (mitred, half the width past the corner)
+    gap pixels short of tip; None if the two points are the same on screen
     '''
     tip = to_device.map(QtCore.QPointF(*tip))
     start = to_device.map(QtCore.QPointF(*start))
@@ -114,7 +134,9 @@ def arrowhead(to_device, tip, start, width):
         return None
     d /= norm
     n = np.array([-d[1], d[0]])
-    t = np.array([tip.x(), tip.y()])
+    # the mitre's reach past the triangle's corner: half the pen width over the sine of the half angle
+    miter = (width / 2) * np.hypot(ARROW_LENGTH, ARROW_HALF_WIDTH) / ARROW_HALF_WIDTH
+    t = np.array([tip.x(), tip.y()]) - (gap + miter) * d
     base = t - ARROW_LENGTH * width * d
     corners = [t, base + ARROW_HALF_WIDTH * width * n, base - ARROW_HALF_WIDTH * width * n]
     return QtGui.QPolygonF([QtCore.QPointF(*c) for c in corners])
