@@ -1395,6 +1395,8 @@ def test_particles_without_a_trajectory_annotated_with_a_dotted_line(qtbot, prod
     assert labels == sorted(['K⁺', 'Λ'] * 3) and len(paths) == 6
     # dotted: straight lines standing in for trajectories not known
     assert all(p.pen().style() == QtCore.Qt.CustomDashLine and p.pen().dashPattern() == list(DOT_PATTERN) for p in paths)
+    # round dots
+    assert all(p.pen().capStyle() == QtCore.Qt.RoundCap for p in paths)
     found = drawer.annotate_particles([lam, kaon, neutron])
     assert found == {lam: [7], kaon: [3]}
     # the Λ's line from the vertex to its decay, in the collection view: across the wires of that z range
@@ -1999,6 +2001,7 @@ def test_dotted_lines_kept_clear_of_their_ends(qtbot):
     assert dotted.padded == [(0., 50.), (43., 50.)] and dotted.arrow is None
     solid, _ = annotation_items([[(0, 50), (43, 50)]], 'μ⁻')
     assert solid.padded == [] and solid.pen().dashOffset() == 0
+    assert dotted.pen().capStyle() == QtCore.Qt.RoundCap and solid.pen().capStyle() != QtCore.Qt.RoundCap
     view.addItem(dotted)
     widget.show()
     qtbot.waitExposed(widget)
@@ -2018,6 +2021,55 @@ def test_dotted_lines_kept_clear_of_their_ends(qtbot):
     view.setRange(xRange=(-2, 33), yRange=(45, 55), padding=0)
     first, _ = gaps()
     assert gap - 1 <= first <= gap + 1
+
+
+def test_arrow_and_dot_gaps_in_screenshots_as_on_screen(qtbot):
+    ''' a screenshot rendered larger (rendered_at, into an image of that device pixel ratio, as the Gui's):
+    the arrowhead, its gap and the dotted line's gaps that many times bigger, not that squared '''
+    from PyQt5 import QtGui
+    from titus.drawables.annotation import ARROW_GAP, LINE_WIDTH, annotation_items
+    from titus.drawables.items import rendered_at
+    outer = QtWidgets.QWidget()
+    qtbot.addWidget(outer)
+    layout = QtWidgets.QVBoxLayout(outer)
+    layout.setContentsMargins(0, 0, 0, 0)
+    widget = pg.GraphicsLayoutWidget()
+    widget.setBackground('k')
+    layout.addWidget(widget)
+    outer.resize(400, 200)
+    view = widget.addViewBox()
+    view.setRange(xRange=(0, 100), yRange=(0, 100), padding=0)
+    arrow, _ = annotation_items([[(5, 70), (60, 70)]], 'νμ', line_style='dashed', arrow=True)
+    dotted, _ = annotation_items([[(5, 30), (60, 30)]], 'Λ', line_style='dotted')
+    view.addItem(arrow)
+    view.addItem(dotted)
+    outer.show()
+    qtbot.waitExposed(outer)
+    QtWidgets.QApplication.processEvents()
+
+    def shapes(pixmap, scale):
+        ''' in screen pixels: (the arrowhead's height, its lit end's distance to the vertex, the dotted
+        line's lit start and end distances from its ends) '''
+        bright = pg.imageToArray(pixmap.toImage(), copy=True, transpose=False)[..., :3].sum(axis=-1) > 300
+        at = lambda x, y: widget.mapFromScene(view.mapViewToScene(QtCore.QPointF(x, y))) * scale
+        tip, start, end = at(60, 70), at(5, 30), at(60, 30)
+        band = bright[round(tip.y() - 30 * scale):round(tip.y() + 30 * scale)]
+        row = np.flatnonzero(bright[round(start.y())])
+        return (band.sum(axis=0).max() / scale, (tip.x() - np.flatnonzero(band.any(axis=0)).max()) / scale,
+                (row.min() - start.x()) / scale, (end.x() - row.max()) / scale)
+
+    screen = shapes(widget.grab(), widget.devicePixelRatioF())
+    scale = 3
+    image = QtGui.QPixmap(outer.width() * scale, outer.height() * scale)
+    image.setDevicePixelRatio(scale)
+    image.fill(QtCore.Qt.black)
+    with rendered_at(scale):
+        outer.render(image)
+    shot = shapes(image, scale)
+    # the same in screen pixels, to within antialiasing
+    np.testing.assert_allclose(shot[:3], screen[:3], atol=1.5)
+    # the dotted line's end kept clear as much (a dot cut by the gap may show only in the larger image)
+    assert min(shot[3], screen[3]) >= ARROW_GAP * LINE_WIDTH - 1
 
 
 def test_arrowhead_at_the_end_the_same_size_at_any_zoom(qtbot):

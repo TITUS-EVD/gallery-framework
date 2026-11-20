@@ -20,7 +20,9 @@ LINE_WIDTH = 2  # pixels
 # dash and gap lengths, in line widths (Qt's DashLine is 4, 2): the neutrino's dashed line,
 # and the dotted straight lines of the particles without a trajectory (e.g. neutral)
 DASH_PATTERN = (4, 4)
-DOT_PATTERN = (1, 8)
+# dots: round capped (a circle the line's width) dashes of almost no length; Qt draws nothing for
+# a dash of exactly 0
+DOT_PATTERN = (0.01, 8.99)
 LINE_PATTERNS = {'solid': None, 'dashed': DASH_PATTERN, 'dotted': DOT_PATTERN}
 # arrowheads: length and half width, in line widths
 ARROW_LENGTH = 6
@@ -82,7 +84,10 @@ class AnnotationPath(QtWidgets.QGraphicsPathItem):
         if not clear:
             painter.drawPath(self.path())
             return
-        width = max(pen.widthF(), 1.)
+        # sizes from the on-screen width, not the rendered pen's: in a screenshot (rendered_at) the painter's
+        # pixels, even with its transform reset, are the screen's, which the image's device pixel ratio scales
+        # up; only a cosmetic pen's width isn't, hence render_pen for the strokes
+        width = max(self.pen().widthF(), 1.)
         gap = ARROW_GAP * width
         # the line clipped to outside the gaps (in pixels: through any transform)
         to_device = painter.transform()
@@ -181,7 +186,8 @@ def annotation_items(paths, name, line_style='solid', label_pos=None, on_moved=N
     if pattern is not None:
         pen.setDashPattern(list(pattern))
     if dotted:
-        # the first dot (square capped: half a width longer each way) just past the gap at the start,
+        pen.setCapStyle(QtCore.Qt.RoundCap)
+        # the first dot (its centre half a width past its edge) just past the gap at the start,
         # rather than on it and clipped, leaving a longer gap
         pen.setDashOffset(sum(pattern) - (ARROW_GAP + 0.5))
     pen.setCosmetic(True)
